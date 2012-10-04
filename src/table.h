@@ -2,6 +2,7 @@
 #define _table_h
 
 #include <inttypes.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -63,6 +64,7 @@ struct sky_table {
     bstring path;
     bool opened;
     uint32_t default_block_size;
+    FILE *lock_file;
 };
 
 

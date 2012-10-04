@@ -400,20 +400,15 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_lock(sky_table *table)
 {
-    FILE *file;
     check(table != NULL, "Table required to lock");
 
     // Construct path to lock.
     bstring path = bformat("%s/%s", bdata(table->path), SKY_LOCK_NAME); check_mem(path);
 
-    // Raise error if table is already locked.
-    check(!sky_file_exists(path), "Cannot obtain lock: %s", bdata(path));
-
-    // Write pid to lock file.
-    file = fopen(bdata(path), "w");
-    check(file, "Failed to open lock file: %s",  bdata(path));
-    check(fprintf(file, "%d", getpid()) > 0, "Error writing lock file: %s",  bdata(path));
-    fclose(file);
+    // Open file with an exclusive lock. If this fails then it means another
+    // process already has obtained a lock.
+    table->lock_file = fopen(bdata(path), "w");
+    check(table->lock_file != NULL, "Table is already locked: %s", bdata(table->path));
 
     // Clean up.
     bdestroy(path);
@@ -421,7 +416,6 @@ int sky_table_lock(sky_table *table)
     return 0;
 
 error:
-    if(file) fclose(file);
     bdestroy(path);
     return -1;
 }
@@ -433,37 +427,27 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_unlock(sky_table *table)
 {
-    FILE *file;
-
-    // Validate arguments.
     check(table != NULL, "Table required to unlock");
 
-    // Construct path to lock.
-    bstring path = bformat("%s/%s", bdata(table->path), SKY_LOCK_NAME); check_mem(path);
+    // Generate lock file path.
+    bstring path = NULL;
 
-    // If file exists, check its PID and then attempt to remove it.
-    if(sky_file_exists(path)) {
-        // Read PID from lock.
-        pid_t pid = 0;
-        file = fopen(bdata(path), "r");
-        check(file, "Failed to open lock file: %s",  bdata(path));
-        check(fscanf(file, "%d", &pid) > 0, "Error reading lock file: %s", bdata(path));
-        fclose(file);
+    // Only attempt to remove the lock if one has been obtained.
+    if(table->lock_file != NULL) {
+        // Close the lock file descriptor.
+        fclose(table->lock_file);
 
-        // Make sure we are removing a lock we created.
-        check(pid == getpid(), "Cannot remove lock from another process (PID #%d): %s", pid, bdata(path));
-
-        // Remove lock.
-        check(unlink(bdata(path)) == 0, "Unable to remove lock: %s", bdata(path));
+        // Remove the lock file. We don't necessarily care if it gets cleaned
+        // up so don't check for an error. The write lock is the more
+        // important piece.
+        path = bformat("%s/%s", bdata(table->path), SKY_LOCK_NAME); check_mem(path);
+        unlink(bdata(path));
     }
 
-    // Clean up.
     bdestroy(path);
-
     return 0;
 
 error:
-    if(file) fclose(file);
     bdestroy(path);
     return -1;
 }

@@ -1,4 +1,4 @@
-// minipack v0.4.0
+// minipack v0.5.0
 
 #include "minipack.h"
 #include "string.h"
@@ -196,6 +196,46 @@ uint64_t bswap64(uint64_t value)
 #define htonll(x) x
 #define ntohll(x) x
 #endif
+
+
+//==============================================================================
+//
+// General
+//
+//==============================================================================
+
+// Retrieves the size, in bytes, of how large an element will be along with
+// the size of its data (if it is a string). Maps and arrays are not supported
+// with this function.
+//
+// Returns the number of bytes needed for the element and the element's data.
+size_t minipack_sizeof_elem_and_data(void *ptr)
+{
+    size_t sz;
+    
+    // Integer.
+    sz = minipack_sizeof_int_elem(ptr);
+    if(sz > 0) return sz;
+    
+    // Unsigned Integer.
+    sz = minipack_sizeof_uint_elem(ptr);
+    if(sz > 0) return sz;
+    
+    // Float & Double
+    if(minipack_is_float(ptr)) return minipack_sizeof_float();
+    if(minipack_is_double(ptr)) return minipack_sizeof_double();
+
+    // Nil & Boolean.
+    if(minipack_is_nil(ptr)) return minipack_sizeof_nil();
+    if(minipack_is_bool(ptr)) return minipack_sizeof_bool();
+
+    // Raw
+    uint32_t length = minipack_unpack_raw(ptr, &sz);
+    if(sz > 0) return sz + length;
+    
+    // Map, Array and other data returns 0.
+    return 0;
+}
 
 
 //==============================================================================
@@ -675,6 +715,19 @@ size_t minipack_sizeof_int_elem(void *ptr)
     else if(minipack_is_int64(ptr)) {
         return INT64_SIZE;
     }
+    // Fallback to unsigned ints.
+    else if(minipack_is_uint8(ptr)) {
+        return UINT8_SIZE;
+    }
+    else if(minipack_is_uint16(ptr)) {
+        return UINT16_SIZE;
+    }
+    else if(minipack_is_uint32(ptr)) {
+        return UINT32_SIZE;
+    }
+    else if(minipack_is_uint64(ptr)) {
+        return UINT64_SIZE;
+    }
     else {
         return 0;
     }
@@ -698,16 +751,26 @@ int64_t minipack_unpack_int(void *ptr, size_t *sz)
         return (int64_t)minipack_unpack_int8(ptr, sz);
     }
     else if(minipack_is_int16(ptr)) {
-        *sz = INT16_SIZE;
         return (int64_t)minipack_unpack_int16(ptr, sz);
     }
     else if(minipack_is_int32(ptr)) {
-        *sz = INT32_SIZE;
         return (int64_t)minipack_unpack_int32(ptr, sz);
     }
     else if(minipack_is_int64(ptr)) {
-        *sz = INT64_SIZE;
         return minipack_unpack_int64(ptr, sz);
+    }
+    // Fallback to unsigned ints.
+    else if(minipack_is_uint8(ptr)) {
+        return (int64_t)minipack_unpack_uint8(ptr, sz);
+    }
+    else if(minipack_is_uint16(ptr)) {
+        return (int64_t)minipack_unpack_uint16(ptr, sz);
+    }
+    else if(minipack_is_uint32(ptr)) {
+        return (int64_t)minipack_unpack_uint32(ptr, sz);
+    }
+    else if(minipack_is_uint64(ptr)) {
+        return minipack_unpack_uint64(ptr, sz);
     }
     else {
         *sz = 0;
@@ -726,7 +789,7 @@ void minipack_pack_int(void *ptr, int64_t value, size_t *sz)
         minipack_pack_pos_fixnum(ptr, (int8_t)value, sz);
     }
     else if(value >= NEG_FIXNUM_MIN && value <= NEG_FIXNUM_MAX) {
-        minipack_pack_pos_fixnum(ptr, (int8_t)value, sz);
+        minipack_pack_neg_fixnum(ptr, (int8_t)value, sz);
     }
     else if(value >= INT8_MIN && value <= INT8_MAX) {
         minipack_pack_int8(ptr, (int8_t)value, sz);
@@ -961,6 +1024,14 @@ void minipack_pack_int64(void *ptr, int64_t value, size_t *sz)
 // Nil
 //--------------------------------------
 
+// Retrieves the size, in bytes, of how large an element will be.
+//
+// Returns the number of bytes needed for the element.
+size_t minipack_sizeof_nil()
+{
+    return NIL_SIZE;
+}
+
 // Checks if an element is a nil.
 //
 // ptr - A pointer to the element.
@@ -1043,6 +1114,14 @@ int minipack_fwrite_nil(FILE *file, size_t *sz)
 //--------------------------------------
 // Boolean
 //--------------------------------------
+
+// Retrieves the size, in bytes, of how large an element will be.
+//
+// Returns the number of bytes needed for the element.
+size_t minipack_sizeof_bool()
+{
+    return BOOL_SIZE;
+}
 
 // Checks if an element is a bool.
 //
@@ -1164,6 +1243,14 @@ int minipack_fwrite_bool(FILE *file, bool value, size_t *sz)
 // Float
 //--------------------------------------
 
+// Retrieves the size, in bytes, of how large an element will be.
+//
+// Returns the number of bytes needed for the element.
+size_t minipack_sizeof_float()
+{
+    return FLOAT_SIZE;
+}
+
 // Checks if an element is a float.
 //
 // ptr - A pointer to the element.
@@ -1248,6 +1335,14 @@ int minipack_fwrite_float(FILE *file, float value, size_t *sz)
 //--------------------------------------
 // Double
 //--------------------------------------
+
+// Retrieves the size, in bytes, of how large an element will be.
+//
+// Returns the number of bytes needed for the element.
+size_t minipack_sizeof_double()
+{
+    return DOUBLE_SIZE;
+}
 
 // Checks if an element is a double.
 //
