@@ -100,6 +100,11 @@ int sky_server_start(sky_server *server)
     server->socket = socket(AF_INET, SOCK_STREAM, 0);
     check(server->socket != -1, "Unable to create a socket");
     
+    // Set socket for reuse.
+    int optval = 1;
+    rc = setsockopt(server->socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+    check(rc == 0, "Unable to set socket for reuse");
+    
     // Bind socket.
     rc = bind(server->socket, (struct sockaddr*)server->sockaddr, sizeof(struct sockaddr_in));
     check(rc == 0, "Unable to bind socket");
@@ -244,11 +249,11 @@ int sky_server_open_table(sky_server *server, bstring database_name,
 {
     int rc;
     check(server != NULL, "Server required");
-    check(database_name != NULL, "Database name required");
-    check(table_name != NULL, "Table name required");
+    check(blength(database_name) > 0, "Database name required");
+    check(blength(table_name) > 0, "Table name required");
     
     // Initialize return values.
-    *table    = NULL;
+    *table = NULL;
     
     // Determine the path to the table.
     bstring path = bformat("%s/%s/%s", bdata(server->path), bdata(database_name), bdata(table_name));

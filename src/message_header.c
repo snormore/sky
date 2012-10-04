@@ -15,7 +15,7 @@
 //
 //==============================================================================
 
-#define SKY_MESSAGE_HEADER_ITEM_COUNT 6
+#define SKY_MESSAGE_HEADER_ITEM_COUNT 5
 
 
 //==============================================================================
@@ -165,6 +165,8 @@ int sky_message_header_unpack(sky_message_header *header, FILE *file)
     // Table name
     rc = sky_minipack_fread_bstring(file, &header->table_name);
     check(rc == 0, "Unable to pack table name");
+
+    debug("MHDR[recv]: v%lld / %s / len:%lld / db:%s / tbl:%s", header->version, bdata(header->name), header->length, bdata(header->database_name), bdata(header->table_name));
 
     return 0;
 
