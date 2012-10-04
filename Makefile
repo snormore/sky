@@ -17,10 +17,11 @@ TEST_OBJECTS=$(patsubst %.c,%,${TEST_SOURCES})
 PREFIX?=/usr/local
 
 ################################################################################
-# Default Target
+# Main Targets
 ################################################################################
 
-all: bin/libsky.a bin/skyd bin/sky-gen bin/sky-bench test
+compile: bin/libsky.a bin/skyd bin/sky-gen bin/sky-bench
+all: compile test
 
 
 ################################################################################

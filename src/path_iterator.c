@@ -287,13 +287,23 @@ int sky_path_iterator_fast_forward(sky_path_iterator *iterator)
             break;
         }
         
+        // Determine the pointer at the end of the block.
+        sky_block *block = NULL;
+        void *block_end_ptr = NULL;
+        rc = sky_path_iterator_get_current_block(iterator, &block);
+        check(rc == 0, "Unable to retrieve current block");
+        rc = sky_block_get_ptr(block, &block_end_ptr);
+        check(rc == 0, "Unable to retrieve block pointer");
+        block_end_ptr += block->data_file->block_size;
+
         // If there is null data then move to the next block.
-        void *ptr;
+        void *ptr = NULL;
         rc = sky_path_iterator_get_ptr(iterator, &ptr);
         check(rc == 0, "Unable to retrieve the current pointer");
-        
-        // If there is null data then move to the next block.
-        if(*((uint8_t*)ptr) == 0) {
+
+        // If there is null data or we're at the end of the block then move to
+        // the next block.
+        if(ptr > block_end_ptr-SKY_PATH_HEADER_LENGTH || *((sky_object_id_t*)ptr) == 0) {
             iterator->block_index++;
             iterator->byte_index = 0;
         }

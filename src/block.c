@@ -540,6 +540,11 @@ int sky_block_span_with_event(sky_block *block, sky_event *new_event,
     // Initialize the return value.
     *target_block = block;
 
+    // Maintain list of blocks that are pending updates. A block can only be
+    // split into a maximum of 3 blocks.
+    sky_block *pending_updates[3];
+    uint32_t pending_update_count = 0;
+    
     // Retrieve path info.
     bool is_first_path_in_block = (path_ptr == block_ptr);
     sky_object_id_t object_id = *((sky_object_id_t*)path_ptr);
@@ -620,9 +625,9 @@ int sky_block_span_with_event(sky_block *block, sky_event *new_event,
                 check(rc == 0, "Unable to write path header");
             }
 
-            // Update block ranges.
-            rc = sky_block_full_update(new_block);
-            check(rc == 0, "Unable to update block ranges");
+            // Add to pending updates list.
+            pending_update_count++;
+            pending_updates[pending_update_count-1] = new_block;
 
             // If new block contains the event timestamp in range then
             // set it as the target block.
@@ -637,6 +642,12 @@ int sky_block_span_with_event(sky_block *block, sky_event *new_event,
             last_index = i+1;
             sz = SKY_PATH_HEADER_LENGTH;
         }
+    }
+
+    // Update block ranges.
+    for(i=0; i<pending_update_count; i++) {
+        rc = sky_block_full_update(pending_updates[i]);
+        check(rc == 0, "Unable to update block ranges");
     }
 
     // Update block range on the original block if a split occurred.
