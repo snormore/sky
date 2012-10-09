@@ -57,4 +57,7 @@ void qip_serializer_pack_raw(qip_module *module, qip_serializer *serializer,
 void qip_serializer_pack_map(qip_module *module, qip_serializer *serializer,
     int64_t count);
 
+void qip_serializer_pack_array(qip_module *module, qip_serializer *serializer,
+    int64_t count);
+
 #endif

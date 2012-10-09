@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include "peach_message.h"
 #include "minipack.h"
@@ -154,6 +155,11 @@ int sky_peach_message_process(sky_peach_message *message, sky_table *table,
     sky_qip_path *path = sky_qip_path_create();
     qip_map *map = qip_map_create();
     
+    // Start benchmark.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+
     // Iterate over each path.
     uint32_t path_count = 0;
     while(!iterator.eof) {
@@ -172,6 +178,11 @@ int sky_peach_message_process(sky_peach_message *message, sky_table *table,
     }
     //debug("Paths processed: %d", path_count);
 
+    // End benchmark.
+    gettimeofday(&tv, NULL);
+    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+    debug("Peach query ran in: %.3f seconds\n", ((float)(t1-t0))/1000);
+
     // Retrieve Result serialization function.
     struct tagbstring result_str = bsStatic("Result");
     struct tagbstring serialize_str = bsStatic("serialize");
@@ -181,7 +192,7 @@ int sky_peach_message_process(sky_peach_message *message, sky_table *table,
 
     // Serialize.
     qip_serializer *serializer = qip_serializer_create();
-    qip_serializer_pack_map(module->_qip_module, serializer, map->count);
+    qip_serializer_pack_array(module->_qip_module, serializer, map->count);
     int64_t i;
     for(i=0; i<map->count; i++) {
         result_serialize(map->elements[i], serializer);
@@ -190,6 +201,7 @@ int sky_peach_message_process(sky_peach_message *message, sky_table *table,
     // Send response to output stream.
     rc = fwrite(serializer->data, serializer->length, 1, output);
     check(rc == 1, "Unable to write serialized data to stream");
+    fflush(output);
     
     qip_map_free(map);
     sky_qip_module_free(module);

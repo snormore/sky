@@ -175,3 +175,18 @@ void qip_serializer_pack_map(qip_module *module, qip_serializer *serializer,
 error:
     return;
 }
+
+void qip_serializer_pack_array(qip_module *module, qip_serializer *serializer,
+                               int64_t count)
+{
+    size_t sz;
+    check(module != NULL, "Module required");
+    qip_serializer_alloc(serializer, QIP_SERIALIZER_MAX_ELEMENT_SIZE);
+    minipack_pack_array(serializer->ptr, (uint32_t)count, &sz);
+    serializer->length += sz;
+    serializer->ptr = serializer->data + serializer->length;
+    return;
+
+error:
+    return;
+}
