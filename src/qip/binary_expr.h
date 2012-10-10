@@ -14,6 +14,8 @@ typedef enum {
     QIP_BINOP_MINUS,
     QIP_BINOP_MUL,
     QIP_BINOP_DIV,
+    QIP_BINOP_AND,
+    QIP_BINOP_OR,
     QIP_BINOP_EQUALS,
 } qip_ast_binop_e;
 

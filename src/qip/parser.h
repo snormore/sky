@@ -83,12 +83,14 @@
      TMUL = 288,
      TDIV = 289,
      TASSIGN = 290,
-     TEQUALS = 291,
-     TDOT = 292,
-     TSIZEOF = 293,
-     TOFFSETOF = 294,
-     TNULL = 295,
-     TFUNCTION = 296
+     TAND = 291,
+     TOR = 292,
+     TEQUALS = 293,
+     TDOT = 294,
+     TSIZEOF = 295,
+     TOFFSETOF = 296,
+     TNULL = 297,
+     TFUNCTION = 298
    };
 #endif
 
@@ -121,7 +123,7 @@ typedef union YYSTYPE
 
 
 /* Line 2132 of yacc.c  */
-#line 125 "src/parser.h"
+#line 127 "src/parser.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -168,4 +170,4 @@ typedef struct YYLTYPE
 
 
 /* Line 2132 of yacc.c  */
-#line 172 "src/parser.h"
+#line 174 "src/parser.h"

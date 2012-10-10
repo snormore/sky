@@ -211,6 +211,14 @@ int codegen_boolean(qip_ast_node *node, qip_module *module, LLVMValueRef lhs,
     LLVMBuilderRef builder = module->compiler->llvm_builder;
 
     switch(node->binary_expr.operator) {
+        case QIP_BINOP_AND: {
+            *value = LLVMBuildAnd(builder, lhs, rhs, "");
+            break;
+        }
+        case QIP_BINOP_OR: {
+            *value = LLVMBuildOr(builder, lhs, rhs, "");
+            break;
+        }
         case QIP_BINOP_EQUALS: {
             *value = LLVMBuildICmp(builder, LLVMIntEQ, lhs, rhs, "");
             break;
@@ -607,6 +615,8 @@ int qip_ast_binary_expr_dump(qip_ast_node *node, bstring ret)
         case QIP_BINOP_MINUS: operator = "-"; break;
         case QIP_BINOP_MUL: operator = "*"; break;
         case QIP_BINOP_DIV: operator = "/"; break;
+        case QIP_BINOP_AND: operator = "&&"; break;
+        case QIP_BINOP_OR: operator = "||"; break;
         case QIP_BINOP_EQUALS: operator = "=="; break;
     }
     
