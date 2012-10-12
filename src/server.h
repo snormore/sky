@@ -99,13 +99,6 @@ int sky_server_process_eadd_message(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
 
 //--------------------------------------
-// Path Messages
-//--------------------------------------
-
-int sky_server_process_peach_message(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
-
-//--------------------------------------
 // Action Messages
 //--------------------------------------
 

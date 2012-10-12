@@ -2,8 +2,7 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -O4 -Wall -Wextra -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64 `llvm-config --cflags`
-CXXFLAGS=-g -Wall -Wextra -Wno-self-assign -D_FILE_OFFSET_BITS=64 `llvm-config --libs --cflags --ldflags core analysis executionengine jit interpreter native`
+CFLAGS=-g -Wall -Wextra -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES}) $(patsubst %.l,%.o,${LEX_SOURCES}) $(patsubst %.y,%.o,${YACC_SOURCES})
@@ -46,9 +45,7 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ranlib $@
 
 bin/skyd: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -c -o $@.o src/skyd.c
-	$(CXX) $(CXXFLAGS) -Isrc -o $@ $@.o bin/libsky.a
-	rm $@.o
+	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a
 	chmod 700 $@
 
 bin/sky-gen: bin ${OBJECTS} bin/libsky.a
@@ -56,9 +53,7 @@ bin/sky-gen: bin ${OBJECTS} bin/libsky.a
 	chmod 700 $@
 
 bin/sky-bench: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -c -o $@.o src/sky_bench.c
-	$(CXX) $(CXXFLAGS) -Isrc -o $@ $@.o bin/libsky.a
-	rm $@.o
+	$(CC) $(CFLAGS) -Isrc -o $@ src/sky_bench.c bin/libsky.a
 	chmod 700 $@
 
 bin:
@@ -74,17 +69,6 @@ src/jsmn/jsmn.o: src/jsmn/jsmn.c
 
 
 ################################################################################
-# Qip
-################################################################################
-
-src/qip/lexer.o: src/qip/lexer.c
-	$(CC) $(CFLAGS) -Wno-unused-parameter -Wno-unused-function -Isrc -c -o $@ $<
-
-src/qip/parser.o: src/qip/parser.c
-	$(CC) $(CFLAGS) -Wno-unused-parameter -Isrc -c -o $@ $<
-
-
-################################################################################
 # Tests
 ################################################################################
 
@@ -93,8 +77,7 @@ test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh
 
 $(TEST_OBJECTS): %: %.c bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -c -o $@.o $<
-	$(CXX) $(CXXFLAGS) -Isrc -o $@ $@.o bin/libsky.a
+	$(CC) $(CFLAGS) -Isrc -o $@ $< bin/libsky.a
 
 
 ################################################################################

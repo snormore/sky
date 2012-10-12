@@ -7,7 +7,6 @@
 #include "server.h"
 #include "message_header.h"
 #include "eadd_message.h"
-#include "peach_message.h"
 #include "aadd_message.h"
 #include "aget_message.h"
 #include "aall_message.h"
@@ -190,9 +189,6 @@ int sky_server_accept(sky_server *server)
     if(biseqcstr(header->name, "eadd") == 1) {
         rc = sky_server_process_eadd_message(server, table, input, output);
     }
-    else if(biseqcstr(header->name, "peach") == 1) {
-        rc = sky_server_process_peach_message(server, table, input, output);
-    }
     else if(biseqcstr(header->name, "aadd") == 1) {
         rc = sky_server_process_aadd_message(server, table, input, output);
     }
@@ -359,44 +355,6 @@ error:
     return -1;
 }
 
-
-//--------------------------------------
-// Path Messages
-//--------------------------------------
-
-// Parses and process a Path-Each (PEACH) message.
-//
-// server - The server.
-// table  - The table to apply the message to.
-// input  - The input file stream.
-// output - The output file stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_server_process_peach_message(sky_server *server, sky_table *table,
-                                     FILE *input, FILE *output)
-{
-    int rc;
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    check(input != NULL, "Input required");
-    check(output != NULL, "Output stream required");
-    
-    debug("Message received: [PEACH]");
-
-    // Parse message.
-    sky_peach_message *message = sky_peach_message_create(); check_mem(message);
-    rc = sky_peach_message_unpack(message, input);
-    check(rc == 0, "Unable to parse PEACH message");
-    
-    // Process message.
-    rc = sky_peach_message_process(message, table, output);
-    check(rc == 0, "Unable to process PEACH message");
-    
-    return 0;
-
-error:
-    return -1;
-}
 
 
 //--------------------------------------
