@@ -101,7 +101,7 @@ Options *parseopts(int argc, char **argv)
 
     // Retrieve path as first non-getopts option.
     if(argc < 1) {
-        fprintf(stderr, "Error: Database path required.\n\n");
+        fprintf(stderr, "Error: Table path required.\n\n");
         exit(1);
     }
     options->path = bfromcstr(argv[0]);
@@ -407,8 +407,8 @@ int main(int argc, char **argv)
     int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
 
     // Benchmark computation of a DAG.
-    // benchmark_dag(options);
-    benchmark_count_with_qip(options);
+    benchmark_dag(options);
+    //benchmark_count_with_qip(options);
 
     // End time.
     gettimeofday(&tv, NULL);

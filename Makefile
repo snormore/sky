@@ -2,7 +2,7 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -Wall -Wextra -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64 `llvm-config --cflags`
+CFLAGS=-g -O4 -Wall -Wextra -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64 `llvm-config --cflags`
 CXXFLAGS=-g -Wall -Wextra -Wno-self-assign -D_FILE_OFFSET_BITS=64 `llvm-config --libs --cflags --ldflags core analysis executionengine jit interpreter native`
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
