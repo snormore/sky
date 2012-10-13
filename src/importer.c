@@ -659,11 +659,11 @@ int32_t sky_importer_token_parse_int(bstring source, jsmntok_t *token)
 {
     if(token->type == JSMN_PRIMITIVE) {
         int toklen = token->end - token->start;
-        char str[toklen+1];
-        char *source_string = bdata(source);
-        strncpy(str, &source_string[token->start], toklen);
-        str[toklen] = '\x0';
-        return (int32_t)atoi(str);
+        bstring str;
+        str = bmidstr(source, token->start, toklen);
+        int32_t value = (int32_t)atoi(bdata(str));
+        bdestroy(str);
+        return value;
     }
     
     return 0;

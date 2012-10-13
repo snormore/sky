@@ -267,7 +267,7 @@ int sky_next_action_message_process(sky_next_action_message *message,
     for(i=0; i<action_count+1; i++) {
         if(results[i].count > 0) {
             check(minipack_fwrite_uint(output, i, &sz) == 0, "Unable to write action id");
-            check(minipack_fwrite_map(output, 2, &sz) == 0, "Unable to write result map");
+            check(minipack_fwrite_map(output, 1, &sz) == 0, "Unable to write result map");
             check(sky_minipack_fwrite_bstring(output, &count_str) == 0, "Unable to write result count key");
             check(minipack_fwrite_uint(output, results[i].count, &sz) == 0, "Unable to write result count");
         }
