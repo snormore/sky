@@ -99,6 +99,13 @@ int sky_server_process_eadd_message(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
 
 //--------------------------------------
+// Query Messages
+//--------------------------------------
+
+int sky_server_process_next_action_message(sky_server *server, sky_table *table,
+    FILE *input, FILE *output);
+
+//--------------------------------------
 // Action Messages
 //--------------------------------------
 

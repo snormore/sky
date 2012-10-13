@@ -7,6 +7,7 @@
 #include "server.h"
 #include "message_header.h"
 #include "eadd_message.h"
+#include "next_action_message.h"
 #include "aadd_message.h"
 #include "aget_message.h"
 #include "aall_message.h"
@@ -189,6 +190,9 @@ int sky_server_accept(sky_server *server)
     if(biseqcstr(header->name, "eadd") == 1) {
         rc = sky_server_process_eadd_message(server, table, input, output);
     }
+    else if(biseqcstr(header->name, "next_action") == 1) {
+        rc = sky_server_process_next_action_message(server, table, input, output);
+    }
     else if(biseqcstr(header->name, "aadd") == 1) {
         rc = sky_server_process_aadd_message(server, table, input, output);
     }
@@ -348,6 +352,45 @@ int sky_server_process_eadd_message(sky_server *server, sky_table *table,
     // Process message.
     rc = sky_eadd_message_process(message, table, output);
     check(rc == 0, "Unable to process EADD message");
+    
+    return 0;
+
+error:
+    return -1;
+}
+
+
+//--------------------------------------
+// Query Messages
+//--------------------------------------
+
+// Parses and process a 'Next Action' message.
+//
+// server - The server.
+// table  - The table to apply the message to.
+// input  - The input file stream.
+// output - The output file stream.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_process_next_action_message(sky_server *server, sky_table *table,
+                                           FILE *input, FILE *output)
+{
+    int rc;
+    check(server != NULL, "Server required");
+    check(table != NULL, "Table required");
+    check(input != NULL, "Input required");
+    check(output != NULL, "Output stream required");
+    
+    debug("Message received: [Next Action]");
+    
+    // Parse message.
+    sky_next_action_message *message = sky_next_action_message_create(); check_mem(message);
+    rc = sky_next_action_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'Next Action' message");
+    
+    // Process message.
+    rc = sky_next_action_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'Next Action' message");
     
     return 0;
 
