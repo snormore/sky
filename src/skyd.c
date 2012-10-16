@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <signal.h>
 
 #include "bstring.h"
 #include "dbg.h"
@@ -133,6 +134,9 @@ int main(int argc, char **argv)
     printf("Sky Server v%s\n", SKY_VERSION);
     printf("Listening on 0.0.0.0:%d, CTRL+C to stop\n", server->port);
     
+    // Signal handlers.
+    signal(SIGPIPE, SIG_IGN);
+
     // Start server.
     sky_server_start(server);
     

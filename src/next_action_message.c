@@ -200,6 +200,7 @@ int sky_next_action_message_process(sky_next_action_message *message,
     int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
 
     // Iterate over each path.
+    uint64_t event_count = 0;
     while(!iterator.eof) {
         // Retrieve the path pointer.
         void *path_ptr = NULL;
@@ -237,6 +238,9 @@ int sky_next_action_message_process(sky_next_action_message *message,
             // Find next event.
             rc = sky_cursor_next(&cursor);
             check(rc == 0, "Unable to find next event");
+            
+            // Increment event count.
+            event_count++;
         }
 
         // Move to next path.
@@ -247,7 +251,7 @@ int sky_next_action_message_process(sky_next_action_message *message,
     // End benchmark.
     gettimeofday(&tv, NULL);
     int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-    debug("'Next Action' query ran in: %.3f seconds\n", ((float)(t1-t0))/1000);
+    debug("'Next Action' queried %lld events in: %.3f seconds\n", event_count, ((float)(t1-t0))/1000);
     
     // Count the total number of return elements.
     uint32_t key_count = 0;

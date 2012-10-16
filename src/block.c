@@ -577,7 +577,6 @@ int sky_block_span_with_event(sky_block *block, sky_event *new_event,
             size_t start_pos = last_event->start_pos;
             size_t end_pos   = event->end_pos;
             size_t len = end_pos - start_pos;
-            void *ptr = path_ptr + start_pos;
 
             // If this is the first span of the first path of a block then
             // just leave the data where it is.
@@ -598,13 +597,14 @@ int sky_block_span_with_event(sky_block *block, sky_event *new_event,
 
                 // Restore path pointer.
                 path_ptr = data_file->data + path_off;
-
+                
                 // Retrieve the new block's pointer.
                 rc = sky_block_get_ptr(new_block, &new_block_ptr);
                 check(rc == 0, "Unable to retrieve new block's data pointer");
 
                 // Move data.
                 if(len > 0) {
+                    void *ptr = path_ptr + start_pos;
                     memmove(new_block_ptr + SKY_PATH_HEADER_LENGTH, ptr, len);
                     memset(ptr, 0, len);
                 }

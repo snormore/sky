@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "bstring.h"
 #include "server.h"
@@ -14,6 +15,7 @@
 #include "padd_message.h"
 #include "pget_message.h"
 #include "pall_message.h"
+#include "multi_message.h"
 #include "dbg.h"
 
 
@@ -157,14 +159,13 @@ int sky_server_stop(sky_server *server)
 // Accepts a connection on a running server. Once a connection is accepted then
 // the message is parsed and processed.
 //
-// server - The server to start.
+// server - The server.
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_server_accept(sky_server *server)
 {
     int rc;
-    sky_message_header *header = NULL;
-    
+
     // Accept the next connection.
     int sockaddr_size = sizeof(struct sockaddr_in);
     int socket = accept(server->socket, (struct sockaddr*)server->sockaddr, (socklen_t *)&sockaddr_size);
@@ -176,60 +177,92 @@ int sky_server_accept(sky_server *server)
     check(input != NULL, "Unable to open buffered socket input");
     check(output != NULL, "Unable to open buffered socket output");
     
-    // Parse message header.
-    header = sky_message_header_create(); check_mem(header);
-    rc = sky_message_header_unpack(header, input);
-    check(rc == 0, "Unable to unpack message header");
-
-    // Open database & table.
-    sky_table *table = NULL;
-    rc = sky_server_open_table(server, header->database_name, header->table_name, &table);
-    check(rc == 0, "Unable to open table");
-
-    // Parse appropriate message type.
-    if(biseqcstr(header->name, "eadd") == 1) {
-        rc = sky_server_process_eadd_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "next_action") == 1) {
-        rc = sky_server_process_next_action_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "aadd") == 1) {
-        rc = sky_server_process_aadd_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "aget") == 1) {
-        rc = sky_server_process_aget_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "aall") == 1) {
-        rc = sky_server_process_aall_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "padd") == 1) {
-        rc = sky_server_process_padd_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "pget") == 1) {
-        rc = sky_server_process_pget_message(server, table, input, output);
-    }
-    else if(biseqcstr(header->name, "pall") == 1) {
-        rc = sky_server_process_pall_message(server, table, input, output);
-    }
-    else {
-        sentinel("Invalid message type");
-    }
+    // Process message.
+    rc = sky_server_process_message(server, input, output);
+    check(rc == 0, "Unable to process message");
     
-    // Clean up.
-    sky_message_header_free(header);
     fclose(input);
     fclose(output);
 
     return 0;
 
 error:
-    sky_message_header_free(header);
     fclose(input);
     fclose(output);
     return -1;
 }
 
 
+//--------------------------------------
+// Message Processing
+//--------------------------------------
+
+// Processes a single message.
+//
+// server - The server.
+// input  - The input stream.
+// output - The output stream.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
+{
+    int rc;
+    sky_message_header *header = NULL;
+    
+    // Parse message header.
+    header = sky_message_header_create(); check_mem(header);
+    rc = sky_message_header_unpack(header, input);
+    check(rc == 0, "Unable to unpack message header");
+
+    // Ignore the database/table if this is a multi message.
+    if(biseqcstr(header->name, "multi") == 1) {
+        rc = sky_server_process_multi_message(server, input, output);
+        check(rc == 0, "Unable to process multi message");
+    }
+    else {
+        // Open database & table.
+        sky_table *table = NULL;
+        rc = sky_server_open_table(server, header->database_name, header->table_name, &table);
+        check(rc == 0, "Unable to open table");
+
+        // Parse appropriate message type.
+        if(biseqcstr(header->name, "eadd") == 1) {
+            rc = sky_server_process_eadd_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "next_action") == 1) {
+            rc = sky_server_process_next_action_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "aadd") == 1) {
+            rc = sky_server_process_aadd_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "aget") == 1) {
+            rc = sky_server_process_aget_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "aall") == 1) {
+            rc = sky_server_process_aall_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "padd") == 1) {
+            rc = sky_server_process_padd_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "pget") == 1) {
+            rc = sky_server_process_pget_message(server, table, input, output);
+        }
+        else if(biseqcstr(header->name, "pall") == 1) {
+            rc = sky_server_process_pall_message(server, table, input, output);
+        }
+        else {
+            sentinel("Invalid message type");
+        }
+        check(rc == 0, "Unable to process message: %s", bdata(header->name));
+    }
+    
+    sky_message_header_free(header);
+    return 0;
+
+error:
+    sky_message_header_free(header);
+    return -1;
+}
 
 
 //--------------------------------------
@@ -613,3 +646,52 @@ error:
     return -1;
 }
 
+
+//--------------------------------------
+// Multi Message
+//--------------------------------------
+
+// Parses and process a multi message.
+//
+// server - The server.
+// input  - The input file stream.
+// output - The output file stream.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_process_multi_message(sky_server *server, FILE *input,
+                                     FILE *output)
+{
+    int rc;
+    check(server != NULL, "Server required");
+    check(input != NULL, "Input required");
+    check(output != NULL, "Output stream required");
+    
+    debug("Message received: [MULTI]");
+    
+    // Parse message.
+    sky_multi_message *message = sky_multi_message_create(); check_mem(message);
+    rc = sky_multi_message_unpack(message, input);
+    check(rc == 0, "Unable to parse MULTI message");
+
+    // Start time.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+
+    // Process message.
+    uint32_t i;
+    for(i=0; i<message->message_count; i++) {
+        rc = sky_server_process_message(server, input, output);
+        check(rc == 0, "Unable to process child message");
+    }
+
+    // End time.
+    gettimeofday(&tv, NULL);
+    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+    printf("MULTI: %d messages processed in %.3f seconds\n", message->message_count, ((float)(t1-t0))/1000);
+    
+    return 0;
+
+error:
+    return -1;
+}
