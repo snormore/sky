@@ -15,7 +15,7 @@
 //
 //==============================================================================
 
-#define SKY_MESSAGE_HEADER_ITEM_COUNT 5
+#define SKY_MESSAGE_HEADER_ITEM_COUNT 4
 
 
 //==============================================================================
@@ -77,7 +77,6 @@ size_t sky_message_header_sizeof(sky_message_header *header)
     sz += minipack_sizeof_uint(header->version);
     sz += minipack_sizeof_raw(blength(header->name));
     sz += blength(header->name);
-    sz += minipack_sizeof_uint(header->length);
     sz += minipack_sizeof_raw(blength(header->database_name));
     sz += blength(header->database_name);
     sz += minipack_sizeof_raw(blength(header->table_name));
@@ -109,10 +108,6 @@ int sky_message_header_pack(sky_message_header *header, FILE *file)
     // Message name
     rc = sky_minipack_fwrite_bstring(file, header->name);
     check(rc == 0, "Unable to pack name");
-
-    // Length
-    minipack_fwrite_uint(file, header->length, &sz);
-    check(sz != 0, "Unable to pack length");
 
     // Database name
     rc = sky_minipack_fwrite_bstring(file, header->database_name);
@@ -154,10 +149,6 @@ int sky_message_header_unpack(sky_message_header *header, FILE *file)
     rc = sky_minipack_fread_bstring(file, &header->name);
     check(rc == 0, "Unable to pack name");
 
-    // Length
-    header->length = minipack_fread_uint(file, &sz);
-    check(sz != 0, "Unable to unpack message body length");
-
     // Database name
     rc = sky_minipack_fread_bstring(file, &header->database_name);
     check(rc == 0, "Unable to pack database name");
@@ -166,7 +157,7 @@ int sky_message_header_unpack(sky_message_header *header, FILE *file)
     rc = sky_minipack_fread_bstring(file, &header->table_name);
     check(rc == 0, "Unable to pack table name");
 
-    debug("MHDR[recv]: v%lld / %s / len:%lld / db:%s / tbl:%s", header->version, bdata(header->name), header->length, bdata(header->database_name), bdata(header->table_name));
+    debug("[%s.%lld:%s/%s]", bdata(header->name), header->version, bdata(header->database_name), bdata(header->table_name));
 
     return 0;
 
