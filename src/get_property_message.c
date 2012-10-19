@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 
 #include "types.h"
-#include "pget_message.h"
+#include "get_property_message.h"
 #include "property.h"
 #include "minipack.h"
 #include "mem.h"
@@ -20,26 +20,26 @@
 // Lifecycle
 //--------------------------------------
 
-// Creates an PGET message object.
+// Creates a 'get_property' message object.
 //
-// Returns a new PGET message.
-sky_pget_message *sky_pget_message_create()
+// Returns a new message.
+sky_get_property_message *sky_get_property_message_create()
 {
-    sky_pget_message *message = NULL;
-    message = calloc(1, sizeof(sky_pget_message)); check_mem(message);
+    sky_get_property_message *message = NULL;
+    message = calloc(1, sizeof(sky_get_property_message)); check_mem(message);
     return message;
 
 error:
-    sky_pget_message_free(message);
+    sky_get_property_message_free(message);
     return NULL;
 }
 
-// Frees an PGET message object from memory.
+// Frees a 'get_property' message object from memory.
 //
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_pget_message_free(sky_pget_message *message)
+void sky_get_property_message_free(sky_get_property_message *message)
 {
     if(message) {
         free(message);
@@ -56,20 +56,20 @@ void sky_pget_message_free(sky_pget_message *message)
 // message - The message.
 //
 // Returns the number of bytes required to store the message.
-size_t sky_pget_message_sizeof(sky_pget_message *message)
+size_t sky_get_property_message_sizeof(sky_get_property_message *message)
 {
     size_t sz = 0;
     sz += minipack_sizeof_int(message->property_id);
     return sz;
 }
 
-// Serializes an PGET message to a file stream.
+// Serializes a 'get_property' message to a file stream.
 //
 // message - The message.
 // file    - The file stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_pget_message_pack(sky_pget_message *message, FILE *file)
+int sky_get_property_message_pack(sky_get_property_message *message, FILE *file)
 {
     size_t sz;
     check(message != NULL, "Message required");
@@ -84,13 +84,13 @@ error:
     return -1;
 }
 
-// Deserializes an PGET message from a file stream.
+// Deserializes a 'get_property' message from a file stream.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_pget_message_unpack(sky_pget_message *message, FILE *file)
+int sky_get_property_message_unpack(sky_get_property_message *message, FILE *file)
 {
     size_t sz;
     check(message != NULL, "Message required");
@@ -110,15 +110,15 @@ error:
 // Processing
 //--------------------------------------
 
-// Applies an PGET message to a table.
+// Applies a 'get_property' message to a table.
 //
 // message - The message.
 // table   - The table to apply the message to.
 // output  - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_pget_message_process(sky_pget_message *message, sky_table *table,
-                             FILE *output)
+int sky_get_property_message_process(sky_get_property_message *message,
+                                     sky_table *table, FILE *output)
 {
     int rc;
     size_t sz;

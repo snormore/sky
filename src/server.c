@@ -13,7 +13,7 @@
 #include "get_action_message.h"
 #include "get_actions_message.h"
 #include "add_property_message.h"
-#include "pget_message.h"
+#include "get_property_message.h"
 #include "pall_message.h"
 #include "multi_message.h"
 #include "dbg.h"
@@ -244,8 +244,8 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         else if(biseqcstr(header->name, "add_property") == 1) {
             rc = sky_server_process_add_property_message(server, table, input, output);
         }
-        else if(biseqcstr(header->name, "pget") == 1) {
-            rc = sky_server_process_pget_message(server, table, input, output);
+        else if(biseqcstr(header->name, "get_property") == 1) {
+            rc = sky_server_process_get_property_message(server, table, input, output);
         }
         else if(biseqcstr(header->name, "pall") == 1) {
             rc = sky_server_process_pall_message(server, table, input, output);
@@ -578,7 +578,7 @@ error:
     return -1;
 }
 
-// Parses and process an Property-Get (PGET) message.
+// Parses and process a 'get_property' message.
 //
 // server - The server.
 // table  - The table to apply the message to.
@@ -586,8 +586,8 @@ error:
 // output - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_pget_message(sky_server *server, sky_table *table,
-                                    FILE *input, FILE *output)
+int sky_server_process_get_property_message(sky_server *server, sky_table *table,
+                                            FILE *input, FILE *output)
 {
     int rc;
     check(server != NULL, "Server required");
@@ -595,16 +595,16 @@ int sky_server_process_pget_message(sky_server *server, sky_table *table,
     check(input != NULL, "Input required");
     check(output != NULL, "Output stream required");
     
-    debug("Message received: [PGET]");
+    debug("Message received: [get_property]");
 
     // Parse message.
-    sky_pget_message *message = sky_pget_message_create(); check_mem(message);
-    rc = sky_pget_message_unpack(message, input);
-    check(rc == 0, "Unable to parse PGET message");
+    sky_get_property_message *message = sky_get_property_message_create(); check_mem(message);
+    rc = sky_get_property_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'get_property' message");
     
     // Process message.
-    rc = sky_pget_message_process(message, table, output);
-    check(rc == 0, "Unable to process PGET message");
+    rc = sky_get_property_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'get_property' message");
     
     return 0;
 
