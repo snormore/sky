@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 
 #include "types.h"
-#include "aall_message.h"
+#include "get_actions_message.h"
 #include "action.h"
 #include "minipack.h"
 #include "mem.h"
@@ -20,26 +20,26 @@
 // Lifecycle
 //--------------------------------------
 
-// Creates an AALL message object.
+// Creates a 'get_actions' message object.
 //
-// Returns a new AALL message.
-sky_aall_message *sky_aall_message_create()
+// Returns a new message.
+sky_get_actions_message *sky_get_actions_message_create()
 {
-    sky_aall_message *message = NULL;
-    message = calloc(1, sizeof(sky_aall_message)); check_mem(message);
+    sky_get_actions_message *message = NULL;
+    message = calloc(1, sizeof(sky_get_actions_message)); check_mem(message);
     return message;
 
 error:
-    sky_aall_message_free(message);
+    sky_get_actions_message_free(message);
     return NULL;
 }
 
-// Frees an AALL message object from memory.
+// Frees a 'get_actions' message object from memory.
 //
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_aall_message_free(sky_aall_message *message)
+void sky_get_actions_message_free(sky_get_actions_message *message)
 {
     if(message) {
         free(message);
@@ -56,7 +56,7 @@ void sky_aall_message_free(sky_aall_message *message)
 // message - The message.
 //
 // Returns the number of bytes required to store the message.
-size_t sky_aall_message_sizeof(sky_aall_message *message)
+size_t sky_get_actions_message_sizeof(sky_get_actions_message *message)
 {
     size_t sz = 0;
     check(message != NULL, "Message required");
@@ -66,13 +66,13 @@ error:
     return 0;
 }
 
-// Serializes an AALL message to a file stream.
+// Serializes a 'get_actions' message to a file stream.
 //
 // message - The message.
 // file    - The file stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_aall_message_pack(sky_aall_message *message, FILE *file)
+int sky_get_actions_message_pack(sky_get_actions_message *message, FILE *file)
 {
     check(message != NULL, "Message required");
     check(file != NULL, "File stream required");
@@ -83,13 +83,13 @@ error:
     return -1;
 }
 
-// Deserializes an AALL message from a file stream.
+// Deserializes a 'get_actions' message from a file stream.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_aall_message_unpack(sky_aall_message *message, FILE *file)
+int sky_get_actions_message_unpack(sky_get_actions_message *message, FILE *file)
 {
     check(message != NULL, "Message required");
     check(file != NULL, "File stream required");
@@ -105,15 +105,15 @@ error:
 // Processing
 //--------------------------------------
 
-// Applies an AALL message to a table.
+// Applies a 'get_actions' message to a table.
 //
 // message - The message.
 // table   - The table to apply the message to.
 // output  - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_aall_message_process(sky_aall_message *message, sky_table *table,
-                             FILE *output)
+int sky_get_actions_message_process(sky_get_actions_message *message,
+                                    sky_table *table, FILE *output)
 {
     size_t sz;
     check(message != NULL, "Message required");

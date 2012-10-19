@@ -11,7 +11,7 @@
 #include "next_action_message.h"
 #include "add_action_message.h"
 #include "get_action_message.h"
-#include "aall_message.h"
+#include "get_actions_message.h"
 #include "padd_message.h"
 #include "pget_message.h"
 #include "pall_message.h"
@@ -238,8 +238,8 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         else if(biseqcstr(header->name, "get_action") == 1) {
             rc = sky_server_process_get_action_message(server, table, input, output);
         }
-        else if(biseqcstr(header->name, "aall") == 1) {
-            rc = sky_server_process_aall_message(server, table, input, output);
+        else if(biseqcstr(header->name, "get_actions") == 1) {
+            rc = sky_server_process_get_actions_message(server, table, input, output);
         }
         else if(biseqcstr(header->name, "padd") == 1) {
             rc = sky_server_process_padd_message(server, table, input, output);
@@ -505,7 +505,7 @@ error:
     return -1;
 }
 
-// Parses and process an Action-All (AALL) message.
+// Parses and process a 'get_actions' message.
 //
 // server - The server.
 // table  - The table to apply the message to.
@@ -513,8 +513,8 @@ error:
 // output - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_aall_message(sky_server *server, sky_table *table,
-                                    FILE *input, FILE *output)
+int sky_server_process_get_actions_message(sky_server *server, sky_table *table,
+                                           FILE *input, FILE *output)
 {
     int rc;
     check(server != NULL, "Server required");
@@ -522,16 +522,16 @@ int sky_server_process_aall_message(sky_server *server, sky_table *table,
     check(input != NULL, "Input required");
     check(output != NULL, "Output stream required");
     
-    debug("Message received: [AALL]");
+    debug("Message received: [get_actions]");
 
     // Parse message.
-    sky_aall_message *message = sky_aall_message_create(); check_mem(message);
-    rc = sky_aall_message_unpack(message, input);
-    check(rc == 0, "Unable to parse AALL message");
+    sky_get_actions_message *message = sky_get_actions_message_create(); check_mem(message);
+    rc = sky_get_actions_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'get_actions' message");
     
     // Process message.
-    rc = sky_aall_message_process(message, table, output);
-    check(rc == 0, "Unable to process AALL message");
+    rc = sky_get_actions_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'get_actions' message");
     
     return 0;
 

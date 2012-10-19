@@ -114,20 +114,20 @@ int sky_server_process_next_action_message(sky_server *server, sky_table *table,
 // Action Messages
 //--------------------------------------
 
-int sky_server_process_add_action_message(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_server_process_add_action_message(sky_server *server,
+    sky_table *table, FILE *input, FILE *output);
 
 int sky_server_process_get_action_message(sky_server *server,
     sky_table *table, FILE *input, FILE *output);
 
-int sky_server_process_aall_message(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_server_process_get_actions_message(sky_server *server,
+    sky_table *table, FILE *input, FILE *output);
 
 //--------------------------------------
 // Property Messages
 //--------------------------------------
 
-int sky_server_process_padd_message(sky_server *server, sky_table *table,
+int sky_server_process_add_property_message(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
 
 int sky_server_process_pget_message(sky_server *server, sky_table *table,
