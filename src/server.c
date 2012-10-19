@@ -9,7 +9,7 @@
 #include "message_header.h"
 #include "eadd_message.h"
 #include "next_action_message.h"
-#include "aadd_message.h"
+#include "add_action_message.h"
 #include "get_action_message.h"
 #include "aall_message.h"
 #include "padd_message.h"
@@ -232,8 +232,8 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         else if(biseqcstr(header->name, "next_action") == 1) {
             rc = sky_server_process_next_action_message(server, table, input, output);
         }
-        else if(biseqcstr(header->name, "aadd") == 1) {
-            rc = sky_server_process_aadd_message(server, table, input, output);
+        else if(biseqcstr(header->name, "add_action") == 1) {
+            rc = sky_server_process_add_action_message(server, table, input, output);
         }
         else if(biseqcstr(header->name, "get_action") == 1) {
             rc = sky_server_process_get_action_message(server, table, input, output);
@@ -437,7 +437,7 @@ error:
 // Action Messages
 //--------------------------------------
 
-// Parses and process an Action-Add (AADD) message.
+// Parses and process a 'add_action' message.
 //
 // server - The server.
 // table  - The table to apply the message to.
@@ -445,8 +445,8 @@ error:
 // output - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_aadd_message(sky_server *server, sky_table *table,
-                                    FILE *input, FILE *output)
+int sky_server_process_add_action_message(sky_server *server, sky_table *table,
+                                          FILE *input, FILE *output)
 {
     int rc;
     check(server != NULL, "Server required");
@@ -454,16 +454,16 @@ int sky_server_process_aadd_message(sky_server *server, sky_table *table,
     check(input != NULL, "Input required");
     check(output != NULL, "Output stream required");
     
-    debug("Message received: [AADD]");
+    debug("Message received: [add_action]");
 
     // Parse message.
-    sky_aadd_message *message = sky_aadd_message_create(); check_mem(message);
-    rc = sky_aadd_message_unpack(message, input);
-    check(rc == 0, "Unable to parse AADD message");
+    sky_add_action_message *message = sky_add_action_message_create(); check_mem(message);
+    rc = sky_add_action_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'add_action' message");
     
     // Process message.
-    rc = sky_aadd_message_process(message, table, output);
-    check(rc == 0, "Unable to process AADD message");
+    rc = sky_add_action_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'add_action' message");
     
     return 0;
 
@@ -544,7 +544,7 @@ error:
 // Property Messages
 //--------------------------------------
 
-// Parses and process an Property-Add (AADD) message.
+// Parses and process an Property-Add (PADD) message.
 //
 // server - The server.
 // table  - The table to apply the message to.

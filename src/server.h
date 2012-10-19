@@ -114,7 +114,7 @@ int sky_server_process_next_action_message(sky_server *server, sky_table *table,
 // Action Messages
 //--------------------------------------
 
-int sky_server_process_aadd_message(sky_server *server, sky_table *table,
+int sky_server_process_add_action_message(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
 
 int sky_server_process_get_action_message(sky_server *server,
