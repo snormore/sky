@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 
 #include "types.h"
-#include "eadd_message.h"
+#include "add_event_message.h"
 #include "minipack.h"
 #include "endian.h"
 #include "mem.h"
@@ -16,15 +16,15 @@
 //
 //==============================================================================
 
-#define SKY_EADD_KEY_COUNT 4
+#define SKY_ADD_EVENT_KEY_COUNT 4
 
-struct tagbstring SKY_EADD_KEY_OBJECT_ID = bsStatic("objectId");
+struct tagbstring SKY_ADD_EVENT_KEY_OBJECT_ID = bsStatic("objectId");
 
-struct tagbstring SKY_EADD_KEY_TIMESTAMP = bsStatic("timestamp");
+struct tagbstring SKY_ADD_EVENT_KEY_TIMESTAMP = bsStatic("timestamp");
 
-struct tagbstring SKY_EADD_KEY_ACTION_ID = bsStatic("actionId");
+struct tagbstring SKY_ADD_EVENT_KEY_ACTION_ID = bsStatic("actionId");
 
-struct tagbstring SKY_EADD_KEY_DATA = bsStatic("data");
+struct tagbstring SKY_ADD_EVENT_KEY_DATA = bsStatic("data");
 
 
 //==============================================================================
@@ -33,11 +33,11 @@ struct tagbstring SKY_EADD_KEY_DATA = bsStatic("data");
 //
 //==============================================================================
 
-size_t sky_eadd_message_sizeof_data(sky_eadd_message *message);
+size_t sky_add_event_message_sizeof_data(sky_add_event_message *message);
 
-int sky_eadd_message_pack_data(sky_eadd_message *message, FILE *file);
+int sky_add_event_message_pack_data(sky_add_event_message *message, FILE *file);
 
-int sky_eadd_message_unpack_data(sky_eadd_message *message, FILE *file);
+int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file);
 
 
 //==============================================================================
@@ -50,45 +50,45 @@ int sky_eadd_message_unpack_data(sky_eadd_message *message, FILE *file);
 // Lifecycle
 //--------------------------------------
 
-// Creates an EADD message object.
+// Creates an 'add_event' message object.
 //
-// Returns a new EADD message.
-sky_eadd_message *sky_eadd_message_create()
+// Returns a new message.
+sky_add_event_message *sky_add_event_message_create()
 {
-    sky_eadd_message *message = NULL;
-    message = calloc(1, sizeof(sky_eadd_message)); check_mem(message);
+    sky_add_event_message *message = NULL;
+    message = calloc(1, sizeof(sky_add_event_message)); check_mem(message);
     return message;
 
 error:
-    sky_eadd_message_free(message);
+    sky_add_event_message_free(message);
     return NULL;
 }
 
-// Creates an EADD message data object.
+// Creates an 'add_event' message data object.
 //
-// Returns a new EADD message data.
-sky_eadd_message_data *sky_eadd_message_data_create()
+// Returns a new message data.
+sky_add_event_message_data *sky_add_event_message_data_create()
 {
-    sky_eadd_message_data *data = NULL;
-    data = calloc(1, sizeof(sky_eadd_message_data)); check_mem(data);
+    sky_add_event_message_data *data = NULL;
+    data = calloc(1, sizeof(sky_add_event_message_data)); check_mem(data);
     return data;
 
 error:
-    sky_eadd_message_data_free(data);
+    sky_add_event_message_data_free(data);
     return NULL;
 }
 
-// Frees an EADD message object from memory.
+// Frees an 'add_event' message object from memory.
 //
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_eadd_message_free(sky_eadd_message *message)
+void sky_add_event_message_free(sky_add_event_message *message)
 {
     if(message) {
         uint32_t i;
         for(i=0; i<message->data_count; i++) {
-            sky_eadd_message_data_free(message->data[i]);
+            sky_add_event_message_data_free(message->data[i]);
             message->data[i] = NULL;
         }
         free(message->data);
@@ -98,12 +98,12 @@ void sky_eadd_message_free(sky_eadd_message *message)
     }
 }
 
-// Frees an EADD message data object from memory.
+// Frees an 'add_event' message data object from memory.
 //
 // data - The message data object to be freed.
 //
 // Returns nothing.
-void sky_eadd_message_data_free(sky_eadd_message_data *data)
+void sky_add_event_message_data_free(sky_add_event_message_data *data)
 {
     if(data) {
         bdestroy(data->key);
@@ -127,18 +127,18 @@ void sky_eadd_message_data_free(sky_eadd_message_data *data)
 // message - The message.
 //
 // Returns the number of bytes required to store the message.
-size_t sky_eadd_message_sizeof(sky_eadd_message *message)
+size_t sky_add_event_message_sizeof(sky_add_event_message *message)
 {
     size_t sz = 0;
-    sz += minipack_sizeof_map(SKY_EADD_KEY_COUNT);
-    sz += minipack_sizeof_raw(blength(&SKY_EADD_KEY_OBJECT_ID)) + blength(&SKY_EADD_KEY_OBJECT_ID);
+    sz += minipack_sizeof_map(SKY_ADD_EVENT_KEY_COUNT);
+    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_OBJECT_ID)) + blength(&SKY_ADD_EVENT_KEY_OBJECT_ID);
     sz += minipack_sizeof_uint(message->object_id);
-    sz += minipack_sizeof_raw(blength(&SKY_EADD_KEY_TIMESTAMP)) + blength(&SKY_EADD_KEY_TIMESTAMP);
+    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_TIMESTAMP)) + blength(&SKY_ADD_EVENT_KEY_TIMESTAMP);
     sz += minipack_sizeof_int(message->timestamp);
-    sz += minipack_sizeof_raw(blength(&SKY_EADD_KEY_ACTION_ID)) + blength(&SKY_EADD_KEY_ACTION_ID);
+    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_ACTION_ID)) + blength(&SKY_ADD_EVENT_KEY_ACTION_ID);
     sz += minipack_sizeof_uint(message->action_id);
-    sz += minipack_sizeof_raw(blength(&SKY_EADD_KEY_DATA)) + blength(&SKY_EADD_KEY_DATA);
-    sz += sky_eadd_message_sizeof_data(message);
+    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_DATA)) + blength(&SKY_ADD_EVENT_KEY_DATA);
+    sz += sky_add_event_message_sizeof_data(message);
     return sz;
 }
 
@@ -149,13 +149,13 @@ size_t sky_eadd_message_sizeof(sky_eadd_message *message)
 //
 // Returns the number of bytes required to store the data property of the
 // message.
-size_t sky_eadd_message_sizeof_data(sky_eadd_message *message)
+size_t sky_add_event_message_sizeof_data(sky_add_event_message *message)
 {
     uint32_t i;
     size_t sz = 0;
     sz += minipack_sizeof_map(message->data_count);
     for(i=0; i<message->data_count; i++) {
-        sky_eadd_message_data *data = message->data[i];
+        sky_add_event_message_data *data = message->data[i];
         sz += minipack_sizeof_raw(blength(data->key)) + blength(data->key);
         
         if(data->data_type == &SKY_DATA_TYPE_STRING) {
@@ -174,13 +174,13 @@ size_t sky_eadd_message_sizeof_data(sky_eadd_message *message)
     return sz;
 }
 
-// Serializes an EADD message to a file stream.
+// Serializes an 'add_event' message to a file stream.
 //
 // message - The message.
 // file    - The file stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_eadd_message_pack(sky_eadd_message *message, FILE *file)
+int sky_add_event_message_pack(sky_add_event_message *message, FILE *file)
 {
     int rc;
     size_t sz;
@@ -188,28 +188,28 @@ int sky_eadd_message_pack(sky_eadd_message *message, FILE *file)
     check(file != NULL, "File stream required");
 
     // Map
-    minipack_fwrite_map(file, SKY_EADD_KEY_COUNT, &sz);
+    minipack_fwrite_map(file, SKY_ADD_EVENT_KEY_COUNT, &sz);
     check(sz > 0, "Unable to write map");
     
     // Object ID
-    check(sky_minipack_fwrite_bstring(file, &SKY_EADD_KEY_OBJECT_ID) == 0, "Unable to pack object id key");
+    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_OBJECT_ID) == 0, "Unable to pack object id key");
     minipack_fwrite_int(file, message->object_id, &sz);
     check(sz != 0, "Unable to pack object id");
 
     // Timestamp
-    check(sky_minipack_fwrite_bstring(file, &SKY_EADD_KEY_TIMESTAMP) == 0, "Unable to pack timestamp key");
+    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_TIMESTAMP) == 0, "Unable to pack timestamp key");
     minipack_fwrite_int(file, message->timestamp, &sz);
     check(sz != 0, "Unable to pack timestamp");
 
     // Action ID
-    check(sky_minipack_fwrite_bstring(file, &SKY_EADD_KEY_ACTION_ID) == 0, "Unable to pack action_id key");
+    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_ACTION_ID) == 0, "Unable to pack action_id key");
     minipack_fwrite_int(file, message->action_id, &sz);
     check(sz != 0, "Unable to pack action id");
     
     // Data
-    check(sky_minipack_fwrite_bstring(file, &SKY_EADD_KEY_DATA) == 0, "Unable to pack data key");
-    rc = sky_eadd_message_pack_data(message, file);
-    check(rc == 0, "Unable to pack eadd data");
+    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_DATA) == 0, "Unable to pack data key");
+    rc = sky_add_event_message_pack_data(message, file);
+    check(rc == 0, "Unable to pack 'add_event' data");
     
     return 0;
 
@@ -217,13 +217,13 @@ error:
     return -1;
 }
 
-// Serializes the data map of an EADD message.
+// Serializes the data map of an 'add_event' message.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_eadd_message_pack_data(sky_eadd_message *message, FILE *file)
+int sky_add_event_message_pack_data(sky_add_event_message *message, FILE *file)
 {
     int rc;
     size_t sz;
@@ -237,7 +237,7 @@ int sky_eadd_message_pack_data(sky_eadd_message *message, FILE *file)
     // Map items
     uint32_t i;
     for(i=0; i<message->data_count; i++) {
-        sky_eadd_message_data *data = message->data[i];
+        sky_add_event_message_data *data = message->data[i];
         
         // Write key.
         rc = sky_minipack_fwrite_bstring(file, data->key);
@@ -261,7 +261,7 @@ int sky_eadd_message_pack_data(sky_eadd_message *message, FILE *file)
             check(sz > 0, "Unable to pack boolean value");
         }
         else {
-            sentinel("Unsupported data type in eadd data message struct");
+            sentinel("Unsupported data type in 'add_event' data message struct");
         }
     }
 
@@ -271,13 +271,13 @@ error:
     return -1;
 }
 
-// Deserializes an EADD message from a file stream.
+// Deserializes an 'add_event' message from a file stream.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_eadd_message_unpack(sky_eadd_message *message, FILE *file)
+int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file)
 {
     int rc;
     size_t sz;
@@ -295,21 +295,21 @@ int sky_eadd_message_unpack(sky_eadd_message *message, FILE *file)
         rc = sky_minipack_fread_bstring(file, &key);
         check(rc == 0, "Unable to read map key");
         
-        if(biseq(key, &SKY_EADD_KEY_OBJECT_ID) == 1) {
+        if(biseq(key, &SKY_ADD_EVENT_KEY_OBJECT_ID) == 1) {
             message->object_id = (sky_object_id_t)minipack_fread_uint(file, &sz);
             check(sz != 0, "Unable to unpack object id");
         }
-        else if(biseq(key, &SKY_EADD_KEY_TIMESTAMP) == 1) {
+        else if(biseq(key, &SKY_ADD_EVENT_KEY_TIMESTAMP) == 1) {
             message->timestamp = (sky_timestamp_t)minipack_fread_int(file, &sz);
             check(sz != 0, "Unable to unpack timestamp");
         }
-        else if(biseq(key, &SKY_EADD_KEY_ACTION_ID) == 1) {
+        else if(biseq(key, &SKY_ADD_EVENT_KEY_ACTION_ID) == 1) {
             message->action_id = (sky_action_id_t)minipack_fread_uint(file, &sz);
             check(sz != 0, "Unable to unpack action id");
         }
-        else if(biseq(key, &SKY_EADD_KEY_DATA) == 1) {
-            rc = sky_eadd_message_unpack_data(message, file);
-            check(rc == 0, "Unable to unpack eadd data value");
+        else if(biseq(key, &SKY_ADD_EVENT_KEY_DATA) == 1) {
+            rc = sky_add_event_message_unpack_data(message, file);
+            check(rc == 0, "Unable to unpack 'add_event' data value");
         }
         
         bdestroy(key);
@@ -322,13 +322,13 @@ error:
     return -1;
 }
 
-// Deserializes the data map of an EADD message.
+// Deserializes the data map of an 'add_event' message.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_eadd_message_unpack_data(sky_eadd_message *message, FILE *file)
+int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file)
 {
     int rc;
     size_t sz;
@@ -345,7 +345,7 @@ int sky_eadd_message_unpack_data(sky_eadd_message *message, FILE *file)
     // Map items
     uint32_t i;
     for(i=0; i<map_length; i++) {
-        sky_eadd_message_data *data = sky_eadd_message_data_create(); check_mem(data);
+        sky_add_event_message_data *data = sky_add_event_message_data_create(); check_mem(data);
         
         rc = sky_minipack_fread_bstring(file, &data->key);
         check(rc == 0, "Unable to read data key");
@@ -389,15 +389,15 @@ error:
 // Processing
 //--------------------------------------
 
-// Applies an EADD message to a table.
+// Applies an 'add_event' message to a table.
 //
 // message - The message.
 // table   - The table to apply the message to.
 // output  - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_eadd_message_process(sky_eadd_message *message, sky_table *table,
-                             FILE *output)
+int sky_add_event_message_process(sky_add_event_message *message, sky_table *table,
+                                  FILE *output)
 {
     int rc;
     size_t sz;
@@ -419,7 +419,7 @@ int sky_eadd_message_process(sky_eadd_message *message, sky_table *table,
     uint32_t i;
     for(i=0; i<message->data_count; i++) {
         sky_event_data *data = NULL;
-        sky_eadd_message_data *message_data = message->data[i];
+        sky_add_event_message_data *message_data = message->data[i];
         
         // Look up property id by name
         sky_property *property = NULL;
@@ -440,7 +440,7 @@ int sky_eadd_message_process(sky_eadd_message *message, sky_table *table,
             data = sky_event_data_create_boolean(property->id, message_data->boolean_value);
         }
         else {
-            sentinel("Invalid data type in eadd message");
+            sentinel("Invalid data type in 'add_event' message");
         }
         
         event->data[i] = data;

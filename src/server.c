@@ -7,7 +7,7 @@
 #include "bstring.h"
 #include "server.h"
 #include "message_header.h"
-#include "eadd_message.h"
+#include "add_event_message.h"
 #include "next_action_message.h"
 #include "add_action_message.h"
 #include "get_action_message.h"
@@ -226,8 +226,8 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         check(rc == 0, "Unable to open table");
 
         // Parse appropriate message type.
-        if(biseqcstr(header->name, "eadd") == 1) {
-            rc = sky_server_process_eadd_message(server, table, input, output);
+        if(biseqcstr(header->name, "add_event") == 1) {
+            rc = sky_server_process_add_event_message(server, table, input, output);
         }
         else if(biseqcstr(header->name, "next_action") == 1) {
             rc = sky_server_process_next_action_message(server, table, input, output);
@@ -358,7 +358,7 @@ error:
 // Event Messages
 //--------------------------------------
 
-// Parses and process an Event Add (EADD) message.
+// Parses and process an 'add_event' message.
 //
 // server - The server.
 // table  - The table to apply the message to.
@@ -366,8 +366,8 @@ error:
 // output - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_eadd_message(sky_server *server, sky_table *table,
-                                    FILE *input, FILE *output)
+int sky_server_process_add_event_message(sky_server *server, sky_table *table,
+                                         FILE *input, FILE *output)
 {
     int rc;
     check(server != NULL, "Server required");
@@ -375,16 +375,16 @@ int sky_server_process_eadd_message(sky_server *server, sky_table *table,
     check(input != NULL, "Input required");
     check(output != NULL, "Output stream required");
     
-    debug("Message received: [EADD]");
+    debug("Message received: [add_event]");
     
     // Parse message.
-    sky_eadd_message *message = sky_eadd_message_create(); check_mem(message);
-    rc = sky_eadd_message_unpack(message, input);
-    check(rc == 0, "Unable to parse EADD message");
+    sky_add_event_message *message = sky_add_event_message_create(); check_mem(message);
+    rc = sky_add_event_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'add_event' message");
     
     // Process message.
-    rc = sky_eadd_message_process(message, table, output);
-    check(rc == 0, "Unable to process EADD message");
+    rc = sky_add_event_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'add_event' message");
     
     return 0;
 

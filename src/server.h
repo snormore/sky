@@ -100,7 +100,7 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output);
 // Event Messages
 //--------------------------------------
 
-int sky_server_process_eadd_message(sky_server *server, sky_table *table,
+int sky_server_process_add_event_message(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
 
 //--------------------------------------
