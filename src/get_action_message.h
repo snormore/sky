@@ -1,5 +1,5 @@
-#ifndef _sky_aget_message_h
-#define _sky_aget_message_h
+#ifndef _sky_get_action_message_h
+#define _sky_get_action_message_h
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -17,9 +17,9 @@
 //==============================================================================
 
 // A message for retrieving an action by id from a table.
-typedef struct sky_aget_message {
+typedef struct {
     sky_action_id_t action_id;
-} sky_aget_message;
+} sky_get_action_message;
 
 
 //==============================================================================
@@ -32,23 +32,23 @@ typedef struct sky_aget_message {
 // Lifecycle
 //--------------------------------------
 
-sky_aget_message *sky_aget_message_create();
+sky_get_action_message *sky_get_action_message_create();
 
-void sky_aget_message_free(sky_aget_message *message);
+void sky_get_action_message_free(sky_get_action_message *message);
 
 //--------------------------------------
 // Serialization
 //--------------------------------------
 
-int sky_aget_message_pack(sky_aget_message *message, FILE *file);
+int sky_get_action_message_pack(sky_get_action_message *message, FILE *file);
 
-int sky_aget_message_unpack(sky_aget_message *message, FILE *file);
+int sky_get_action_message_unpack(sky_get_action_message *message, FILE *file);
 
 //--------------------------------------
 // Processing
 //--------------------------------------
 
-int sky_aget_message_process(sky_aget_message *message, sky_table *table,
-    FILE *output);
+int sky_get_action_message_process(sky_get_action_message *message,
+    sky_table *table, FILE *output);
 
 #endif

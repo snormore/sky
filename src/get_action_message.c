@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 
 #include "types.h"
-#include "aget_message.h"
+#include "get_action_message.h"
 #include "action.h"
 #include "minipack.h"
 #include "mem.h"
@@ -20,26 +20,26 @@
 // Lifecycle
 //--------------------------------------
 
-// Creates an AGET message object.
+// Creates a 'get_action' message object.
 //
-// Returns a new AGET message.
-sky_aget_message *sky_aget_message_create()
+// Returns a new message.
+sky_get_action_message *sky_get_action_message_create()
 {
-    sky_aget_message *message = NULL;
-    message = calloc(1, sizeof(sky_aget_message)); check_mem(message);
+    sky_get_action_message *message = NULL;
+    message = calloc(1, sizeof(sky_get_action_message)); check_mem(message);
     return message;
 
 error:
-    sky_aget_message_free(message);
+    sky_get_action_message_free(message);
     return NULL;
 }
 
-// Frees an AGET message object from memory.
+// Frees a 'get_action' message object from memory.
 //
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_aget_message_free(sky_aget_message *message)
+void sky_get_action_message_free(sky_get_action_message *message)
 {
     if(message) {
         free(message);
@@ -56,20 +56,20 @@ void sky_aget_message_free(sky_aget_message *message)
 // message - The message.
 //
 // Returns the number of bytes required to store the message.
-size_t sky_aget_message_sizeof(sky_aget_message *message)
+size_t sky_get_action_message_sizeof(sky_get_action_message *message)
 {
     size_t sz = 0;
     sz += minipack_sizeof_uint(message->action_id);
     return sz;
 }
 
-// Serializes an AGET message to a file stream.
+// Serializes an 'get_action' message to a file stream.
 //
 // message - The message.
 // file    - The file stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_aget_message_pack(sky_aget_message *message, FILE *file)
+int sky_get_action_message_pack(sky_get_action_message *message, FILE *file)
 {
     size_t sz;
     check(message != NULL, "Message required");
@@ -84,13 +84,13 @@ error:
     return -1;
 }
 
-// Deserializes an AGET message from a file stream.
+// Deserializes an 'get_action' message from a file stream.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_aget_message_unpack(sky_aget_message *message, FILE *file)
+int sky_get_action_message_unpack(sky_get_action_message *message, FILE *file)
 {
     size_t sz;
     check(message != NULL, "Message required");
@@ -110,15 +110,15 @@ error:
 // Processing
 //--------------------------------------
 
-// Applies an AGET message to a table.
+// Applies a 'get_action' message to a table.
 //
 // message - The message.
 // table   - The table to apply the message to.
 // output  - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_aget_message_process(sky_aget_message *message, sky_table *table,
-                             FILE *output)
+int sky_get_action_message_process(sky_get_action_message *message,
+                                   sky_table *table, FILE *output)
 {
     int rc;
     size_t sz;
