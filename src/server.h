@@ -133,8 +133,8 @@ int sky_server_process_add_property_message(sky_server *server,
 int sky_server_process_get_property_message(sky_server *server,
     sky_table *table, FILE *input, FILE *output);
 
-int sky_server_process_pall_message(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_server_process_get_properties_message(sky_server *server,
+    sky_table *table, FILE *input, FILE *output);
 
 //--------------------------------------
 // Multi Message

@@ -14,7 +14,7 @@
 #include "get_actions_message.h"
 #include "add_property_message.h"
 #include "get_property_message.h"
-#include "pall_message.h"
+#include "get_properties_message.h"
 #include "multi_message.h"
 #include "dbg.h"
 
@@ -247,8 +247,8 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         else if(biseqcstr(header->name, "get_property") == 1) {
             rc = sky_server_process_get_property_message(server, table, input, output);
         }
-        else if(biseqcstr(header->name, "pall") == 1) {
-            rc = sky_server_process_pall_message(server, table, input, output);
+        else if(biseqcstr(header->name, "get_properties") == 1) {
+            rc = sky_server_process_get_properties_message(server, table, input, output);
         }
         else {
             sentinel("Invalid message type");
@@ -612,7 +612,7 @@ error:
     return -1;
 }
 
-// Parses and process an Property-All (PALL) message.
+// Parses and process a 'get_properties' message.
 //
 // server - The server.
 // table  - The table to apply the message to.
@@ -620,8 +620,8 @@ error:
 // output - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_pall_message(sky_server *server, sky_table *table,
-                                    FILE *input, FILE *output)
+int sky_server_process_get_properties_message(sky_server *server, sky_table *table,
+                                              FILE *input, FILE *output)
 {
     int rc;
     check(server != NULL, "Server required");
@@ -629,16 +629,16 @@ int sky_server_process_pall_message(sky_server *server, sky_table *table,
     check(input != NULL, "Input required");
     check(output != NULL, "Output stream required");
     
-    debug("Message received: [PALL]");
+    debug("Message received: [get_properties]");
 
     // Parse message.
-    sky_pall_message *message = sky_pall_message_create(); check_mem(message);
-    rc = sky_pall_message_unpack(message, input);
-    check(rc == 0, "Unable to parse PALL message");
+    sky_get_properties_message *message = sky_get_properties_message_create(); check_mem(message);
+    rc = sky_get_properties_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'get_properties' message");
     
     // Process message.
-    rc = sky_pall_message_process(message, table, output);
-    check(rc == 0, "Unable to process PALL message");
+    rc = sky_get_properties_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'get_properties' message");
     
     return 0;
 
