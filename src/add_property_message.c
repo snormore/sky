@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 
 #include "types.h"
-#include "padd_message.h"
+#include "add_property_message.h"
 #include "property.h"
 #include "minipack.h"
 #include "mem.h"
@@ -20,40 +20,40 @@
 // Lifecycle
 //--------------------------------------
 
-// Creates an PADD message object.
+// Creates an 'add_property' message object.
 //
-// Returns a new PADD message.
-sky_padd_message *sky_padd_message_create()
+// Returns a new message.
+sky_add_property_message *sky_add_property_message_create()
 {
-    sky_padd_message *message = NULL;
-    message = calloc(1, sizeof(sky_padd_message)); check_mem(message);
+    sky_add_property_message *message = NULL;
+    message = calloc(1, sizeof(sky_add_property_message)); check_mem(message);
     message->property = sky_property_create(); check_mem(message->property);
     return message;
 
 error:
-    sky_padd_message_free(message);
+    sky_add_property_message_free(message);
     return NULL;
 }
 
-// Frees an PADD message object from memory.
+// Frees an 'add_property' message object from memory.
 //
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_padd_message_free(sky_padd_message *message)
+void sky_add_property_message_free(sky_add_property_message *message)
 {
     if(message) {
-        sky_padd_message_free_property(message);
+        sky_add_property_message_free_property(message);
         free(message);
     }
 }
 
-// Frees an property associated with an PADD message.
+// Frees an property associated with an 'add_property' message.
 //
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_padd_message_free_property(sky_padd_message *message)
+void sky_add_property_message_free_property(sky_add_property_message *message)
 {
     if(message) {
         // Only free the property if it's not managed by an property file.
@@ -74,20 +74,20 @@ void sky_padd_message_free_property(sky_padd_message *message)
 // message - The message.
 //
 // Returns the number of bytes required to store the message.
-size_t sky_padd_message_sizeof(sky_padd_message *message)
+size_t sky_add_property_message_sizeof(sky_add_property_message *message)
 {
     size_t sz = 0;
     sz += sky_property_sizeof(message->property);
     return sz;
 }
 
-// Serializes an PADD message to a file stream.
+// Serializes an 'add_property' message to a file stream.
 //
 // message - The message.
 // file    - The file stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_padd_message_pack(sky_padd_message *message, FILE *file)
+int sky_add_property_message_pack(sky_add_property_message *message, FILE *file)
 {
     int rc;
     check(message != NULL, "Message required");
@@ -102,13 +102,13 @@ error:
     return -1;
 }
 
-// Deserializes an PADD message from a file stream.
+// Deserializes an 'add_property' message from a file stream.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_padd_message_unpack(sky_padd_message *message, FILE *file)
+int sky_add_property_message_unpack(sky_add_property_message *message, FILE *file)
 {
     int rc;
     check(message != NULL, "Message required");
@@ -128,15 +128,15 @@ error:
 // Processing
 //--------------------------------------
 
-// Applies an PADD message to a table.
+// Applies an 'add_property' message to a table.
 //
 // message - The message.
 // table   - The table to apply the message to.
 // output  - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_padd_message_process(sky_padd_message *message, sky_table *table,
-                             FILE *output)
+int sky_add_property_message_process(sky_add_property_message *message,
+                                     sky_table *table, FILE *output)
 {
     int rc;
     size_t sz;

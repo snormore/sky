@@ -1,5 +1,5 @@
-#ifndef _sky_padd_message_h
-#define _sky_padd_message_h
+#ifndef _sky_add_property_message_h
+#define _sky_add_property_message_h
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -17,9 +17,9 @@
 //==============================================================================
 
 // A message for adding properties to a table.
-typedef struct sky_padd_message {
+typedef struct {
     sky_property* property;
-} sky_padd_message;
+} sky_add_property_message;
 
 
 //==============================================================================
@@ -32,25 +32,25 @@ typedef struct sky_padd_message {
 // Lifecycle
 //--------------------------------------
 
-sky_padd_message *sky_padd_message_create();
+sky_add_property_message *sky_add_property_message_create();
 
-void sky_padd_message_free(sky_padd_message *message);
+void sky_add_property_message_free(sky_add_property_message *message);
 
-void sky_padd_message_free_property(sky_padd_message *message);
+void sky_add_property_message_free_property(sky_add_property_message *message);
 
 //--------------------------------------
 // Serialization
 //--------------------------------------
 
-int sky_padd_message_pack(sky_padd_message *message, FILE *file);
+int sky_add_property_message_pack(sky_add_property_message *message, FILE *file);
 
-int sky_padd_message_unpack(sky_padd_message *message, FILE *file);
+int sky_add_property_message_unpack(sky_add_property_message *message, FILE *file);
 
 //--------------------------------------
 // Processing
 //--------------------------------------
 
-int sky_padd_message_process(sky_padd_message *message, sky_table *table,
-    FILE *output);
+int sky_add_property_message_process(sky_add_property_message *message,
+    sky_table *table, FILE *output);
 
 #endif

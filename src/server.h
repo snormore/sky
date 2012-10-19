@@ -127,8 +127,8 @@ int sky_server_process_get_actions_message(sky_server *server,
 // Property Messages
 //--------------------------------------
 
-int sky_server_process_add_property_message(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_server_process_add_property_message(sky_server *server,
+    sky_table *table, FILE *input, FILE *output);
 
 int sky_server_process_pget_message(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
