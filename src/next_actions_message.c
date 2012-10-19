@@ -4,7 +4,7 @@
 #include <sys/time.h>
 
 #include "types.h"
-#include "next_action_message.h"
+#include "next_actions_message.h"
 #include "path_iterator.h"
 #include "action.h"
 #include "minipack.h"
@@ -19,9 +19,9 @@
 //==============================================================================
 
 // The result data to send back to the client.
-typedef struct sky_next_action_result {
+typedef struct {
     uint32_t count;
-} sky_next_action_result;
+} sky_next_actions_result;
 
 
 //==============================================================================
@@ -37,14 +37,14 @@ typedef struct sky_next_action_result {
 // Creates a 'Next Action' message object.
 //
 // Returns a new message.
-sky_next_action_message *sky_next_action_message_create()
+sky_next_actions_message *sky_next_actions_message_create()
 {
-    sky_next_action_message *message = NULL;
-    message = calloc(1, sizeof(sky_next_action_message)); check_mem(message);
+    sky_next_actions_message *message = NULL;
+    message = calloc(1, sizeof(sky_next_actions_message)); check_mem(message);
     return message;
 
 error:
-    sky_next_action_message_free(message);
+    sky_next_actions_message_free(message);
     return NULL;
 }
 
@@ -53,10 +53,10 @@ error:
 // message - The message object to be freed.
 //
 // Returns nothing.
-void sky_next_action_message_free(sky_next_action_message *message)
+void sky_next_actions_message_free(sky_next_actions_message *message)
 {
     if(message) {
-        sky_next_action_message_free_deps(message);
+        sky_next_actions_message_free_deps(message);
         free(message);
     }
 }
@@ -66,7 +66,7 @@ void sky_next_action_message_free(sky_next_action_message *message)
 // message - The message object.
 //
 // Returns nothing.
-void sky_next_action_message_free_deps(sky_next_action_message *message)
+void sky_next_actions_message_free_deps(sky_next_actions_message *message)
 {
     if(message) {
         free(message->prior_action_ids);
@@ -84,7 +84,7 @@ void sky_next_action_message_free_deps(sky_next_action_message *message)
 // message - The message.
 //
 // Returns the number of bytes required to store the message.
-size_t sky_next_action_message_sizeof(sky_next_action_message *message)
+size_t sky_next_actions_message_sizeof(sky_next_actions_message *message)
 {
     size_t sz = 0;
     sz += minipack_sizeof_array(message->prior_action_id_count);
@@ -97,13 +97,13 @@ size_t sky_next_action_message_sizeof(sky_next_action_message *message)
     return sz;
 }
 
-// Serializes a 'Next Action' message to a file stream.
+// Serializes a 'next_actions' message to a file stream.
 //
 // message - The message.
 // file    - The file stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_next_action_message_pack(sky_next_action_message *message, FILE *file)
+int sky_next_actions_message_pack(sky_next_actions_message *message, FILE *file)
 {
     size_t sz;
     check(message != NULL, "Message required");
@@ -124,13 +124,13 @@ error:
     return -1;
 }
 
-// Deserializes an next_action message from a file stream.
+// Deserializes an 'next_actions' message from a file stream.
 //
 // message - The message.
 // file    - The file stream to read from.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_next_action_message_unpack(sky_next_action_message *message, FILE *file)
+int sky_next_actions_message_unpack(sky_next_actions_message *message, FILE *file)
 {
     size_t sz;
     check(message != NULL, "Message required");
@@ -167,8 +167,8 @@ error:
 // output  - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_next_action_message_process(sky_next_action_message *message,
-                                    sky_table *table, FILE *output)
+int sky_next_actions_message_process(sky_next_actions_message *message,
+                                     sky_table *table, FILE *output)
 {
     int rc;
     uint32_t i;
@@ -185,7 +185,7 @@ int sky_next_action_message_process(sky_next_action_message *message,
 
     // Create an array to store data.
     uint32_t action_count = table->action_file->action_count;
-    sky_next_action_result *results = calloc(action_count+1, sizeof(*results));
+    sky_next_actions_result *results = calloc(action_count+1, sizeof(*results));
     check_mem(results);
 
     // Initialize the path iterator.

@@ -8,7 +8,7 @@
 #include "server.h"
 #include "message_header.h"
 #include "add_event_message.h"
-#include "next_action_message.h"
+#include "next_actions_message.h"
 #include "add_action_message.h"
 #include "get_action_message.h"
 #include "get_actions_message.h"
@@ -229,8 +229,8 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         if(biseqcstr(header->name, "add_event") == 1) {
             rc = sky_server_process_add_event_message(server, table, input, output);
         }
-        else if(biseqcstr(header->name, "next_action") == 1) {
-            rc = sky_server_process_next_action_message(server, table, input, output);
+        else if(biseqcstr(header->name, "next_actions") == 1) {
+            rc = sky_server_process_next_actions_message(server, table, input, output);
         }
         else if(biseqcstr(header->name, "add_action") == 1) {
             rc = sky_server_process_add_action_message(server, table, input, output);
@@ -405,8 +405,8 @@ error:
 // output - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_next_action_message(sky_server *server, sky_table *table,
-                                           FILE *input, FILE *output)
+int sky_server_process_next_actions_message(sky_server *server, sky_table *table,
+                                            FILE *input, FILE *output)
 {
     int rc;
     check(server != NULL, "Server required");
@@ -417,13 +417,13 @@ int sky_server_process_next_action_message(sky_server *server, sky_table *table,
     debug("Message received: [Next Action]");
     
     // Parse message.
-    sky_next_action_message *message = sky_next_action_message_create(); check_mem(message);
-    rc = sky_next_action_message_unpack(message, input);
-    check(rc == 0, "Unable to parse 'Next Action' message");
+    sky_next_actions_message *message = sky_next_actions_message_create(); check_mem(message);
+    rc = sky_next_actions_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'next_actions' message");
     
     // Process message.
-    rc = sky_next_action_message_process(message, table, output);
-    check(rc == 0, "Unable to process 'Next Action' message");
+    rc = sky_next_actions_message_process(message, table, output);
+    check(rc == 0, "Unable to process 'next_actions' message");
     
     return 0;
 
