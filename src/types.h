@@ -46,14 +46,28 @@
 
 
 //--------------------------------------
-// Misc
+// Actions
 //--------------------------------------
 
 // Stores an action identifier.
 #define sky_action_id_t uint16_t
 
+
+//--------------------------------------
+// Properties
+//--------------------------------------
+
 // Stores a property identifier.
 #define sky_property_id_t int8_t
+
+// The lowest possible property identifier.
+#define SKY_PROPERTY_ID_MIN INT8_MIN
+
+// The highest possible property identifier.
+#define SKY_PROPERTY_ID_MAX INT8_MAX
+
+// The total possible properties.
+#define SKY_PROPERTY_ID_COUNT (SKY_PROPERTY_ID_MAX - SKY_PROPERTY_ID_MIN)
 
 
 #endif

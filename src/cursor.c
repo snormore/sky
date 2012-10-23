@@ -238,6 +238,76 @@ error:
 // Event Management
 //--------------------------------------
 
+// Updates a memory location based on the current event and a data descriptor.
+//
+// cursor    - The cursor.
+// action_id - A pointer to where the action id should be returned to.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
+                        void *data)
+{
+    size_t sz;
+    check(cursor != NULL, "Cursor required");
+    check(!cursor->eof, "Cursor cannot be EOF");
+    check(descriptor != NULL, "Data descriptor required");
+    check(data != NULL, "Data pointer required");
+
+    // Retrieve the flag off the event.
+    void *ptr = cursor->ptr;
+    sky_event_flag_t event_flag = *((sky_event_flag_t*)ptr);
+    ptr += sizeof(sky_event_flag_t);
+    
+    // Assign timestamp.
+    sky_timestamp_t *timestamp = (sky_timestamp_t*)(data + descriptor->timestamp_descriptor.offset);
+    *timestamp = *((sky_timestamp_t*)ptr);
+    ptr += sizeof(sky_timestamp_t);
+
+    // Read action if this event contains an action.
+    sky_action_id_t *action_id = (sky_action_id_t*)(data + descriptor->action_descriptor.offset);
+    if(event_flag & SKY_EVENT_FLAG_ACTION) {
+        *action_id = *((sky_action_id_t*)ptr);
+        ptr += sizeof(sky_action_id);
+    }
+    else {
+        *action_id = 0;
+    }
+
+    // Read data if this event contains data.
+    uint32_t property_count = descriptor->property_count;
+    if(property_count > 0 && event_flag & SKY_EVENT_FLAG_DATA) {
+        uint32_t data_length = *((uint32_t*)ptr);
+        void *end_ptr = ptr + data_length;
+        
+        // Loop over data and assign values to data object.
+        while(ptr < end_ptr) {
+            // Read property id.
+            sky_property_id_t property_id = *((sky_property_id_t*)ptr);
+            ptr += sizeof(property_id);
+
+            // Assign value to data object member.
+            sky_data_property_descriptor *property_descriptor = &descriptor->property_descriptors[property_id-descriptor->min_property_id];
+            uint16_t offset = property_descriptor.offset;
+            void *property_target_ptr = data + property_descriptor.offset;
+            property_descriptor.setter(property_target_ptr, ptr, &sz);
+            
+            // If there is no size then move it forward manually.
+            if(sz == 0) {
+                sz = minipack_sizeof_elem_and_data(ptr);
+            }
+            ptr += sz;
+            
+            // TODO: Finish off data assignment.
+        }
+    }
+    
+    return 0;
+
+error:
+    *action_id = 0;
+    return -1;
+}
+
 // Retrieves a the action identifier of the current event.
 //
 // cursor    - The cursor.
