@@ -1,0 +1,27 @@
+{
+  table:{
+    blockSize: 256,
+    actions:[
+      {name: "A1"},
+      {name: "A2"}
+      {name: "A3"}
+    ],
+    properties:[
+      {type:"action", dataType:"String", name:"astring"},
+      {type:"action", dataType:"Int", name:"aint"},
+      {type:"action", dataType:"Double", name:"adouble"},
+      {type:"action", dataType:"Boolean", name:"aboolean"},
+
+      {type:"object", dataType:"String", name:"ostring"},
+      {type:"object", dataType:"Int", name:"oint"},
+      {type:"object", dataType:"Double", name:"odouble"},
+      {type:"object", dataType:"Boolean", name:"oboolean"}
+    ],
+    events:[
+      {objectId:10, timestamp:"1970-01-01T00:00:00Z", data:{ostring:"john doe", oint:1000, odouble:100.2, oboolean:true}},
+      {objectId:10, timestamp:"1970-01-01T00:00:01Z", action:"A1", data:{astring:"super", aint:21, adouble:2.5, aboolean:true}},
+      {objectId:10, timestamp:"1970-01-01T00:00:02Z", action:"A2"},
+      {objectId:10, timestamp:"1970-01-01T00:00:03Z", data:{ostring:"frank sinatra", oint:20, odouble:1.5, oboolean:false}},
+   ]
+  }
+}

@@ -249,6 +249,7 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
                         void *data)
 {
     size_t sz;
+    int rc;
     check(cursor != NULL, "Cursor required");
     check(!cursor->eof, "Cursor cannot be EOF");
     check(descriptor != NULL, "Data descriptor required");
@@ -274,10 +275,15 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
         *action_id = 0;
     }
 
+    // Clear old action data.
+    rc = sky_data_descriptor_clear_action_data(descriptor, data);
+    check(rc == 0, "Unable to clear action data via descriptor");
+
     // Read data if this event contains data.
     uint32_t property_count = descriptor->property_count;
     if(property_count > 0 && event_flag & SKY_EVENT_FLAG_DATA) {
         uint32_t data_length = *((uint32_t*)ptr);
+        ptr += sizeof(uint32_t);
         void *end_ptr = ptr + data_length;
         
         // Loop over data and assign values to data object.
@@ -287,7 +293,7 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
             ptr += sizeof(property_id);
 
             // Assign value to data object member.
-            int rc = sky_data_descriptor_set_value(descriptor, data, property_id, ptr, &sz);
+            rc = sky_data_descriptor_set_value(descriptor, data, property_id, ptr, &sz);
             check(rc == 0, "Unable to set value via data descriptor");
             
             // If there is no size then move it forward manually.

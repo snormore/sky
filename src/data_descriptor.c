@@ -13,6 +13,10 @@
 //
 //==============================================================================
 
+//--------------------------------------
+// Setters
+//--------------------------------------
+
 void sky_data_descriptor_set_noop(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_set_string(void *target, void *value, size_t *sz);
@@ -22,6 +26,19 @@ void sky_data_descriptor_set_int(void *target, void *value, size_t *sz);
 void sky_data_descriptor_set_double(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_set_boolean(void *target, void *value, size_t *sz);
+
+
+//--------------------------------------
+// Clear Functions
+//--------------------------------------
+
+void sky_data_descriptor_clear_string(void *target);
+
+void sky_data_descriptor_clear_int(void *target);
+
+void sky_data_descriptor_clear_double(void *target);
+
+void sky_data_descriptor_clear_boolean(void *target);
 
 
 //==============================================================================
@@ -73,7 +90,7 @@ sky_data_descriptor *sky_data_descriptor_create(sky_property_id_t min_property_i
     for(i=0; i<property_count; i++) {
         sky_property_id_t property_id = min_property_id + (sky_property_id_t)i;
         descriptor->property_descriptors[i].property_id = property_id;
-        descriptor->property_descriptors[i].setter = sky_data_descriptor_set_noop;
+        descriptor->property_descriptors[i].set_func = sky_data_descriptor_set_noop;
         
         // Save a pointer to the descriptor that points to property zero.
         if(property_id == 0) {
@@ -121,13 +138,37 @@ int sky_data_descriptor_set_value(sky_data_descriptor *descriptor,
 {
     check(descriptor != NULL, "Descriptor required");
     check(target != NULL, "Target struct required");
-    check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID out of range");
+    check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID (%d) out of range (%d,%d)", property_id, descriptor->min_property_id, descriptor->max_property_id);
     check(ptr != NULL, "Value pointer required");
     
-    // Find the property descriptor and call the setter.
+    // Find the property descriptor and call the set_func.
     sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];
-    property_descriptor->setter(target + property_descriptor->offset, ptr, sz);
+    property_descriptor->set_func(target + property_descriptor->offset, ptr, sz);
     
+    return 0;
+
+error:
+    return -1;
+}
+
+// Clears all the action values that are being managed by the descriptor.
+//
+// descriptor - The data descriptor.
+// target     - The target data.
+//
+// Returns 0 if successful, otherwise return -1.
+int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
+                                          void *target)
+{
+    check(descriptor != NULL, "Data descriptor required");
+    check(target != NULL, "Target pointer required");
+    
+    uint32_t i;
+    for(i=0; i<descriptor->action_property_descriptor_count; i++) {
+        sky_data_property_descriptor *property_descriptor = descriptor->action_property_descriptors[i];
+        property_descriptor->clear_func(target + property_descriptor->offset);
+    }
+
     return 0;
 
 error:
@@ -159,31 +200,56 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
     sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];
     check(property_descriptor->property_id == property_id, "Property descriptor id (%d) does not match (%d)", property_descriptor->property_id, property_id);
     
-    // Set the offset and setter function on the descriptor.
+    // Set the offset and set_func function on the descriptor.
     property_descriptor->offset = offset;
     switch(data_type) {
         case SKY_DATA_TYPE_NONE: {
-            property_descriptor->setter = sky_data_descriptor_set_noop;
+            property_descriptor->set_func = sky_data_descriptor_set_noop;
+            property_descriptor->clear_func = NULL;
             break;
         }
         case SKY_DATA_TYPE_STRING: {
-            property_descriptor->setter = sky_data_descriptor_set_string;
+            property_descriptor->set_func = sky_data_descriptor_set_string;
+            property_descriptor->clear_func = sky_data_descriptor_clear_string;
             break;
         }
         case SKY_DATA_TYPE_INT: {
-            property_descriptor->setter = sky_data_descriptor_set_int;
+            property_descriptor->set_func = sky_data_descriptor_set_int;
+            property_descriptor->clear_func = sky_data_descriptor_clear_int;
             break;
         }
         case SKY_DATA_TYPE_DOUBLE: {
-            property_descriptor->setter = sky_data_descriptor_set_double;
+            property_descriptor->set_func = sky_data_descriptor_set_double;
+            property_descriptor->clear_func = sky_data_descriptor_clear_double;
             break;
         }
         case SKY_DATA_TYPE_BOOLEAN: {
-            property_descriptor->setter = sky_data_descriptor_set_boolean;
+            property_descriptor->set_func = sky_data_descriptor_set_boolean;
+            property_descriptor->clear_func = sky_data_descriptor_clear_boolean;
             break;
         }
         default: {
             sentinel("Invalid property data type");
+        }
+    }
+    
+    // If descriptor is an action descriptor and it doesn't exist in our list then add it.
+    if(property_id < 0) {
+        uint32_t i;
+        bool found = false;
+        for(i=0; i<descriptor->action_property_descriptor_count; i++) {
+            if(descriptor->action_property_descriptors[i]->property_id == property_id) {
+                found = true;
+                break;
+            }
+        }
+        
+        // If it's not in the list then add it.
+        if(!found) {
+            descriptor->action_property_descriptor_count++;
+            descriptor->action_property_descriptors = realloc(descriptor->action_property_descriptors, sizeof(*descriptor->action_property_descriptors));
+            check_mem(descriptor->action_property_descriptors);
+            descriptor->action_property_descriptors[descriptor->action_property_descriptor_count-1] = property_descriptor;
         }
     }
     
@@ -269,5 +335,52 @@ void sky_data_descriptor_set_double(void *target, void *value, size_t *sz)
 void sky_data_descriptor_set_boolean(void *target, void *value, size_t *sz)
 {
     *((bool*)target) = minipack_unpack_bool(value, sz);
+}
+
+
+//--------------------------------------
+// Clear Functions
+//--------------------------------------
+
+// Clears a string.
+//
+// target - The location of the string data to reset.
+//
+// Returns nothing.
+void sky_data_descriptor_clear_string(void *target)
+{
+    sky_string *string = (sky_string*)target;
+    string->length = 0;
+    string->data = NULL;
+}
+
+// Clears an integer.
+//
+// target - The location of the int data to reset.
+//
+// Returns nothing.
+void sky_data_descriptor_clear_int(void *target)
+{
+    *((int64_t*)target) = 0LL;
+}
+
+// Clears a double.
+//
+// target - The location of the double data to reset.
+//
+// Returns nothing.
+void sky_data_descriptor_clear_double(void *target)
+{
+    *((double*)target) = 0;
+}
+
+// Clears a boolean.
+//
+// target - The location of the boolean data to reset.
+//
+// Returns nothing.
+void sky_data_descriptor_clear_boolean(void *target)
+{
+    *((bool*)target) = false;
 }
 

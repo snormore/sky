@@ -17,6 +17,10 @@
 // a property descriptor.
 typedef void (*sky_data_property_descriptor_set_func)(void *target, void *value, size_t *sz);
 
+// Defines a function that clears the value at a given memory location to
+// a property descriptor.
+typedef void (*sky_data_property_descriptor_clear_func)(void *target);
+
 // Defines the offset in memory for where the timestamp should be set.
 typedef struct {
     uint16_t offset;
@@ -31,7 +35,8 @@ typedef struct {
 typedef struct {
     sky_property_id_t property_id;
     uint16_t offset;
-    sky_data_property_descriptor_set_func setter;
+    sky_data_property_descriptor_set_func set_func;
+    sky_data_property_descriptor_clear_func clear_func;
 } sky_data_property_descriptor;
 
 // Defines a collection of descriptors for a struct to serialize data into it.
@@ -40,6 +45,8 @@ typedef struct {
     sky_data_action_descriptor action_descriptor;
     sky_data_property_descriptor *property_descriptors;
     sky_data_property_descriptor *property_zero_descriptor;
+    sky_data_property_descriptor **action_property_descriptors;
+    uint32_t action_property_descriptor_count;
     sky_property_id_t min_property_id;
     sky_property_id_t max_property_id;
     uint32_t property_count;
@@ -67,6 +74,9 @@ void sky_data_descriptor_free(sky_data_descriptor *descriptor);
 
 int sky_data_descriptor_set_value(sky_data_descriptor *descriptor,
     void *target, sky_property_id_t property_id, void *ptr, size_t *sz);
+
+int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
+    void *target);
 
 //--------------------------------------
 // Property Management
