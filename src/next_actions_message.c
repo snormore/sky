@@ -18,6 +18,12 @@
 //
 //==============================================================================
 
+// The data object to track event data.
+typedef struct {
+    sky_timestamp_t timestamp;
+    sky_action_id_t action_id;
+} sky_next_actions_data;
+
 // The result data to send back to the client.
 typedef struct {
     uint32_t count;
@@ -183,6 +189,17 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
     struct tagbstring data_str = bsStatic("data");
     struct tagbstring count_str = bsStatic("count");
 
+    // Initialize data object.
+    sky_next_actions_data data;
+    memset(&data, 0, sizeof(data));
+    
+    // Initialize data descriptor.
+    sky_data_descriptor *descriptor = NULL;
+    rc = sky_property_file_create_data_descriptor(table->property_file, &descriptor);
+    check(rc == 0, "Unable to create data descriptor");
+    descriptor->timestamp_descriptor.offset = offsetof(sky_next_actions_data, timestamp);
+    descriptor->action_descriptor.offset = offsetof(sky_next_actions_data, action_id);
+    
     // Create an array to store data.
     uint32_t action_count = table->action_file->action_count;
     sky_next_actions_result *results = calloc(action_count+1, sizeof(*results));
@@ -217,18 +234,17 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
         uint32_t prior_action_index = 0;
         while(!cursor.eof) {
             // Retrieve action.
-            sky_action_id_t action_id;
-            rc = sky_cursor_get_action_id(&cursor, &action_id);
+            rc = sky_cursor_set_data(&cursor, descriptor, (void*)(&data));
             check(rc == 0, "Unable to retrieve first action");
 
             // Aggregate if we've reached the match.
             if(prior_action_index == message->prior_action_id_count) {
-                results[action_id].count++;
+                results[data.action_id].count++;
                 prior_action_index = 0;
             }
 
             // Match against action list.
-            if(message->prior_action_ids[prior_action_index] == action_id) {
+            if(message->prior_action_ids[prior_action_index] == data.action_id) {
                 prior_action_index++;
             }
             else {

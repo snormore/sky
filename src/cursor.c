@@ -287,9 +287,8 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
             ptr += sizeof(property_id);
 
             // Assign value to data object member.
-            sky_data_property_descriptor *property_descriptor = &descriptor->property_descriptors[property_id-descriptor->min_property_id];
-            void *property_target_ptr = data + property_descriptor->offset;
-            property_descriptor->setter(property_target_ptr, ptr, &sz);
+            int rc = sky_data_descriptor_set_value(descriptor, data, property_id, ptr, &sz);
+            check(rc == 0, "Unable to set value via data descriptor");
             
             // If there is no size then move it forward manually.
             if(sz == 0) {
@@ -304,76 +303,3 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
 error:
     return -1;
 }
-
-// Retrieves a the action identifier of the current event.
-//
-// cursor    - The cursor.
-// action_id - A pointer to where the action id should be returned to.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_cursor_get_action_id(sky_cursor *cursor, sky_action_id_t *action_id)
-{
-    check(cursor != NULL, "Cursor required");
-    check(!cursor->eof, "Cursor cannot be EOF");
-    check(action_id != NULL, "Action id return pointer required");
-
-    // Retrieve the action id.
-    if(*((sky_event_flag_t*)cursor->ptr) & SKY_EVENT_FLAG_ACTION) {
-        *action_id = *((sky_action_id_t*)(cursor->ptr + sizeof(sky_event_flag_t) + sizeof(sky_timestamp_t)));
-    }
-    else {
-        *action_id = 0;
-    }
-    
-    return 0;
-
-error:
-    *action_id = 0;
-    return -1;
-}
-
-// Retrieves the pointer to where the data section of an event starts as
-// well of the length of the data.
-//
-// cursor      - The cursor.
-// data_ptr    - A pointer to where the memory location of the data starts.
-// data_length - The length of the data section.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_cursor_get_data_ptr(sky_cursor *cursor, void **data_ptr,
-                            uint32_t *data_length)
-{
-    check(cursor != NULL, "Cursor required");
-    check(!cursor->eof, "Cursor cannot be EOF");
-    check(data_ptr != NULL, "Data return pointer required");
-    check(data_length != NULL, "Data length return pointer required");
-
-    // Retrieve the data section if this event has data.
-    if(*((sky_event_flag_t*)cursor->ptr) & SKY_EVENT_FLAG_DATA) {
-        // Move past the initial header (flag, timestamp, action_id).
-        void *ptr = cursor->ptr;
-        ptr += sizeof(sky_event_flag_t) + sizeof(sky_timestamp_t);
-        if(*((sky_event_flag_t*)cursor->ptr) & SKY_EVENT_FLAG_ACTION) {
-            ptr += sizeof(sky_action_id_t);
-        }
-
-        // At the end of the header is the data length.
-        *data_length = *((sky_event_data_length_t*)(ptr));
-        
-        // After the data length begins the data section.
-        *data_ptr = ptr + sizeof(sky_event_data_length_t);
-    }
-    // If this is an action-only event then return null.
-    else {
-        *data_ptr = NULL;
-        *data_length = 0;
-    }
-    
-    return 0;
-
-error:
-    *data_ptr = NULL;
-    *data_length = 0;
-    return -1;
-}
-

@@ -357,3 +357,69 @@ error:
     return -1;
 }
 
+
+//--------------------------------------
+// Data Descriptors
+//--------------------------------------
+
+// Initializes a data descriptor based on a property file. This function
+// automatically sets up the minimum and maximum property identifiers.
+//
+// property_file - The property file.
+// ret           - A pointer to where the descriptor should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_property_file_create_data_descriptor(sky_property_file *property_file,
+                                             sky_data_descriptor **ret)
+{
+    uint32_t i;
+    check(property_file != NULL, "Property file required");
+    check(ret != NULL, "Descriptor pointer required");
+
+    // Determine minimum and maximum property identifiers.
+    sky_property_id_t min_property_id = 0;
+    sky_property_id_t max_property_id = 0;
+    for(i=0; i<property_file->property_count; i++) {
+        sky_property *property = property_file->properties[i];
+        
+        if(property->id < min_property_id) {
+            min_property_id = property->id;
+        }
+        if(property->id > max_property_id) {
+            max_property_id = property->id;
+        }
+    }
+    
+    // Initialize the descriptor.
+    sky_data_descriptor *descriptor = sky_data_descriptor_create(min_property_id, max_property_id);
+    check_mem(descriptor);
+    
+    // Return descriptor.
+    *ret = descriptor;
+    
+    return 0;
+
+error:
+    sky_data_descriptor_free(descriptor);
+    *ret = NULL;
+    return -1;
+}
+
+// Frees a data descriptor from memory.
+//
+// property_file - The property file that created the descriptor.
+// descriptor    - The descriptor.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_property_file_free_data_descriptor(sky_property_file *property_file,
+                                           sky_data_descriptor *descriptor)
+{
+    check(property_file != NULL, "Property file required");
+    sky_data_descriptor_free(descriptor);
+    return 0;
+
+error:
+    sky_data_descriptor_free(descriptor);
+    return -1;
+}
+

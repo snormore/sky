@@ -61,7 +61,6 @@ void sky_cursor_init(sky_cursor *);
 
 void sky_cursor_free(sky_cursor *cursor);
 
-
 //--------------------------------------
 // Path Management
 //--------------------------------------
@@ -70,17 +69,11 @@ int sky_cursor_set_path(sky_cursor *cursor, void *ptr);
 
 int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, int count);
 
-
 //--------------------------------------
 // Iteration
 //--------------------------------------
 
 int sky_cursor_next(sky_cursor *cursor);
-
-
-//--------------------------------------
-// Event Management
-//--------------------------------------
 
 //--------------------------------------
 // Event Management
@@ -88,11 +81,5 @@ int sky_cursor_next(sky_cursor *cursor);
 
 int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
     void *data);
-
-int sky_cursor_get_action_id(sky_cursor *cursor, sky_action_id_t *action_id);
-
-int sky_cursor_get_data_ptr(sky_cursor *cursor, void **data_ptr,
-    uint32_t *data_length);
-
 
 #endif

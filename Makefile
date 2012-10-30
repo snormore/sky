@@ -6,7 +6,7 @@ CFLAGS=-g -Wall -Wextra -Wno-self-assign -Wno-error=unknown-warning -std=c99 -D_
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES}) $(patsubst %.l,%.o,${LEX_SOURCES}) $(patsubst %.y,%.o,${YACC_SOURCES})
-BIN_SOURCES=src/skyd.c,src/sky_bench.c,src/sky_gen.c
+BIN_SOURCES=src/skyd.c,src/sky_gen.c
 BIN_OBJECTS=$(patsubst %.c,%.o,${BIN_SOURCES})
 LIB_SOURCES=$(filter-out ${BIN_SOURCES},${SOURCES})
 LIB_OBJECTS=$(filter-out ${BIN_OBJECTS},${OBJECTS})
@@ -19,7 +19,7 @@ PREFIX?=/usr/local
 # Main Targets
 ################################################################################
 
-compile: bin/libsky.a bin/skyd bin/sky-gen bin/sky-bench
+compile: bin/libsky.a bin/skyd bin/sky-gen
 all: compile test
 
 
@@ -50,10 +50,6 @@ bin/skyd: bin ${OBJECTS} bin/libsky.a
 
 bin/sky-gen: bin ${OBJECTS} bin/libsky.a
 	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a
-	chmod 700 $@
-
-bin/sky-bench: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -o $@ src/sky_bench.c bin/libsky.a
 	chmod 700 $@
 
 bin:

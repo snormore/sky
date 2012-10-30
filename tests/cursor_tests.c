@@ -10,21 +10,6 @@
 
 //==============================================================================
 //
-// Constants
-//
-//==============================================================================
-
-size_t DATA_LENGTH = 57;
-char DATA[] = 
-    "\x0a\x00\x00\x00\x31\x00\x00\x00\x01\xa0\x00\x00\x00\x00\x00\x00"
-    "\x00\x0b\x00\x02\xa1\x00\x00\x00\x00\x00\x00\x00\x05\x00\x00\x00"
-    "\x01\xa3\x66\x6f\x6f\x03\xa2\x00\x00\x00\x00\x00\x00\x00\x0d\x00"
-    "\x05\x00\x00\x00\x01\xa3\x62\x61\x72"
-;
-
-
-//==============================================================================
-//
 // Test Cases
 //
 //==============================================================================
@@ -34,14 +19,19 @@ char DATA[] =
 //--------------------------------------
 
 int test_sky_cursor_next() {
+    char data[1024]; memset(data, 0, 1024);
+    FILE *file = fopen("tests/fixtures/cursors/0/data", "r");
+    fread(data, 1, 1024, file);
+    fclose(file);
+
     sky_cursor *cursor = sky_cursor_create();
-    
+
     // Event 1
-    int rc = sky_cursor_set_path(cursor, &DATA);
+    int rc = sky_cursor_set_path(cursor, data);
     mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(cursor->path_index, 0);
     mu_assert_int_equals(cursor->event_index, 0);
-    mu_assert_long_equals(cursor->ptr-((void*)&DATA), 8L);
+    mu_assert_long_equals(cursor->ptr-((void*)data), 8L);
     mu_assert_bool(!cursor->eof);
     
     // Event 2
@@ -49,7 +39,7 @@ int test_sky_cursor_next() {
     mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(cursor->path_index, 0);
     mu_assert_int_equals(cursor->event_index, 1);
-    mu_assert_long_equals(cursor->ptr-((void*)&DATA), 19L);
+    mu_assert_long_equals(cursor->ptr-((void*)data), 19L);
     mu_assert_bool(!cursor->eof);
 
     // Event 3
@@ -57,7 +47,7 @@ int test_sky_cursor_next() {
     mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(cursor->path_index, 0);
     mu_assert_int_equals(cursor->event_index, 2);
-    mu_assert_long_equals(cursor->ptr-((void*)&DATA), 37L);
+    mu_assert_long_equals(cursor->ptr-((void*)data), 37L);
     mu_assert_bool(!cursor->eof);
     
     // EOF
