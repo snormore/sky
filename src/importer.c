@@ -447,7 +447,9 @@ int sky_importer_process_property(sky_importer *importer, bstring source,
             bdestroy(type);
         }
         else if(sky_importer_tokstr_equal(source, token, "dataType")) {
-            property->data_type = sky_importer_token_parse_bstring(source, &tokens[*index]);
+            bstring data_type_str = sky_importer_token_parse_bstring(source, &tokens[*index]);
+            property->data_type = sky_data_type_to_enum(data_type_str);
+            bdestroy(data_type_str);
         }
         else if(sky_importer_tokstr_equal(source, token, "name")) {
             property->name = sky_importer_token_parse_bstring(source, &tokens[*index]);
@@ -609,8 +611,8 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
             // Numbers (or null, which evaluates to Int 0).
             else {
                 bstring value = sky_importer_token_parse_bstring(source, value_token);
-                if(biseqcstr(property->data_type, "Float") == 1) {
-                    event_data = sky_event_data_create_float(property->id, atof(bdata(value))); check_mem(event_data);
+                if(property->data_type == SKY_DATA_TYPE_DOUBLE) {
+                    event_data = sky_event_data_create_double(property->id, atof(bdata(value))); check_mem(event_data);
                 }
                 else {
                     event_data = sky_event_data_create_int(property->id, atoll(bdata(value))); check_mem(event_data);

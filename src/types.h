@@ -1,5 +1,5 @@
-#ifndef _types_h
-#define _types_h
+#ifndef _sky_types_h
+#define _sky_types_h
 
 #include <inttypes.h>
 
@@ -68,6 +68,30 @@
 
 // The total possible properties.
 #define SKY_PROPERTY_ID_COUNT (SKY_PROPERTY_ID_MAX - SKY_PROPERTY_ID_MIN)
+
+
+//--------------------------------------
+// Property Data Types
+//--------------------------------------
+
+typedef enum {
+    SKY_DATA_TYPE_NONE     = 0,
+    SKY_DATA_TYPE_STRING   = 1,
+    SKY_DATA_TYPE_INT    = 2,
+    SKY_DATA_TYPE_DOUBLE   = 3,
+    SKY_DATA_TYPE_BOOLEAN  = 4,
+} sky_data_type_e;
+
+
+//==============================================================================
+//
+// Functions
+//
+//==============================================================================
+
+sky_data_type_e sky_data_type_to_enum(bstring name);
+
+bstring sky_data_type_to_str(sky_data_type_e data_type);
 
 
 #endif

@@ -30,11 +30,11 @@ typedef struct sky_add_event_message {
 // A key/value used to store event data.
 struct sky_add_event_message_data {
     bstring key;
-    bstring data_type;
+    sky_data_type_e data_type;
     union {
         bool boolean_value;
         int64_t int_value;
-        double float_value;
+        double double_value;
         bstring string_value;
     };
 };

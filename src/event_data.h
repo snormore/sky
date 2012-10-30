@@ -17,11 +17,11 @@
 
 typedef struct sky_event_data {
     sky_property_id_t key;
-    bstring data_type;
+    sky_data_type_e data_type;
     union {
         bool boolean_value;
         int64_t int_value;
-        double float_value;
+        double double_value;
         bstring string_value;
     };
 } sky_event_data;
@@ -41,7 +41,7 @@ sky_event_data *sky_event_data_create(sky_property_id_t key);
 
 sky_event_data *sky_event_data_create_int(sky_property_id_t key, int64_t value);
 
-sky_event_data *sky_event_data_create_float(sky_property_id_t key, double value);
+sky_event_data *sky_event_data_create_double(sky_property_id_t key, double value);
 
 sky_event_data *sky_event_data_create_boolean(sky_property_id_t key, bool value);
 

@@ -26,6 +26,7 @@ sky_event_data *sky_event_data_create(sky_property_id_t key)
 {
     sky_event_data *data = calloc(1, sizeof(sky_event_data)); check_mem(data);
     data->key = key;
+    data->data_type = SKY_DATA_TYPE_NONE;
     return data;
     
 error:
@@ -33,7 +34,7 @@ error:
     return NULL;
 }
 
-// Creates a reference to event data representing an integer.
+// Creates a reference to event data representing a 64-bit integer.
 //
 // key   - The property id used as the key for the data.
 // value - The integer value of the data.
@@ -41,7 +42,7 @@ sky_event_data *sky_event_data_create_int(sky_property_id_t key, int64_t value)
 {
     sky_event_data *data = calloc(1, sizeof(sky_event_data)); check_mem(data);
     data->key = key;
-    data->data_type = &SKY_DATA_TYPE_INT;
+    data->data_type = SKY_DATA_TYPE_INT;
     data->int_value = value;
 
     return data;
@@ -51,16 +52,16 @@ error:
     return NULL;
 }
 
-// Creates a reference to event data representing a float.
+// Creates a reference to event data representing a double.
 //
 // key   - The property id used as the key for the data.
-// value - The float value of the data.
-sky_event_data *sky_event_data_create_float(sky_property_id_t key, double value)
+// value - The double value of the data.
+sky_event_data *sky_event_data_create_double(sky_property_id_t key, double value)
 {
     sky_event_data *data = calloc(1, sizeof(sky_event_data)); check_mem(data);
     data->key = key;
-    data->data_type = &SKY_DATA_TYPE_FLOAT;
-    data->float_value = value;
+    data->data_type = SKY_DATA_TYPE_DOUBLE;
+    data->double_value = value;
 
     return data;
     
@@ -77,7 +78,7 @@ sky_event_data *sky_event_data_create_boolean(sky_property_id_t key, bool value)
 {
     sky_event_data *data = calloc(1, sizeof(sky_event_data)); check_mem(data);
     data->key = key;
-    data->data_type = &SKY_DATA_TYPE_BOOLEAN;
+    data->data_type = SKY_DATA_TYPE_BOOLEAN;
     data->boolean_value = value;
 
     return data;
@@ -95,7 +96,7 @@ sky_event_data *sky_event_data_create_string(sky_property_id_t key, bstring valu
 {
     sky_event_data *data = calloc(1, sizeof(sky_event_data)); check_mem(data);
     data->key = key;
-    data->data_type = &SKY_DATA_TYPE_STRING;
+    data->data_type = SKY_DATA_TYPE_STRING;
     data->string_value = bstrcpy(value);
     if(value) check_mem(data->string_value);
 
@@ -112,7 +113,7 @@ error:
 void sky_event_data_free(sky_event_data *data)
 {
     if(data) {
-        if(data->data_type == &SKY_DATA_TYPE_STRING) bdestroy(data->string_value);
+        if(data->data_type == SKY_DATA_TYPE_STRING) bdestroy(data->string_value);
         free(data);
     }
 }
@@ -127,20 +128,21 @@ int sky_event_data_copy(sky_event_data *source, sky_event_data **target)
 {
     check(source != NULL, "Event data source required for copy");
 
-    if(source->data_type == &SKY_DATA_TYPE_INT) {
-        *target = sky_event_data_create_int(source->key, source->int_value);
-    }
-    else if(source->data_type == &SKY_DATA_TYPE_FLOAT) {
-        *target = sky_event_data_create_int(source->key, source->float_value);
-    }
-    else if(source->data_type == &SKY_DATA_TYPE_BOOLEAN) {
-        *target = sky_event_data_create_int(source->key, source->boolean_value);
-    }
-    else if(source->data_type == &SKY_DATA_TYPE_STRING) {
-        *target = sky_event_data_create_string(source->key, source->string_value);
-    }
-    else {
-        sentinel("Invalid data type for event data: '%s'", bdata(source->data_type));
+    switch(source->data_type) {
+        case SKY_DATA_TYPE_STRING: 
+            *target = sky_event_data_create_string(source->key, source->string_value);
+            break;
+        case SKY_DATA_TYPE_INT: 
+            *target = sky_event_data_create_int(source->key, source->int_value);
+            break;
+        case SKY_DATA_TYPE_DOUBLE: 
+            *target = sky_event_data_create_double(source->key, source->double_value);
+            break;
+        case SKY_DATA_TYPE_BOOLEAN:
+            *target = sky_event_data_create_boolean(source->key, source->boolean_value);
+            break;
+        default:
+            sentinel("Invalid data type (%d) for event data", source->data_type);
     }
 
     return 0;
@@ -164,21 +166,22 @@ size_t sky_event_data_sizeof(sky_event_data *data)
 {
     size_t sz = 0;
     sz += sizeof(data->key);
-    if(data->data_type == &SKY_DATA_TYPE_INT) {
-        sz += minipack_sizeof_int(data->int_value);
-    }
-    else if(data->data_type == &SKY_DATA_TYPE_FLOAT) {
-        sz += minipack_sizeof_double(data->float_value);
-    }
-    else if(data->data_type == &SKY_DATA_TYPE_BOOLEAN) {
-        sz += minipack_sizeof_bool(data->boolean_value);
-    }
-    else if(data->data_type == &SKY_DATA_TYPE_STRING) {
-        sz += minipack_sizeof_raw(blength(data->string_value));
-        sz += blength(data->string_value);
-    }
-    else {
-        sentinel("Invalid data type for event data: '%s'", bdata(data->data_type));
+    switch(data->data_type) {
+        case SKY_DATA_TYPE_INT:
+            sz += minipack_sizeof_int(data->int_value);
+            break;
+        case SKY_DATA_TYPE_DOUBLE:
+            sz += minipack_sizeof_double(data->double_value);
+            break;
+        case SKY_DATA_TYPE_BOOLEAN:
+            sz += minipack_sizeof_bool(data->boolean_value);
+            break;
+        case SKY_DATA_TYPE_STRING:
+            sz += minipack_sizeof_raw(blength(data->string_value));
+            sz += blength(data->string_value);
+            break;
+        default:
+            sentinel("Invalid data type (%d) for event data", data->data_type);
     }
     return sz;
 
@@ -207,33 +210,34 @@ int sky_event_data_pack(sky_event_data *data, void *ptr, size_t *sz)
     ptr += sizeof(data->key);
 
     // Write value.
-    if(data->data_type == &SKY_DATA_TYPE_INT) {
-        minipack_pack_int(ptr, data->int_value, &_sz);
-        check(_sz != 0, "Unable to pack event data int value");
-        ptr += _sz;
-    }
-    else if(data->data_type == &SKY_DATA_TYPE_FLOAT) {
-        minipack_pack_double(ptr, data->float_value, &_sz);
-        check(_sz != 0, "Unable to pack event data float value");
-        ptr += _sz;
-    }
-    else if(data->data_type == &SKY_DATA_TYPE_BOOLEAN) {
-        minipack_pack_bool(ptr, data->boolean_value, &_sz);
-        check(_sz != 0, "Unable to pack event data boolean value");
-        ptr += _sz;
-    }
-    else if(data->data_type == &SKY_DATA_TYPE_STRING) {
-        // Write value header.
-        minipack_pack_raw(ptr, blength(data->string_value), &_sz);
-        check(_sz != 0, "Unable to pack event data value header at %p", ptr);
-        ptr += _sz;
+    switch(data->data_type) {
+        case SKY_DATA_TYPE_INT:
+            minipack_pack_int(ptr, data->int_value, &_sz);
+            check(_sz != 0, "Unable to pack event data int value");
+            ptr += _sz;
+            break;
+        case SKY_DATA_TYPE_DOUBLE:
+            minipack_pack_double(ptr, data->double_value, &_sz);
+            check(_sz != 0, "Unable to pack event data float value");
+            ptr += _sz;
+            break;
+        case SKY_DATA_TYPE_BOOLEAN:
+            minipack_pack_bool(ptr, data->boolean_value, &_sz);
+            check(_sz != 0, "Unable to pack event data boolean value");
+            ptr += _sz;
+            break;
+        case SKY_DATA_TYPE_STRING:
+            // Write value header.
+            minipack_pack_raw(ptr, blength(data->string_value), &_sz);
+            check(_sz != 0, "Unable to pack event data value header at %p", ptr);
+            ptr += _sz;
 
-        // Write actual string value.
-        memmove(ptr, bdata(data->string_value), blength(data->string_value));
-        ptr += blength(data->string_value);
-    }
-    else {
-        sentinel("Invalid data type for event data: '%s'", bdata(data->data_type));
+            // Write actual string value.
+            memmove(ptr, bdata(data->string_value), blength(data->string_value));
+            ptr += blength(data->string_value);
+            break;
+        default:
+            sentinel("Invalid data type (%d) for event data", data->data_type);
     }
 
     // Store number of bytes written.
@@ -266,38 +270,38 @@ int sky_event_data_unpack(sky_event_data *data, void *ptr, size_t *sz)
     ptr += sizeof(data->key);
 
     // If there is no data type set then determine it from the data.
-    if(data->data_type == NULL) {
+    if(data->data_type == SKY_DATA_TYPE_NONE) {
         if(minipack_is_raw(ptr)) {
-            data->data_type = &SKY_DATA_TYPE_STRING;
+            data->data_type = SKY_DATA_TYPE_STRING;
         }
         else if(minipack_is_bool(ptr)) {
-            data->data_type = &SKY_DATA_TYPE_BOOLEAN;
+            data->data_type = SKY_DATA_TYPE_BOOLEAN;
         }
         else if(minipack_is_double(ptr)) {
-            data->data_type = &SKY_DATA_TYPE_FLOAT;
+            data->data_type = SKY_DATA_TYPE_DOUBLE;
         }
         else {
-            data->data_type = &SKY_DATA_TYPE_INT;
+            data->data_type = SKY_DATA_TYPE_INT;
         }
     }
 
     // Read value.
-    if(data->data_type == &SKY_DATA_TYPE_INT) {
+    if(data->data_type == SKY_DATA_TYPE_INT) {
         data->int_value = minipack_unpack_int(ptr, &_sz);
         check(_sz != 0, "Unable to unpack event int value");
         ptr += _sz;
     }
-    else if(data->data_type == &SKY_DATA_TYPE_FLOAT) {
-        data->float_value = minipack_unpack_double(ptr, &_sz);
+    else if(data->data_type == SKY_DATA_TYPE_DOUBLE) {
+        data->double_value = minipack_unpack_double(ptr, &_sz);
         check(_sz != 0, "Unable to unpack event float value");
         ptr += _sz;
     }
-    else if(data->data_type == &SKY_DATA_TYPE_BOOLEAN) {
+    else if(data->data_type == SKY_DATA_TYPE_BOOLEAN) {
         data->boolean_value = minipack_unpack_bool(ptr, &_sz);
         check(_sz != 0, "Unable to unpack event boolean value");
         ptr += _sz;
     }
-    else if(data->data_type == &SKY_DATA_TYPE_STRING) {
+    else if(data->data_type == SKY_DATA_TYPE_STRING) {
         // Read raw header.
         uint32_t value_length = minipack_unpack_raw(ptr, &_sz);
         check(_sz != 0, "Unable to unpack event value header at %p", ptr);
@@ -308,7 +312,7 @@ int sky_event_data_unpack(sky_event_data *data, void *ptr, size_t *sz)
         ptr += value_length;
     }
     else {
-        sentinel("Invalid data type for event data: '%s'", bdata(data->data_type));
+        sentinel("Invalid data type (%d) for event data", data->data_type);
     }
 
     // Store number of bytes read.

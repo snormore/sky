@@ -53,7 +53,7 @@ int test_sky_property_file_save() {
     // Action 1
     sky_property *property1 = sky_property_create();
     property1->type = SKY_PROPERTY_TYPE_OBJECT;
-    property1->data_type = bfromcstr("Int");
+    property1->data_type = SKY_DATA_TYPE_INT;
     property1->name = bfromcstr("foo");
     rc = sky_property_file_add_property(property_file, property1);
     mu_assert_int_equals(rc, 0);
@@ -62,7 +62,7 @@ int test_sky_property_file_save() {
     // Action 2
     sky_property *property2 = sky_property_create();
     property2->type = SKY_PROPERTY_TYPE_ACTION;
-    property2->data_type = bfromcstr("String");
+    property2->data_type = SKY_DATA_TYPE_STRING;
     property2->name = bfromcstr("this_is_a_really_long_property_name_woohoo");
     rc = sky_property_file_add_property(property_file, property2);
     mu_assert_int_equals(rc, 0);

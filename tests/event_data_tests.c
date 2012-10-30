@@ -18,8 +18,8 @@
 size_t INT_DATA_LENGTH = 4;
 char INT_DATA[] = "\x0a\xD1\x03\xE8";
 
-size_t FLOAT_DATA_LENGTH = 10;
-char FLOAT_DATA[] = "\x0a\xCB\x40\x59\x0C\xCC\xCC\xCC\xCC\xCD";
+size_t DOUBLE_DATA_LENGTH = 10;
+char DOUBLE_DATA[] = "\x0a\xCB\x40\x59\x0C\xCC\xCC\xCC\xCC\xCD";
 
 size_t BOOLEAN_DATA_LENGTH = 2;
 char BOOLEAN_DATA[] = "\x0a\xC3";
@@ -47,11 +47,11 @@ int test_sky_event_data_create_int() {
     return 0;
 }
 
-int test_sky_event_data_create_float() {
-    sky_event_data *data = sky_event_data_create_float(10, 100.1);
+int test_sky_event_data_create_double() {
+    sky_event_data *data = sky_event_data_create_double(10, 100.1);
     mu_assert_bool(data != NULL);
     mu_assert_int_equals(data->key, 10);
-    mu_assert_bool(fabs(data->float_value - 100.1) < 0.1);
+    mu_assert_bool(fabs(data->double_value - 100.1) < 0.1);
     sky_event_data_free(data);
     return 0;
 }
@@ -88,8 +88,8 @@ int test_sky_event_data_sizeof_int() {
     return 0;
 }
 
-int test_sky_event_data_sizeof_float() {
-    sky_event_data *data = sky_event_data_create_float(10, 100.1);
+int test_sky_event_data_sizeof_double() {
+    sky_event_data *data = sky_event_data_create_double(10, 100.1);
     size_t sz = sky_event_data_sizeof(data);
     mu_assert_long_equals(sz, 10L);
     sky_event_data_free(data);
@@ -129,14 +129,14 @@ int test_sky_event_data_pack_int() {
     return 0;
 }
 
-int test_sky_event_data_pack_float() {
+int test_sky_event_data_pack_double() {
     size_t sz;
-    void *ptr = calloc(FLOAT_DATA_LENGTH, 1);
-    sky_event_data *data = sky_event_data_create_float(10, 100.2);
+    void *ptr = calloc(DOUBLE_DATA_LENGTH, 1);
+    sky_event_data *data = sky_event_data_create_double(10, 100.2);
     sky_event_data_pack(data, ptr, &sz);
     sky_event_data_free(data);
-    mu_assert_long_equals(sz, FLOAT_DATA_LENGTH);
-    mu_assert_mem(ptr, &FLOAT_DATA, FLOAT_DATA_LENGTH);
+    mu_assert_long_equals(sz, DOUBLE_DATA_LENGTH);
+    mu_assert_mem(ptr, &DOUBLE_DATA, DOUBLE_DATA_LENGTH);
     free(ptr);
     return 0;
 }
@@ -175,21 +175,21 @@ int test_sky_event_data_unpack_int() {
     sky_event_data *data = sky_event_data_create(0);
     sky_event_data_unpack(data, &INT_DATA, &sz);
     mu_assert_long_equals(sz, INT_DATA_LENGTH);
-    mu_assert_bstring(data->data_type, "Int");
+    mu_assert_bool(data->data_type == SKY_DATA_TYPE_INT);
     mu_assert_int_equals(data->key, 10);
     mu_assert_int64_equals(data->int_value, 1000LL);
     sky_event_data_free(data);
     return 0;
 }
 
-int test_sky_event_data_unpack_float() {
+int test_sky_event_data_unpack_double() {
     size_t sz;
     sky_event_data *data = sky_event_data_create(0);
-    sky_event_data_unpack(data, &FLOAT_DATA, &sz);
-    mu_assert_long_equals(sz, FLOAT_DATA_LENGTH);
-    mu_assert_bstring(data->data_type, "Float");
+    sky_event_data_unpack(data, &DOUBLE_DATA, &sz);
+    mu_assert_long_equals(sz, DOUBLE_DATA_LENGTH);
+    mu_assert_bool(data->data_type == SKY_DATA_TYPE_DOUBLE);
     mu_assert_int_equals(data->key, 10);
-    mu_assert_bool(fabs(data->float_value - 100.2) < 0.1);
+    mu_assert_bool(fabs(data->double_value - 100.2) < 0.1);
     sky_event_data_free(data);
     return 0;
 }
@@ -199,7 +199,7 @@ int test_sky_event_data_unpack_boolean() {
     sky_event_data *data = sky_event_data_create(0);
     sky_event_data_unpack(data, &BOOLEAN_DATA, &sz);
     mu_assert_long_equals(sz, BOOLEAN_DATA_LENGTH);
-    mu_assert_bstring(data->data_type, "Boolean");
+    mu_assert_bool(data->data_type == SKY_DATA_TYPE_BOOLEAN);
     mu_assert_int_equals(data->key, 10);
     mu_assert_bool(data->boolean_value == true);
     sky_event_data_free(data);
@@ -211,7 +211,7 @@ int test_sky_event_data_unpack_string() {
     sky_event_data *data = sky_event_data_create(0);
     sky_event_data_unpack(data, &STRING_DATA, &sz);
     mu_assert_long_equals(sz, STRING_DATA_LENGTH);
-    mu_assert_bstring(data->data_type, "String");
+    mu_assert_bool(data->data_type == SKY_DATA_TYPE_STRING);
     mu_assert_int_equals(data->key, 10);
     mu_assert_bstring(data->string_value, "foo");
     sky_event_data_free(data);
@@ -227,22 +227,22 @@ int test_sky_event_data_unpack_string() {
 
 int all_tests() {
     mu_run_test(test_sky_event_data_create_int);
-    mu_run_test(test_sky_event_data_create_float);
+    mu_run_test(test_sky_event_data_create_double);
     mu_run_test(test_sky_event_data_create_boolean);
     mu_run_test(test_sky_event_data_create_string);
 
     mu_run_test(test_sky_event_data_sizeof_int);
-    mu_run_test(test_sky_event_data_sizeof_float);
+    mu_run_test(test_sky_event_data_sizeof_double);
     mu_run_test(test_sky_event_data_sizeof_boolean);
     mu_run_test(test_sky_event_data_sizeof_string);
 
     mu_run_test(test_sky_event_data_pack_int);
-    mu_run_test(test_sky_event_data_pack_float);
+    mu_run_test(test_sky_event_data_pack_double);
     mu_run_test(test_sky_event_data_pack_boolean);
     mu_run_test(test_sky_event_data_pack_string);
 
     mu_run_test(test_sky_event_data_unpack_int);
-    mu_run_test(test_sky_event_data_unpack_float);
+    mu_run_test(test_sky_event_data_unpack_double);
     mu_run_test(test_sky_event_data_unpack_boolean);
     mu_run_test(test_sky_event_data_unpack_string);
     return 0;

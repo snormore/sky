@@ -39,9 +39,10 @@ typedef struct {
     sky_data_timestamp_descriptor timestamp_descriptor;
     sky_data_action_descriptor action_descriptor;
     sky_data_property_descriptor *property_descriptors;
+    sky_data_property_descriptor *property_zero_descriptor;
     sky_property_id_t min_property_id;
     sky_property_id_t max_property_id;
-    uint32_t property_descriptor_count;
+    uint32_t property_count;
 } sky_data_descriptor;
 
 

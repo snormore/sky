@@ -24,22 +24,22 @@ sky_add_event_message *create_message_with_data()
 
     message->data[0] = sky_add_event_message_data_create();
     message->data[0]->key = bfromcstr("myString");
-    message->data[0]->data_type = &SKY_DATA_TYPE_STRING;
+    message->data[0]->data_type = SKY_DATA_TYPE_STRING;
     message->data[0]->string_value = bfromcstr("xyz");
 
     message->data[1] = sky_add_event_message_data_create();
     message->data[1]->key = bfromcstr("myInt");
-    message->data[1]->data_type = &SKY_DATA_TYPE_INT;
+    message->data[1]->data_type = SKY_DATA_TYPE_INT;
     message->data[1]->int_value = 200;
 
     message->data[2] = sky_add_event_message_data_create();
     message->data[2]->key = bfromcstr("myFloat");
-    message->data[2]->data_type = &SKY_DATA_TYPE_FLOAT;
-    message->data[2]->float_value = 100.2;
+    message->data[2]->data_type = SKY_DATA_TYPE_DOUBLE;
+    message->data[2]->double_value = 100.2;
 
     message->data[3] = sky_add_event_message_data_create();
     message->data[3]->key = bfromcstr("myBoolean");
-    message->data[3]->data_type = &SKY_DATA_TYPE_BOOLEAN;
+    message->data[3]->data_type = SKY_DATA_TYPE_BOOLEAN;
     message->data[3]->boolean_value = true;
 
     return message;

@@ -108,11 +108,11 @@ void sky_add_event_message_data_free(sky_add_event_message_data *data)
     if(data) {
         bdestroy(data->key);
         data->key = NULL;
-        if(data->data_type == &SKY_DATA_TYPE_STRING) {
+        if(data->data_type == SKY_DATA_TYPE_STRING) {
             bdestroy(data->string_value);
             data->string_value = NULL;
         }
-        data->data_type = NULL;
+        data->data_type = SKY_DATA_TYPE_NONE;
         free(data);
     }
 }
@@ -158,17 +158,21 @@ size_t sky_add_event_message_sizeof_data(sky_add_event_message *message)
         sky_add_event_message_data *data = message->data[i];
         sz += minipack_sizeof_raw(blength(data->key)) + blength(data->key);
         
-        if(data->data_type == &SKY_DATA_TYPE_STRING) {
-            sz += minipack_sizeof_raw(blength(data->string_value)) + blength(data->string_value);
-        }
-        else if(data->data_type == &SKY_DATA_TYPE_INT) {
+        switch(data->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                sz += minipack_sizeof_raw(blength(data->string_value)) + blength(data->string_value);
+                break;
+            case SKY_DATA_TYPE_INT:
             sz += minipack_sizeof_int(data->int_value);
-        }
-        else if(data->data_type == &SKY_DATA_TYPE_FLOAT) {
-            sz += minipack_sizeof_double(data->float_value);
-        }
-        else if(data->data_type == &SKY_DATA_TYPE_BOOLEAN) {
-            sz += minipack_sizeof_bool(data->boolean_value);
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                sz += minipack_sizeof_double(data->double_value);
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                sz += minipack_sizeof_bool(data->boolean_value);
+                break;
+            default:
+                return 0;
         }
     }
     return sz;
@@ -244,24 +248,25 @@ int sky_add_event_message_pack_data(sky_add_event_message *message, FILE *file)
         check(rc == 0, "Unable to pack data key");
         
         // Write in the appropriate data type.
-        if(data->data_type == &SKY_DATA_TYPE_STRING) {
-            rc = sky_minipack_fwrite_bstring(file, data->string_value);
-            check(rc == 0, "Unable to pack string value");
-        }
-        else if(data->data_type == &SKY_DATA_TYPE_INT) {
-            minipack_fwrite_int(file, data->int_value, &sz);
-            check(sz > 0, "Unable to pack int value");
-        }
-        else if(data->data_type == &SKY_DATA_TYPE_FLOAT) {
-            minipack_fwrite_double(file, data->float_value, &sz);
-            check(sz > 0, "Unable to pack float value");
-        }
-        else if(data->data_type == &SKY_DATA_TYPE_BOOLEAN) {
-            minipack_fwrite_bool(file, data->boolean_value, &sz);
-            check(sz > 0, "Unable to pack boolean value");
-        }
-        else {
-            sentinel("Unsupported data type in 'add_event' data message struct");
+        switch(data->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                rc = sky_minipack_fwrite_bstring(file, data->string_value);
+                check(rc == 0, "Unable to pack string value");
+                break;
+            case SKY_DATA_TYPE_INT:
+                minipack_fwrite_int(file, data->int_value, &sz);
+                check(sz > 0, "Unable to pack int value");
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                minipack_fwrite_double(file, data->double_value, &sz);
+                check(sz > 0, "Unable to pack float value");
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                minipack_fwrite_bool(file, data->boolean_value, &sz);
+                check(sz > 0, "Unable to pack boolean value");
+                break;
+            default:
+                sentinel("Unsupported data type in 'add_event' data message struct");
         }
     }
 
@@ -357,22 +362,22 @@ int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file
         
         // Read in the appropriate data type.
         if(minipack_is_raw((void*)buffer)) {
-            data->data_type = &SKY_DATA_TYPE_STRING;
+            data->data_type = SKY_DATA_TYPE_STRING;
             rc = sky_minipack_fread_bstring(file, &data->string_value);
             check(rc == 0, "Unable to unpack string value");
         }
         else if(minipack_is_bool((void*)buffer)) {
-            data->data_type = &SKY_DATA_TYPE_BOOLEAN;
+            data->data_type = SKY_DATA_TYPE_BOOLEAN;
             data->boolean_value = minipack_fread_bool(file, &sz);
             check(sz != 0, "Unable to unpack boolean value");
         }
         else if(minipack_is_double((void*)buffer)) {
-            data->data_type = &SKY_DATA_TYPE_FLOAT;
-            data->float_value = minipack_fread_double(file, &sz);
+            data->data_type = SKY_DATA_TYPE_DOUBLE;
+            data->double_value = minipack_fread_double(file, &sz);
             check(sz != 0, "Unable to unpack float value");
         }
         else {
-            data->data_type = &SKY_DATA_TYPE_INT;
+            data->data_type = SKY_DATA_TYPE_INT;
             data->int_value = minipack_fread_int(file, &sz);
             check(sz != 0, "Unable to unpack int value");
         }
@@ -427,20 +432,21 @@ int sky_add_event_message_process(sky_add_event_message *message, sky_table *tab
         check(rc == 0 && property != NULL, "Unable to find property '%s' in table: %s", bdata(message_data->key), bdata(table->path));
         
         // Create event data based on data type.
-        if(message_data->data_type == &SKY_DATA_TYPE_STRING) {
-            data = sky_event_data_create_string(property->id, message_data->string_value);
-        }
-        else if(message_data->data_type == &SKY_DATA_TYPE_INT) {
-            data = sky_event_data_create_int(property->id, message_data->int_value);
-        }
-        else if(message_data->data_type == &SKY_DATA_TYPE_FLOAT) {
-            data = sky_event_data_create_float(property->id, message_data->float_value);
-        }
-        else if(message_data->data_type == &SKY_DATA_TYPE_BOOLEAN) {
-            data = sky_event_data_create_boolean(property->id, message_data->boolean_value);
-        }
-        else {
-            sentinel("Invalid data type in 'add_event' message");
+        switch(message_data->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                data = sky_event_data_create_string(property->id, message_data->string_value);
+                break;
+            case SKY_DATA_TYPE_INT:
+                data = sky_event_data_create_int(property->id, message_data->int_value);
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                data = sky_event_data_create_double(property->id, message_data->double_value);
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                data = sky_event_data_create_boolean(property->id, message_data->boolean_value);
+                break;
+            default:
+                sentinel("Invalid data type in 'add_event' message");
         }
         
         event->data[i] = data;

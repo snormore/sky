@@ -1,6 +1,7 @@
 #include "cursor.h"
 #include "path.h"
 #include "event.h"
+#include "minipack.h"
 #include "mem.h"
 #include "dbg.h"
 
@@ -267,7 +268,7 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
     sky_action_id_t *action_id = (sky_action_id_t*)(data + descriptor->action_descriptor.offset);
     if(event_flag & SKY_EVENT_FLAG_ACTION) {
         *action_id = *((sky_action_id_t*)ptr);
-        ptr += sizeof(sky_action_id);
+        ptr += sizeof(sky_action_id_t);
     }
     else {
         *action_id = 0;
@@ -287,24 +288,20 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
 
             // Assign value to data object member.
             sky_data_property_descriptor *property_descriptor = &descriptor->property_descriptors[property_id-descriptor->min_property_id];
-            uint16_t offset = property_descriptor.offset;
-            void *property_target_ptr = data + property_descriptor.offset;
-            property_descriptor.setter(property_target_ptr, ptr, &sz);
+            void *property_target_ptr = data + property_descriptor->offset;
+            property_descriptor->setter(property_target_ptr, ptr, &sz);
             
             // If there is no size then move it forward manually.
             if(sz == 0) {
                 sz = minipack_sizeof_elem_and_data(ptr);
             }
             ptr += sz;
-            
-            // TODO: Finish off data assignment.
         }
     }
     
     return 0;
 
 error:
-    *action_id = 0;
     return -1;
 }
 

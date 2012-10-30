@@ -21,7 +21,7 @@ int test_sky_add_property_message_pack() {
     cleantmp();
     sky_add_property_message *message = sky_add_property_message_create();
     message->property->type = SKY_PROPERTY_TYPE_OBJECT;
-    message->property->data_type = bfromcstr("Int");
+    message->property->data_type = SKY_DATA_TYPE_INT;
     message->property->name = bfromcstr("foo");
     
     FILE *file = fopen("tmp/message", "w");
@@ -39,7 +39,7 @@ int test_sky_add_property_message_unpack() {
     fclose(file);
 
     mu_assert_bool(message->property->type == SKY_PROPERTY_TYPE_OBJECT);
-    mu_assert_bstring(message->property->data_type, "Int");
+    mu_assert_bool(message->property->data_type == SKY_DATA_TYPE_INT);
     mu_assert_bstring(message->property->name, "foo");
     sky_add_property_message_free(message);
     return 0;
@@ -58,7 +58,7 @@ int test_sky_add_property_message_process() {
     
     sky_add_property_message *message = sky_add_property_message_create();
     message->property->type = SKY_PROPERTY_TYPE_OBJECT;
-    message->property->data_type = bfromcstr("Int");
+    message->property->data_type = SKY_DATA_TYPE_INT;
     message->property->name = bfromcstr("foo");
 
     FILE *output = fopen("tmp/output", "w");

@@ -18,21 +18,6 @@ int sky_property_update_type(sky_property *property);
 
 //==============================================================================
 //
-// Definitions
-//
-//==============================================================================
-
-struct tagbstring SKY_DATA_TYPE_INT = bsStatic("Int");
-
-struct tagbstring SKY_DATA_TYPE_FLOAT = bsStatic("Float");
-
-struct tagbstring SKY_DATA_TYPE_BOOLEAN = bsStatic("Boolean");
-
-struct tagbstring SKY_DATA_TYPE_STRING = bsStatic("String");
-
-
-//==============================================================================
-//
 // Functions
 //
 //==============================================================================
@@ -64,8 +49,7 @@ void sky_property_free(sky_property *property)
     if(property) {
         property->property_file = NULL;
         property->id = 0;
-        if(property->data_type) bdestroy(property->data_type);
-        property->data_type = NULL;
+        property->data_type = SKY_DATA_TYPE_NONE;
         if(property->name) bdestroy(property->name);
         property->name = NULL;
         free(property);
@@ -91,7 +75,11 @@ size_t sky_property_sizeof(sky_property *property)
     sz += minipack_sizeof_raw(strlen("type")) + strlen("type");
     sz += minipack_sizeof_uint(property->type);
     sz += minipack_sizeof_raw(strlen("dataType")) + strlen("dataType");
-    sz += blength(property->data_type);
+
+    bstring data_type_str = sky_data_type_to_str(property->data_type);
+    sz += blength(data_type_str);
+    bdestroy(data_type_str);
+
     sz += minipack_sizeof_raw(strlen("name")) + strlen("name");
     sz += blength(property->name);
     return sz;
@@ -135,7 +123,9 @@ int sky_property_pack(sky_property *property, FILE *file)
 
     // Data Type
     check(sky_minipack_fwrite_bstring(file, &data_type_str) == 0, "Unable to write data type key");
-    check(sky_minipack_fwrite_bstring(file, property->data_type) == 0, "Unable to write data type value");
+    bstring data_type_name = sky_data_type_to_str(property->data_type);
+    check(sky_minipack_fwrite_bstring(file, data_type_name) == 0, "Unable to write data type value");
+    bdestroy(data_type_name);
 
     // Name
     check(sky_minipack_fwrite_bstring(file, &name_str) == 0, "Unable to write name key");
@@ -181,8 +171,11 @@ int sky_property_unpack(sky_property *property, FILE *file)
             check(sz > 0, "Unable to read property type");
         }
         else if(biseqcstr(key, "dataType")) {
-            rc = sky_minipack_fread_bstring(file, &property->data_type);
+            bstring data_type_name = NULL;
+            rc = sky_minipack_fread_bstring(file, &data_type_name);
             check(rc == 0, "Unable to read property data type");
+            property->data_type = sky_data_type_to_enum(data_type_name);
+            bdestroy(data_type_name);
         }
         else if(biseqcstr(key, "name")) {
             rc = sky_minipack_fread_bstring(file, &property->name);
@@ -225,47 +218,6 @@ int sky_property_update_type(sky_property *property)
     // Negative property id indicates an action property.
     else if(property->id < 0) {
         property->type = SKY_PROPERTY_TYPE_ACTION;
-    }
-
-    return 0;
-
-error:
-    return -1;
-}
-
-
-//--------------------------------------
-// Data Type
-//--------------------------------------
-
-// Retrieves a reference to a standardized bstring that represents the name
-// of the data type.
-//
-// type_name - The name of the type.
-// ret       - A pointer to where the standardized type name should be returned.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_property_get_standard_data_type_name(bstring type_name, bstring *ret)
-{
-    check(type_name != NULL, "Type name required");
-    check(ret != NULL, "Return pointer required");
-
-    // Check against standard types.
-    if(biseq(&SKY_DATA_TYPE_INT, type_name)) {
-        *ret = &SKY_DATA_TYPE_INT;
-    }
-    else if(biseq(&SKY_DATA_TYPE_FLOAT, type_name)) {
-        *ret = &SKY_DATA_TYPE_FLOAT;
-    }
-    else if(biseq(&SKY_DATA_TYPE_BOOLEAN, type_name)) {
-        *ret = &SKY_DATA_TYPE_BOOLEAN;
-    }
-    else if(biseq(&SKY_DATA_TYPE_STRING, type_name)) {
-        *ret = &SKY_DATA_TYPE_STRING;
-    }
-    // If this is not a standard type then return the name that came in.
-    else {
-        sentinel("Type is not a standard type: %s", bdata(type_name));
     }
 
     return 0;
