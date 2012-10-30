@@ -17,7 +17,7 @@ void sky_data_descriptor_set_noop(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_set_string(void *target, void *value, size_t *sz);
 
-void sky_data_descriptor_set_int64(void *target, void *value, size_t *sz);
+void sky_data_descriptor_set_int(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_set_double(void *target, void *value, size_t *sz);
 
@@ -103,6 +103,39 @@ void sky_data_descriptor_free(sky_data_descriptor *descriptor)
 
 
 //--------------------------------------
+// Value Management
+//--------------------------------------
+
+// Assigns a value to a struct through the data descriptor.
+//
+// descriptor  - The data descriptor.
+// target      - The target struct.
+// property_id - The property id to set.
+// ptr         - A pointer to the memory location to read the value from.
+// sz          - A pointer to where the number of bytes read are returned to.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_data_descriptor_set_value(sky_data_descriptor *descriptor,
+                                  void *target, sky_property_id_t property_id,
+                                  void *ptr, size_t *sz)
+{
+    check(descriptor != NULL, "Descriptor required");
+    check(target != NULL, "Target struct required");
+    check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID out of range");
+    check(ptr != NULL, "Value pointer required");
+    
+    // Find the property descriptor and call the setter.
+    sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];
+    property_descriptor->setter(target + property_descriptor->offset, ptr, sz);
+    
+    return 0;
+
+error:
+    return -1;
+}
+
+
+//--------------------------------------
 // Property Management
 //--------------------------------------
 
@@ -110,7 +143,8 @@ void sky_data_descriptor_free(sky_data_descriptor *descriptor)
 //
 // descriptor  - The data descriptor.
 // property_id - The property id.
-// property_id - The property id.
+// offset      - The offset in the struct where the data should be set.
+// data_type   - The data type to set.
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
@@ -127,7 +161,6 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
     
     // Set the offset and setter function on the descriptor.
     property_descriptor->offset = offset;
-    
     switch(data_type) {
         case SKY_DATA_TYPE_NONE: {
             property_descriptor->setter = sky_data_descriptor_set_noop;
@@ -138,7 +171,7 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
             break;
         }
         case SKY_DATA_TYPE_INT: {
-            property_descriptor->setter = sky_data_descriptor_set_int64;
+            property_descriptor->setter = sky_data_descriptor_set_int;
             break;
         }
         case SKY_DATA_TYPE_DOUBLE: {
@@ -207,7 +240,7 @@ void sky_data_descriptor_set_string(void *target, void *value, size_t *sz)
 // sz     - A pointer to where the number of bytes read should be returned.
 //
 // Returns nothing.
-void sky_data_descriptor_set_int64(void *target, void *value, size_t *sz)
+void sky_data_descriptor_set_int(void *target, void *value, size_t *sz)
 {
     *((int64_t*)target) = minipack_unpack_int(value, sz);
 }

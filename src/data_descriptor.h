@@ -61,5 +61,18 @@ sky_data_descriptor *sky_data_descriptor_create( sky_property_id_t min_property_
 
 void sky_data_descriptor_free(sky_data_descriptor *descriptor);
 
+//--------------------------------------
+// Value Management
+//--------------------------------------
+
+int sky_data_descriptor_set_value(sky_data_descriptor *descriptor,
+    void *target, sky_property_id_t property_id, void *ptr, size_t *sz);
+
+//--------------------------------------
+// Property Management
+//--------------------------------------
+
+int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
+    sky_property_id_t property_id, uint16_t offset, sky_data_type_e data_type);
 
 #endif

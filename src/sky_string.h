@@ -12,7 +12,7 @@
 
 // The Sky string stores information about a fixed length string.
 typedef struct {
-    int64_t length;
+    int32_t length;
     char *data;
 } sky_string;
 
@@ -27,7 +27,7 @@ typedef struct {
 // Lifecycle
 //======================================
 
-sky_string sky_string_create(int64_t length, char *data);
+sky_string sky_string_create(int32_t length, char *data);
 
 
 //======================================

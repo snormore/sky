@@ -19,7 +19,7 @@
 // data   - A pointer to the character data.
 //
 // Returns a fixed-length string
-sky_string sky_string_create(int64_t length, char *data)
+sky_string sky_string_create(int32_t length, char *data)
 {
     sky_string string;
     string.length = length;
