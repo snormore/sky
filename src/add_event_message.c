@@ -351,6 +351,7 @@ int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file
     uint32_t i;
     for(i=0; i<map_length; i++) {
         sky_add_event_message_data *data = sky_add_event_message_data_create(); check_mem(data);
+        message->data[i] = data;
         
         rc = sky_minipack_fread_bstring(file, &data->key);
         check(rc == 0, "Unable to read data key");
@@ -406,6 +407,7 @@ int sky_add_event_message_process(sky_add_event_message *message, sky_table *tab
 {
     int rc;
     size_t sz;
+    sky_event *event = NULL;
     check(message != NULL, "Message required");
     check(table != NULL, "Table required");
     check(output != NULL, "Output stream required");
@@ -414,7 +416,7 @@ int sky_add_event_message_process(sky_add_event_message *message, sky_table *tab
     struct tagbstring ok_str = bsStatic("ok");
 
     // Create event object.
-    sky_event *event = sky_event_create(message->object_id, message->timestamp, message->action_id);
+    event = sky_event_create(message->object_id, message->timestamp, message->action_id);
     
     // Allocate space for event data.
     event->data_count = message->data_count;
@@ -461,8 +463,10 @@ int sky_add_event_message_process(sky_add_event_message *message, sky_table *tab
     check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write output");
     check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write output");
     
+    sky_event_free(event);
     return 0;
 
 error:
+    sky_event_free(event);
     return -1;
 }

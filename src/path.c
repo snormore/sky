@@ -300,13 +300,13 @@ int sky_path_get_event_stats(void *path_ptr, sky_event *event,
                              uint32_t *event_count)
 {
     int rc;
+    sky_cursor cursor;
+    sky_cursor_init(&cursor);
     check(path_ptr != NULL, "Path pointer required");
     check(events != NULL, "Events return address required");
     check(event_count != NULL, "Event count return address required");
 
     // Initialize cursor.
-    sky_cursor cursor;
-    sky_cursor_init(&cursor);
     rc = sky_cursor_set_path(&cursor, path_ptr);
     check(rc == 0, "Unable to set cursor for path");
 
@@ -366,13 +366,15 @@ int sky_path_get_event_stats(void *path_ptr, sky_event *event,
         stat->start_pos = stat->end_pos = path_length;
         stat->sz = event_length;
     }
-    
+
+    sky_cursor_uninit(&cursor);
     return 0;
 
 error:
     free(*events);
     *events = NULL;
     *event_count = 0;
+    sky_cursor_uninit(&cursor);
     return -1;
 }
 

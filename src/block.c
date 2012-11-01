@@ -301,6 +301,8 @@ error:
 int sky_block_full_update(sky_block *block)
 {
     int rc;
+    sky_cursor cursor;
+    sky_cursor_init(&cursor);
     check(block != NULL, "Block required");
 
     // Initialize path iterator.
@@ -336,7 +338,6 @@ int sky_block_full_update(sky_block *block)
         path_initialized = true;
         
         // Use cursor to loop over each event.
-        sky_cursor cursor;
         sky_cursor_init(&cursor);
         sky_cursor_set_path(&cursor, ptr);
         check(rc == 0, "Unable to set cursor path");
@@ -366,6 +367,8 @@ int sky_block_full_update(sky_block *block)
             check(rc == 0, "Unable to move to next event");
         }
         
+        sky_cursor_uninit(&cursor);
+
         // Move to next path.
         rc = sky_path_iterator_next(&iterator);
         check(rc == 0, "Unable to move to next path");
@@ -378,6 +381,7 @@ int sky_block_full_update(sky_block *block)
     return 0;
 
 error:
+    sky_cursor_uninit(&cursor);
     return -1;
 }
 
@@ -891,6 +895,7 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
 {
     int rc;
     sky_cursor cursor;
+    sky_cursor_init(&cursor);
     check(block != NULL, "Block required");
     check(event != NULL, "Event required");
 

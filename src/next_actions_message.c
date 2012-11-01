@@ -179,6 +179,9 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
     int rc;
     uint32_t i;
     size_t sz;
+    sky_cursor cursor;
+    sky_cursor_init(&cursor);
+
     check(message != NULL, "Message required");
     check(message->prior_action_id_count > 0, "Prior actions must be specified");
     check(table != NULL, "Table required");
@@ -225,7 +228,6 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
         check(rc == 0, "Unable to retrieve the path iterator pointer");
     
         // Initialize the cursor.
-        sky_cursor cursor;
         sky_cursor_init(&cursor);
         rc = sky_cursor_set_path(&cursor, path_ptr);
         check(rc == 0, "Unable to set cursor path");
@@ -258,6 +260,8 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
             // Increment event count.
             event_count++;
         }
+
+        sky_cursor_uninit(&cursor);
 
         // Move to next path.
         rc = sky_path_iterator_next(&iterator);
@@ -297,6 +301,7 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
     return 0;
 
 error:
+    sky_cursor_uninit(&cursor);
     free(results);
     return -1;
 }

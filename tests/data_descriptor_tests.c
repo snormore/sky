@@ -80,6 +80,7 @@ int test_sky_data_descriptor_set_int() {
     rc = sky_data_descriptor_set_value(descriptor, (void*)(&obj), 1, INT_DATA, &sz);
     mu_assert_long_equals(sz, 3L);
     mu_assert_int64_equals(obj.int_value, 1000LL);
+    sky_data_descriptor_free(descriptor);
     return 0;
 }
 
@@ -93,6 +94,7 @@ int test_sky_data_descriptor_set_double() {
     rc = sky_data_descriptor_set_value(descriptor, (void*)(&obj), -1, DOUBLE_DATA, &sz);
     mu_assert_long_equals(sz, 9L);
     mu_assert_bool(fabs(obj.double_value - 100.2) < 0.1);
+    sky_data_descriptor_free(descriptor);
     return 0;
 }
 
@@ -109,6 +111,7 @@ int test_sky_data_descriptor_set_boolean() {
     rc = sky_data_descriptor_set_value(descriptor, (void*)(&obj), 2, BOOLEAN_FALSE_DATA, &sz);
     mu_assert_long_equals(sz, 1L);
     mu_assert_bool(obj.boolean_value == false);
+    sky_data_descriptor_free(descriptor);
     return 0;
 }
 
@@ -123,6 +126,7 @@ int test_sky_data_descriptor_set_string() {
     mu_assert_long_equals(sz, 4L);
     mu_assert_int_equals(obj.string_value.length, 3);
     mu_assert_bool(obj.string_value.data == &STRING_DATA[1]);
+    sky_data_descriptor_free(descriptor);
     return 0;
 }
 
