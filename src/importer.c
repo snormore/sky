@@ -85,7 +85,10 @@ void sky_importer_free(sky_importer *importer)
     if(importer) {
         if(importer->path) bdestroy(importer->path);
         importer->path = NULL;
-        
+
+        sky_table_free(importer->table);
+        importer->table = NULL;
+
         free(importer);
     }
 }
@@ -253,7 +256,7 @@ int sky_importer_process(sky_importer *importer, bstring source,
     
     // Process over child tokens.
     int32_t i;
-    for(i=0; i<root_token->size; i++) {
+    for(i=0; i<root_token->size-1; i++) {
         jsmntok_t *token = &tokens[index];
         index++;
         
@@ -311,8 +314,6 @@ int sky_importer_process_table(sky_importer *importer, bstring source,
         }
     }
     
-    sky_table_close(importer->table);
-
     return 0;
 
 error:
@@ -503,6 +504,7 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
                                jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
+    sky_event *event = NULL;
     check(importer != NULL, "Importer required");
     check(source != NULL, "Source required");
     check(tokens != NULL, "Tokens required");
@@ -517,7 +519,7 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
     }
 
     // Create the event object.
-    sky_event *event = sky_event_create(0, 0, 0); check_mem(event);
+    event = sky_event_create(0, 0, 0); check_mem(event);
         
     // Process over child tokens.
     int32_t i;
@@ -538,6 +540,7 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
             sky_action *action = NULL;
             bstring action_name = sky_importer_token_parse_bstring(source, &tokens[(*index)++]);
             rc = sky_action_file_find_action_by_name(importer->table->action_file, action_name, &action);
+            bdestroy(action_name);
             check(rc == 0, "Unable to find action: %s", bdata(action_name));
             event->action_id = action->id;
         }
@@ -554,9 +557,11 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
     rc = sky_table_add_event(importer->table, event);
     check(rc == 0, "Unable to add event");
     
+    sky_event_free(event);
     return 0;
 
 error:
+    sky_event_free(event);
     return -1;
 }
 
@@ -564,6 +569,7 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
                                     bstring source, jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
+    bstring property_name = NULL;
     check(importer != NULL, "Importer required");
     check(source != NULL, "Source required");
     check(tokens != NULL, "Tokens required");
@@ -583,9 +589,11 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
         
         // Retrieve property name.
         sky_property *property = NULL;
-        bstring property_name = sky_importer_token_parse_bstring(source, key_token);
+        property_name = sky_importer_token_parse_bstring(source, key_token);
         rc = sky_property_file_find_by_name(importer->table->property_file, property_name, &property);
         check(rc == 0 && property != NULL, "Unable to find property: %s", bdata(property_name));
+        bdestroy(property_name);
+        property_name = NULL;
 
         // Reallocate event data array.
         event->data_count++;
@@ -610,7 +618,6 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
             }
             // Numbers (or null, which evaluates to Int 0).
             else {
-                bstring value = sky_importer_token_parse_bstring(source, value_token);
                 if(property->data_type == SKY_DATA_TYPE_DOUBLE) {
                     event_data = sky_event_data_create_double(property->id, atof(bdata(value))); check_mem(event_data);
                 }
@@ -629,6 +636,7 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
     return 0;
 
 error:
+    bdestroy(property_name);
     return -1;
 }
 

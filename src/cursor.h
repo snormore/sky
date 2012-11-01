@@ -57,9 +57,11 @@ sky_cursor *sky_cursor_create();
 
 sky_cursor *sky_cursor_alloc();
 
-void sky_cursor_init(sky_cursor *);
+void sky_cursor_init(sky_cursor *cursor);
 
 void sky_cursor_free(sky_cursor *cursor);
+
+void sky_cursor_uninit(sky_cursor *cursor);
 
 //--------------------------------------
 // Path Management

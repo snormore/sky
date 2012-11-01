@@ -93,6 +93,7 @@ void sky_table_free(sky_table *table)
         table->path = NULL;
         sky_table_unload_action_file(table);
         sky_table_unload_property_file(table);
+        sky_table_unload_data_file(table);
         free(table);
     }
 }

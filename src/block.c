@@ -890,6 +890,7 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                                  size_t *block_data_length)
 {
     int rc;
+    sky_cursor cursor;
     check(block != NULL, "Block required");
     check(event != NULL, "Event required");
 
@@ -913,7 +914,6 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
             check(rc == 0, "Unable to retrieve iterator's current pointer");
             
             // Use cursor to find event insertion point.
-            sky_cursor cursor;
             sky_cursor_init(&cursor);
             sky_cursor_set_path(&cursor, *path_ptr);
             check(rc == 0, "Unable to set cursor path");
@@ -941,6 +941,8 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                 check(rc == 0, "Unable to move to next event");
             }
             
+            sky_cursor_uninit(&cursor);
+
             // If no insertion point was found then append the event to the
             // end of the path.
             if(*event_ptr == NULL) {
@@ -969,6 +971,7 @@ error:
     *path_ptr  = NULL;
     *event_ptr = NULL;
     *block_data_length = 0;
+    sky_cursor_uninit(&cursor);
     return -1;
 }
 

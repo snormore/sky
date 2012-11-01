@@ -108,11 +108,9 @@ int test_sky_cursor_set_data() {
     importtmp("tests/fixtures/cursors/0/import.json");
     char data[1024]; memset(data, 0, 1024);
     FILE *file = fopen("tmp/0/data", "r");
-    size_t sz = fread(data, 1, 1024, file);
+    fread(data, 1, 1024, file);
     fclose(file);
     
-    memdump(data, sz);
-
     // Setup data object & data descriptor.
     test_t obj; memset(&obj, 0, sizeof(obj));
     sky_data_descriptor *descriptor = sky_data_descriptor_create(-4, 4);

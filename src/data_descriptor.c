@@ -81,7 +81,7 @@ sky_data_descriptor *sky_data_descriptor_create(sky_property_id_t min_property_i
     check_mem(descriptor);
     descriptor->min_property_id = min_property_id;
     descriptor->max_property_id = max_property_id;
-    descriptor->property_descriptors = (sky_data_property_descriptor*)(descriptor + sizeof(sky_data_descriptor));
+    descriptor->property_descriptors = (sky_data_property_descriptor*)(((void*)descriptor) + sizeof(sky_data_descriptor));
     descriptor->property_count = property_count;
     descriptor->property_zero_descriptor = NULL;
     
@@ -114,6 +114,10 @@ error:
 void sky_data_descriptor_free(sky_data_descriptor *descriptor)
 {
     if(descriptor) {
+        if(descriptor->action_property_descriptors != NULL) free(descriptor->action_property_descriptors);
+        descriptor->action_property_descriptors = NULL;
+        descriptor->action_property_descriptor_count = 0;
+        
         free(descriptor);
     }
 }
@@ -247,7 +251,7 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
         // If it's not in the list then add it.
         if(!found) {
             descriptor->action_property_descriptor_count++;
-            descriptor->action_property_descriptors = realloc(descriptor->action_property_descriptors, sizeof(*descriptor->action_property_descriptors));
+            descriptor->action_property_descriptors = realloc(descriptor->action_property_descriptors, sizeof(*descriptor->action_property_descriptors) * descriptor->action_property_descriptor_count);
             check_mem(descriptor->action_property_descriptors);
             descriptor->action_property_descriptors[descriptor->action_property_descriptor_count-1] = property_descriptor;
         }

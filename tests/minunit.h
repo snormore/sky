@@ -118,6 +118,7 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
     int rc = sky_importer_import(importer, file); \
     mu_assert_int_equals(rc, 0); \
     fclose(file); \
+    sky_importer_free(importer); \
 } while(0)
     
 // Asserts that a block has a specific block id and object id range.

@@ -59,8 +59,18 @@ void sky_cursor_init(sky_cursor *cursor)
 void sky_cursor_free(sky_cursor *cursor)
 {
     if(cursor) {
-        if(cursor->paths) free(cursor->paths);
+        sky_cursor_uninit(cursor);
         free(cursor);
+    }
+}
+
+// Deallocates child members.
+//
+// cursor - The cursor.
+void sky_cursor_uninit(sky_cursor *cursor)
+{
+    if(cursor) {
+        if(cursor->paths) free(cursor->paths);
     }
 }
 

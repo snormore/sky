@@ -15,6 +15,8 @@ TEST_OBJECTS=$(patsubst %.c,%,${TEST_SOURCES})
 
 PREFIX?=/usr/local
 
+.PHONY: test valgrind
+
 ################################################################################
 # Main Targets
 ################################################################################
@@ -64,13 +66,22 @@ src/jsmn/jsmn.o: src/jsmn/jsmn.c
 	$(CC) $(CFLAGS) -Wno-sign-compare -Isrc -c -o $@ $<
 
 
+
+################################################################################
+# Memory Leak Check
+################################################################################
+
+valgrind: VALGRIND=valgrind
+valgrind: CFLAGS+=-DVALGRIND
+valgrind: clean all
+
+
 ################################################################################
 # Tests
 ################################################################################
 
-.PHONY: test
 test: $(TEST_OBJECTS) tmp
-	@sh ./tests/runtests.sh
+	@sh ./tests/runtests.sh $(VALGRIND)
 
 $(TEST_OBJECTS): %: %.c bin/libsky.a
 	$(CC) $(CFLAGS) -Isrc -o $@ $< bin/libsky.a

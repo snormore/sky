@@ -61,6 +61,8 @@ void sky_data_file_free(sky_data_file *data_file)
     if(data_file) {
         if(data_file->path) bdestroy(data_file->path);
         data_file->path = NULL;
+        if(data_file->header_path) bdestroy(data_file->header_path);
+        data_file->header_path = NULL;
         sky_data_file_unload(data_file);
         sky_data_file_unload_header(data_file);
         free(data_file);
@@ -134,7 +136,7 @@ error:
 int sky_data_file_load(sky_data_file *data_file)
 {
     int rc;
-    void *ptr;
+    void *ptr = NULL;
     check(data_file != NULL, "Data file required");
     check(data_file->path != NULL, "Data file path required");
 
@@ -165,9 +167,19 @@ int sky_data_file_load(sky_data_file *data_file)
         rc = ftruncate(data_file->data_fd, data_length);
         check(rc == 0, "Unable to truncate data file");
 
+        // Set the mmap pointer if this is valgrind.
+        void *tmpptr = NULL;
+#if VALGRIND
+        tmpptr = malloc(0x1000);
+#endif
         // Memory map the data file.
-        ptr = mmap(0, data_length, PROT_READ | PROT_WRITE, MAP_SHARED, data_file->data_fd, 0);
-        check(ptr != MAP_FAILED, "Unable to memory map data file");
+        // debug("[MMAP] FD=%d, LEN=%ld", data_file->data_fd, data_length);
+        ptr = mmap(tmpptr, data_length, PROT_READ | PROT_WRITE, MAP_SHARED, data_file->data_fd, 0);
+        
+        // Free the temporary pointer if this is valgrind.
+#if VALGRIND
+        free(tmpptr);
+#endif
     }
     // If we already have the data mapped then simply remap it to the
     // appropriate size.
@@ -181,6 +193,9 @@ int sky_data_file_load(sky_data_file *data_file)
     // Update the data file.
     data_file->data = ptr;
     data_file->data_length = data_length;
+
+    // Double check memory map worked.
+    check(data_file->data != NULL, "Unable to mmap data file: %s", bdata(data_file->path));
 
     return 0;
 
@@ -294,7 +309,6 @@ int sky_data_file_load_header(sky_data_file *data_file)
 
     rc = sky_data_file_normalize(data_file);
     check(rc == 0, "Unable to normalize data file");
-    
 
     return 0;
 

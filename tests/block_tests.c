@@ -5,6 +5,7 @@
 
 #include <block.h>
 #include <mem.h>
+#include <dbg.h>
 
 #include "minunit.h"
 
@@ -27,12 +28,14 @@ char DATA[] =
 //
 //==============================================================================
 
-#define INIT_DATA_FILE(PATH) \
+#define INIT_DATA_FILE(PATH) do {\
     loadtmp(PATH); \
     data_file = sky_data_file_create(); \
     data_file->path = bfromcstr("tmp/data"); \
     data_file->header_path = bfromcstr("tmp/header"); \
-    sky_data_file_load(data_file);
+    int _rc = sky_data_file_load(data_file); \
+    mu_assert_with_msg(_rc == 0, "Unable to init data file"); \
+} while(0)
 
 #define ASSERT_PATH_STAT(PATH_STAT, OBJECT_ID, START_POS, END_POS, SZ) do { \
     mu_assert_int_equals(PATH_STAT.object_id, OBJECT_ID); \
@@ -177,6 +180,7 @@ int test_sky_block_get_span_count() {
 int test_sky_block_get_path_stats_with_no_event() {
     sky_data_file *data_file;
     INIT_DATA_FILE("tests/fixtures/blocks/path_stats/a");
+
     sky_block_path_stat *paths = NULL;
     uint32_t path_count = 0;
     int rc = sky_block_get_path_stats(data_file->blocks[0], NULL, &paths, &path_count);
@@ -185,6 +189,7 @@ int test_sky_block_get_path_stats_with_no_event() {
     ASSERT_PATH_STAT(paths[0], 3, 0L, 41L, 41L);
     ASSERT_PATH_STAT(paths[1], 10, 41L, 60L, 19L);
     sky_data_file_free(data_file);
+    exit(0);
     return 0;
 }
 

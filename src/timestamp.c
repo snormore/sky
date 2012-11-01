@@ -38,6 +38,7 @@ int sky_timestamp_parse(bstring str, sky_timestamp_t *ret)
     strftime(buffer, 100, "%s", &tp);
     sky_timestamp_t value = atoll(buffer);
     *ret = value * 1000000;
+    bdestroy(str2);
     
     return 0;
 
