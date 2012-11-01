@@ -13,17 +13,6 @@ typedef struct sky_action sky_action;
 
 //==============================================================================
 //
-// Overview
-//
-//==============================================================================
-
-// An action defines a type of verb associated with an event. For example,
-// viewing a certain web page (e.g. /index.html) for a user would be
-// considered an action.
-
-
-//==============================================================================
-//
 // Typedefs
 //
 //==============================================================================
@@ -34,7 +23,6 @@ struct sky_action {
     sky_action_id_t id;
     bstring name;
 };
-
 
 
 //==============================================================================

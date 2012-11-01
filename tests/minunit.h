@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <sys/stat.h>
 #include <stdbool.h>
 #include <bstring.h>
@@ -168,3 +169,26 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
         mu_fail("Memory contents do not match. Memory dumped to: " MEMDUMPFILE); \
     } \
 } while(0)
+
+// Redirects STDERR to a log.
+#define mu_begin_log() do { \
+    bool opened = freopen("tmp/stderr", "w", stderr); \
+    mu_assert_with_msg(opened, "Unable to redirect STDERR to log"); \
+} while(0)
+
+// Redirects STDERR back to the console output.
+#define mu_end_log() do { \
+    fflush(stderr); \
+    dup2(1, 2); \
+} while(0)
+
+// Asserts that a given string is in the log.
+#define mu_assert_log(STRING) do { \
+    FILE *log_file = fopen("tmp/stderr", "r"); \
+    mu_assert_with_msg(log_file != NULL, "Unable to open log file"); \
+    bstring log_content = bread((bNread)fread, log_file); \
+    struct tagbstring search_str = bsStatic(STRING); \
+    mu_assert_with_msg(binstr(log_content, 0, &search_str) != BSTR_ERR, "Text not found in log: " STRING); \
+    bdestroy(log_content); \
+} while(0)
+

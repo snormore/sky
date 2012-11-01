@@ -21,6 +21,7 @@
 int sky_minipack_fread_bstring(FILE *file, bstring *ret)
 {
     size_t sz;
+    bstring str = NULL;
     
     // Read string length.
     uint32_t length = minipack_fread_raw(file, &sz);
@@ -35,7 +36,7 @@ int sky_minipack_fread_bstring(FILE *file, bstring *ret)
     check(sz == length, "Expected %d bytes, received %ld bytes at byte %ld", length, sz, ftell(file));
 
     // Create bstring from buffer and return.
-    bstring str = blk2bstr(buffer, length); check_mem(str);
+    str = blk2bstr(buffer, length); check_mem(str);
     *ret = str;
     
     // Clean up.

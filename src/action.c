@@ -8,6 +8,18 @@
 
 //==============================================================================
 //
+// Definitions
+//
+//==============================================================================
+
+#define SKY_ACTION_KEY_COUNT 2
+
+struct tagbstring SKY_ACTION_ID_STR = bsStatic("id");
+struct tagbstring SKY_ACTION_NAME_STR = bsStatic("name");
+
+
+//==============================================================================
+//
 // Functions
 //
 //==============================================================================
@@ -21,8 +33,7 @@
 // Returns a reference to the new action if successful.
 sky_action *sky_action_create()
 {
-    sky_action *action = calloc(sizeof(sky_action), 1);
-    check_mem(action);
+    sky_action *action = calloc(sizeof(*action), 1); check_mem(action);
     return action;
     
 error:
@@ -57,10 +68,10 @@ void sky_action_free(sky_action *action)
 size_t sky_action_sizeof(sky_action *action)
 {
     size_t sz = 0;
-    sz += minipack_sizeof_map(2);
-    sz += minipack_sizeof_raw(strlen("id")) + strlen("id");
+    sz += minipack_sizeof_map(SKY_ACTION_KEY_COUNT);
+    sz += minipack_sizeof_raw(blength(&SKY_ACTION_ID_STR)) + blength(&SKY_ACTION_ID_STR);
     sz += minipack_sizeof_uint(action->id);
-    sz += minipack_sizeof_raw(strlen("name")) + strlen("name");
+    sz += minipack_sizeof_raw(blength(&SKY_ACTION_NAME_STR)) + blength(&SKY_ACTION_NAME_STR);
     sz += blength(action->name);
     return sz;
 }
@@ -77,20 +88,17 @@ int sky_action_pack(sky_action *action, FILE *file)
     check(action != NULL, "Action required");
     check(file != NULL, "File stream required");
 
-    struct tagbstring id_str = bsStatic("id");
-    struct tagbstring name_str = bsStatic("name");
-
     // Map
-    minipack_fwrite_map(file, 2, &sz);
+    minipack_fwrite_map(file, SKY_ACTION_KEY_COUNT, &sz);
     check(sz > 0, "Unable to write map");
     
     // ID
-    check(sky_minipack_fwrite_bstring(file, &id_str) == 0, "Unable to write id key");
+    check(sky_minipack_fwrite_bstring(file, &SKY_ACTION_ID_STR) == 0, "Unable to write id key");
     minipack_fwrite_uint(file, action->id, &sz);
     check(sz > 0, "Unable to write id value");
 
     // Name
-    check(sky_minipack_fwrite_bstring(file, &name_str) == 0, "Unable to write name key");
+    check(sky_minipack_fwrite_bstring(file, &SKY_ACTION_NAME_STR) == 0, "Unable to write name key");
     check(sky_minipack_fwrite_bstring(file, action->name) == 0, "Unable to write name value");
 
     return 0;
@@ -123,15 +131,15 @@ int sky_action_unpack(sky_action *action, FILE *file)
         rc = sky_minipack_fread_bstring(file, &key);
         check(rc == 0, "Unable to read map key");
         
-        if(biseqcstr(key, "id")) {
+        if(biseq(key, &SKY_ACTION_ID_STR)) {
             action->id = (sky_action_id_t)minipack_fread_uint(file, &sz);
             check(sz > 0, "Unable to read action id");
         }
-        else if(biseqcstr(key, "name")) {
+        else if(biseq(key, &SKY_ACTION_ID_STR)) {
             rc = sky_minipack_fread_bstring(file, &action->name);
             check(rc == 0, "Unable to read action id");
         }
-        
+
         bdestroy(key);
     }
     
