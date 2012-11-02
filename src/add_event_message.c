@@ -345,7 +345,8 @@ int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file
     check(sz > 0, "Unable to read map");
     
     // Allocate data array.
-    message->data = calloc(1, sizeof(*message->data) * map_length); check_mem(message->data);
+    message->data_count = map_length;
+    message->data = calloc(1, sizeof(*message->data) * message->data_count); check_mem(message->data);
     
     // Map items
     uint32_t i;

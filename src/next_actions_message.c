@@ -267,7 +267,7 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
         rc = sky_path_iterator_next(&iterator);
         check(rc == 0, "Unable to find next path");
     }
-    
+
     // End benchmark.
     gettimeofday(&tv, NULL);
     int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
@@ -297,10 +297,15 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
         }
     }
     
+    // Free the data descriptor.
+    rc = sky_property_file_free_data_descriptor(table->property_file, descriptor);
+    check(rc == 0, "Unable to free data descriptor");
+    
     free(results);
     return 0;
 
 error:
+    sky_property_file_free_data_descriptor(table->property_file, descriptor);
     sky_cursor_uninit(&cursor);
     free(results);
     return -1;
