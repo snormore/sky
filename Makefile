@@ -47,11 +47,11 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ranlib $@
 
 bin/skyd: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a
+	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a -lzmq
 	chmod 700 $@
 
 bin/sky-gen: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a
+	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a -lzmq
 	chmod 700 $@
 
 bin:
@@ -84,7 +84,7 @@ test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh $(VALGRIND)
 
 $(TEST_OBJECTS): %: %.c bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -o $@ $< bin/libsky.a
+	$(CC) $(CFLAGS) -Isrc -o $@ $< -lzmq bin/libsky.a
 
 
 ################################################################################
