@@ -5,21 +5,9 @@
 
 #include "bstring.h"
 #include "dbg.h"
-#include "database.h"
 #include "mem.h"
 #include "table.h"
 #include "version.h"
-
-
-//==============================================================================
-//
-// Overview
-//
-//==============================================================================
-
-// The sky-gen application is used for generating random datasets for
-// performance testing. It allows a user to set options such as the number of
-// paths to generate and the average number of events to generate per path.
 
 
 //==============================================================================
@@ -104,7 +92,7 @@ Options *parseopts(int argc, char **argv)
 
     // Retrieve path as first non-getopts option.
     if(argc < 1) {
-        fprintf(stderr, "Error: Database path required.\n\n");
+        fprintf(stderr, "Error: Table path required.\n\n");
         exit(1);
     }
     options->path = bfromcstr(argv[0]);
@@ -174,9 +162,9 @@ void usage()
 //
 //==============================================================================
 
-// Generates a database with random data at a given path.
+// Generates a table with random data at a given path.
 //
-// options - A list of options to use while generating the database.
+// options - A list of options to use while generating the table.
 // event_count - The number of events generated.
 void generate(Options *options, uint32_t *total)
 {
@@ -245,7 +233,7 @@ int main(int argc, char **argv)
     // Start time.
     time_t t0 = time(NULL);
 
-    // Generate database.
+    // Generate table.
     uint32_t total;
     generate(options, &total);
 

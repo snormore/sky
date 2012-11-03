@@ -25,8 +25,8 @@
 //
 //==============================================================================
 
-int sky_server_open_table(sky_server *server, bstring database_name,
-    bstring table_name, sky_table **table);
+int sky_server_open_table(sky_server *server, bstring table_name,
+    sky_table **table);
 
 int sky_server_close_table(sky_server *server, sky_table *table);
 
@@ -43,7 +43,7 @@ int sky_server_close_table(sky_server *server, sky_table *table);
 
 // Creates a reference to a server instance.
 //
-// path - The directory path where the databases reside.
+// path - The data directory path.
 //
 // Returns a reference to the server.
 sky_server *sky_server_create(bstring path)
@@ -214,15 +214,15 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
     rc = sky_message_header_unpack(header, input);
     check(rc == 0, "Unable to unpack message header");
 
-    // Ignore the database/table if this is a multi message.
+    // Ignore the table if this is a multi message.
     if(biseqcstr(header->name, "multi") == 1) {
         rc = sky_server_process_multi_message(server, input, output);
         check(rc == 0, "Unable to process multi message");
     }
     else {
-        // Open database & table.
+        // Open table.
         sky_table *table = NULL;
-        rc = sky_server_open_table(server, header->database_name, header->table_name, &table);
+        rc = sky_server_open_table(server, header->table_name, &table);
         check(rc == 0, "Unable to open table");
 
         // Parse appropriate message type.
@@ -272,24 +272,22 @@ error:
 // Opens an table.
 //
 // server        - The server that is opening the table.
-// database_name - The name of the database to open.
 // table_name    - The name of the table to open.
 // table         - Returns the instance of the table to the caller. 
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_open_table(sky_server *server, bstring database_name,
-                          bstring table_name,  sky_table **table)
+int sky_server_open_table(sky_server *server, bstring table_name, 
+                          sky_table **table)
 {
     int rc;
     check(server != NULL, "Server required");
-    check(blength(database_name) > 0, "Database name required");
     check(blength(table_name) > 0, "Table name required");
     
     // Initialize return values.
     *table = NULL;
     
     // Determine the path to the table.
-    bstring path = bformat("%s/%s/%s", bdata(server->path), bdata(database_name), bdata(table_name));
+    bstring path = bformat("%s/%s", bdata(server->path), bdata(table_name));
     check_mem(path);
 
     // If the table is already open then reuse it.

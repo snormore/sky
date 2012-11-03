@@ -10,38 +10,12 @@
 typedef struct sky_table sky_table;
 
 #include "bstring.h"
-#include "database.h"
 #include "action.h"
 #include "event.h"
 #include "types.h"
 #include "data_file.h"
 #include "action_file.h"
 #include "property_file.h"
-
-//==============================================================================
-//
-// Overview
-//
-//==============================================================================
-
-// The table represents the storage for a type of object. The table
-// is analogous to a table in a relational database. The table is
-// represented on the file system as a directory that contains a header file
-// and multiple data extent files numbered sequentially (1, 2, 3, etc).
-//
-// Extents are a collection of 64k blocks. Each block can store any number of
-// paths that can fit into it. If the size of the paths is larger than the block
-// can handle then the block is split into multiple blocks.
-//
-// Blocks are stored in the order in which they are created. This means that 
-// while objects are stored in order within a block, they are not necessarily 
-// stored in order from one block to the next. Because of this, the header file
-// is used to store a range of object ids for each block and serves as an index
-// when looking up a single object.
-//
-// Because of the redundancy of action names and data keys, those strings are
-// cached and converted into integer identifiers. The action cache is located
-// in the 'actions' file and the data keys cache is located in the 'keys' file.
 
 
 //==============================================================================
@@ -56,7 +30,6 @@ typedef struct sky_table sky_table;
 // table also maintains a cache of block info and predefined actions and
 // properties.
 struct sky_table {
-    sky_database *database;
     sky_data_file *data_file;
     sky_action_file *action_file;
     sky_property_file *property_file;

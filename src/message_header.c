@@ -15,7 +15,7 @@
 //
 //==============================================================================
 
-#define SKY_MESSAGE_HEADER_ITEM_COUNT 4
+#define SKY_MESSAGE_HEADER_ITEM_COUNT 3
 
 
 //==============================================================================
@@ -50,9 +50,6 @@ void sky_message_header_free(sky_message_header *header)
         if(header->name) bdestroy(header->name);
         header->name = NULL;
 
-        if(header->database_name) bdestroy(header->database_name);
-        header->database_name = NULL;
-
         if(header->table_name) bdestroy(header->table_name);
         header->table_name = NULL;
 
@@ -77,10 +74,8 @@ size_t sky_message_header_sizeof(sky_message_header *header)
     sz += minipack_sizeof_uint(header->version);
     sz += minipack_sizeof_raw(blength(header->name));
     sz += blength(header->name);
-    sz += minipack_sizeof_raw(blength(header->database_name));
-    sz += blength(header->database_name);
     sz += minipack_sizeof_raw(blength(header->table_name));
-    sz += blength(header->database_name);
+    sz += blength(header->table_name);
     return sz;
 }
 
@@ -108,10 +103,6 @@ int sky_message_header_pack(sky_message_header *header, FILE *file)
     // Message name
     rc = sky_minipack_fwrite_bstring(file, header->name);
     check(rc == 0, "Unable to pack name");
-
-    // Database name
-    rc = sky_minipack_fwrite_bstring(file, header->database_name);
-    check(rc == 0, "Unable to pack database name");
 
     // Table name
     rc = sky_minipack_fwrite_bstring(file, header->table_name);
@@ -149,15 +140,11 @@ int sky_message_header_unpack(sky_message_header *header, FILE *file)
     rc = sky_minipack_fread_bstring(file, &header->name);
     check(rc == 0, "Unable to pack name");
 
-    // Database name
-    rc = sky_minipack_fread_bstring(file, &header->database_name);
-    check(rc == 0, "Unable to pack database name");
-
     // Table name
     rc = sky_minipack_fread_bstring(file, &header->table_name);
     check(rc == 0, "Unable to pack table name");
 
-    debug("[%s.%lld:%s/%s]", bdata(header->name), header->version, bdata(header->database_name), bdata(header->table_name));
+    debug("[%s.%lld:%s]", bdata(header->name), header->version, bdata(header->table_name));
 
     return 0;
 

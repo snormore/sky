@@ -18,7 +18,6 @@
 typedef struct {
     uint64_t version;
     bstring name;
-    bstring database_name;
     bstring table_name;
 } sky_message_header;
 

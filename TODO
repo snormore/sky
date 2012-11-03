@@ -1,17 +1,3 @@
-# Refactoring
-- Move actions out of block code.
-- Move properties out of block code.
-- Move header out of block code.
-
-
-# Client API (hisky)
-- Add event
-- Ruby impl
-
-# Technical Debt
-- Keep databases open on server.
-- Rewrite header file to be in-memory.
-
 # Documentation
 - man pages
 - web site

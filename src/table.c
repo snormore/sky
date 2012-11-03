@@ -11,7 +11,6 @@
 #include "endian.h"
 #include "bstring.h"
 #include "file.h"
-#include "database.h"
 #include "block.h"
 #include "table.h"
 

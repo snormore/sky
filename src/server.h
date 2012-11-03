@@ -7,7 +7,6 @@
 #include <netinet/in.h>
 
 #include "bstring.h"
-#include "database.h"
 #include "table.h"
 #include "event.h"
 
@@ -53,7 +52,6 @@ typedef struct {
     int port;
     struct sockaddr_in* sockaddr;
     int socket;
-    sky_database *last_database;
     sky_table *last_table;
 } sky_server;
 

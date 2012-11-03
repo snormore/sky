@@ -19,15 +19,18 @@ do
             rm -f /tmp/sky-test.log
 
             # Check valgrind log if enabled.
-            VALGRIND_ERROR_SUMMARY=`grep "ERROR SUMMARY: 0 errors from 0 contexts" /tmp/valgrind.log`
-            if [ -n "$VALGRIND" ] && [ -z "$VALGRIND_ERROR_SUMMARY" ]; then
-                cat /tmp/valgrind.log
-                echo ""
-                echo "Run the following to reproduce:"
-                echo ""
-                echo "  $VALGRIND_CMD ./$test_file"
-                echo ""
-                exit 1
+            if [ -n "$VALGRIND" ]; then
+                VALGRIND_ERROR_SUMMARY=`grep "ERROR SUMMARY: 0 errors from 0 contexts" /tmp/valgrind.log`
+                
+                if [ -z "$VALGRIND_ERROR_SUMMARY" ]; then
+                    cat /tmp/valgrind.log
+                    echo ""
+                    echo "Run the following to reproduce:"
+                    echo ""
+                    echo "  $VALGRIND_CMD ./$test_file"
+                    echo ""
+                    exit 1
+                fi
             fi
         else
             # If error occurred then print off log.
