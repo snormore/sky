@@ -25,8 +25,7 @@
 //
 //==============================================================================
 
-int sky_server_open_table(sky_server *server, bstring table_name,
-    sky_table **table);
+int sky_server_open_table(sky_server *server, bstring name, sky_table **ret);
 
 int sky_server_close_table(sky_server *server, sky_table *table);
 
@@ -61,16 +60,39 @@ error:
     return NULL;
 }
 
+// Frees the tables on a server instance.
+//
+// server - The server.
+//
+// Returns nothing.
+void sky_server_free_tables(sky_server *server)
+{
+    if(server) {
+        uint32_t i;
+        for(i=0; i<server->table_count; i++) {
+            sky_table_free(server->tables[i]);
+            server->tables[i] = NULL;
+        }
+        free(server->tables);
+        server->tables = NULL;
+        server->table_count = 0;
+    }
+}
+
 // Frees a server instance from memory.
 //
 // server - The server object to free.
+//
+// Returns nothing.
 void sky_server_free(sky_server *server)
 {
     if(server) {
         if(server->path) bdestroy(server->path);
+        sky_server_free_tables(server);
         free(server);
     }
 }
+
 
 
 //--------------------------------------
@@ -269,50 +291,56 @@ error:
 // Table management
 //--------------------------------------
 
-// Opens an table.
+// Opens a table and attaches it to the server. Once a table is opened it
+// cannot be closed until the server shuts down. Calling this function to
+// open an already existing table will simply return the existing reference to
+// the table.
 //
-// server        - The server that is opening the table.
-// table_name    - The name of the table to open.
-// table         - Returns the instance of the table to the caller. 
+// server - The server.
+// name   - The table name.
+// ret    - A pointer to where the table reference should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_open_table(sky_server *server, bstring table_name, 
-                          sky_table **table)
+int sky_server_open_table(sky_server *server, bstring name, sky_table **ret)
 {
     int rc;
+    sky_table *table = NULL;
+    bstring path = NULL;
     check(server != NULL, "Server required");
-    check(blength(table_name) > 0, "Table name required");
+    check(blength(name) > 0, "Table name required");
     
     // Initialize return values.
-    *table = NULL;
+    *ret = NULL;
     
     // Determine the path to the table.
-    bstring path = bformat("%s/%s", bdata(server->path), bdata(table_name));
+    path = bformat("%s/%s", bdata(server->path), bdata(name));
     check_mem(path);
 
-    // If the table is already open then reuse it.
-    if(server->last_table != NULL && biseq(server->last_table->path, path) == 1) {
-        *table = server->last_table;
-    }
-    // Otherwise open the table.
-    else {
-        // Close the currently open table if one exists
-        if(server->last_table != NULL) {
-            rc = sky_server_close_table(server, server->last_table);
-            check(rc == 0, "Unable to close current table");
+    // Loop over tables to see if it's open yet.
+    uint32_t i;
+    for(i=0; i<server->table_count; i++) {
+        if(biseq(server->tables[i]->path, path) == 1) {
+            *ret = server->tables[i];
+            break;
         }
-        
+    }
+
+    // If the table is not yet opened then open it.
+    if(*ret == NULL) {
         // Create the table.
-        *table = sky_table_create(); check_mem(*table);
-        rc = sky_table_set_path(*table, path);
+        table = sky_table_create(); check_mem(table);
+        rc = sky_table_set_path(table, path);
         check(rc == 0, "Unable to set table path");
     
         // Open the table.
-        rc = sky_table_open(*table);
+        rc = sky_table_open(table);
         check(rc == 0, "Unable to open table");
-    
-        // Save the reference as the currently open table.
-        server->last_table = *table;
+        
+        // Append the table to the list of open tables.
+        server->table_count++;
+        server->tables = realloc(server->tables, server->table_count * sizeof(*server->tables));
+        check_mem(server->tables);
+        server->tables[server->table_count-1] = table;
     }
 
     bdestroy(path);
@@ -320,34 +348,8 @@ int sky_server_open_table(sky_server *server, bstring table_name,
 
 error:
     bdestroy(path);
-    sky_table_free(*table);
-    *table = NULL;
-    return -1;
-}
-
-// Closes a table.
-//
-// server - The server.
-// table  - The table to close.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_server_close_table(sky_server *server, sky_table *table)
-{
-    int rc;
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    
-    // Close the table.
-    rc = sky_table_close(table);
-    check(rc == 0, "Unable to close table");
-
-    // Free the table.
     sky_table_free(table);
-    
-    return 0;
-
-error:
-    sky_table_free(table);
+    *ret = NULL;
     return -1;
 }
 

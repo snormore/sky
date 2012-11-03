@@ -52,9 +52,9 @@ typedef struct {
     int port;
     struct sockaddr_in* sockaddr;
     int socket;
-    sky_table *last_table;
+    sky_table **tables;
+    uint32_t table_count;
 } sky_server;
-
 
 
 

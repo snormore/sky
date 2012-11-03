@@ -17,21 +17,129 @@
 
 #define SKY_DEFAULT_DATA_PATH "/usr/local/sky/data"
 
-typedef struct Options {
+typedef struct {
     bstring path;
     int port;
-} Options;
+} skyd_options;
+
 
 
 //==============================================================================
 //
-// Command Line Arguments
+// Forward Declarations
 //
 //==============================================================================
 
-Options *parseopts(int argc, char **argv)
+int skyd_server_create(bstring path, int port, sky_server **ret);
+
+skyd_options *skyd_options_parse(int argc, char **argv);
+
+void skyd_options_free(skyd_options *options);
+
+
+//==============================================================================
+//
+// Functions
+//
+//==============================================================================
+
+//--------------------------------------
+// Main
+//--------------------------------------
+
+int main(int argc, char **argv)
 {
-    Options *options = (Options*)calloc(1, sizeof(Options));
+    int rc;
+
+    // Parse command line options.
+    skyd_options *options = skyd_options_parse(argc, argv);
+
+    // Create server.
+    sky_server *server = NULL;
+    rc = skyd_server_create(options->path, options->port, &server);
+    check(rc == 0, "Unable to create server");
+    
+    // Display status.
+    printf("Sky Server v%s\n", SKY_VERSION);
+    printf("Listening on 0.0.0.0:%d, CTRL+C to stop\n", server->port);
+    
+    // Signal handlers.
+
+    // Run server.
+    sky_server_start(server);
+    while(true) {
+        sky_server_accept(server);
+    }
+
+    // Clean up.
+    sky_server_stop(server);
+    sky_server_free(server);
+    skyd_options_free(options);
+
+    return 0;
+
+error:
+    return 1;
+}
+
+
+//--------------------------------------
+// Server
+//--------------------------------------
+
+// Creates a server and registers message handlers.
+//
+// path - The path to the data directory.
+// port - The port to run the server on.
+// ret  - A pointer where the server should be returned to.
+//
+// Return 0 if successful, otherwise returns -1.
+int skyd_server_create(bstring path, int port, sky_server **ret)
+{
+    int rc;
+    sky_server *server = NULL;
+    check(blength(path) > 0, "Path required");
+
+    // Create server.
+    server = sky_server_create(path);
+    check_mem(server);
+    
+    // Assign a different port if one is provided.
+    if(port > 0) {
+        server->port = port;
+    }
+    
+    // Register the default message handlers on the server.
+    //rc = sky_server_register_default_message_handlers(server);
+    //check(rc == 0, "Unable to register default message handlers");
+
+    // Ignore sigpipe.
+    signal(SIGPIPE, SIG_IGN);
+
+    // Return the server reference.
+    *ret = server;
+    return 0;
+
+error:
+    *ret = NULL;
+    sky_server_free(server);
+    return -1;
+}
+
+
+//--------------------------------------
+// Command Line Options
+//--------------------------------------
+
+// Parses the command line options.
+//
+// argc - The number of arguments.
+// argv - An array of argument strings.
+//
+// Returns a pointer to an Options struct.
+skyd_options *skyd_options_parse(int argc, char **argv)
+{
+    skyd_options *options = calloc(1, sizeof(*options));
     check_mem(options);
     
     // Command line options.
@@ -82,72 +190,14 @@ error:
     exit(1);
 }
 
-void Options_free(Options *options)
+// Frees an Options struct from memory.
+//
+// Returns nothing.
+void skyd_options_free(skyd_options *options)
 {
     if(options) {
         bdestroy(options->path);
         free(options);
     }
-}
-
-
-//==============================================================================
-//
-// Usage & Version
-//
-//==============================================================================
-
-void print_version()
-{
-    printf("skyd " SKY_VERSION "\n");
-    exit(0);
-}
-
-void usage()
-{
-    fprintf(stderr, "usage: skyd [OPTIONS] [PATH]\n\n");
-    exit(0);
-}
-
-
-//==============================================================================
-//
-// Main
-//
-//==============================================================================
-
-int main(int argc, char **argv)
-{
-    // Parse command line options.
-    Options *options = parseopts(argc, argv);
-
-    // Create server.
-    sky_server *server = sky_server_create(options->path);
-    if(options->port > 0) {
-        server->port = options->port;
-    }
-    
-    // Clean up options.
-    Options_free(options);
-    
-    // Display status.
-    printf("Sky Server v%s\n", SKY_VERSION);
-    printf("Listening on 0.0.0.0:%d, CTRL+C to stop\n", server->port);
-    
-    // Signal handlers.
-    signal(SIGPIPE, SIG_IGN);
-
-    // Start server.
-    sky_server_start(server);
-    
-    // Continuously accept connections.
-    while(true) {
-        sky_server_accept(server);
-    }
-
-    sky_server_stop(server);
-    sky_server_free(server);
-
-    return 0;
 }
 
