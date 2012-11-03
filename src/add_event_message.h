@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 
 #include "bstring.h"
+#include "message_handler.h"
 #include "table.h"
 #include "event.h"
 
@@ -58,6 +59,11 @@ void sky_add_event_message_free(sky_add_event_message *message);
 
 void sky_add_event_message_data_free(sky_add_event_message_data *data);
 
+//--------------------------------------
+// Message Handler
+//--------------------------------------
+
+sky_message_handler *sky_add_event_message_handler_create();
 
 //--------------------------------------
 // Serialization
@@ -73,7 +79,6 @@ int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file);
 // Processing
 //--------------------------------------
 
-int sky_add_event_message_process(sky_add_event_message *message,
-    sky_table *table, FILE *output);
+int sky_add_event_message_process(sky_table *table, FILE *input, FILE *output);
 
 #endif

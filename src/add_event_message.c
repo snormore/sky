@@ -119,6 +119,26 @@ void sky_add_event_message_data_free(sky_add_event_message_data *data)
 
 
 //--------------------------------------
+// Message Handler
+//--------------------------------------
+
+// Creates a message handler for the 'Add Event' message.
+//
+// Returns a message handler.
+sky_message_handler *sky_add_event_message_handler_create()
+{
+    sky_message_handler *handler = sky_message_handler_create(); check_mem(handler);
+    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_OBJECT;
+    handler->name = bfromcstr("add_event");
+    handler->process = sky_add_event_message_process;
+    return handler;
+
+error:
+    sky_message_handler_free(handler);
+    return NULL;
+}
+
+//--------------------------------------
 // Serialization
 //--------------------------------------
 
@@ -396,30 +416,34 @@ error:
 // Processing
 //--------------------------------------
 
-// Applies an 'add_event' message to a table.
+// Reads an 'add_event' message from the input stream and applies it to a
+// table.
 //
-// message - The message.
-// table   - The table to apply the message to.
-// output  - The output stream to write to.
+// table  - The table to apply the message to.
+// input  - The output stream to read from.
+// output - The output stream to write to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_add_event_message_process(sky_add_event_message *message, sky_table *table,
-                                  FILE *output)
+int sky_add_event_message_process(sky_table *table, FILE *input, FILE *output)
 {
     int rc;
     size_t sz;
     sky_event *event = NULL;
-    check(message != NULL, "Message required");
     check(table != NULL, "Table required");
+    check(input != NULL, "Input stream required");
     check(output != NULL, "Output stream required");
 
     struct tagbstring status_str = bsStatic("status");
     struct tagbstring ok_str = bsStatic("ok");
 
+    // Parse message.
+    sky_add_event_message *message = sky_add_event_message_create(); check_mem(message);
+    rc = sky_add_event_message_unpack(message, input);
+    check(rc == 0, "Unable to parse message");
+
     // Create event object.
     event = sky_event_create(message->object_id, message->timestamp, message->action_id);
-    
-    // Allocate space for event data.
+    check_mem(event);
     event->data_count = message->data_count;
     event->data = calloc(message->data_count, sizeof(*event->data)); check_mem(event->data);
     
@@ -454,6 +478,7 @@ int sky_add_event_message_process(sky_add_event_message *message, sky_table *tab
         
         event->data[i] = data;
     }
+    sky_add_event_message_free(message);
     
     // Add event to table.
     rc = sky_table_add_event(table, event);

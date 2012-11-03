@@ -173,11 +173,6 @@ int sky_server_stop(sky_server *server)
     return 0;
 }
 
-
-//--------------------------------------
-// Connection Management
-//--------------------------------------
-
 // Accepts a connection on a running server. Once a connection is accepted then
 // the message is parsed and processed.
 //
@@ -187,6 +182,7 @@ int sky_server_stop(sky_server *server)
 int sky_server_accept(sky_server *server)
 {
     int rc;
+    check(server != NULL, "Server required");
 
     // Accept the next connection.
     int sockaddr_size = sizeof(struct sockaddr_in);
@@ -236,6 +232,11 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
     rc = sky_message_header_unpack(header, input);
     check(rc == 0, "Unable to unpack message header");
 
+    // Retrieve appropriate message handler by name.
+    sky_message_handler *handler = NULL;
+    rc = sky_server_get_message_handler(server, header->name, &handler);
+    check(rc == 0, "Unable to get message handler");
+    
     // Ignore the table if this is a multi message.
     if(biseqcstr(header->name, "multi") == 1) {
         rc = sky_server_process_multi_message(server, input, output);
@@ -247,10 +248,11 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
         rc = sky_server_open_table(server, header->table_name, &table);
         check(rc == 0, "Unable to open table");
 
-        // Parse appropriate message type.
-        if(biseqcstr(header->name, "add_event") == 1) {
-            rc = sky_server_process_add_event_message(server, table, input, output);
+        // If the handler exists then use it to process the message.
+        if(handler != NULL) {
+            handler->process(table, input, output);
         }
+        // Parse appropriate message type.
         else if(biseqcstr(header->name, "next_actions") == 1) {
             rc = sky_server_process_next_actions_message(server, table, input, output);
         }
@@ -283,6 +285,128 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
 
 error:
     sky_message_header_free(header);
+    return -1;
+}
+
+
+//--------------------------------------
+// Message Handlers
+//--------------------------------------
+
+// Retrieves a message handler from the server by name.
+//
+// server - The server.
+// name   - The name of the message handler.
+// ret    - A pointer to where the handler should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_get_message_handler(sky_server *server, bstring name,
+                                   sky_message_handler **ret)
+{
+    check(server != NULL, "Server required");
+    check(blength(name), "Message name required");
+    check(ret != NULL, "Return pointer required");
+    
+    // Initialize return value.
+    *ret = NULL;
+    
+    // Make sure a handler with the same name doesn't exist.
+    uint32_t i;
+    for(i=0; i<server->message_handler_count; i++) {
+        if(biseq(server->message_handlers[i]->name, name) == 1) {
+            *ret = NULL;
+            break;
+        }
+    }
+
+    return 0;
+
+error:
+    *ret = NULL;
+    return -1;
+}
+
+// Adds a message handler to the server.
+//
+// server  - The server.
+// handler - The message handler to add.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_add_message_handler(sky_server *server,
+                                   sky_message_handler *handler)
+{
+    int rc;
+    check(server != NULL, "Server required");
+    check(handler != NULL, "Message handler required");
+    
+    // Make sure a handler with the same name doesn't exist.
+    sky_message_handler *existing_handler = NULL;
+    rc = sky_server_get_message_handler(server, handler->name, &existing_handler);
+    check(rc == 0, "Unable to get existing handler");
+    check(existing_handler != NULL, "Message handler '%s' already exists on server", bdata(handler->name));
+    
+    // Append handler to server's list of message handlers.
+    server->message_handler_count++;
+    server->message_handlers = realloc(server->message_handlers, server->message_handler_count * sizeof(*server->message_handlers));
+    check_mem(server->message_handlers);
+    server->message_handlers[server->message_handler_count] = handler;
+    
+    return 0;
+
+error:
+    return -1;
+}
+
+// Removes a message handler to the server.
+//
+// server  - The server.
+// handler - The message handler to remove.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_remove_message_handler(sky_server *server,
+                                      sky_message_handler *handler)
+{
+    check(server != NULL, "Server required");
+    check(handler != NULL, "Message handler required");
+    
+    // Remove handler from server's list of message handlers.
+    uint32_t i,j;
+    for(i=0; i<server->message_handler_count; i++) {
+        sky_message_handler *handler = server->message_handlers[i];
+        if(server->message_handlers[i] == handler) {
+            for(j=i; j<server->message_handler_count-1; j++) {
+                server->message_handlers[j] = server->message_handlers[j+1];
+            }
+            server->message_handlers[server->message_handler_count-1] = NULL;
+            server->message_handler_count--;
+            break;
+        }
+    }
+    
+    return 0;
+
+error:
+    return -1;
+}
+
+// Add the standard message handlers to the server.
+//
+// server  - The server.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_add_default_message_handlers(sky_server *server)
+{
+    int rc;
+    sky_message_handler *handler = NULL;
+    check(server != NULL, "Server required");
+    
+    // 'Add Event' message.
+    handler = sky_add_event_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+
+    return 0;
+
+error:
     return -1;
 }
 
@@ -350,45 +474,6 @@ error:
     bdestroy(path);
     sky_table_free(table);
     *ret = NULL;
-    return -1;
-}
-
-
-//--------------------------------------
-// Event Messages
-//--------------------------------------
-
-// Parses and process an 'add_event' message.
-//
-// server - The server.
-// table  - The table to apply the message to.
-// input  - The input file stream.
-// output - The output file stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_server_process_add_event_message(sky_server *server, sky_table *table,
-                                         FILE *input, FILE *output)
-{
-    int rc;
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    check(input != NULL, "Input required");
-    check(output != NULL, "Output stream required");
-    
-    debug("Message received: [add_event]");
-    
-    // Parse message.
-    sky_add_event_message *message = sky_add_event_message_create(); check_mem(message);
-    rc = sky_add_event_message_unpack(message, input);
-    check(rc == 0, "Unable to parse 'add_event' message");
-    
-    // Process message.
-    rc = sky_add_event_message_process(message, table, output);
-    check(rc == 0, "Unable to process 'add_event' message");
-    
-    return 0;
-
-error:
     return -1;
 }
 

@@ -2,6 +2,7 @@
 #define _sky_message_handler_h
 
 #include "bstring.h"
+#include "table.h"
 
 
 //==============================================================================
@@ -24,14 +25,17 @@ typedef enum {
     SKY_MESSAGE_HANDLER_SCOPE_SERVER = 1,
     SKY_MESSAGE_HANDLER_SCOPE_TABLE  = 2,
     SKY_MESSAGE_HANDLER_SCOPE_OBJECT = 3
-} sky_server_message_scope_e;
+} sky_message_handler_scope_e;
+
+// Defines a function that processes an input and output stream on a given
+// table.
+typedef int (*sky_message_handler_process_func_t)(sky_table *table, FILE *input, FILE *output);
 
 // A container for a specific type of message.
 typedef struct {
     bstring name;
     sky_message_handler_scope_e scope;
-    sky_message_handler_unpack_func_t unpack_func;
-    sky_message_handler_process_func_t process_func;
+    sky_message_handler_process_func_t process;
 } sky_message_handler;
 
 
@@ -46,7 +50,7 @@ typedef struct {
 // Lifecycle
 //--------------------------------------
 
-sky_server *sky_message_handler_create();
+sky_message_handler *sky_message_handler_create();
 
 void sky_message_handler_free(sky_message_handler *handler);
 

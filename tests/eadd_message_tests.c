@@ -99,15 +99,15 @@ int test_sky_add_event_message_process() {
     table->path = bfromcstr("tmp");
     sky_table_open(table);
     
-    sky_add_event_message *message = create_message_with_data();
+    FILE *input = fopen("tests/fixtures/add_event_message/1/input", "r");
     FILE *output = fopen("tmp/output", "w");
-    mu_assert(sky_add_event_message_process(message, table, output) == 0, "");
+    mu_assert(sky_add_event_message_process(table, input, output) == 0, "");
     fclose(output);
+    fclose(input);
     mu_assert_file("tmp/0/header", "tests/fixtures/add_event_message/1/table/post/0/header");
     mu_assert_file("tmp/0/data", "tests/fixtures/add_event_message/1/table/post/0/data");
     mu_assert_file("tmp/output", "tests/fixtures/add_event_message/1/output");
 
-    sky_add_event_message_free(message);
     sky_table_free(table);
     return 0;
 }

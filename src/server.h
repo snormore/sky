@@ -9,6 +9,7 @@
 #include "bstring.h"
 #include "table.h"
 #include "event.h"
+#include "message_handler.h"
 
 
 //==============================================================================
@@ -54,6 +55,8 @@ typedef struct {
     int socket;
     sky_table **tables;
     uint32_t table_count;
+    sky_message_handler **message_handlers;
+    uint32_t message_handler_count;
 } sky_server;
 
 
@@ -72,7 +75,6 @@ sky_server *sky_server_create(bstring path);
 
 void sky_server_free(sky_server *server);
 
-
 //--------------------------------------
 // State
 //--------------------------------------
@@ -80,11 +82,6 @@ void sky_server_free(sky_server *server);
 int sky_server_start(sky_server *server);
 
 int sky_server_stop(sky_server *server);
-
-
-//--------------------------------------
-// Connection Management
-//--------------------------------------
 
 int sky_server_accept(sky_server *server);
 
@@ -95,11 +92,20 @@ int sky_server_accept(sky_server *server);
 int sky_server_process_message(sky_server *server, FILE *input, FILE *output);
 
 //--------------------------------------
-// Event Messages
+// Message Handlers
 //--------------------------------------
 
-int sky_server_process_add_event_message(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_server_get_message_handler(sky_server *server, bstring name,
+    sky_message_handler **ret);
+
+int sky_server_add_message_handler(sky_server *server,
+    sky_message_handler *handler);
+
+int sky_server_remove_message_handler(sky_server *server,
+    sky_message_handler *handler);
+
+int sky_server_add_default_message_handlers(sky_server *server);
+
 
 //--------------------------------------
 // Query Messages

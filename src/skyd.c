@@ -110,8 +110,8 @@ int skyd_server_create(bstring path, int port, sky_server **ret)
     }
     
     // Register the default message handlers on the server.
-    //rc = sky_server_register_default_message_handlers(server);
-    //check(rc == 0, "Unable to register default message handlers");
+    rc = sky_server_add_default_message_handlers(server);
+    check(rc == 0, "Unable to register default message handlers");
 
     // Ignore sigpipe.
     signal(SIGPIPE, SIG_IGN);
