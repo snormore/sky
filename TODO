@@ -1,11 +1,21 @@
+# Multicore
+1. Generalize message handler interface. [DONE]
+1. Add tablets to tables.
+  * Add tablet count to header file.
+  * Table count should be a compile-time constant since everything needs to move to a single data file.
+1. Add servlets to server (one per tablet).
+  * Servlet should be attached to a single tablet.
+  * 0MQ message processing loop.
+1. Add 'next_action' worker.
+  * Create pull 
+1. Separate TCP accept() from internal 0MQ message processing loop.
+1. Update data descriptors to reserve the entire range of property identifiers. (int8)
+
+
 # Documentation
 - man pages
 - web site
 - pdf
-
-# Multicore
-- ZMQ messaging
-- Shard tables
 
 # Distributed
 - ZMQ messaging

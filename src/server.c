@@ -232,17 +232,17 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
     rc = sky_message_header_unpack(header, input);
     check(rc == 0, "Unable to unpack message header");
 
-    // Retrieve appropriate message handler by name.
-    sky_message_handler *handler = NULL;
-    rc = sky_server_get_message_handler(server, header->name, &handler);
-    check(rc == 0, "Unable to get message handler");
-    
     // Ignore the table if this is a multi message.
     if(biseqcstr(header->name, "multi") == 1) {
         rc = sky_server_process_multi_message(server, input, output);
         check(rc == 0, "Unable to process multi message");
     }
     else {
+        // Retrieve appropriate message handler by name.
+        sky_message_handler *handler = NULL;
+        rc = sky_server_get_message_handler(server, header->name, &handler);
+        check(rc == 0, "Unable to get message handler");
+
         // Open table.
         sky_table *table = NULL;
         rc = sky_server_open_table(server, header->table_name, &table);
