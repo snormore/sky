@@ -174,7 +174,7 @@ error:
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_next_actions_message_process(sky_next_actions_message *message,
-                                     sky_table *table, FILE *output)
+                                     sky_tablet *tablet, FILE *output)
 {
     int rc;
     uint32_t i;
@@ -184,13 +184,15 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
 
     check(message != NULL, "Message required");
     check(message->prior_action_id_count > 0, "Prior actions must be specified");
-    check(table != NULL, "Table required");
+    check(tablet != NULL, "Tablet required");
     check(output != NULL, "Output stream required");
 
     struct tagbstring status_str = bsStatic("status");
     struct tagbstring ok_str = bsStatic("ok");
     struct tagbstring data_str = bsStatic("data");
     struct tagbstring count_str = bsStatic("count");
+
+    sky_table *table = tablet->table;
 
     // Initialize data object.
     sky_next_actions_data data;
@@ -211,7 +213,7 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
     // Initialize the path iterator.
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
-    rc = sky_path_iterator_set_data_file(&iterator, table->data_file);
+    rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
     check(rc == 0, "Unable to initialze path iterator");
 
     // Start benchmark.
@@ -241,7 +243,9 @@ int sky_next_actions_message_process(sky_next_actions_message *message,
 
             // Aggregate if we've reached the match.
             if(prior_action_index == message->prior_action_id_count) {
-                results[data.action_id].count++;
+                if(data.action_id <= action_count) {
+                    results[data.action_id].count++;
+                }
                 prior_action_index = 0;
             }
 

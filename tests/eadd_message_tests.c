@@ -97,8 +97,8 @@ int test_sky_add_event_message_process() {
     loadtmp("tests/fixtures/add_event_message/1/table/pre");
     sky_table *table = sky_table_create();
     table->path = bfromcstr("tmp");
+    table->default_tablet_count = 1;
     sky_table_open(table);
-    
     FILE *input = fopen("tests/fixtures/add_event_message/1/input", "r");
     FILE *output = fopen("tmp/output", "w");
     mu_assert(sky_add_event_message_process(table, input, output) == 0, "");

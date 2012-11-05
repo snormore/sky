@@ -63,7 +63,7 @@ int test_sky_next_actions_message_process() {
     message->prior_action_ids[0] = 1;
     message->prior_action_ids[1] = 2;
     FILE *output = fopen("tmp/output", "w");
-    mu_assert(sky_next_actions_message_process(message, table, output) == 0, "");
+    mu_assert(sky_next_actions_message_process(message, table->tablets[0], output) == 0, "");
     fclose(output);
     mu_assert_file("tmp/output", "tests/fixtures/next_actions_message/1/output");
 

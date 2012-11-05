@@ -287,6 +287,7 @@ int sky_importer_process_table(sky_importer *importer, bstring source,
     // Initialize import table.
     importer->table = sky_table_create(); check_mem(importer->table);
     importer->table->path = bstrcpy(importer->path);
+    if(importer->tablet_count > 0) importer->table->default_tablet_count = importer->tablet_count;
     
     // Process over child tokens.
     int32_t i;

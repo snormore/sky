@@ -7,6 +7,7 @@
 
 #include "bstring.h"
 #include "table.h"
+#include "tablet.h"
 #include "event.h"
 
 
@@ -55,6 +56,6 @@ int sky_next_actions_message_unpack(sky_next_actions_message *message,
 //--------------------------------------
 
 int sky_next_actions_message_process(sky_next_actions_message *message,
-    sky_table *table, FILE *output);
+    sky_tablet *tablet, FILE *output);
 
 #endif

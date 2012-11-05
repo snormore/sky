@@ -13,7 +13,7 @@ typedef struct sky_table sky_table;
 #include "action.h"
 #include "event.h"
 #include "types.h"
-#include "data_file.h"
+#include "tablet.h"
 #include "action_file.h"
 #include "property_file.h"
 
@@ -26,17 +26,20 @@ typedef struct sky_table sky_table;
 
 #define SKY_LOCK_NAME ".skylock"
 
-// The table is a reference to the disk location where data is stored. The
-// table also maintains a cache of block info and predefined actions and
-// properties.
+#define DEFAULT_TABLET_COUNT 4
+
+// The table is a collection of tablets. Data is shared into tablets but
+// action and property data is managed by the table as a whole.
 struct sky_table {
-    sky_data_file *data_file;
     sky_action_file *action_file;
     sky_property_file *property_file;
+    sky_tablet **tablets;
+    uint32_t tablet_count;
     bstring name;
     bstring path;
     bool opened;
     uint32_t default_block_size;
+    uint32_t default_tablet_count;
     FILE *lock_file;
 };
 
@@ -55,13 +58,20 @@ sky_table *sky_table_create();
 
 void sky_table_free(sky_table *table);
 
-
 //--------------------------------------
 // Path Management
 //--------------------------------------
 
 int sky_table_set_path(sky_table *table, bstring path);
 
+//--------------------------------------
+// Tablet Management
+//--------------------------------------
+
+int sky_table_get_tablet_count(sky_table *table, uint32_t *ret);
+
+int sky_table_get_target_tablet(sky_table *table, sky_object_id_t object_id,
+    sky_tablet **ret);
 
 //--------------------------------------
 // State

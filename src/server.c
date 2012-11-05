@@ -507,7 +507,8 @@ int sky_server_process_next_actions_message(sky_server *server, sky_table *table
     check(rc == 0, "Unable to parse 'next_actions' message");
     
     // Process message.
-    rc = sky_next_actions_message_process(message, table, output);
+    // TEMP: Pass table to process function; split process into worker function.
+    rc = sky_next_actions_message_process(message, table->tablets[0], output);
     check(rc == 0, "Unable to process 'next_actions' message");
     
     return 0;

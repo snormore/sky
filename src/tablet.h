@@ -1,13 +1,17 @@
-#ifndef _sky_importer_h
-#define _sky_importer_h
+#ifndef _sky_table_h
+#define _sky_table_h
 
-#include <stddef.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdbool.h>
+
+typedef struct sky_tablet sky_tablet;
 
 #include "bstring.h"
 #include "table.h"
-#include "types.h"
+#include "data_file.h"
+#include "event.h"
+
 
 //==============================================================================
 //
@@ -15,12 +19,13 @@
 //
 //==============================================================================
 
-typedef struct {
-    bstring path;
+// The tablet is a reference to the disk location where data is stored.
+struct sky_tablet {
     sky_table *table;
-    sky_event **events;
-    uint32_t tablet_count;
-} sky_importer;
+    sky_data_file *data_file;
+    uint32_t index;
+    bstring path;
+};
 
 
 //==============================================================================
@@ -33,20 +38,31 @@ typedef struct {
 // Lifecycle
 //--------------------------------------
 
-sky_importer *sky_importer_create();
+sky_tablet *sky_tablet_create(sky_table *table);
 
-void sky_importer_free(sky_importer *importer);
+void sky_tablet_free(sky_tablet *tablet);
+
 
 //--------------------------------------
 // Path Management
 //--------------------------------------
 
-int sky_importer_set_path(sky_importer *importer, bstring path);
+int sky_tablet_set_path(sky_tablet *tablet, bstring path);
+
 
 //--------------------------------------
-// Import
+// State
 //--------------------------------------
 
-int sky_importer_import(sky_importer *importer, FILE *file);
+int sky_tablet_open(sky_tablet *tablet);
+
+int sky_tablet_close(sky_tablet *tablet);
+
+
+//--------------------------------------
+// Event Management
+//--------------------------------------
+
+int sky_tablet_add_event(sky_tablet *tablet, sky_event *event);
 
 #endif

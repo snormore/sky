@@ -109,10 +109,11 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
 } while(0)
 
 // Uses an import file to create a table in the given directory.
-#define importtmp(PATH) do {\
+#define importtmp_n(PATH, TABLET_COUNT) do {\
     cleantmp(); \
     sky_importer *importer = sky_importer_create(); \
     importer->path = bfromcstr(TMPDIR); \
+    importer->tablet_count = TABLET_COUNT; \
     FILE *file = fopen(PATH, "r"); \
     mu_assert_with_msg(file != NULL, "Unable to open import file: " PATH); \
     int rc = sky_importer_import(importer, file); \
@@ -121,6 +122,9 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
     sky_importer_free(importer); \
 } while(0)
     
+// Uses an import file to create a table with a single tablet in a given directory.
+#define importtmp(PATH) importtmp_n(PATH, 1)
+
 // Asserts that a block has a specific block id and object id range.
 #define mu_assert_block_info(INDEX, ID, MIN_OBJECT_ID, MAX_OBJECT_ID, MIN_TIMESTAMP, MAX_TIMESTAMP, SPANNED) \
     mu_assert(table->infos[INDEX]->id == ID, "Block " #INDEX " id expected to be " #ID); \

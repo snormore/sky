@@ -19,6 +19,7 @@ int test_sky_importer_import() {
     cleantmp();
     sky_importer *importer = sky_importer_create();
     importer->path = bfromcstr("tmp");
+    importer->tablet_count = 1;
     
     FILE *file = fopen("tests/fixtures/importer/0/data.json", "r");
     int rc = sky_importer_import(importer, file);
