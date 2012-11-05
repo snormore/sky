@@ -19,7 +19,7 @@ int test_sky_importer_import() {
     cleantmp();
     sky_importer *importer = sky_importer_create();
     importer->path = bfromcstr("tmp");
-    importer->tablet_count = 1;
+    importer->tablet_count = 4;
     
     FILE *file = fopen("tests/fixtures/importer/0/data.json", "r");
     int rc = sky_importer_import(importer, file);
@@ -33,6 +33,12 @@ int test_sky_importer_import() {
     mu_assert_file("tmp/properties", "tests/fixtures/importer/0/table/properties");
     mu_assert_file("tmp/0/data", "tests/fixtures/importer/0/table/0/data");
     mu_assert_file("tmp/0/header", "tests/fixtures/importer/0/table/0/header");
+    mu_assert_file("tmp/1/data", "tests/fixtures/importer/0/table/1/data");
+    mu_assert_file("tmp/1/header", "tests/fixtures/importer/0/table/1/header");
+    mu_assert_file("tmp/2/data", "tests/fixtures/importer/0/table/2/data");
+    mu_assert_file("tmp/2/header", "tests/fixtures/importer/0/table/2/header");
+    mu_assert_file("tmp/3/data", "tests/fixtures/importer/0/table/3/data");
+    mu_assert_file("tmp/3/header", "tests/fixtures/importer/0/table/3/header");
 
     sky_importer_free(importer);
     return 0;
