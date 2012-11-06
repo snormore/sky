@@ -1,8 +1,7 @@
 # Multicore
 1. Generalize message handler interface. [DONE]
-1. Add tablets to tables.
-  * Add tablet count to header file.
-  * Table count should be a compile-time constant since everything needs to move to a single data file.
+1. Add tablets to tables. [DONE]
+  * Add tablet count to header file. [DONE]
 1. Add servlets to server (one per tablet).
   * Servlet should be attached to a single tablet.
   * 0MQ message processing loop.

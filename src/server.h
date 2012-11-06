@@ -6,21 +6,13 @@
 #include <stdbool.h>
 #include <netinet/in.h>
 
+typedef struct sky_server sky_server;
+
 #include "bstring.h"
+#include "servlet.h"
 #include "table.h"
 #include "event.h"
 #include "message_handler.h"
-
-
-//==============================================================================
-//
-// Overview
-//
-//==============================================================================
-
-// The server acts as the interface to external applications. It communicates
-// over TCP sockets using a specific Sky protocol. See the message.h file for
-// more detail on the protocol.
 
 
 //==============================================================================
@@ -41,23 +33,25 @@
 //==============================================================================
 
 // The various states that the server can be in.
-typedef enum sky_server_state_e {
-    SKY_SERVER_STATE_STOPPED,
-    SKY_SERVER_STATE_RUNNING,
+typedef enum {
+    SKY_SERVER_STATE_STOPPED = 0,
+    SKY_SERVER_STATE_RUNNING = 1,
 } sky_server_state_e;
 
-
-typedef struct {
+struct sky_server {
     sky_server_state_e state;
     bstring path;
     int port;
     struct sockaddr_in* sockaddr;
     int socket;
+    sky_servlet **servlets;
+    uint32_t servlet_count;
     sky_table **tables;
     uint32_t table_count;
     sky_message_handler **message_handlers;
     uint32_t message_handler_count;
-} sky_server;
+    void *context;
+};
 
 
 

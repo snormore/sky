@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <zmq.h>
 
 #include "bstring.h"
 #include "server.h"
@@ -25,9 +26,11 @@
 //
 //==============================================================================
 
+int sky_server_get_table(sky_server *server, bstring name, sky_table **ret);
+
 int sky_server_open_table(sky_server *server, bstring name, sky_table **ret);
 
-int sky_server_close_table(sky_server *server, sky_table *table);
+int sky_server_create_servlets(sky_server *server, sky_table *table);
 
 
 //==============================================================================
@@ -52,12 +55,32 @@ sky_server *sky_server_create(bstring path)
     server->path = bstrcpy(path);
     if(path) check_mem(server->path);
     server->port = SKY_DEFAULT_PORT;
+    server->context = zmq_ctx_new();
     
     return server;
 
 error:
     sky_server_free(server);
     return NULL;
+}
+
+// Frees the servlets on a server instance.
+//
+// server - The server.
+//
+// Returns nothing.
+void sky_server_free_servlets(sky_server *server)
+{
+    if(server) {
+        uint32_t i;
+        for(i=0; i<server->servlet_count; i++) {
+            sky_servlet_free(server->servlets[i]);
+            server->servlets[i] = NULL;
+        }
+        free(server->servlets);
+        server->servlets = NULL;
+        server->servlet_count = 0;
+    }
 }
 
 // Frees the tables on a server instance.
@@ -89,6 +112,7 @@ void sky_server_free(sky_server *server)
     if(server) {
         if(server->path) bdestroy(server->path);
         sky_server_free_tables(server);
+        sky_server_free_servlets(server);
         free(server);
     }
 }
@@ -245,7 +269,7 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
 
         // Open table.
         sky_table *table = NULL;
-        rc = sky_server_open_table(server, header->table_name, &table);
+        rc = sky_server_get_table(server, header->table_name, &table);
         check(rc == 0, "Unable to open table");
 
         // If the handler exists then use it to process the message.
@@ -415,17 +439,15 @@ error:
 // Table management
 //--------------------------------------
 
-// Opens a table and attaches it to the server. Once a table is opened it
-// cannot be closed until the server shuts down. Calling this function to
-// open an already existing table will simply return the existing reference to
-// the table.
+// Retrieves a reference to a table by name. If the table is not found then
+// it will be opened automatically.
 //
 // server - The server.
 // name   - The table name.
 // ret    - A pointer to where the table reference should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_open_table(sky_server *server, bstring name, sky_table **ret)
+int sky_server_get_table(sky_server *server, bstring name, sky_table **ret)
 {
     int rc;
     sky_table *table = NULL;
@@ -451,20 +473,8 @@ int sky_server_open_table(sky_server *server, bstring name, sky_table **ret)
 
     // If the table is not yet opened then open it.
     if(*ret == NULL) {
-        // Create the table.
-        table = sky_table_create(); check_mem(table);
-        rc = sky_table_set_path(table, path);
-        check(rc == 0, "Unable to set table path");
-    
-        // Open the table.
-        rc = sky_table_open(table);
+        rc = sky_server_open_table(server, path, &table);
         check(rc == 0, "Unable to open table");
-        
-        // Append the table to the list of open tables.
-        server->table_count++;
-        server->tables = realloc(server->tables, server->table_count * sizeof(*server->tables));
-        check_mem(server->tables);
-        server->tables[server->table_count-1] = table;
     }
 
     bdestroy(path);
@@ -474,6 +484,98 @@ error:
     bdestroy(path);
     sky_table_free(table);
     *ret = NULL;
+    return -1;
+}
+
+// Opens a table and attaches it to the server. Once a table is opened it
+// cannot be closed until the server shuts down.
+//
+// server - The server.
+// path   - The table path.
+// ret    - A pointer to where the table reference should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_open_table(sky_server *server, bstring path, sky_table **ret)
+{
+    int rc;
+    sky_table *table = NULL;
+    check(server != NULL, "Server required");
+    check(blength(path) > 0, "Table path required");
+    check(ret != NULL, "Return pointer required");
+    
+    // Initialize return values.
+    *ret = NULL;
+    
+    // Create the table.
+    table = sky_table_create(); check_mem(table);
+    rc = sky_table_set_path(table, path);
+    check(rc == 0, "Unable to set table path");
+
+    // Open the table.
+    rc = sky_table_open(table);
+    check(rc == 0, "Unable to open table");
+    
+    // Append the table to the list of open tables.
+    server->table_count++;
+    server->tables = realloc(server->tables, server->table_count * sizeof(*server->tables));
+    check_mem(server->tables);
+    server->tables[server->table_count-1] = table;
+
+    // Open servlets for the table's tablets.
+    rc = sky_server_create_servlets(server, table);
+    check(rc == 0, "Unable to create servlets for table");
+
+    return 0;
+
+error:
+    sky_table_free(table);
+    *ret = NULL;
+    return -1;
+}
+
+// Creates a set of servlets for a given table. Each servlet is responsible
+// for a single tablet on the table.
+//
+// server - The server.
+// table  - The table to create servlets against.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_create_servlets(sky_server *server, sky_table *table)
+{
+    int rc;
+    sky_servlet *servlet = NULL;
+    check(server != NULL, "Server required");
+    check(table, "Table required");
+    
+    // Allocate additional space for the new servlets.
+    uint32_t new_servlet_count = table->tablet_count;
+    server->servlets = realloc(server->servlets, (server->servlet_count + new_servlet_count) * sizeof(*server->servlets));
+    check_mem(server->servlets);
+    memset(&server->servlets[server->servlet_count], 0, sizeof(*server->servlets) * new_servlet_count);
+    server->servlet_count += new_servlet_count;
+    
+    // Loop over tablets and create one servlet for each one.
+    uint32_t i;
+    for(i=0; i<new_servlet_count; i++) {
+        // Create the servlet.
+        sky_tablet *tablet = table->tablets[i];
+        servlet = sky_servlet_create(server, tablet); check_mem(servlet);
+
+        // Start the servlet.
+        rc = sky_servlet_start(servlet);
+        check(rc == 0, "Unable to start servlet");
+        
+        // Append the servlet to the server.
+        server->servlets[server->servlet_count] = servlet;
+        server->servlet_count++;
+
+        servlet = NULL;
+    }
+
+    return 0;
+
+error:
+    sky_servlet_free(servlet);
     return -1;
 }
 
