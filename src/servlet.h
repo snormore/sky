@@ -25,9 +25,11 @@ typedef enum {
 } sky_servlet_state_e;
 
 struct sky_servlet {
+    uint32_t id;
     sky_servlet_state_e state;
     sky_server *server;
     sky_tablet *tablet;
+    bstring name;
     bstring uri;
     pthread_t thread;
 };

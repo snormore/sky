@@ -9,6 +9,8 @@
 #include "table.h"
 #include "tablet.h"
 #include "event.h"
+#include "message_handler.h"
+#include "worker.h"
 
 
 //==============================================================================
@@ -17,11 +19,19 @@
 //
 //==============================================================================
 
+// The result data to send back to the client.
+typedef struct {
+    uint32_t count;
+} sky_next_actions_result;
+
 // A message for retrieving a count of the next immediate action following a
 // series of actions.
 typedef struct {
     sky_action_id_t *prior_action_ids;
     uint32_t prior_action_id_count;
+    sky_next_actions_result *results;
+    uint32_t action_count;
+    sky_data_descriptor *data_descriptor;
 } sky_next_actions_message;
 
 
@@ -42,6 +52,15 @@ void sky_next_actions_message_free(sky_next_actions_message *message);
 void sky_next_actions_message_free_deps(sky_next_actions_message *message);
 
 //--------------------------------------
+// Message Handler
+//--------------------------------------
+
+sky_message_handler *sky_next_actions_message_handler_create();
+
+int sky_next_actions_message_process(sky_server *server, sky_table *table,
+    FILE *input, FILE *output);
+
+//--------------------------------------
 // Serialization
 //--------------------------------------
 
@@ -52,10 +71,20 @@ int sky_next_actions_message_unpack(sky_next_actions_message *message,
     FILE *file);
 
 //--------------------------------------
-// Processing
+// Worker
 //--------------------------------------
 
-int sky_next_actions_message_process(sky_next_actions_message *message,
-    sky_tablet *tablet, FILE *output);
+int sky_next_actions_message_worker_read(sky_worker *worker, FILE *input);
+
+int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
+    void **data);
+
+int sky_next_actions_message_worker_map_free(void *data);
+
+int sky_next_actions_message_worker_reduce(sky_worker *worker, void *data);
+
+int sky_next_actions_message_worker_write(sky_worker *worker, FILE *output);
+
+int sky_next_actions_message_worker_free(sky_worker *worker);
 
 #endif

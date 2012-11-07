@@ -52,6 +52,7 @@ struct sky_worker {
     uint32_t push_socket_count;
     void *pull_socket;
     bstring pull_socket_uri;
+    void *data;
     void *context;
     FILE *input;
     FILE *output;
@@ -75,7 +76,7 @@ struct sky_worker {
 // Lifecycle
 //--------------------------------------
 
-sky_worker *sky_worker_create(uint64_t id);
+sky_worker *sky_worker_create();
 
 void sky_worker_free(sky_worker *worker);
 

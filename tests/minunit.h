@@ -1,3 +1,6 @@
+#ifndef _minunit_h
+#define _minunit_h
+
 #include <unistd.h>
 #include <sys/stat.h>
 #include <stdbool.h>
@@ -82,6 +85,8 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
 
 // The path where memory dumps are directed to.
 #define MEMDUMPFILE "/tmp/memdump"
+
+#define TEST_PORT 9000
 
 
 //==============================================================================
@@ -197,3 +202,4 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
     bdestroy(log_content); \
 } while(0)
 
+#endif

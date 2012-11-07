@@ -22,6 +22,17 @@ void *sky_worker_run(void *_worker);
 
 //==============================================================================
 //
+// Global Variables
+//
+//==============================================================================
+
+// A counter to track the next available worker id. Currently this is not
+// thread-safe so workers should only be created in the main thread.
+uint64_t next_worker_id = 0;
+
+
+//==============================================================================
+//
 // Functions
 //
 //==============================================================================
@@ -35,10 +46,10 @@ void *sky_worker_run(void *_worker);
 // id - The worker identifier.
 //
 // Returns a reference to the worker.
-sky_worker *sky_worker_create(uint64_t id)
+sky_worker *sky_worker_create()
 {
     sky_worker *worker = calloc(1, sizeof(sky_worker)); check_mem(worker);
-    worker->id = id;
+    worker->id = next_worker_id++;
     return worker;
 
 error:
@@ -187,6 +198,7 @@ int sky_worker_start(sky_worker *worker)
         check(worker->push_sockets[i] != NULL, "Unable to create worker push socket");
         
         // Connect to servlet.
+        debug("worker.start: %s", bdata(worker->servlets[i]->uri));
         rc = zmq_connect(worker->push_sockets[i], bdata(worker->servlets[i]->uri));
         check(rc == 0, "Unable to connect worker to servlet");
     }

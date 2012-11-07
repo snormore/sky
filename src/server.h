@@ -1,5 +1,5 @@
-#ifndef _server_h
-#define _server_h
+#ifndef _sky_server_h
+#define _sky_server_h
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -40,12 +40,14 @@ typedef enum {
 
 struct sky_server {
     sky_server_state_e state;
+    uint32_t id;
     bstring path;
     int port;
     struct sockaddr_in* sockaddr;
     int socket;
     sky_servlet **servlets;
     uint32_t servlet_count;
+    uint32_t next_servlet_id;
     sky_table **tables;
     uint32_t table_count;
     sky_message_handler **message_handlers;
@@ -78,6 +80,13 @@ int sky_server_start(sky_server *server);
 int sky_server_stop(sky_server *server);
 
 int sky_server_accept(sky_server *server);
+
+//--------------------------------------
+// Servlet Management
+//--------------------------------------
+
+int sky_server_get_table_servlets(sky_server *server, sky_table *table,
+    sky_servlet ***servlets, uint32_t *servlet_count);
 
 //--------------------------------------
 // Message Processing

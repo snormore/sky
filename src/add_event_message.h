@@ -7,6 +7,7 @@
 
 #include "bstring.h"
 #include "message_handler.h"
+#include "server.h"
 #include "table.h"
 #include "event.h"
 
@@ -79,6 +80,7 @@ int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file);
 // Processing
 //--------------------------------------
 
-int sky_add_event_message_process(sky_table *table, FILE *input, FILE *output);
+int sky_add_event_message_process(sky_server *server, sky_table *table,
+    FILE *input, FILE *output);
 
 #endif

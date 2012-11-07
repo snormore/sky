@@ -420,15 +420,17 @@ error:
 // table.
 //
 // table  - The table to apply the message to.
-// input  - The output stream to read from.
-// output - The output stream to write to.
+// input  - The input stream.
+// output - The output stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_add_event_message_process(sky_table *table, FILE *input, FILE *output)
+int sky_add_event_message_process(sky_server *server, sky_table *table,
+                                  FILE *input, FILE *output)
 {
     int rc;
     size_t sz;
     sky_event *event = NULL;
+    check(server != NULL, "Server required");
     check(table != NULL, "Table required");
     check(input != NULL, "Input stream required");
     check(output != NULL, "Output stream required");

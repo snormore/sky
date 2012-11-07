@@ -8,7 +8,7 @@ then
 fi
 
 # Loop over compiled tests and run them.
-for test_file in tests/*_tests
+for test_file in tests/unit/*_tests tests/functional/*_tests
 do
     # Only execute if result is a file.
     if test -f $test_file

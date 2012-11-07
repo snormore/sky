@@ -144,7 +144,7 @@ int sky_message_header_unpack(sky_message_header *header, FILE *file)
     rc = sky_minipack_fread_bstring(file, &header->table_name);
     check(rc == 0, "Unable to pack table name");
 
-    debug("[%s.%lld:%s]", bdata(header->name), header->version, bdata(header->table_name));
+    debug("[%s#%lld:%s]", bdata(header->name), header->version, bdata(header->table_name));
 
     return 0;
 

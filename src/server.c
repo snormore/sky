@@ -28,9 +28,21 @@
 
 int sky_server_get_table(sky_server *server, bstring name, sky_table **ret);
 
-int sky_server_open_table(sky_server *server, bstring name, sky_table **ret);
+int sky_server_open_table(sky_server *server, bstring name, bstring path, sky_table **ret);
 
 int sky_server_create_servlets(sky_server *server, sky_table *table);
+
+
+//==============================================================================
+//
+// Global Variables
+//
+//==============================================================================
+
+// A counter to track the next available server id. Creating multiple servers
+// is not thread safe, however, there's probably not a good reason to span
+// multiple servers across multiple threads in the same process.
+int32_t next_server_id = 0;
 
 
 //==============================================================================
@@ -52,6 +64,7 @@ sky_server *sky_server_create(bstring path)
 {
     sky_server *server = NULL;
     server = calloc(1, sizeof(sky_server)); check_mem(server);
+    server->id = next_server_id++;
     server->path = bstrcpy(path);
     if(path) check_mem(server->path);
     server->port = SKY_DEFAULT_PORT;
@@ -223,9 +236,6 @@ int sky_server_accept(sky_server *server)
     rc = sky_server_process_message(server, input, output);
     check(rc == 0, "Unable to process message");
     
-    fclose(input);
-    fclose(output);
-
     return 0;
 
 error:
@@ -274,32 +284,34 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
 
         // If the handler exists then use it to process the message.
         if(handler != NULL) {
-            handler->process(table, input, output);
+            handler->process(server, table, input, output);
         }
         // Parse appropriate message type.
-        else if(biseqcstr(header->name, "next_actions") == 1) {
-            rc = sky_server_process_next_actions_message(server, table, input, output);
-        }
-        else if(biseqcstr(header->name, "add_action") == 1) {
-            rc = sky_server_process_add_action_message(server, table, input, output);
-        }
-        else if(biseqcstr(header->name, "get_action") == 1) {
-            rc = sky_server_process_get_action_message(server, table, input, output);
-        }
-        else if(biseqcstr(header->name, "get_actions") == 1) {
-            rc = sky_server_process_get_actions_message(server, table, input, output);
-        }
-        else if(biseqcstr(header->name, "add_property") == 1) {
-            rc = sky_server_process_add_property_message(server, table, input, output);
-        }
-        else if(biseqcstr(header->name, "get_property") == 1) {
-            rc = sky_server_process_get_property_message(server, table, input, output);
-        }
-        else if(biseqcstr(header->name, "get_properties") == 1) {
-            rc = sky_server_process_get_properties_message(server, table, input, output);
-        }
         else {
-            sentinel("Invalid message type");
+            if(biseqcstr(header->name, "add_action") == 1) {
+                rc = sky_server_process_add_action_message(server, table, input, output);
+            }
+            else if(biseqcstr(header->name, "get_action") == 1) {
+                rc = sky_server_process_get_action_message(server, table, input, output);
+            }
+            else if(biseqcstr(header->name, "get_actions") == 1) {
+                rc = sky_server_process_get_actions_message(server, table, input, output);
+            }
+            else if(biseqcstr(header->name, "add_property") == 1) {
+                rc = sky_server_process_add_property_message(server, table, input, output);
+            }
+            else if(biseqcstr(header->name, "get_property") == 1) {
+                rc = sky_server_process_get_property_message(server, table, input, output);
+            }
+            else if(biseqcstr(header->name, "get_properties") == 1) {
+                rc = sky_server_process_get_properties_message(server, table, input, output);
+            }
+            else {
+                sentinel("Invalid message type");
+            }
+
+            fclose(input);
+            fclose(output);
         }
         check(rc == 0, "Unable to process message: %s", bdata(header->name));
     }
@@ -338,7 +350,7 @@ int sky_server_get_message_handler(sky_server *server, bstring name,
     uint32_t i;
     for(i=0; i<server->message_handler_count; i++) {
         if(biseq(server->message_handlers[i]->name, name) == 1) {
-            *ret = NULL;
+            *ret = server->message_handlers[i];
             break;
         }
     }
@@ -367,13 +379,13 @@ int sky_server_add_message_handler(sky_server *server,
     sky_message_handler *existing_handler = NULL;
     rc = sky_server_get_message_handler(server, handler->name, &existing_handler);
     check(rc == 0, "Unable to get existing handler");
-    check(existing_handler != NULL, "Message handler '%s' already exists on server", bdata(handler->name));
+    check(existing_handler == NULL, "Message handler '%s' already exists on server", bdata(handler->name));
     
     // Append handler to server's list of message handlers.
     server->message_handler_count++;
     server->message_handlers = realloc(server->message_handlers, server->message_handler_count * sizeof(*server->message_handlers));
     check_mem(server->message_handlers);
-    server->message_handlers[server->message_handler_count] = handler;
+    server->message_handlers[server->message_handler_count-1] = handler;
     
     return 0;
 
@@ -427,6 +439,12 @@ int sky_server_add_default_message_handlers(sky_server *server)
     // 'Add Event' message.
     handler = sky_add_event_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
+    // 'Next Actions' message.
+    handler = sky_next_actions_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
 
     return 0;
 
@@ -473,7 +491,7 @@ int sky_server_get_table(sky_server *server, bstring name, sky_table **ret)
 
     // If the table is not yet opened then open it.
     if(*ret == NULL) {
-        rc = sky_server_open_table(server, path, &table);
+        rc = sky_server_open_table(server, name, path, ret);
         check(rc == 0, "Unable to open table");
     }
 
@@ -491,11 +509,13 @@ error:
 // cannot be closed until the server shuts down.
 //
 // server - The server.
+// name   - The table name.
 // path   - The table path.
 // ret    - A pointer to where the table reference should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_open_table(sky_server *server, bstring path, sky_table **ret)
+int sky_server_open_table(sky_server *server, bstring name, bstring path,
+                          sky_table **ret)
 {
     int rc;
     sky_table *table = NULL;
@@ -508,6 +528,7 @@ int sky_server_open_table(sky_server *server, bstring path, sky_table **ret)
     
     // Create the table.
     table = sky_table_create(); check_mem(table);
+    table->name = bstrcpy(name); check_mem(table->name);
     rc = sky_table_set_path(table, path);
     check(rc == 0, "Unable to set table path");
 
@@ -525,11 +546,57 @@ int sky_server_open_table(sky_server *server, bstring path, sky_table **ret)
     rc = sky_server_create_servlets(server, table);
     check(rc == 0, "Unable to create servlets for table");
 
+    // Return table.
+    *ret = table;
+
     return 0;
 
 error:
     sky_table_free(table);
     *ret = NULL;
+    return -1;
+}
+
+//--------------------------------------
+// Servlet Management
+//--------------------------------------
+
+// Retrieves a list of servlets associated with a given table.
+//
+// server   - The server.
+// table    - The table.
+// servlets - A pointer to where the servlets should be returned.
+// count    - A pointer to where the number of servlets should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_get_table_servlets(sky_server *server, sky_table *table,
+                                  sky_servlet ***servlets, uint32_t *count)
+{
+    check(server != NULL, "Server required");
+    check(table != NULL, "Table required");
+    check(servlets != NULL, "Servlets return pointer required");
+    check(count != NULL, "Servlet count return pointer required");
+    
+    // Allocate array.
+    *count = table->tablet_count;
+    *servlets = calloc(*count, sizeof(*servlets));
+    check_mem(*servlets);
+    
+    // Loop over all servlets and find ones associated with the table.
+    uint32_t i, index=0;
+    for(i=0; i<server->servlet_count; i++) {
+        sky_servlet *servlet = server->servlets[i];
+        if(servlet->tablet->table == table) {
+            (*servlets)[index] = servlet;
+            index++;
+        }
+    }
+    
+    return 0;
+
+error:
+    *count = 0;
+    free(*servlets);
     return -1;
 }
 
@@ -552,7 +619,6 @@ int sky_server_create_servlets(sky_server *server, sky_table *table)
     server->servlets = realloc(server->servlets, (server->servlet_count + new_servlet_count) * sizeof(*server->servlets));
     check_mem(server->servlets);
     memset(&server->servlets[server->servlet_count], 0, sizeof(*server->servlets) * new_servlet_count);
-    server->servlet_count += new_servlet_count;
     
     // Loop over tablets and create one servlet for each one.
     uint32_t i;
@@ -578,47 +644,6 @@ error:
     sky_servlet_free(servlet);
     return -1;
 }
-
-
-//--------------------------------------
-// Query Messages
-//--------------------------------------
-
-// Parses and process a 'Next Action' message.
-//
-// server - The server.
-// table  - The table to apply the message to.
-// input  - The input file stream.
-// output - The output file stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_server_process_next_actions_message(sky_server *server, sky_table *table,
-                                            FILE *input, FILE *output)
-{
-    int rc;
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    check(input != NULL, "Input required");
-    check(output != NULL, "Output stream required");
-    
-    debug("Message received: [Next Action]");
-    
-    // Parse message.
-    sky_next_actions_message *message = sky_next_actions_message_create(); check_mem(message);
-    rc = sky_next_actions_message_unpack(message, input);
-    check(rc == 0, "Unable to parse 'next_actions' message");
-    
-    // Process message.
-    // TEMP: Pass table to process function; split process into worker function.
-    rc = sky_next_actions_message_process(message, table->tablets[0], output);
-    check(rc == 0, "Unable to process 'next_actions' message");
-    
-    return 0;
-
-error:
-    return -1;
-}
-
 
 
 //--------------------------------------

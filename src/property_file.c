@@ -405,21 +405,3 @@ error:
     return -1;
 }
 
-// Frees a data descriptor from memory.
-//
-// property_file - The property file that created the descriptor.
-// descriptor    - The descriptor.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_property_file_free_data_descriptor(sky_property_file *property_file,
-                                           sky_data_descriptor *descriptor)
-{
-    check(property_file != NULL, "Property file required");
-    sky_data_descriptor_free(descriptor);
-    return 0;
-
-error:
-    sky_data_descriptor_free(descriptor);
-    return -1;
-}
-
