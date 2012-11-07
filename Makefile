@@ -96,5 +96,6 @@ tmp:
 
 clean: 
 	rm -rf bin ${OBJECTS} ${TEST_OBJECTS} ${LEX_OBJECTS} ${YACC_OBJECTS}
-	rm -rf tests/*.dSYM tests/*.o
+	rm -rf tests/*.dSYM tests/**/*.dSYM
+	rm -rf  tests/*.o tests/**/*.o
 	rm -rf tmp/*
