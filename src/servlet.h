@@ -31,6 +31,7 @@ struct sky_servlet {
     sky_tablet *tablet;
     bstring name;
     bstring uri;
+    void *pull_socket;
     pthread_t thread;
 };
 

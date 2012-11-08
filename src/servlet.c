@@ -74,6 +74,8 @@ void sky_servlet_free(sky_servlet *servlet)
         servlet->name = NULL;
         if(servlet->uri) bdestroy(servlet->uri);
         servlet->uri = NULL;
+        if(servlet->pull_socket) zmq_close(servlet->pull_socket);
+        servlet->pull_socket = NULL;
         free(servlet);
     }
 }
@@ -98,6 +100,13 @@ int sky_servlet_start(sky_servlet *servlet)
 
     debug("servlet.start.1: %s", bdata(servlet->uri));
 
+    // Create a listening queue.
+    void *context = servlet->server->context;
+    servlet->pull_socket = zmq_socket(context, ZMQ_PULL);
+    check_mem(servlet->pull_socket);
+    rc = zmq_bind(servlet->pull_socket, bdata(servlet->uri));
+    check(rc == 0, "Unable to connect servlet pull socket");
+    
     // Create the worker thread.
     rc = pthread_create(&servlet->thread, NULL, sky_servlet_run, (void*)servlet);
     check(rc == 0, "Unable to create servlet thread");
@@ -128,19 +137,15 @@ void *sky_servlet_run(void *_servlet)
     sky_servlet *servlet = (sky_servlet *)_servlet;
     check(servlet != NULL, "Servlet required");
     
-    // Create a listening queue.
-    void *context = servlet->server->context;
-    void *pull_socket = zmq_socket(context, ZMQ_PULL); check_mem(pull_socket);
-    debug("servlet.run.1: %s", bdata(servlet->uri));
-    rc = zmq_bind(pull_socket, bdata(servlet->uri));
-    check(rc == 0, "Unable to connect servlet pull socket");
-    
     // Read in messages from pull socket.
+    void *context = servlet->server->context;
     while(true) {
         // Read in worklet.
-        rc = sky_zmq_recv_ptr(pull_socket, (void**)(&worklet));
+        rc = sky_zmq_recv_ptr(servlet->pull_socket, (void**)(&worklet));
         check(rc == 0, "Unable to receive worklet message");
         
+        debug("servlet.recv.1: %p", worklet);
+
         // If worklet is NULL then stop the servlet.
         if(worklet == NULL) {
             break;
@@ -149,6 +154,7 @@ void *sky_servlet_run(void *_servlet)
         // Process worklet.
         sky_worker *worker = worklet->worker;
         worker->map(worker, servlet->tablet, &worklet->data);
+        debug("servlet.postmap.1: %p | %p", worklet, worklet->data);
         
         // Connect back to worker.
         void *push_socket = zmq_socket(context, ZMQ_PUSH); check_mem(push_socket);
@@ -156,11 +162,12 @@ void *sky_servlet_run(void *_servlet)
         check(rc == 0, "Unable to connect servlet push socket");
 
         // Send back worklet.
-        rc = sky_zmq_send_ptr(push_socket, (void*)worklet);
+        rc = sky_zmq_send_ptr(push_socket, (void*)(&worklet));
         check(rc == 0, "Unable to send worklet message");
     }
     
     debug("servlet.end: %s", bdata(servlet->name));
+    sky_servlet_free(servlet);
     return NULL;
 
 error:

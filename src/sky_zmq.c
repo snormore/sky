@@ -5,6 +5,7 @@
 
 #include "sky_zmq.h"
 #include "dbg.h"
+#include "mem.h"
 
 
 //==============================================================================
@@ -66,10 +67,10 @@ int sky_zmq_recv_ptr(void *socket, void **ptr)
     check(rc == 0, "Unable to initialize zmq message");
     
     // Receive the message.
-    int size = zmq_msg_recv (&message, socket, 0);
-    check(size == sizeof(ptr), "Unable to receive zmq pointer message: recv %d, exp %ld", size, sizeof(ptr));
-    memcpy(*ptr, zmq_msg_data(&message), size);
-
+    int size = zmq_msg_recv(&message, socket, 0);
+    check(size == sizeof(*ptr), "Unable to receive zmq pointer message: recv %d, exp %ld", size, sizeof(*ptr));
+    memcpy(ptr, zmq_msg_data(&message), size);
+    
     // Close message.
     zmq_msg_close(&message);
 

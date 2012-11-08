@@ -9,6 +9,7 @@
 #include "bstring.h"
 #include "sky_zmq.h"
 #include "dbg.h"
+#include "mem.h"
 
 
 //==============================================================================
@@ -249,8 +250,9 @@ void *sky_worker_run(void *_worker)
 
     // Push a message to each servlet.
     for(i=0; i<worker->push_socket_count; i++) {
-        worklet = sky_worklet_create(worker); check_mem(worker);
-        rc = sky_zmq_send_ptr(worker->push_sockets[i], worklet);
+        worklet = sky_worklet_create(worker); check_mem(worklet);
+        rc = sky_zmq_send_ptr(worker->push_sockets[i], &worklet);
+        debug("worker.send.1: %p", worklet);
         check(rc == 0, "Worker unable to send worklet");
     }
     
@@ -260,6 +262,8 @@ void *sky_worker_run(void *_worker)
         rc = sky_zmq_recv_ptr(worker->pull_socket, (void**)&worklet);
         check(rc == 0 && worklet != NULL, "Worker unable to receive worklet");
         
+        debug("worker.prereduce.1: %p | %p", worklet, worklet->data);
+
         // Reduce worklet.
         rc = worker->reduce(worker, worklet->data);
         check(rc == 0, "Worker unable to reduce");
@@ -271,14 +275,22 @@ void *sky_worker_run(void *_worker)
         worklet = NULL;
     }
     
+    debug("worker.preoutput.1");
+
     // Output data to stream.
     rc = worker->write(worker, worker->output);
     check(rc == 0, "Worker unable to reduce");
+
+    // Close streams.
+    fclose(worker->input);
+    fclose(worker->output);
 
     // Clean up worker.
     worker->free(worker);
     sky_worker_free(worker);
     
+    debug("worker.done.1");
+
     return NULL;
 
 error:
