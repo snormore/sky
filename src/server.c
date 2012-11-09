@@ -129,11 +129,7 @@ void sky_server_free(sky_server *server)
         if(server->path) bdestroy(server->path);
         sky_server_free_tables(server);
         sky_server_free_servlets(server);
-
-        if(server->shutdown_socket) zmq_close(server->shutdown_socket);
-        server->shutdown_socket = NULL;
-        bdestroy(server->shutdown_socket_uri);
-        server->shutdown_socket_uri = NULL;
+        zmq_ctx_destroy(server->context);
 
         free(server);
     }
@@ -238,6 +234,7 @@ error:
 int sky_server_stop_servlets(sky_server *server)
 {
     int rc;
+    void *pull_socket = NULL;
     void *push_socket = NULL;
     check(server != NULL, "Server required");
 
@@ -247,7 +244,7 @@ int sky_server_stop_servlets(sky_server *server)
     }
 
     // Create pull socket.
-    void *pull_socket = zmq_socket(server->context, ZMQ_PULL);
+    pull_socket = zmq_socket(server->context, ZMQ_PULL);
     check(pull_socket != NULL, "Unable to create server shutdown socket");
 
     // Bind pull socket.
@@ -271,7 +268,8 @@ int sky_server_stop_servlets(sky_server *server)
         check(rc == 0, "Unable to send worklet message");
         
         // Close socket.
-        zmq_close(push_socket);
+        rc = zmq_close(push_socket);
+        check(rc == 0, "Unable to close server shutdown push socket");
         push_socket = NULL;
     }
 
@@ -284,7 +282,8 @@ int sky_server_stop_servlets(sky_server *server)
     }
 
     // Clean up socket.
-    zmq_close(pull_socket);
+    rc = zmq_close(pull_socket);
+    check(rc == 0, "Unable to close server shutdown pull socket");
 
     // Clean up servlets.
     free(server->servlets);
@@ -294,10 +293,8 @@ int sky_server_stop_servlets(sky_server *server)
     return 0;
 
 error:
-    if(server) {
-        if(pull_socket) zmq_close(pull_socket);
-        if(push_socket) zmq_close(push_socket);
-    }
+    if(pull_socket) zmq_close(pull_socket);
+    if(push_socket) zmq_close(push_socket);
     return -1;
 }
 

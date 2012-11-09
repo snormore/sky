@@ -66,16 +66,21 @@ error:
 // Returns nothing.
 void sky_worker_free_push_sockets(sky_worker *worker)
 {
+    int rc;
     if(worker) {
         uint32_t i;
         for(i=0; i<worker->push_socket_count; i++) {
-            zmq_close(worker->push_sockets[i]);
+            rc = zmq_close(worker->push_sockets[i]);
+            check(rc == 0, "Unable to close worker push socket: %d", i);
             worker->push_sockets[i] = NULL;
         }
         free(worker->push_sockets);
         worker->push_sockets = NULL;
         worker->push_socket_count = 0;
     }
+
+error:
+    return;
 }
 
 // Closes and frees the pull socket on the worker.
@@ -85,12 +90,17 @@ void sky_worker_free_push_sockets(sky_worker *worker)
 // Returns nothing.
 void sky_worker_free_pull_socket(sky_worker *worker)
 {
+    int rc;
     if(worker) {
-        zmq_close(worker->pull_socket);
+        rc = zmq_close(worker->pull_socket);
+        check(rc == 0, "Unable to close worker pull socket");
         worker->pull_socket = NULL;
         bdestroy(worker->pull_socket_uri);
         worker->pull_socket_uri = NULL;
     }
+
+error:
+    return;
 }
 
 // Frees the list of servlets the worker is attached to.

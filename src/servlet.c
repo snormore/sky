@@ -105,12 +105,12 @@ int sky_servlet_start(sky_servlet *servlet)
     rc = zmq_bind(servlet->pull_socket, bdata(servlet->uri));
     check(rc == 0, "Unable to connect servlet pull socket");
     
+    // Update servlet state.
+    servlet->state = SKY_SERVLET_STATE_RUNNING;
+
     // Create the worker thread.
     rc = pthread_create(&servlet->thread, NULL, sky_servlet_run, (void*)servlet);
     check(rc == 0, "Unable to create servlet thread");
-
-    // Update servlet state.
-    servlet->state = SKY_SERVLET_STATE_RUNNING;
 
     return 0;
 
@@ -142,7 +142,8 @@ int sky_servlet_send_shutdown_message(sky_servlet *servlet)
     check(rc == 0, "Unable to send servlet shutdown message");
 
     // Close shutdown socket.
-    zmq_close(socket);
+    rc = zmq_close(socket);
+    check(rc == 0, "Unable to close servlet shutdown socket");
 
     // Update servlet state.
     servlet->state = SKY_SERVLET_STATE_STOPPED;
@@ -150,6 +151,7 @@ int sky_servlet_send_shutdown_message(sky_servlet *servlet)
     return 0;
 
 error:
+    if(socket) zmq_close(socket);
     return -1;
 }
 
@@ -168,6 +170,7 @@ void *sky_servlet_run(void *_servlet)
     int rc;
     sky_worklet *worklet = NULL;
     sky_servlet *servlet = (sky_servlet *)_servlet;
+    void *push_socket = NULL;
     check(servlet != NULL, "Servlet required");
     
     // Read in messages from pull socket.
@@ -187,18 +190,25 @@ void *sky_servlet_run(void *_servlet)
         worker->map(worker, servlet->tablet, &worklet->data);
         
         // Connect back to worker.
-        void *push_socket = zmq_socket(context, ZMQ_PUSH); check_mem(push_socket);
+        push_socket = zmq_socket(context, ZMQ_PUSH); check_mem(push_socket);
         rc = zmq_connect(push_socket, bdata(worker->pull_socket_uri));
         check(rc == 0, "Unable to connect servlet push socket");
 
         // Send back worklet.
         rc = sky_zmq_send_ptr(push_socket, (void*)(&worklet));
         check(rc == 0, "Unable to send worklet message");
+        
+        // Close socket.
+        zmq_close(push_socket);
+        push_socket = NULL;
     }
 
     // Close pull socket.
     zmq_close(servlet->pull_socket);
+    check(rc == 0, "Unable to close servlet pull socket");
     servlet->pull_socket = NULL;
+    
+    debug("servlet.close");
 
     // Notify server that servlet is being shutdown.
     rc = sky_servlet_send_shutdown_message(servlet);
@@ -208,5 +218,6 @@ void *sky_servlet_run(void *_servlet)
     return NULL;
 
 error:
+    if(push_socket) zmq_close(push_socket);
     return NULL;
 }

@@ -55,8 +55,6 @@ struct sky_server {
     sky_message_handler **message_handlers;
     uint32_t message_handler_count;
     void *context;
-    void *shutdown_socket;
-    bstring shutdown_socket_uri;
 };
 
 

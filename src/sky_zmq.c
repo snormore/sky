@@ -81,3 +81,25 @@ error:
     zmq_msg_close(&message);
     return -1;
 }
+
+
+//--------------------------------------
+// Send / Receive
+//--------------------------------------
+
+// Sets a socket to not linger.
+//
+// socket - The socket.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_zmq_no_linger(void *socket)
+{
+    int zero = 0;
+    int rc = zmq_setsockopt(socket, ZMQ_LINGER, &zero, sizeof(zero));
+    check(rc == 0, "Unable to set no linger on socket");
+
+    return 0;
+    
+error:
+    return -1;
+}
