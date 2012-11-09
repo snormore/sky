@@ -60,6 +60,9 @@ sky_message_handler *sky_next_actions_message_handler_create();
 int sky_next_actions_message_process(sky_server *server, sky_table *table,
     FILE *input, FILE *output);
 
+int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *message,
+    sky_property_file *property_file);
+
 //--------------------------------------
 // Serialization
 //--------------------------------------

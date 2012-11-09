@@ -98,8 +98,6 @@ int sky_servlet_start(sky_servlet *servlet)
     check(servlet->uri != NULL, "Servlet URI required");
     check(servlet->state == SKY_SERVLET_STATE_STOPPED, "Servlet already running");
 
-    debug("servlet.start.1: %s", bdata(servlet->uri));
-
     // Create a listening queue.
     void *context = servlet->server->context;
     servlet->pull_socket = zmq_socket(context, ZMQ_PULL);
@@ -144,8 +142,6 @@ void *sky_servlet_run(void *_servlet)
         rc = sky_zmq_recv_ptr(servlet->pull_socket, (void**)(&worklet));
         check(rc == 0, "Unable to receive worklet message");
         
-        debug("servlet.recv.1: %p", worklet);
-
         // If worklet is NULL then stop the servlet.
         if(worklet == NULL) {
             break;
@@ -154,7 +150,6 @@ void *sky_servlet_run(void *_servlet)
         // Process worklet.
         sky_worker *worker = worklet->worker;
         worker->map(worker, servlet->tablet, &worklet->data);
-        debug("servlet.postmap.1: %p | %p", worklet, worklet->data);
         
         // Connect back to worker.
         void *push_socket = zmq_socket(context, ZMQ_PUSH); check_mem(push_socket);
@@ -166,7 +161,6 @@ void *sky_servlet_run(void *_servlet)
         check(rc == 0, "Unable to send worklet message");
     }
     
-    debug("servlet.end: %s", bdata(servlet->name));
     sky_servlet_free(servlet);
     return NULL;
 

@@ -15,7 +15,7 @@
 
 int test() {
     pthread_t thread;
-    importtmp("tests/functional/fixtures/next_actions/0/data.json");
+    importtmp_n("tests/functional/fixtures/next_actions/0/data.json", 4);
     start_server(1, &thread);
     send_msg("tests/functional/fixtures/next_actions/0/input");
     pthread_join(thread, NULL);

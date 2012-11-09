@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <pthread.h>
 #include <zmq.h>
 
@@ -199,7 +200,6 @@ int sky_worker_start(sky_worker *worker)
         check(worker->push_sockets[i] != NULL, "Unable to create worker push socket");
         
         // Connect to servlet.
-        debug("worker.start: %s", bdata(worker->servlets[i]->uri));
         rc = zmq_connect(worker->push_sockets[i], bdata(worker->servlets[i]->uri));
         check(rc == 0, "Unable to connect worker to servlet");
     }
@@ -244,6 +244,11 @@ void *sky_worker_run(void *_worker)
     sky_worklet *worklet = NULL;
     check(worker != NULL, "Worker required");
     
+    // Start benchmark.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+
     // Read data from stream.
     rc = worker->read(worker, worker->input);
     check(rc == 0, "Worker unable to read from stream");
@@ -252,7 +257,6 @@ void *sky_worker_run(void *_worker)
     for(i=0; i<worker->push_socket_count; i++) {
         worklet = sky_worklet_create(worker); check_mem(worklet);
         rc = sky_zmq_send_ptr(worker->push_sockets[i], &worklet);
-        debug("worker.send.1: %p", worklet);
         check(rc == 0, "Worker unable to send worklet");
     }
     
@@ -262,8 +266,6 @@ void *sky_worker_run(void *_worker)
         rc = sky_zmq_recv_ptr(worker->pull_socket, (void**)&worklet);
         check(rc == 0 && worklet != NULL, "Worker unable to receive worklet");
         
-        debug("worker.prereduce.1: %p | %p", worklet, worklet->data);
-
         // Reduce worklet.
         rc = worker->reduce(worker, worklet->data);
         check(rc == 0, "Worker unable to reduce");
@@ -275,8 +277,6 @@ void *sky_worker_run(void *_worker)
         worklet = NULL;
     }
     
-    debug("worker.preoutput.1");
-
     // Output data to stream.
     rc = worker->write(worker, worker->output);
     check(rc == 0, "Worker unable to reduce");
@@ -285,12 +285,15 @@ void *sky_worker_run(void *_worker)
     fclose(worker->input);
     fclose(worker->output);
 
+    // End benchmark.
+    gettimeofday(&tv, NULL);
+    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+    debug("Worker ran in: %.3f seconds\n", ((float)(t1-t0))/1000);
+    
     // Clean up worker.
     worker->free(worker);
     sky_worker_free(worker);
     
-    debug("worker.done.1");
-
     return NULL;
 
 error:

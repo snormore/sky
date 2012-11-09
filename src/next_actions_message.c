@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <arpa/inet.h>
-#include <sys/time.h>
 
 #include "types.h"
 #include "next_actions_message.h"
@@ -129,7 +128,6 @@ int sky_next_actions_message_process(sky_server *server, sky_table *table,
 {
     int rc = 0;
     sky_next_actions_message *message = NULL;
-    sky_data_descriptor *descriptor = NULL;
     check(table != NULL, "Table required");
     check(input != NULL, "Input stream required");
     check(output != NULL, "Output stream required");
@@ -159,11 +157,8 @@ int sky_next_actions_message_process(sky_server *server, sky_table *table,
     check_mem(message->results);
 
     // Initialize data descriptor.
-    rc = sky_property_file_create_data_descriptor(table->property_file, &descriptor);
-    check(rc == 0, "Unable to create data descriptor");
-    descriptor->timestamp_descriptor.offset = offsetof(sky_next_actions_data, timestamp);
-    descriptor->action_descriptor.offset = offsetof(sky_next_actions_data, action_id);
-    message->data_descriptor = descriptor;
+    rc = sky_next_actions_message_init_data_descriptor(message, table->property_file);
+    check(rc == 0, "Unable to initialize data descriptor");
     
     // Attach message to worker.
     worker->data = (sky_next_actions_message*)message;
@@ -177,6 +172,38 @@ int sky_next_actions_message_process(sky_server *server, sky_table *table,
 error:
     sky_next_actions_message_free(message);
     worker->data = NULL;
+    return -1;
+}
+
+// Initializes a data descriptor on 'Next Actions' message.
+//
+// message       - The message.
+// property_file - The property file to initialize from.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *message,
+                                                  sky_property_file *property_file)
+{
+    int rc;
+    sky_data_descriptor *descriptor = NULL;
+    check(message != NULL, "Message required");
+    check(property_file != NULL, "Property file required");
+    check(message->data_descriptor == NULL, "Message already has a data descriptor");
+    
+    // Create data descriptor.
+    rc = sky_property_file_create_data_descriptor(property_file, &descriptor);
+    check(rc == 0, "Unable to create data descriptor");
+    descriptor->timestamp_descriptor.offset = offsetof(sky_next_actions_data, timestamp);
+    descriptor->action_descriptor.offset = offsetof(sky_next_actions_data, action_id);
+    
+    // Assign it to message.
+    message->data_descriptor = descriptor;
+
+    return 0;
+
+error:
+    message->data_descriptor = NULL;
+    sky_data_descriptor_free(descriptor);
     return -1;
 }
 
@@ -247,7 +274,7 @@ int sky_next_actions_message_unpack(sky_next_actions_message *message, FILE *fil
 
     message->prior_action_ids = realloc(message->prior_action_ids, sizeof(*message->prior_action_ids) * message->prior_action_id_count);
     check_mem(message->prior_action_ids);
-
+    
     uint32_t i;
     for(i=0; i<message->prior_action_id_count; i++) {
         message->prior_action_ids[i] = minipack_fread_uint(file, &sz);
@@ -324,11 +351,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
     check(rc == 0, "Unable to initialze path iterator");
 
-    // Start benchmark.
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-
     // Iterate over each path.
     uint64_t event_count = 0;
     while(!iterator.eof) {
@@ -380,11 +402,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
         check(rc == 0, "Unable to find next path");
     }
 
-    // End benchmark.
-    gettimeofday(&tv, NULL);
-    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-    debug("'Next Action' queried %lld events in: %.3f seconds\n", event_count, ((float)(t1-t0))/1000);
-    
     // Return data.
     *ret = (void*)results;
 
