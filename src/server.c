@@ -17,6 +17,7 @@
 #include "get_property_message.h"
 #include "get_properties_message.h"
 #include "multi_message.h"
+#include "sky_zmq.h"
 #include "dbg.h"
 
 
@@ -31,6 +32,8 @@ int sky_server_get_table(sky_server *server, bstring name, sky_table **ret);
 int sky_server_open_table(sky_server *server, bstring name, bstring path, sky_table **ret);
 
 int sky_server_create_servlets(sky_server *server, sky_table *table);
+
+int sky_server_stop_servlets(sky_server *server);
 
 
 //==============================================================================
@@ -126,6 +129,12 @@ void sky_server_free(sky_server *server)
         if(server->path) bdestroy(server->path);
         sky_server_free_tables(server);
         sky_server_free_servlets(server);
+
+        if(server->shutdown_socket) zmq_close(server->shutdown_socket);
+        server->shutdown_socket = NULL;
+        bdestroy(server->shutdown_socket_uri);
+        server->shutdown_socket_uri = NULL;
+
         free(server);
     }
 }
@@ -192,6 +201,9 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_server_stop(sky_server *server)
 {
+    int rc;
+    check(server != NULL, "Server required");
+    
     // Close socket if open.
     if(server->socket > 0) {
         close(server->socket);
@@ -204,10 +216,89 @@ int sky_server_stop(sky_server *server)
     }
     server->sockaddr = NULL;
     
+    // Send a shutdown signal to all servlets and wait for response.
+    rc = sky_server_stop_servlets(server);
+    check(rc == 0, "Unable to stop servlets");
+
     // Update server state.
     server->state = SKY_SERVER_STATE_STOPPED;
     
     return 0;
+
+error:
+    return -1;
+}
+
+// Sends a shutdown signal to all servlets and waits for their confirmation
+// before returning.
+//
+// server - The server.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_stop_servlets(sky_server *server)
+{
+    int rc;
+    void *push_socket = NULL;
+    check(server != NULL, "Server required");
+
+    // Ignore if there are no servlets.
+    if(server->servlet_count == 0) {
+        return 0;
+    }
+
+    // Create pull socket.
+    void *pull_socket = zmq_socket(server->context, ZMQ_PULL);
+    check(pull_socket != NULL, "Unable to create server shutdown socket");
+
+    // Bind pull socket.
+    rc = zmq_bind(pull_socket, SKY_SERVER_SHUTDOWN_URI);
+    check(rc == 0, "Unable to bind server shutdown socket");
+
+    // Send a shutdown message to each servlet.
+    uint32_t i;
+    for(i=0; i<server->servlet_count; i++) {
+        // Create push socket.
+        push_socket = zmq_socket(server->context, ZMQ_PUSH);
+        check(push_socket != NULL, "Unable to create shutdown push socket");
+    
+        // Connect to servlet.
+        rc = zmq_connect(push_socket, bdata(server->servlets[i]->uri));
+        check(rc == 0, "Unable to connect to servlet for shutdown");
+
+        // Send NULL worklet for shutdown.
+        void *ptr = NULL;
+        rc = sky_zmq_send_ptr(push_socket, &ptr);
+        check(rc == 0, "Unable to send worklet message");
+        
+        // Close socket.
+        zmq_close(push_socket);
+        push_socket = NULL;
+    }
+
+    // Read in one pull message for every push message sent.
+    for(i=0; i<server->servlet_count; i++) {
+        // Receive servlet ref on shutdown.
+        sky_servlet *servlet = NULL;
+        rc = sky_zmq_recv_ptr(pull_socket, (void**)&servlet);
+        check(rc == 0, "Server unable to receive shutdown response");
+    }
+
+    // Clean up socket.
+    zmq_close(pull_socket);
+
+    // Clean up servlets.
+    free(server->servlets);
+    server->servlets = NULL;
+    server->servlet_count = 0;
+
+    return 0;
+
+error:
+    if(server) {
+        if(pull_socket) zmq_close(pull_socket);
+        if(push_socket) zmq_close(push_socket);
+    }
+    return -1;
 }
 
 // Accepts a connection on a running server. Once a connection is accepted then

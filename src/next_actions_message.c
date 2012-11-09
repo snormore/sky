@@ -171,7 +171,7 @@ int sky_next_actions_message_process(sky_server *server, sky_table *table,
 
 error:
     sky_next_actions_message_free(message);
-    worker->data = NULL;
+    sky_worker_free(worker);
     return -1;
 }
 

@@ -25,6 +25,8 @@ typedef struct sky_server sky_server;
 
 #define SKY_LISTEN_BACKLOG 511
 
+#define SKY_SERVER_SHUTDOWN_URI "inproc://server.shutdown"
+
 
 //==============================================================================
 //
@@ -53,6 +55,8 @@ struct sky_server {
     sky_message_handler **message_handlers;
     uint32_t message_handler_count;
     void *context;
+    void *shutdown_socket;
+    bstring shutdown_socket_uri;
 };
 
 

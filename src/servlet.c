@@ -118,6 +118,41 @@ error:
     return -1;
 }
 
+// Notify the server that the servlet has shutdown.
+//
+// servlet - The servlet.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_servlet_send_shutdown_message(sky_servlet *servlet)
+{
+    int rc;
+    check(servlet != NULL, "Servlet required");
+    check(servlet->state == SKY_SERVLET_STATE_RUNNING, "Servlet is not running");
+
+    // Send a shutdown response to the server.
+    void *socket = zmq_socket(servlet->server->context, ZMQ_PUSH);
+    check(socket != NULL, "Unable to create servlet shutdown push socket");
+
+    // Connect to server.
+    rc = zmq_connect(socket, SKY_SERVER_SHUTDOWN_URI);
+    check(rc == 0, "Unable to connect to server for shutdown");
+
+    // Send pointer to servlet for shutdown.
+    rc = sky_zmq_send_ptr(socket, &servlet);
+    check(rc == 0, "Unable to send servlet shutdown message");
+
+    // Close shutdown socket.
+    zmq_close(socket);
+
+    // Update servlet state.
+    servlet->state = SKY_SERVLET_STATE_STOPPED;
+
+    return 0;
+
+error:
+    return -1;
+}
+
 
 //--------------------------------------
 // Processing
@@ -160,7 +195,15 @@ void *sky_servlet_run(void *_servlet)
         rc = sky_zmq_send_ptr(push_socket, (void*)(&worklet));
         check(rc == 0, "Unable to send worklet message");
     }
-    
+
+    // Close pull socket.
+    zmq_close(servlet->pull_socket);
+    servlet->pull_socket = NULL;
+
+    // Notify server that servlet is being shutdown.
+    rc = sky_servlet_send_shutdown_message(servlet);
+    check(rc == 0, "Unable to send servlet shutdown message");
+
     sky_servlet_free(servlet);
     return NULL;
 

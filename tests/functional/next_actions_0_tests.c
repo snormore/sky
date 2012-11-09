@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <sky.h>
+#include <dbg.h>
 #include <mem.h>
 
 #include "server_helpers.h"

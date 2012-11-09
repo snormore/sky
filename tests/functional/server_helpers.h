@@ -66,9 +66,9 @@ void *run_server(void *_options)
     for(i=0; i<options->message_count; i++) {
         sky_server_accept(options->server);
     }
+    sky_server_stop(options->server);
     // HACK:
     sleep(1);
-    sky_server_stop(options->server);
     sky_server_free(options->server);
     free(_options);
     return NULL;
