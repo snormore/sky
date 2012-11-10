@@ -1,6 +1,5 @@
 # Multicore
 - Move action & property messages to handlers.
-- Send add_event to a servlet.
 
 
 # Documentation

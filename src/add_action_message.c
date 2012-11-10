@@ -66,6 +66,89 @@ void sky_add_action_message_free_action(sky_add_action_message *message)
 
 
 //--------------------------------------
+// Message Handler
+//--------------------------------------
+
+// Creates a message handler for the 'Add Action' message.
+//
+// Returns a message handler.
+sky_message_handler *sky_add_action_message_handler_create()
+{
+    sky_message_handler *handler = sky_message_handler_create(); check_mem(handler);
+    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_SERVER;
+    handler->name = bfromcstr("add_action");
+    handler->process = sky_add_action_message_process;
+    return handler;
+
+error:
+    sky_message_handler_free(handler);
+    return NULL;
+}
+
+// Delegates processing of the 'Add Event' message to a worker.
+//
+// server - The server.
+// header - The message header.
+// table  - The table the message is working against
+// input  - The input file stream.
+// output - The output file stream.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_action_message_process(sky_server *server,
+                                   sky_message_header *header,
+                                   sky_table *table, FILE *input, FILE *output)
+{
+    int rc = 0;
+    size_t sz;
+    sky_add_action_message *message = NULL;
+    check(server != NULL, "Server required");
+    check(header != NULL, "Message header required");
+    check(table != NULL, "Table required");
+    check(input != NULL, "Input stream required");
+    check(output != NULL, "Output stream required");
+    
+    struct tagbstring status_str = bsStatic("status");
+    struct tagbstring ok_str = bsStatic("ok");
+    struct tagbstring action_str = bsStatic("action");
+
+    // Parse message.
+    message = sky_add_action_message_create(); check_mem(message);
+    rc = sky_add_action_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'add_action' message");
+
+    // Add action.
+    rc = sky_action_file_add_action(table->action_file, message->action);
+    check(rc == 0, "Unable to add action");
+    
+    // Save actions file.
+    rc = sky_action_file_save(table->action_file);
+    check(rc == 0, "Unable to save action file");
+    
+    // Return.
+    //   {status:"OK", action:{...}}
+    minipack_fwrite_map(output, 2, &sz);
+    check(sz > 0, "Unable to write output");
+    check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write status key");
+    check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write status value");
+    check(sky_minipack_fwrite_bstring(output, &action_str) == 0, "Unable to write action key");
+    check(sky_action_pack(message->action, output) == 0, "Unable to write action value");
+
+    // Clean up.
+    fclose(input);
+    fclose(output);
+    sky_add_action_message_free(message);
+
+    return 0;
+
+error:
+    if(input) fclose(input);
+    if(output) fclose(output);
+    sky_add_action_message_free(message);
+    return -1;
+}
+
+
+//--------------------------------------
 // Serialization
 //--------------------------------------
 
@@ -117,54 +200,6 @@ int sky_add_action_message_unpack(sky_add_action_message *message, FILE *file)
     rc = sky_action_unpack(message->action, file);
     check(rc == 0, "Unable to unpack action");
 
-    return 0;
-
-error:
-    return -1;
-}
-
-
-//--------------------------------------
-// Processing
-//--------------------------------------
-
-// Applies an 'add_action' message to a table.
-//
-// message - The message.
-// table   - The table to apply the message to.
-// output  - The output stream to write to.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_add_action_message_process(sky_add_action_message *message,
-                                   sky_table *table, FILE *output)
-{
-    int rc;
-    size_t sz;
-    check(message != NULL, "Message required");
-    check(table != NULL, "Table required");
-    check(output != NULL, "Output stream required");
-
-    struct tagbstring status_str = bsStatic("status");
-    struct tagbstring ok_str = bsStatic("ok");
-    struct tagbstring action_str = bsStatic("action");
-
-    // Add action.
-    rc = sky_action_file_add_action(table->action_file, message->action);
-    check(rc == 0, "Unable to add action");
-    
-    // Save actions file.
-    rc = sky_action_file_save(table->action_file);
-    check(rc == 0, "Unable to save action file");
-    
-    // Return.
-    //   {status:"OK", action:{...}}
-    minipack_fwrite_map(output, 2, &sz);
-    check(sz > 0, "Unable to write output");
-    check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write status key");
-    check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write status value");
-    check(sky_minipack_fwrite_bstring(output, &action_str) == 0, "Unable to write action key");
-    check(sky_action_pack(message->action, output) == 0, "Unable to write action value");
-    
     return 0;
 
 error:

@@ -135,7 +135,7 @@ int sky_action_unpack(sky_action *action, FILE *file)
             action->id = (sky_action_id_t)minipack_fread_uint(file, &sz);
             check(sz > 0, "Unable to read action id");
         }
-        else if(biseq(key, &SKY_ACTION_ID_STR)) {
+        else if(biseq(key, &SKY_ACTION_NAME_STR)) {
             rc = sky_minipack_fread_bstring(file, &action->name);
             check(rc == 0, "Unable to read action id");
         }
