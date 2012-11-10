@@ -85,7 +85,8 @@ error:
     return NULL;
 }
 
-// Delegates processing of the 'Add Event' message to a worker.
+// Adds an action to a table. This function is synchronous and does not use
+// a worker.
 //
 // server - The server.
 // header - The message header.
@@ -134,9 +135,9 @@ int sky_add_action_message_process(sky_server *server,
     check(sky_action_pack(message->action, output) == 0, "Unable to write action value");
 
     // Clean up.
+    sky_add_action_message_free(message);
     fclose(input);
     fclose(output);
-    sky_add_action_message_free(message);
 
     return 0;
 

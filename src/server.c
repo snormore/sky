@@ -399,9 +399,6 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
             if(biseqcstr(header->name, "get_action") == 1) {
                 rc = sky_server_process_get_action_message(server, table, input, output);
             }
-            else if(biseqcstr(header->name, "get_actions") == 1) {
-                rc = sky_server_process_get_actions_message(server, table, input, output);
-            }
             else if(biseqcstr(header->name, "add_property") == 1) {
                 rc = sky_server_process_add_property_message(server, table, input, output);
             }
@@ -824,39 +821,6 @@ error:
     return -1;
 }
 
-// Parses and process a 'get_actions' message.
-//
-// server - The server.
-// table  - The table to apply the message to.
-// input  - The input file stream.
-// output - The output file stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_server_process_get_actions_message(sky_server *server, sky_table *table,
-                                           FILE *input, FILE *output)
-{
-    int rc;
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    check(input != NULL, "Input required");
-    check(output != NULL, "Output stream required");
-    
-    debug("Message received: [get_actions]");
-
-    // Parse message.
-    sky_get_actions_message *message = sky_get_actions_message_create(); check_mem(message);
-    rc = sky_get_actions_message_unpack(message, input);
-    check(rc == 0, "Unable to parse 'get_actions' message");
-    
-    // Process message.
-    rc = sky_get_actions_message_process(message, table, output);
-    check(rc == 0, "Unable to process 'get_actions' message");
-    
-    return 0;
-
-error:
-    return -1;
-}
 
 
 //--------------------------------------
