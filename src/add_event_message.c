@@ -4,8 +4,8 @@
 
 #include "types.h"
 #include "add_event_message.h"
+#include "worker.h"
 #include "minipack.h"
-#include "endian.h"
 #include "mem.h"
 #include "dbg.h"
 
@@ -93,6 +93,8 @@ void sky_add_event_message_free(sky_add_event_message *message)
         }
         free(message->data);
         message->data = NULL;
+        sky_event_free(message->event);
+        message->event = NULL;
         
         free(message);
     }
@@ -137,6 +139,104 @@ error:
     sky_message_handler_free(handler);
     return NULL;
 }
+
+// Delegates processing of the 'Add Event' message to a worker.
+//
+// server - The server.
+// header - The message header.
+// table  - The table the message is working against
+// input  - The input file stream.
+// output - The output file stream.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_event_message_process(sky_server *server,
+                                  sky_message_header *header,
+                                  sky_table *table, FILE *input, FILE *output)
+{
+    int rc = 0;
+    sky_add_event_message *message = NULL;
+    check(header != NULL, "Message header required");
+    check(table != NULL, "Table required");
+    check(input != NULL, "Input stream required");
+    check(output != NULL, "Output stream required");
+    
+    // Create worker.
+    sky_worker *worker = sky_worker_create(); check_mem(worker);
+    worker->context = server->context;
+    worker->map = sky_add_event_message_worker_map;
+    worker->write = sky_add_event_message_worker_write;
+    worker->free = sky_add_event_message_worker_free;
+    worker->input = input;
+    worker->output = output;
+    
+    // Parse message.
+    message = sky_add_event_message_create(); check_mem(message);
+    rc = sky_add_event_message_unpack(message, input);
+    check(rc == 0, "Unable to unpack 'add_event' message");
+    check(message->object_id > 0, "Object ID must be greater than zero");
+
+    // Create event object and attach it to the message.
+    message->event = sky_event_create(message->object_id, message->timestamp, message->action_id);
+    check_mem(message->event);
+    message->event->data = calloc(message->data_count, sizeof(*message->event->data)); check_mem(message->event->data);
+    message->event->data_count = message->data_count;
+    
+    // Copy data from message.
+    uint32_t i;
+    for(i=0; i<message->data_count; i++) {
+        sky_event_data *data = NULL;
+        sky_add_event_message_data *message_data = message->data[i];
+        
+        // Look up property id by name.
+        sky_property *property = NULL;
+        rc = sky_property_file_find_by_name(table->property_file, message_data->key, &property);
+        check(rc == 0 && property != NULL, "Unable to find property '%s' in table: %s", bdata(message_data->key), bdata(table->path));
+        
+        // Create event data based on data type.
+        switch(message_data->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                data = sky_event_data_create_string(property->id, message_data->string_value);
+                break;
+            case SKY_DATA_TYPE_INT:
+                data = sky_event_data_create_int(property->id, message_data->int_value);
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                data = sky_event_data_create_double(property->id, message_data->double_value);
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                data = sky_event_data_create_boolean(property->id, message_data->boolean_value);
+                break;
+            default:
+                sentinel("Invalid data type in 'add_event' message");
+        }
+        
+        message->event->data[i] = data;
+    }
+    
+    // Attach the message to the worker.
+    worker->data = (void*)message;
+    
+    // Attach servlets.
+    worker->servlets = calloc(1, sizeof(*worker->servlets)); check_mem(worker->servlets);
+    worker->servlet_count = 1;
+    sky_tablet *tablet = NULL;
+    rc = sky_table_get_target_tablet(table, message->object_id, &tablet);
+    check(rc == 0 && tablet != NULL, "Unable to find target tablet: %d", message->object_id);
+    rc = sky_server_get_tablet_servlet(server, tablet, &worker->servlets[0]);
+    check(rc == 0, "Unable to copy servlet to worker");
+
+    // Start worker.
+    rc = sky_worker_start(worker);
+    check(rc == 0, "Unable to start worker");
+    
+    return 0;
+
+error:
+    sky_add_event_message_free(message);
+    sky_worker_free(worker);
+    return -1;
+}
+
 
 //--------------------------------------
 // Serialization
@@ -413,88 +513,79 @@ error:
 
 
 //--------------------------------------
-// Processing
+// Worker
 //--------------------------------------
 
-// Reads an 'add_event' message from the input stream and applies it to a
-// table.
+// Adds the event to a given tablet.
 //
-// table  - The table to apply the message to.
-// input  - The input stream.
+// worker - The worker.
+// tablet - The tablet to add the event to.
+// ret    - Unused.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_event_message_worker_map(sky_worker *worker, sky_tablet *tablet,
+                                     void **ret)
+{
+    int rc;
+    check(worker != NULL, "Worker required");
+    check(tablet != NULL, "Tablet required");
+    check(ret != NULL, "Return pointer required");
+
+    // Add event to tablet.
+    sky_add_event_message *message = (sky_add_event_message*)worker->data;
+    rc = sky_tablet_add_event(tablet, message->event);
+    check(rc == 0, "Unable to add event to table");
+
+    *ret = NULL;
+    return 0;
+
+error:
+    *ret = NULL;
+    return -1;
+}
+
+// Writes the results to an output stream.
+//
+// worker - The worker.
 // output - The output stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_add_event_message_process(sky_server *server, sky_table *table,
-                                  FILE *input, FILE *output)
+int sky_add_event_message_worker_write(sky_worker *worker, FILE *output)
 {
-    int rc;
     size_t sz;
-    sky_event *event = NULL;
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    check(input != NULL, "Input stream required");
+    check(worker != NULL, "Worker required");
     check(output != NULL, "Output stream required");
-
+    
     struct tagbstring status_str = bsStatic("status");
     struct tagbstring ok_str = bsStatic("ok");
 
-    // Parse message.
-    sky_add_event_message *message = sky_add_event_message_create(); check_mem(message);
-    rc = sky_add_event_message_unpack(message, input);
-    check(rc == 0, "Unable to parse message");
-
-    // Create event object.
-    event = sky_event_create(message->object_id, message->timestamp, message->action_id);
-    check_mem(event);
-    event->data_count = message->data_count;
-    event->data = calloc(message->data_count, sizeof(*event->data)); check_mem(event->data);
-    
-    // Copy data from message.
-    uint32_t i;
-    for(i=0; i<message->data_count; i++) {
-        sky_event_data *data = NULL;
-        sky_add_event_message_data *message_data = message->data[i];
-        
-        // Look up property id by name
-        sky_property *property = NULL;
-        rc = sky_property_file_find_by_name(table->property_file, message_data->key, &property);
-        check(rc == 0 && property != NULL, "Unable to find property '%s' in table: %s", bdata(message_data->key), bdata(table->path));
-        
-        // Create event data based on data type.
-        switch(message_data->data_type) {
-            case SKY_DATA_TYPE_STRING:
-                data = sky_event_data_create_string(property->id, message_data->string_value);
-                break;
-            case SKY_DATA_TYPE_INT:
-                data = sky_event_data_create_int(property->id, message_data->int_value);
-                break;
-            case SKY_DATA_TYPE_DOUBLE:
-                data = sky_event_data_create_double(property->id, message_data->double_value);
-                break;
-            case SKY_DATA_TYPE_BOOLEAN:
-                data = sky_event_data_create_boolean(property->id, message_data->boolean_value);
-                break;
-            default:
-                sentinel("Invalid data type in 'add_event' message");
-        }
-        
-        event->data[i] = data;
-    }
-    sky_add_event_message_free(message);
-    
-    // Add event to table.
-    rc = sky_table_add_event(table, event);
-    check(rc == 0, "Unable to add event to table");
-    
     // Return {status:"OK"}
     check(minipack_fwrite_map(output, 1, &sz) == 0, "Unable to write output");
     check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write output");
     check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write output");
     
-    sky_event_free(event);
     return 0;
 
 error:
-    sky_event_free(event);
+    return -1;
+}
+
+// Frees all data attached to the worker.
+//
+// worker - The worker.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_event_message_worker_free(sky_worker *worker)
+{
+    check(worker != NULL, "Worker required");
+    
+    // Clean up.
+    sky_add_event_message *message = (sky_add_event_message*)worker->data;
+    sky_add_event_message_free(message);
+    worker->data = NULL;
+    
+    return 0;
+
+error:
     return -1;
 }

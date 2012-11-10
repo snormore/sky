@@ -135,7 +135,7 @@ int sky_property_file_load(sky_property_file *property_file)
         uint32_t i;
         for(i=0; i<count; i++) {
             sky_property *property = sky_property_create(); check_mem(property);
-
+            
             rc = sky_property_unpack(property, file);
             check(rc == 0, "Unable to unpack property");
 

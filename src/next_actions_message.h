@@ -6,10 +6,11 @@
 #include <netinet/in.h>
 
 #include "bstring.h"
+#include "message_header.h"
+#include "message_handler.h"
 #include "table.h"
 #include "tablet.h"
 #include "event.h"
-#include "message_handler.h"
 #include "worker.h"
 
 
@@ -57,8 +58,8 @@ void sky_next_actions_message_free_deps(sky_next_actions_message *message);
 
 sky_message_handler *sky_next_actions_message_handler_create();
 
-int sky_next_actions_message_process(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_next_actions_message_process(sky_server *server,
+    sky_message_header *header, sky_table *table, FILE *input, FILE *output);
 
 int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *message,
     sky_property_file *property_file);

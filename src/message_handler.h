@@ -4,8 +4,10 @@
 typedef struct sky_message_handler sky_message_handler;
 
 #include "bstring.h"
+#include "message_header.h"
 #include "server.h"
 #include "table.h"
+#include "types.h"
 
 
 //==============================================================================
@@ -32,7 +34,7 @@ typedef enum {
 
 // Defines a function that processes an input and output stream on a given
 // table.
-typedef int (*sky_message_handler_process_func_t)(sky_server *server, sky_table *table, FILE *input, FILE *output);
+typedef int (*sky_message_handler_process_func_t)(sky_server *server, sky_message_header *header, sky_table *table, FILE *input, FILE *output);
 
 // A container for a specific type of message.
 struct sky_message_handler {

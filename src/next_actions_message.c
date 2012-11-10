@@ -117,18 +117,22 @@ error:
 
 // Delegates processing of the 'Next Actions' message to a worker.
 //
-// server - The server.
-// table  - The table the message is working against
-// input  - The input file stream.
-// output - The output file stream.
+// server  - The server.
+// header  - The message header.
+// table   - The table the message is working against
+// input   - The input file stream.
+// output  - The output file stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_next_actions_message_process(sky_server *server, sky_table *table,
+int sky_next_actions_message_process(sky_server *server,
+                                     sky_message_header *header,
+                                     sky_table *table,
                                      FILE *input, FILE *output)
 {
     int rc = 0;
     sky_next_actions_message *message = NULL;
     check(table != NULL, "Table required");
+    check(header != NULL, "Message header required");
     check(input != NULL, "Input stream required");
     check(output != NULL, "Output stream required");
     

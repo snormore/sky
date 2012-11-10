@@ -1,14 +1,6 @@
 # Multicore
-1. Generalize message handler interface. [DONE]
-1. Add tablets to tables. [DONE]
-  * Add tablet count to header file. [DONE]
-1. Add servlets to server (one per tablet).
-  * Servlet should be attached to a single tablet.
-  * 0MQ message processing loop.
-1. Add 'next_action' worker.
-  * Create pull 
-1. Separate TCP accept() from internal 0MQ message processing loop.
-1. Update data descriptors to reserve the entire range of property identifiers. (int8)
+- Move action & property messages to handlers.
+- Send add_event to a servlet.
 
 
 # Documentation

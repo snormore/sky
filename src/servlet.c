@@ -208,8 +208,6 @@ void *sky_servlet_run(void *_servlet)
     check(rc == 0, "Unable to close servlet pull socket");
     servlet->pull_socket = NULL;
     
-    debug("servlet.close");
-
     // Notify server that servlet is being shutdown.
     rc = sky_servlet_send_shutdown_message(servlet);
     check(rc == 0, "Unable to send servlet shutdown message");

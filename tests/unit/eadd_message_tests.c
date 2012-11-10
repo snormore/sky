@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <add_event_message.h>
+#include <dbg.h>
 #include <mem.h>
 
 #include "../minunit.h"
@@ -88,30 +89,54 @@ int test_sky_add_event_message_sizeof() {
 }
 
 
-
 //--------------------------------------
-// Processing
+// Worker
 //--------------------------------------
 
-int test_sky_add_event_message_process() {
+int test_sky_add_event_message_worker_map() {
     loadtmp("tests/fixtures/add_event_message/1/table/pre");
     sky_table *table = sky_table_create();
     table->path = bfromcstr("tmp");
     table->default_tablet_count = 1;
     sky_table_open(table);
-    FILE *input = fopen("tests/fixtures/add_event_message/1/input", "r");
-    FILE *output = fopen("tmp/output", "w");
-    struct tagbstring ROOT = bsStatic(".");
-    sky_server *server = sky_server_create(&ROOT);
-    mu_assert(sky_add_event_message_process(server, table, input, output) == 0, "");
-    fclose(output);
-    fclose(input);
+
+    struct tagbstring XYZ_STR = bsStatic("xyz");
+    sky_add_event_message *message = sky_add_event_message_create();
+    message->event = sky_event_create(10, 1000L, 20);
+    message->event->data_count = 4;
+    message->event->data = calloc(message->event->data_count, sizeof(*message->event->data));
+    message->event->data[0] = sky_event_data_create_string(1, &XYZ_STR);
+    message->event->data[1] = sky_event_data_create_int(2, 200);
+    message->event->data[2] = sky_event_data_create_double(3, 100.2);
+    message->event->data[3] = sky_event_data_create_boolean(4, true);
+    sky_worker *worker = sky_worker_create();
+    worker->data = (void*)message;
+
+    void *null = NULL;
+    int rc = sky_add_event_message_worker_map(worker, table->tablets[0], &null);
+    mu_assert_int_equals(rc, 0);
     mu_assert_file("tmp/0/header", "tests/fixtures/add_event_message/1/table/post/0/header");
     mu_assert_file("tmp/0/data", "tests/fixtures/add_event_message/1/table/post/0/data");
+
+    sky_add_event_message_free(message);
+    sky_worker_free(worker);
+    sky_table_free(table);
+    return 0;
+}
+
+int test_sky_add_event_message_worker_write() {
+    sky_add_event_message *message = sky_add_event_message_create();
+    sky_worker *worker = sky_worker_create();
+    worker->data = (void*)message;
+    worker->output = fopen("tmp/output", "w");
+
+    int rc = sky_add_event_message_worker_write(worker, worker->output);
+    mu_assert_int_equals(rc, 0);
+    sky_add_event_message_free(message);
+    sky_worker_free(worker);
+
     mu_assert_file("tmp/output", "tests/fixtures/add_event_message/1/output");
 
-    sky_table_free(table);
-    sky_server_free(server);
     return 0;
 }
 
@@ -126,7 +151,8 @@ int all_tests() {
     mu_run_test(test_sky_add_event_message_pack);
     mu_run_test(test_sky_add_event_message_unpack);
     mu_run_test(test_sky_add_event_message_sizeof);
-    mu_run_test(test_sky_add_event_message_process);
+    mu_run_test(test_sky_add_event_message_worker_map);
+    mu_run_test(test_sky_add_event_message_worker_write);
     return 0;
 }
 

@@ -146,21 +146,21 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
 
 // Asserts the contents of the temp file.
 #define mu_assert_file(FILENAME1, FILENAME2) do {\
-    unsigned char ch1, ch2; \
     FILE *file1 = fopen(FILENAME1, "r"); \
-    FILE *file2 = fopen(FILENAME2, "r"); \
     if(file1 == NULL) mu_fail("Cannot open file 1: %s", FILENAME1); \
+    FILE *file2 = fopen(FILENAME2, "r"); \
     if(file2 == NULL) mu_fail("Cannot open file 2: %s", FILENAME2); \
-    while(1) { \
-        fread(&ch2, 1, 1, file2); \
-        fread(&ch1, 1, 1, file1); \
-        if(feof(file2) || feof(file1)) break; \
-        if(ch1 != ch2) { \
-            mu_fail("Expected 0x%02x (%s), received 0x%02x (%s) at location %ld (0x%x)", ch2, FILENAME2, ch1, FILENAME1, (ftell(file2)-1), (int)(ftell(file2)-1)); \
+    bstring content1 = bread((bNread)fread, file1); \
+    bstring content2 = bread((bNread)fread, file2); \
+    if(blength(content1) != blength(content2)) { \
+        mu_fail("File length doesn not match. exp:%d, recv:%d", blength(content1), blength(content2)); \
+    } \
+    int32_t _i; \
+    for(_i=0; _i<blength(content1); _i++) { \
+        if(bchar(content1, _i) != bchar(content2, _i)) { \
+            mu_fail("Unexpected byte at %d. exp:%02x, recv:%02x", _i, bchar(content1, _i), bchar(content2, _i)); \
         } \
     } \
-    if(!feof(file1)) mu_fail("Expected file length longer than expected: %s", FILENAME2); \
-    if(!feof(file2)) mu_fail("Expected file length shorter than expected: %s", FILENAME2); \
     fclose(file1); \
     fclose(file2); \
 } while(0)

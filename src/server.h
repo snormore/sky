@@ -87,6 +87,9 @@ int sky_server_accept(sky_server *server);
 // Servlet Management
 //--------------------------------------
 
+int sky_server_get_tablet_servlet(sky_server *server, sky_tablet *tablet,
+    sky_servlet **servlet);
+
 int sky_server_get_table_servlets(sky_server *server, sky_table *table,
     sky_servlet ***servlets, uint32_t *servlet_count);
 

@@ -113,7 +113,10 @@ error:
 void sky_event_data_free(sky_event_data *data)
 {
     if(data) {
-        if(data->data_type == SKY_DATA_TYPE_STRING) bdestroy(data->string_value);
+        if(data->data_type == SKY_DATA_TYPE_STRING) {
+            bdestroy(data->string_value);
+            data->string_value = NULL;
+        }
         free(data);
     }
 }

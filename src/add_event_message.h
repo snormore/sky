@@ -6,10 +6,13 @@
 #include <netinet/in.h>
 
 #include "bstring.h"
+#include "message_header.h"
 #include "message_handler.h"
 #include "server.h"
 #include "table.h"
+#include "tablet.h"
 #include "event.h"
+#include "worker.h"
 
 
 //==============================================================================
@@ -27,6 +30,7 @@ typedef struct sky_add_event_message {
     sky_action_id_t action_id;
     uint32_t data_count;
     sky_add_event_message_data **data;
+    sky_event *event;
 } sky_add_event_message;
 
 // A key/value used to store event data.
@@ -66,6 +70,9 @@ void sky_add_event_message_data_free(sky_add_event_message_data *data);
 
 sky_message_handler *sky_add_event_message_handler_create();
 
+int sky_add_event_message_process(sky_server *server,
+    sky_message_header *header, sky_table *table, FILE *input, FILE *output);
+
 //--------------------------------------
 // Serialization
 //--------------------------------------
@@ -77,10 +84,15 @@ int sky_add_event_message_pack(sky_add_event_message *message, FILE *file);
 int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file);
 
 //--------------------------------------
-// Processing
+// Worker
 //--------------------------------------
 
-int sky_add_event_message_process(sky_server *server, sky_table *table,
-    FILE *input, FILE *output);
+int sky_add_event_message_worker_map(sky_worker *worker, sky_tablet *tablet,
+    void **data);
+
+int sky_add_event_message_worker_write(sky_worker *worker, FILE *output);
+
+int sky_add_event_message_worker_free(sky_worker *worker);
+
 
 #endif

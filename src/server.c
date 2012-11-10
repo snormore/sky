@@ -372,7 +372,7 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
 
         // If the handler exists then use it to process the message.
         if(handler != NULL) {
-            handler->process(server, table, input, output);
+            handler->process(server, header, table, input, output);
         }
         // Parse appropriate message type.
         else {
@@ -648,6 +648,36 @@ error:
 //--------------------------------------
 // Servlet Management
 //--------------------------------------
+
+// Retrieves a servlet that processes a given tablet.
+//
+// server    - The server.
+// tablet    - The tablet.
+// servlet   - A pointer to where the servlet should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_get_tablet_servlet(sky_server *server, sky_tablet *tablet,
+                                  sky_servlet **servlet)
+{
+    check(server != NULL, "Server required");
+    check(tablet != NULL, "Tablet required");
+    check(servlet != NULL, "Servlet return pointer required");
+    
+    // Loop over all servlets and find the one associated with the tablet.
+    uint32_t i;
+    for(i=0; i<server->servlet_count; i++) {
+        if(server->servlets[i]->tablet == tablet) {
+            *servlet = server->servlets[i];
+            break;
+        }
+    }
+    
+    return 0;
+
+error:
+    *servlet = NULL;
+    return -1;
+}
 
 // Retrieves a list of servlets associated with a given table.
 //

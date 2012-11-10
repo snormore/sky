@@ -92,9 +92,11 @@ void sky_worker_free_pull_socket(sky_worker *worker)
 {
     int rc;
     if(worker) {
-        rc = zmq_close(worker->pull_socket);
-        check(rc == 0, "Unable to close worker pull socket");
-        worker->pull_socket = NULL;
+        if(worker->pull_socket) {
+            rc = zmq_close(worker->pull_socket);
+            check(rc == 0, "Unable to close worker pull socket");
+            worker->pull_socket = NULL;
+        }
         bdestroy(worker->pull_socket_uri);
         worker->pull_socket_uri = NULL;
     }
@@ -133,6 +135,10 @@ void sky_worker_free(sky_worker *worker)
         sky_worker_free_push_sockets(worker);
         sky_worker_free_pull_socket(worker);
         worker->context = NULL;
+        if(worker->input) fclose(worker->input);
+        worker->input = NULL;
+        if(worker->output) fclose(worker->output);
+        worker->output = NULL;
         free(worker);
     }
 }
@@ -194,8 +200,6 @@ int sky_worker_start(sky_worker *worker)
     check(worker != NULL, "Worker required");
     check(worker->state == SKY_WORKER_STATE_STOPPED, "Cannot start a running worker");
     check(worker->servlet_count > 0, "Worker must be associated with servlets before starting");
-    check(worker->map != NULL, "Worker map function required");
-    check(worker->reduce != NULL, "Worker reduce function required");
     
     // Allocate space for sockets.
     worker->push_socket_count = worker->servlet_count;
@@ -260,8 +264,10 @@ void *sky_worker_run(void *_worker)
     int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
 
     // Read data from stream.
-    rc = worker->read(worker, worker->input);
-    check(rc == 0, "Worker unable to read from stream");
+    if(worker->read != NULL) {
+        rc = worker->read(worker, worker->input);
+        check(rc == 0, "Worker unable to read from stream");
+    }
 
     // Push a message to each servlet.
     for(i=0; i<worker->push_socket_count; i++) {
@@ -277,8 +283,10 @@ void *sky_worker_run(void *_worker)
         check(rc == 0 && worklet != NULL, "Worker unable to receive worklet");
         
         // Reduce worklet.
-        rc = worker->reduce(worker, worklet->data);
-        check(rc == 0, "Worker unable to reduce");
+        if(worker->reduce != NULL) {
+            rc = worker->reduce(worker, worklet->data);
+            check(rc == 0, "Worker unable to reduce");
+        }
         
         // Free worklet.
         worker->map_free(worklet->data);
@@ -288,12 +296,14 @@ void *sky_worker_run(void *_worker)
     }
     
     // Output data to stream.
-    rc = worker->write(worker, worker->output);
-    check(rc == 0, "Worker unable to reduce");
-
+    if(worker->write != NULL) {
+        rc = worker->write(worker, worker->output);
+        check(rc == 0, "Worker unable to reduce");
+    }
+    
     // Close streams.
-    fclose(worker->input);
-    fclose(worker->output);
+    if(worker->input) fclose(worker->input);
+    if(worker->output) fclose(worker->output);
 
     // End benchmark.
     gettimeofday(&tv, NULL);
