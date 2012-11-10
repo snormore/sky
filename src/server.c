@@ -118,6 +118,25 @@ void sky_server_free_tables(sky_server *server)
     }
 }
 
+// Frees the message handlers on a server instance.
+//
+// server - The server.
+//
+// Returns nothing.
+void sky_server_free_message_handlers(sky_server *server)
+{
+    if(server) {
+        uint32_t i;
+        for(i=0; i<server->message_handler_count; i++) {
+            sky_message_handler_free(server->message_handlers[i]);
+            server->message_handlers[i] = NULL;
+        }
+        free(server->message_handlers);
+        server->message_handlers = NULL;
+        server->message_handler_count = 0;
+    }
+}
+
 // Frees a server instance from memory.
 //
 // server - The server object to free.
@@ -129,6 +148,7 @@ void sky_server_free(sky_server *server)
         if(server->path) bdestroy(server->path);
         sky_server_free_tables(server);
         sky_server_free_servlets(server);
+        sky_server_free_message_handlers(server);
         zmq_ctx_destroy(server->context);
 
         free(server);

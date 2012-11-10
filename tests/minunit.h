@@ -161,6 +161,8 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
             mu_fail("Unexpected byte at %d. exp:%02x, recv:%02x", _i, bchar(content1, _i), bchar(content2, _i)); \
         } \
     } \
+    bdestroy(content1); \
+    bdestroy(content2); \
     fclose(file1); \
     fclose(file2); \
 } while(0)
