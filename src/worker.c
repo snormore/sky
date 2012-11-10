@@ -287,9 +287,9 @@ void *sky_worker_run(void *_worker)
             rc = worker->reduce(worker, worklet->data);
             check(rc == 0, "Worker unable to reduce");
         }
-        
+
         // Free worklet.
-        worker->map_free(worklet->data);
+        if(worker->map_free) worker->map_free(worklet->data);
         worklet->data = NULL;
         sky_worklet_free(worklet);
         worklet = NULL;

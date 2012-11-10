@@ -153,7 +153,7 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
     bstring content1 = bread((bNread)fread, file1); \
     bstring content2 = bread((bNread)fread, file2); \
     if(blength(content1) != blength(content2)) { \
-        mu_fail("File length doesn not match. exp:%d, recv:%d", blength(content1), blength(content2)); \
+        mu_fail("File length doesn\'t not match. exp:%d (%s), recv:%d (%s)", blength(content1), FILENAME1, blength(content2), FILENAME2); \
     } \
     int32_t _i; \
     for(_i=0; _i<blength(content1); _i++) { \
