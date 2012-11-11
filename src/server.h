@@ -114,21 +114,6 @@ int sky_server_remove_message_handler(sky_server *server,
 
 int sky_server_add_default_message_handlers(sky_server *server);
 
-
-//--------------------------------------
-// Query Messages
-//--------------------------------------
-
-int sky_server_process_next_actions_message(sky_server *server,
-    sky_table *table, FILE *input, FILE *output);
-
-//--------------------------------------
-// Property Messages
-//--------------------------------------
-
-int sky_server_process_get_properties_message(sky_server *server,
-    sky_table *table, FILE *input, FILE *output);
-
 //--------------------------------------
 // Multi Message
 //--------------------------------------
