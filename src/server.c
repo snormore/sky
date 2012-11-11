@@ -16,7 +16,6 @@
 #include "add_property_message.h"
 #include "get_property_message.h"
 #include "get_properties_message.h"
-#include "multi_message.h"
 #include "sky_zmq.h"
 #include "dbg.h"
 
@@ -374,40 +373,37 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
     rc = sky_message_header_unpack(header, input);
     check(rc == 0, "Unable to unpack message header");
 
-    // Ignore the table if this is a multi message.
-    if(biseqcstr(header->name, "multi") == 1) {
-        rc = sky_server_process_multi_message(server, input, output);
-        check(rc == 0, "Unable to process multi message");
+    // Retrieve appropriate message handler by name.
+    sky_message_handler *handler = NULL;
+    rc = sky_server_get_message_handler(server, header->name, &handler);
+    check(rc == 0, "Unable to get message handler");
+
+    // Open table.
+    sky_table *table = NULL;
+    rc = sky_server_get_table(server, header->table_name, &table);
+    check(rc == 0, "Unable to open table");
+
+    // If the handler exists then use it to process the message.
+    if(handler != NULL) {
+        rc = handler->process(server, header, table, input, output);
+        
+        // Closing the input/output is delegated to the handler at this point.
+        input = NULL;
+        output = NULL;
     }
+    // Parse appropriate message type.
     else {
-        // Retrieve appropriate message handler by name.
-        sky_message_handler *handler = NULL;
-        rc = sky_server_get_message_handler(server, header->name, &handler);
-        check(rc == 0, "Unable to get message handler");
-
-        // Open table.
-        sky_table *table = NULL;
-        rc = sky_server_get_table(server, header->table_name, &table);
-        check(rc == 0, "Unable to open table");
-
-        // If the handler exists then use it to process the message.
-        if(handler != NULL) {
-            rc = handler->process(server, header, table, input, output);
-        }
-        // Parse appropriate message type.
-        else {
-            fclose(input);
-            fclose(output);
-            sentinel("Invalid message type");
-        }
-        check(rc == 0, "Unable to process message: %s", bdata(header->name));
+        sentinel("Invalid message type");
     }
+    check(rc == 0, "Unable to process message: %s", bdata(header->name));
     
     sky_message_header_free(header);
     return 0;
 
 error:
     sky_message_header_free(header);
+    if(input) fclose(input);
+    if(input) fclose(output);
     return -1;
 }
 
@@ -787,52 +783,3 @@ error:
     return -1;
 }
 
-
-//--------------------------------------
-// Multi Message
-//--------------------------------------
-
-// Parses and process a multi message.
-//
-// server - The server.
-// input  - The input file stream.
-// output - The output file stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_server_process_multi_message(sky_server *server, FILE *input,
-                                     FILE *output)
-{
-    int rc;
-    check(server != NULL, "Server required");
-    check(input != NULL, "Input required");
-    check(output != NULL, "Output stream required");
-    
-    debug("Message received: [MULTI]");
-    
-    // Parse message.
-    sky_multi_message *message = sky_multi_message_create(); check_mem(message);
-    rc = sky_multi_message_unpack(message, input);
-    check(rc == 0, "Unable to parse MULTI message");
-
-    // Start time.
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-
-    // Process message.
-    uint32_t i;
-    for(i=0; i<message->message_count; i++) {
-        rc = sky_server_process_message(server, input, output);
-        check(rc == 0, "Unable to process child message");
-    }
-
-    // End time.
-    gettimeofday(&tv, NULL);
-    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-    printf("MULTI: %d messages processed in %.3f seconds\n", message->message_count, ((float)(t1-t0))/1000);
-    
-    return 0;
-
-error:
-    return -1;
-}
