@@ -114,11 +114,4 @@ int sky_server_remove_message_handler(sky_server *server,
 
 int sky_server_add_default_message_handlers(sky_server *server);
 
-//--------------------------------------
-// Multi Message
-//--------------------------------------
-
-int sky_server_process_multi_message(sky_server *server, FILE *input,
-    FILE *output);
-
 #endif
