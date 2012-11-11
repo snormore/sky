@@ -1,5 +1,6 @@
 # Multicore
-- Move action & property messages to handlers.
+- Move property messages to handlers.
+- Benchmark against GitHub Archive.
 
 
 # Documentation

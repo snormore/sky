@@ -67,7 +67,7 @@ void *run_server(void *_options)
         sky_server_accept(options->server);
     }
     // HACK:
-    sleep(1);
+    usleep(1000);
     sky_server_stop(options->server);
     sky_server_free(options->server);
     free(_options);

@@ -66,6 +66,90 @@ void sky_add_property_message_free_property(sky_add_property_message *message)
 
 
 //--------------------------------------
+// Message Handler
+//--------------------------------------
+
+// Creates a message handler for the 'Add Property' message.
+//
+// Returns a message handler.
+sky_message_handler *sky_add_property_message_handler_create()
+{
+    sky_message_handler *handler = sky_message_handler_create(); check_mem(handler);
+    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_SERVER;
+    handler->name = bfromcstr("add_property");
+    handler->process = sky_add_property_message_process;
+    return handler;
+
+error:
+    sky_message_handler_free(handler);
+    return NULL;
+}
+
+// Adds an property to a table. This function is synchronous and does not use
+// a worker.
+//
+// server - The server.
+// header - The message header.
+// table  - The table the message is working against
+// input  - The input file stream.
+// output - The output file stream.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_property_message_process(sky_server *server,
+                                     sky_message_header *header,
+                                     sky_table *table, FILE *input, FILE *output)
+{
+    int rc = 0;
+    size_t sz;
+    sky_add_property_message *message = NULL;
+    check(server != NULL, "Server required");
+    check(header != NULL, "Message header required");
+    check(table != NULL, "Table required");
+    check(input != NULL, "Input stream required");
+    check(output != NULL, "Output stream required");
+    
+    struct tagbstring status_str = bsStatic("status");
+    struct tagbstring ok_str = bsStatic("ok");
+    struct tagbstring property_str = bsStatic("property");
+
+    // Parse message.
+    message = sky_add_property_message_create(); check_mem(message);
+    rc = sky_add_property_message_unpack(message, input);
+    check(rc == 0, "Unable to parse 'add_property' message");
+
+    // Add property.
+    rc = sky_property_file_add_property(table->property_file, message->property);
+    check(rc == 0, "Unable to add property");
+    
+    // Save property file.
+    rc = sky_property_file_save(table->property_file);
+    check(rc == 0, "Unable to save property file");
+    
+    // Return.
+    //   {status:"OK", property:{...}}
+    minipack_fwrite_map(output, 2, &sz);
+    check(sz > 0, "Unable to write output");
+    check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write status key");
+    check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write status value");
+    check(sky_minipack_fwrite_bstring(output, &property_str) == 0, "Unable to write property key");
+    check(sky_property_pack(message->property, output) == 0, "Unable to write property value");
+
+    // Clean up.
+    sky_add_property_message_free(message);
+    fclose(input);
+    fclose(output);
+
+    return 0;
+
+error:
+    sky_add_property_message_free(message);
+    if(input) fclose(input);
+    if(output) fclose(output);
+    return -1;
+}
+
+
+//--------------------------------------
 // Serialization
 //--------------------------------------
 
@@ -124,49 +208,3 @@ error:
 }
 
 
-//--------------------------------------
-// Processing
-//--------------------------------------
-
-// Applies an 'add_property' message to a table.
-//
-// message - The message.
-// table   - The table to apply the message to.
-// output  - The output stream to write to.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_add_property_message_process(sky_add_property_message *message,
-                                     sky_table *table, FILE *output)
-{
-    int rc;
-    size_t sz;
-    check(message != NULL, "Message required");
-    check(table != NULL, "Table required");
-    check(output != NULL, "Output stream required");
-
-    struct tagbstring status_str = bsStatic("status");
-    struct tagbstring ok_str = bsStatic("ok");
-    struct tagbstring property_str = bsStatic("property");
-
-    // Add property.
-    rc = sky_property_file_add_property(table->property_file, message->property);
-    check(rc == 0, "Unable to add property");
-    
-    // Save property file.
-    rc = sky_property_file_save(table->property_file);
-    check(rc == 0, "Unable to save property file");
-    
-    // Return.
-    //   {status:"OK", property:{...}}
-    minipack_fwrite_map(output, 2, &sz);
-    check(sz > 0, "Unable to write output");
-    check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write status key");
-    check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write status value");
-    check(sky_minipack_fwrite_bstring(output, &property_str) == 0, "Unable to write property key");
-    check(sky_property_pack(message->property, output) == 0, "Unable to write property value");
-    
-    return 0;
-
-error:
-    return -1;
-}
