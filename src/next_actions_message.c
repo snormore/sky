@@ -341,11 +341,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
 
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
 
-    // Start benchmark.
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-
     // Initialize data object.
     sky_next_actions_data data;
     memset(&data, 0, sizeof(data));
@@ -404,17 +399,10 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
             event_count++;
         }
 
-        sky_cursor_uninit(&cursor);
-
         // Move to next path.
         rc = sky_path_iterator_next(&iterator);
         check(rc == 0, "Unable to find next path");
     }
-
-    // End benchmark.
-    gettimeofday(&tv, NULL);
-    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-    debug("Next Actions map(): %lld events in: %.3f seconds\n", event_count, ((float)(t1-t0))/1000);
 
     // HACK: Increment the total event count. Note that this is not thread
     // safe however this number is only meant for debugging.
@@ -423,6 +411,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     // Return data.
     *ret = (void*)results;
 
+    sky_cursor_uninit(&cursor);
     return 0;
 
 error:
@@ -509,7 +498,7 @@ int sky_next_actions_message_worker_write(sky_worker *worker, FILE *output)
     }
     
     // Write total number of events to log.
-    debug("Next Actions event count: %lld", message->event_count);
+    printf("[next_actions] events: %lld\n", message->event_count);
     
     return 0;
 

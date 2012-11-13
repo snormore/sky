@@ -50,6 +50,7 @@ typedef struct {
     sky_property_id_t min_property_id;
     sky_property_id_t max_property_id;
     uint32_t property_count;
+    uint32_t active_property_count;
 } sky_data_descriptor;
 
 

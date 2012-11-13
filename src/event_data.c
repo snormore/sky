@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "dbg.h"
 #include "bstring.h"

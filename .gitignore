@@ -13,5 +13,5 @@ tmp
 **/*.dSYM*
 **/**/*.dSYM*
 valgrind.log
-callgrind*
-cachegrind*
+bin/callgrind.out
+bin/cachegrind.out

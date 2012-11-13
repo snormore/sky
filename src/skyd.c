@@ -66,11 +66,11 @@ int main(int argc, char **argv)
     // Signal handlers.
 
     // Run server.
-    //uint32_t counter = 0;
+    uint32_t counter = 0;
     sky_server_start(server);
     while(true) {
         sky_server_accept(server);
-        //if(++counter > 5) return 0;
+        if(++counter > 5) return 0;
     }
     sleep(1);
     

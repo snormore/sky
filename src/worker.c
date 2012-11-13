@@ -308,7 +308,7 @@ void *sky_worker_run(void *_worker)
     // End benchmark.
     gettimeofday(&tv, NULL);
     int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
-    debug("Worker ran in: %.3f seconds\n", ((float)(t1-t0))/1000);
+    printf("[worker] t=%.3fs\n", ((float)(t1-t0))/1000);
     
     // Clean up worker.
     worker->free(worker);

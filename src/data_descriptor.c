@@ -203,6 +203,12 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
     sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];
     check(property_descriptor->property_id == property_id, "Property descriptor id (%d) does not match (%d)", property_descriptor->property_id, property_id);
     
+    // Increment active property count if a new property is being set.
+    if(property_descriptor->set_func == sky_data_descriptor_set_noop) {
+        descriptor->active_property_count++;
+    }
+    
+    
     // Set the offset and set_func function on the descriptor.
     property_descriptor->offset = offset;
     switch(data_type) {

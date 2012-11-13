@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "cursor.h"
 #include "path.h"
 #include "event.h"
@@ -90,7 +92,7 @@ void sky_cursor_uninit(sky_cursor *cursor)
 int sky_cursor_set_path(sky_cursor *cursor, void *ptr)
 {
     int rc;
-    check(cursor != NULL, "Cursor required");
+    assert(cursor != NULL);
 
     // If data is not null then create an array of one pointer.
     if(ptr != NULL) {
@@ -121,7 +123,7 @@ error:
 int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
 {
     int rc;
-    check(cursor != NULL, "Cursor required");
+    assert(cursor != NULL);
     
     // Reallocate if the paths buffer is too small.
     if(count > cursor->path_bcount) {
@@ -170,19 +172,14 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr)
 {
-    check(cursor != NULL, "Cursor required");
-    check(ptr != NULL, "Pointer required");
+    assert(cursor != NULL);
+    assert(ptr != NULL);
     
     // Store position of first event and store position of end of path.
     cursor->ptr    = ptr + SKY_PATH_HEADER_LENGTH;
     cursor->endptr = ptr + sky_path_sizeof_raw(ptr);
     
     return 0;
-
-error:
-    cursor->ptr = NULL;
-    cursor->endptr = NULL;
-    return -1;
 }
 
 
@@ -193,8 +190,8 @@ error:
 int sky_cursor_next(sky_cursor *cursor)
 {
     int rc;
-    check(cursor != NULL, "Cursor required");
-    check(!cursor->eof, "No more events are available");
+    assert(cursor != NULL);
+    assert(!cursor->eof);
 
     // Move to next event.
     size_t event_length = sky_event_sizeof_raw(cursor->ptr);
@@ -236,7 +233,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_cursor_set_eof(sky_cursor *cursor)
 {
-    check(cursor != NULL, "Cursor required");
+    assert(cursor != NULL);
     
     cursor->path_index  = 0;
     cursor->event_index = 0;
@@ -245,9 +242,6 @@ int sky_cursor_set_eof(sky_cursor *cursor)
     cursor->endptr      = NULL;
 
     return 0;
-
-error:
-    return -1;
 }
 
 
@@ -266,10 +260,10 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
 {
     size_t sz;
     int rc;
-    check(cursor != NULL, "Cursor required");
-    check(!cursor->eof, "Cursor cannot be EOF");
-    check(descriptor != NULL, "Data descriptor required");
-    check(data != NULL, "Data pointer required");
+    assert(cursor != NULL);
+    assert(!cursor->eof);
+    assert(descriptor != NULL);
+    assert(data != NULL);
 
     // Retrieve the flag off the event.
     void *ptr = cursor->ptr;
@@ -291,32 +285,34 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
         *action_id = 0;
     }
 
-    // Clear old action data.
-    rc = sky_data_descriptor_clear_action_data(descriptor, data);
-    check(rc == 0, "Unable to clear action data via descriptor");
+    // Process data descriptor if there are properties being tracked.
+    if(descriptor->active_property_count > 0) {
+        // Clear old action data.
+        rc = sky_data_descriptor_clear_action_data(descriptor, data);
+        check(rc == 0, "Unable to clear action data via descriptor");
 
-    // Read data if this event contains data.
-    uint32_t property_count = descriptor->property_count;
-    if(property_count > 0 && event_flag & SKY_EVENT_FLAG_DATA) {
-        uint32_t data_length = *((uint32_t*)ptr);
-        ptr += sizeof(uint32_t);
-        void *end_ptr = ptr + data_length;
-        
-        // Loop over data and assign values to data object.
-        while(ptr < end_ptr) {
-            // Read property id.
-            sky_property_id_t property_id = *((sky_property_id_t*)ptr);
-            ptr += sizeof(property_id);
+        // Read data if this event contains data.
+        if(event_flag & SKY_EVENT_FLAG_DATA) {
+            uint32_t data_length = *((uint32_t*)ptr);
+            ptr += sizeof(uint32_t);
+            void *end_ptr = ptr + data_length;
 
-            // Assign value to data object member.
-            rc = sky_data_descriptor_set_value(descriptor, data, property_id, ptr, &sz);
-            check(rc == 0, "Unable to set value via data descriptor");
+            // Loop over data and assign values to data object.
+            while(ptr < end_ptr) {
+                // Read property id.
+                sky_property_id_t property_id = *((sky_property_id_t*)ptr);
+                ptr += sizeof(property_id);
+
+                // Assign value to data object member.
+                rc = sky_data_descriptor_set_value(descriptor, data, property_id, ptr, &sz);
+                check(rc == 0, "Unable to set value via data descriptor");
             
-            // If there is no size then move it forward manually.
-            if(sz == 0) {
-                sz = minipack_sizeof_elem_and_data(ptr);
+                // If there is no size then move it forward manually.
+                if(sz == 0) {
+                    sz = minipack_sizeof_elem_and_data(ptr);
+                }
+                ptr += sz;
             }
-            ptr += sz;
         }
     }
     
