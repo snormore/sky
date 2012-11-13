@@ -298,7 +298,7 @@ void *sky_worker_run(void *_worker)
     // Output data to stream.
     if(worker->write != NULL) {
         rc = worker->write(worker, worker->output);
-        check(rc == 0, "Worker unable to reduce");
+        check(rc == 0, "Worker unable to write output");
     }
     
     // Close streams.

@@ -71,6 +71,8 @@ void sky_cursor_uninit(sky_cursor *cursor)
 {
     if(cursor) {
         if(cursor->paths) free(cursor->paths);
+        cursor->paths = NULL;
+        cursor->path_bcount = 0;
     }
 }
 
@@ -91,9 +93,8 @@ int sky_cursor_set_path(sky_cursor *cursor, void *ptr)
     check(cursor != NULL, "Cursor required");
 
     // If data is not null then create an array of one pointer.
-    void **ptrs;
     if(ptr != NULL) {
-        ptrs = malloc(sizeof(void*)); check_mem(ptrs);
+        void *ptrs[1];
         ptrs[0] = ptr;
         rc = sky_cursor_set_paths(cursor, ptrs, 1);
         check(rc == 0, "Unable to set path data to cursor");
@@ -107,7 +108,6 @@ int sky_cursor_set_path(sky_cursor *cursor, void *ptr)
     return 0;
 
 error:
-    if(ptrs) free(ptrs);
     return -1;
 }
 
@@ -115,20 +115,26 @@ error:
 // 
 // cursor - The cursor.
 // ptrs   - An array to pointers of raw paths.
+// count  - The number of paths in the array.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, int count)
+int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
 {
     int rc;
     check(cursor != NULL, "Cursor required");
     
-    // Free old path list.
-    if(cursor->paths != NULL) {
-        free(cursor->paths);
+    // Reallocate if the paths buffer is too small.
+    if(count > cursor->path_bcount) {
+        cursor->path_bcount = count;
+        cursor->paths = realloc(cursor->paths, sizeof(*cursor->paths) * cursor->path_bcount);
+        check_mem(cursor->paths);
     }
-
+    
     // Assign path data list.
-    cursor->paths = ptrs;
+    uint32_t i;
+    for(i=0; i<count; i++) {
+        cursor->paths[i] = ptrs[i];
+    }
     cursor->path_count = count;
     cursor->path_index = 0;
     cursor->event_index = 0;

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include "types.h"
 #include "next_actions_message.h"
@@ -340,6 +341,11 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
 
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
 
+    // Start benchmark.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+
     // Initialize data object.
     sky_next_actions_data data;
     memset(&data, 0, sizeof(data));
@@ -364,7 +370,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
         check(rc == 0, "Unable to retrieve the path iterator pointer");
     
         // Initialize the cursor.
-        sky_cursor_init(&cursor);
         rc = sky_cursor_set_path(&cursor, path_ptr);
         check(rc == 0, "Unable to set cursor path");
 
@@ -405,6 +410,15 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
         rc = sky_path_iterator_next(&iterator);
         check(rc == 0, "Unable to find next path");
     }
+
+    // End benchmark.
+    gettimeofday(&tv, NULL);
+    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+    debug("Next Actions map(): %lld events in: %.3f seconds\n", event_count, ((float)(t1-t0))/1000);
+
+    // HACK: Increment the total event count. Note that this is not thread
+    // safe however this number is only meant for debugging.
+    message->event_count += event_count;
 
     // Return data.
     *ret = (void*)results;
@@ -498,6 +512,9 @@ int sky_next_actions_message_worker_write(sky_worker *worker, FILE *output)
             check(minipack_fwrite_uint(output, message->results[i].count, &sz) == 0, "Unable to write result count");
         }
     }
+    
+    // Write total number of events to log.
+    debug("Next Actions event count: %lld", message->event_count);
     
     return 0;
 

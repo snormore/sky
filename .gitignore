@@ -13,3 +13,5 @@ tmp
 **/*.dSYM*
 **/**/*.dSYM*
 valgrind.log
+callgrind*
+cachegrind*

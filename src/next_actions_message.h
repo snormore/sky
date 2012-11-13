@@ -33,6 +33,7 @@ typedef struct {
     sky_next_actions_result *results;
     uint32_t action_count;
     sky_data_descriptor *data_descriptor;
+    uint64_t event_count;
 } sky_next_actions_message;
 
 
