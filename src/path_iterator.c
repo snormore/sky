@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "path_iterator.h"
 #include "block.h"
@@ -88,7 +89,7 @@ void sky_path_iterator_free(sky_path_iterator *iterator)
 int sky_path_iterator_set_data_file(sky_path_iterator *iterator, sky_data_file *data_file)
 {
     int rc;
-    check(iterator != NULL, "Iterator required");
+    assert(iterator != NULL);
     iterator->data_file   = data_file;
     iterator->block_index = 0;
     iterator->block       = NULL;
@@ -113,7 +114,7 @@ error:
 int sky_path_iterator_set_block(sky_path_iterator *iterator, sky_block *block)
 {
     int rc;
-    check(iterator != NULL, "Iterator required");
+    assert(iterator != NULL);
     iterator->block       = block;
     iterator->data_file   = NULL;
     iterator->block_index = 0;
@@ -143,8 +144,8 @@ error:
 int sky_path_iterator_get_current_block(sky_path_iterator *iterator,
                                         sky_block **block)
 {
-    check(iterator != NULL, "Iterator required");
-    check(block != NULL, "Block return address required");
+    assert(iterator != NULL);
+    assert(block != NULL);
     
     // If we are iterating over a data file then return the current block.
     if(iterator->data_file != NULL) {
@@ -156,9 +157,6 @@ int sky_path_iterator_get_current_block(sky_path_iterator *iterator,
     }
     
     return 0;
-    
-error:
-    return -1;
 }
 
 // Calculates the pointer address for a path that the iterator is currently
@@ -170,6 +168,8 @@ error:
 int sky_path_iterator_get_ptr(sky_path_iterator *iterator, void **ptr)
 {
     int rc;
+    assert(iterator != NULL);
+    assert(ptr != NULL);
 
     // Retrieve the current block.
     sky_block *block;
@@ -203,9 +203,9 @@ error:
 int sky_path_iterator_next(sky_path_iterator *iterator)
 {
     int rc;
-    check(iterator != NULL, "Iterator required");
-    check(iterator->data_file != NULL || iterator->block != NULL, "Iterator must have a source");
-    check(!iterator->eof, "Iterator is at end-of-file");
+    assert(iterator != NULL);
+    assert(iterator->data_file != NULL || iterator->block != NULL);
+    assert(!iterator->eof);
 
     // Retrieve some data file info.
     sky_data_file *data_file = (iterator->data_file ? iterator->data_file : iterator->block->data_file);
@@ -272,7 +272,7 @@ error:
 int sky_path_iterator_fast_forward(sky_path_iterator *iterator)
 {
     int rc;
-    check(iterator, "Iterator required");
+    assert(iterator);
     
     sky_data_file *data_file = iterator->data_file;
     

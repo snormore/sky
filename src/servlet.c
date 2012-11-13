@@ -135,11 +135,12 @@ error:
 int sky_servlet_send_shutdown_message(sky_servlet *servlet)
 {
     int rc;
+    void *socket = NULL;
     check(servlet != NULL, "Servlet required");
     check(servlet->state == SKY_SERVLET_STATE_RUNNING, "Servlet is not running");
 
     // Send a shutdown response to the server.
-    void *socket = zmq_socket(servlet->server->context, ZMQ_PUSH);
+    socket = zmq_socket(servlet->server->context, ZMQ_PUSH);
     check(socket != NULL, "Unable to create servlet shutdown push socket");
 
     // Connect to server.

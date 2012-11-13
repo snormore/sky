@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <assert.h>
 
 #include "dbg.h"
 #include "mem.h"
@@ -82,7 +83,7 @@ void sky_data_file_free(sky_data_file *data_file)
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_file_set_path(sky_data_file *data_file, bstring path)
 {
-    check(data_file != NULL, "Data file required");
+    assert(data_file != NULL);
 
     if(data_file->path) {
         bdestroy(data_file->path);
@@ -106,12 +107,9 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_file_set_header_path(sky_data_file *data_file, bstring path)
 {
-    check(data_file != NULL, "Data file required");
+    assert(data_file != NULL);
 
-    if(data_file->header_path) {
-        bdestroy(data_file->header_path);
-    }
-    
+    if(data_file->header_path) bdestroy(data_file->header_path);
     data_file->header_path = bstrcpy(path);
     if(path) check_mem(data_file->header_path);
 
@@ -137,8 +135,8 @@ int sky_data_file_load(sky_data_file *data_file)
 {
     int rc;
     void *ptr = NULL;
-    check(data_file != NULL, "Data file required");
-    check(data_file->path != NULL, "Data file path required");
+    assert(data_file != NULL);
+    assert(data_file->path != NULL);
 
     // Load header if not loaded yet.
     if(data_file->blocks == NULL) {
@@ -258,7 +256,7 @@ int sky_data_file_load_header(sky_data_file *data_file)
 {
     int rc;
     size_t sz;
-    FILE *file;
+    FILE *file = NULL;
     uint32_t version = 1;
     uint8_t buffer[SKY_BLOCK_HEADER_SIZE];
 
@@ -325,7 +323,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_file_unload_header(sky_data_file *data_file)
 {
-    check(data_file != NULL, "Data file required");
+    assert(data_file != NULL);
     
     if(data_file->blocks) {
         uint32_t i;
@@ -342,9 +340,6 @@ int sky_data_file_unload_header(sky_data_file *data_file)
     data_file->block_count = 0;
     
     return 0;
-    
-error:
-    return -1;
 }
 
 // Creates a new header file. The header file will only be created if one
@@ -356,12 +351,13 @@ error:
 int sky_data_file_create_header(sky_data_file *data_file)
 {
     int rc;
-    check(data_file != NULL, "Data file required");
-    check(data_file->header_path != NULL, "Data file header path required");
+    FILE *file = NULL;
+    assert(data_file != NULL);
+    assert(data_file->header_path != NULL);
     check(!sky_file_exists(data_file->header_path), "Header file already exists");
 
     // Open the file for writing.
-    FILE *file = fopen(bdata(data_file->header_path), "w");
+    file = fopen(bdata(data_file->header_path), "w");
     check(file, "Failed to open header file for writing: %s",  bdata(data_file->header_path));
 
     // Write database format version.
@@ -464,8 +460,8 @@ int sky_data_file_find_insertion_block(sky_data_file *data_file,
                                        sky_block **ret)
 {
     int rc;
-    check(data_file != NULL, "Data file required");
-    check(event != NULL, "Event required");
+    assert(data_file != NULL);
+    assert(event != NULL);
     check(event->object_id != 0, "Event object id required");
     
     // Initialize return value to NULL.
@@ -594,7 +590,7 @@ int sky_data_file_move_to_new_block(sky_data_file *data_file, void **ptr,
                                     size_t sz, sky_block **new_block)
 {
     int rc;
-    check(data_file != NULL, "Data file required");
+    assert(data_file != NULL);
 
     // Store offset before data file remap.
     off_t ptr_off = (*ptr) - data_file->data;
@@ -643,8 +639,8 @@ error:
 int sky_data_file_add_event(sky_data_file *data_file, sky_event *event)
 {
     int rc;
-    check(data_file != NULL, "Data file required");
-    check(event != NULL, "Event required");
+    assert(data_file != NULL);
+    assert(event != NULL);
     
     // Find insertion block.
     sky_block *block;

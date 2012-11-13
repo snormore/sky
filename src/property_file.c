@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #include "dbg.h"
 #include "mem.h"
@@ -59,7 +60,7 @@ void sky_property_file_free(sky_property_file *property_file)
 // Returns 0 if successful, otherwise returns -1.
 int sky_property_file_get_path(sky_property_file *property_file, bstring *path)
 {
-    check(property_file != NULL, "Property file required");
+    assert(property_file != NULL);
 
     *path = bstrcpy(property_file->path);
     if(property_file->path) check_mem(*path);
@@ -79,7 +80,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_property_file_set_path(sky_property_file *property_file, bstring path)
 {
-    check(property_file != NULL, "Property file required");
+    assert(property_file != NULL);
 
     if(property_file->path) bdestroy(property_file->path);
     
@@ -105,14 +106,13 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_property_file_load(sky_property_file *property_file)
 {
-    FILE *file;
-    sky_property **properties = NULL;
-    uint32_t count = 0;
-    size_t sz;
-
     int rc;
-    check(property_file != NULL, "Property file required");
-    check(property_file->path != NULL, "Property file path required");
+    size_t sz;
+    uint32_t count = 0;
+    FILE *file = NULL;
+    sky_property **properties = NULL;
+    assert(property_file != NULL);
+    assert(property_file->path != NULL);
 
     // Unload any properties currently in memory.
     rc = sky_property_file_unload(property_file);
@@ -128,8 +128,10 @@ int sky_property_file_load(sky_property_file *property_file)
         check(sz != 0, "Unable to read properties array at byte: %ld", ftell(file));
 
         // Allocate properties.
-        properties = malloc(sizeof(sky_property*) * count);
-        if(count > 0) check_mem(properties);
+        if(count > 0) {
+            properties = malloc(sizeof(sky_property*) * count);
+            check_mem(properties);
+        }
 
         // Read properties.
         uint32_t i;
@@ -156,6 +158,7 @@ int sky_property_file_load(sky_property_file *property_file)
 
 error:
     if(file) fclose(file);
+    if(properties) free(properties);
     return -1;
 }
 
@@ -166,12 +169,11 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_property_file_save(sky_property_file *property_file)
 {
-    FILE *file;
-    size_t sz;
-
     int rc;
-    check(property_file != NULL, "Property file required");
-    check(property_file->path != NULL, "Property file path required");
+    size_t sz;
+    FILE *file = NULL;
+    assert(property_file != NULL);
+    assert(property_file->path != NULL);
 
     // Open file.
     file = fopen(bdata(property_file->path), "w");
@@ -242,7 +244,7 @@ int sky_property_file_find_by_id(sky_property_file *property_file,
                                  sky_property_id_t property_id,
                                  sky_property **ret)
 {
-    check(property_file != NULL, "Property file required");
+    assert(property_file != NULL);
     
     // Initialize return values.
     *ret = NULL;
@@ -257,10 +259,6 @@ int sky_property_file_find_by_id(sky_property_file *property_file,
     }
     
     return 0;
-
-error:
-    *ret = NULL;
-    return -1;
 }
 
 // Retrieves a property with a given name.
@@ -273,8 +271,8 @@ error:
 int sky_property_file_find_by_name(sky_property_file *property_file,
                                    bstring name, sky_property **ret)
 {
-    check(property_file != NULL, "Property file required");
-    check(name != NULL, "Property name required");
+    assert(property_file != NULL);
+    assert(name != NULL);
     
     // Initialize return value.
     *ret = NULL;
@@ -289,10 +287,6 @@ int sky_property_file_find_by_name(sky_property_file *property_file,
     }
     
     return 0;
-
-error:
-    *ret = NULL;
-    return -1;
 }
 
 
@@ -306,8 +300,8 @@ int sky_property_file_add_property(sky_property_file *property_file,
                                    sky_property *property)
 {
     uint32_t i;
-    check(property_file != NULL, "Property file required");
-    check(property != NULL, "Property required");
+    assert(property_file != NULL);
+    assert(property != NULL);
     check(property->id == 0, "Property ID must be zero");
     check(property->property_file == NULL, "Property must not be attached to a property file");
     
@@ -373,8 +367,8 @@ int sky_property_file_create_data_descriptor(sky_property_file *property_file,
                                              sky_data_descriptor **ret)
 {
     uint32_t i;
-    check(property_file != NULL, "Property file required");
-    check(ret != NULL, "Descriptor pointer required");
+    assert(property_file != NULL);
+    assert(ret != NULL);
 
     // Determine minimum and maximum property identifiers.
     sky_property_id_t min_property_id = 0;

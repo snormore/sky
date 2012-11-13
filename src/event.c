@@ -137,12 +137,14 @@ void sky_event_free(sky_event *event)
 {
     if(event) {
         // Destroy data.
-        uint32_t i=0;
-        for(i=0; i<event->data_count; i++) {
-            sky_event_data_free(event->data[i]);
+        if(event->data != NULL) {
+            uint32_t i=0;
+            for(i=0; i<event->data_count; i++) {
+                sky_event_data_free(event->data[i]);
+            }
+            free(event->data);
         }
         
-        if(event->data) free(event->data);
         event->data = NULL;
         event->data_count = 0;
 
@@ -159,18 +161,19 @@ void sky_event_free(sky_event *event)
 int sky_event_copy(sky_event *source, sky_event **target)
 {
     int rc;
-    sky_event_data *data;
-
+    sky_event *event = NULL;
+    sky_event_data *data = NULL;
     check(source != NULL, "Source event is required for copy");
 
     // Copy basic properties.
-    sky_event *event = sky_event_create(source->object_id, source->timestamp, source->action_id);
+    event = sky_event_create(source->object_id, source->timestamp, source->action_id);
+    check_mem(event);
     
     // Copy event data.
     if(source->data_count > 0) {
         // Allocate memory for data.
         event->data_count = source->data_count;
-        event->data = malloc(sizeof(sky_event_data*) * event->data_count);
+        event->data = calloc(event->data_count, sizeof(sky_event_data*));
         check_mem(event->data);
 
         // Copy each event data item.

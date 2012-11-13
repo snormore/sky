@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <assert.h>
 
 #include "dbg.h"
 #include "endian.h"
@@ -80,7 +81,7 @@ void sky_block_free(sky_block *block)
 int sky_block_save(sky_block *block)
 {
     int rc;
-    check(block != NULL, "Block required");
+    assert(block != NULL);
 
     // Retrieve the location of the block in memory.
     void *ptr = NULL;
@@ -128,8 +129,8 @@ error:
 int sky_block_pack(sky_block *block, void *ptr, size_t *sz)
 {
     // Validate.
-    check(block != NULL, "Block required");
-    check(ptr != NULL, "Pointer required");
+    assert(block != NULL);
+    assert(ptr != NULL);
     
     // Write object id range.
     *((sky_object_id_t*)ptr) = block->min_object_id;
@@ -141,7 +142,6 @@ int sky_block_pack(sky_block *block, void *ptr, size_t *sz)
     *((sky_timestamp_t*)ptr) = block->min_timestamp;
     ptr += sizeof(sky_timestamp_t);
     *((sky_timestamp_t*)ptr) = block->max_timestamp;
-    ptr += sizeof(sky_timestamp_t);
 
     // Store number of bytes written.
     if(sz != NULL) {
@@ -149,9 +149,6 @@ int sky_block_pack(sky_block *block, void *ptr, size_t *sz)
     }
     
     return 0;
-
-error:
-    return -1;
 }
 
 // Unpacks a block object from memory at the current pointer.
@@ -164,8 +161,8 @@ error:
 int sky_block_unpack(sky_block *block, void *ptr, size_t *sz)
 {
     // Validate.
-    check(block != NULL, "Block required");
-    check(ptr != NULL, "Pointer required");
+    assert(block != NULL);
+    assert(ptr != NULL);
 
     // Read object id range.
     block->min_object_id = *((sky_object_id_t*)ptr);
@@ -177,7 +174,6 @@ int sky_block_unpack(sky_block *block, void *ptr, size_t *sz)
     block->min_timestamp = *((sky_timestamp_t*)ptr);
     ptr += sizeof(sky_timestamp_t);
     block->max_timestamp = *((sky_timestamp_t*)ptr);
-    ptr += sizeof(sky_timestamp_t);
 
     // Store number of bytes read.
     if(sz != NULL) {
@@ -185,10 +181,6 @@ int sky_block_unpack(sky_block *block, void *ptr, size_t *sz)
     }
     
     return 0;
-
-error:
-    *sz = 0;
-    return -1;
 }
 
 
@@ -207,12 +199,13 @@ error:
 int sky_block_save_header(sky_block *block)
 {
     int rc;
-    check(block != NULL, "Block required");
+    FILE *file = NULL;
+    assert(block != NULL);
 
     // Open header file.
     int fd = open(bdata(block->data_file->header_path), O_WRONLY);
     check(fd != 0, "Unable to open header file for block update");
-    FILE *file = fdopen(fd, "w");
+    file = fdopen(fd, "w");
     check(file != NULL, "Unable to open header file stream for block update");
     
     // Write to buffer.
@@ -256,8 +249,8 @@ int sky_block_update(sky_block *block, sky_object_id_t object_id,
                      sky_timestamp_t timestamp)
 {
     int rc;
-    check(block != NULL, "Block required");
-    check(object_id != 0, "Object id cannot be zero");
+    assert(block != NULL);
+    assert(object_id != 0);
 
     // Check if the object id or timestamp is out of range.
     bool is_empty = (block->min_object_id == 0 && block->max_object_id == 0);
@@ -303,7 +296,7 @@ int sky_block_full_update(sky_block *block)
     int rc;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
-    check(block != NULL, "Block required");
+    assert(block != NULL);
 
     // Initialize path iterator.
     sky_path_iterator iterator;
@@ -392,15 +385,11 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_block_get_header_offset(sky_block *block, off_t *offset)
 {
-    check(block != NULL, "Block required");
-    check(offset != NULL, "Offset pointer required");
+    assert(block != NULL);
+    assert(offset != NULL);
 
     *offset = ((uint32_t)SKY_HEADER_FILE_HDR_SIZE) + (block->index * ((uint32_t)SKY_BLOCK_HEADER_SIZE));
     return 0;
-    
-error:
-    *offset = 0;
-    return -1;
 }
 
 //--------------------------------------
@@ -416,16 +405,12 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_block_get_offset(sky_block *block, size_t *offset)
 {
-    check(block != NULL, "Block required");
-    check(block->data_file != NULL, "Data file required");
-    check(block->data_file->block_size != 0, "Data file must have a nonzero block size");
+    assert(block != NULL);
+    assert(block->data_file != NULL);
+    assert(block->data_file->block_size != 0);
 
     *offset = (block->data_file->block_size * block->index);
     return 0;
-
-error:
-    *offset = 0;
-    return -1;
 }
 
 // Calculates the pointer position for the beginning on the block in the
@@ -437,9 +422,9 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_block_get_ptr(sky_block *block, void **ptr)
 {
-    check(block != NULL, "Block required");
-    check(block->data_file != NULL, "Data file required");
-    check(block->data_file->data != NULL, "Data file must be mapped");
+    assert(block != NULL);
+    assert(block->data_file != NULL);
+    assert(block->data_file->data != NULL);
 
     // Retrieve the offset.
     size_t offset;
@@ -470,9 +455,9 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_block_get_span_count(sky_block *block, uint32_t *count)
 {
-    check(block != NULL, "Block required");
-    check(block->data_file != NULL, "Data file required");
-    check(count != NULL, "Span count address required");
+    assert(block != NULL);
+    assert(block->data_file != NULL);
+    assert(count != NULL);
     
     sky_data_file *data_file = block->data_file;
     sky_block **blocks = data_file->blocks;
@@ -502,10 +487,6 @@ int sky_block_get_span_count(sky_block *block, uint32_t *count)
     }
     
     return 0;
-
-error:
-    *count = 0;
-    return -1;
 }
 
 // Spans a path across multiple blocks.
@@ -515,11 +496,11 @@ int sky_block_span_with_event(sky_block *block, sky_event *new_event,
 {
     int rc;
     size_t _sz;
-    check(block != NULL, "Block required");
-    check(new_event != NULL, "Event required");
-    check(path_ptr != NULL, "Path pointer required");
-    check(target_size > 0, "Target size must be greater than zero");
-    check(target_block > 0, "Target block pointer required");
+    assert(block != NULL);
+    assert(new_event != NULL);
+    assert(path_ptr != NULL);
+    assert(target_size > 0);
+    assert(target_block > 0);
     
     // Initialize events stats.
     uint32_t event_count = 0;
@@ -685,10 +666,14 @@ int sky_block_get_path_stats(sky_block *block, sky_event *event,
                              uint32_t *path_count)
 {
     int rc;
-    check(block != NULL, "Block required");
-    check(paths != NULL, "Paths return address required");
-    check(path_count != NULL, "Path count return address required");
+    assert(block != NULL);
+    assert(paths != NULL);
+    assert(path_count != NULL);
 
+    // Initialize return values.
+    *path_count = 0;
+    *paths = NULL;
+ 
     // Initialize data file & block pointers.
     void *block_ptr = NULL;
     rc = sky_block_get_ptr(block, &block_ptr);
@@ -703,10 +688,6 @@ int sky_block_get_path_stats(sky_block *block, sky_event *event,
     // Calculate size of the event.
     size_t event_length = (event != NULL ? sky_event_sizeof(event) : 0);
 
-    // Initialize return values.
-    *path_count = 0;
-    *paths = NULL;
- 
     // Loop over iterator to calculate sizes of the paths.
     sky_object_id_t last_object_id = 0;
     while(!iterator.eof) {
@@ -721,6 +702,7 @@ int sky_block_get_path_stats(sky_block *block, sky_event *event,
             // Increment paths array.
             (*path_count)++;
             *paths = realloc(*paths, sizeof(sky_block_path_stat) * (*path_count));
+            check_mem(*paths);
             sky_block_path_stat *stat = &((*paths)[(*path_count)-1]);
             stat->object_id = event->object_id;
             stat->start_pos = stat->end_pos = (path_ptr - block_ptr);
@@ -731,6 +713,7 @@ int sky_block_get_path_stats(sky_block *block, sky_event *event,
         size_t path_length = sky_path_sizeof_raw(path_ptr);
         (*path_count)++;
         *paths = realloc(*paths, sizeof(sky_block_path_stat) * (*path_count));
+        check_mem(*paths);
         sky_block_path_stat *stat = &((*paths)[(*path_count)-1]);
         stat->object_id = iterator.current_object_id;
         stat->start_pos = path_ptr - block_ptr;
@@ -754,6 +737,7 @@ int sky_block_get_path_stats(sky_block *block, sky_event *event,
     if(event != NULL && event->object_id > last_object_id) {
         (*path_count)++;
         *paths = realloc(*paths, sizeof(sky_block_path_stat) * (*path_count));
+        check_mem(*paths);
         sky_block_path_stat *stat = &((*paths)[(*path_count)-1]);
         stat->object_id = event->object_id;
         stat->start_pos = stat->end_pos = iterator.block_data_length;
@@ -786,10 +770,10 @@ error:
 int sky_block_add_event(sky_block *block, sky_event *event)
 {
     int rc;
-    check(block != NULL, "Block required");
-    check(event != NULL, "Event required");
-    check(block->data_file != NULL, "Block data file required");
-    check(block->data_file->block_size > 0, "Block data file must have a nonzero block size");
+    assert(block != NULL);
+    assert(event != NULL);
+    assert(block->data_file != NULL);
+    assert(block->data_file->block_size > 0);
 
     // Store the block pointer.
     void *block_ptr;
@@ -893,8 +877,8 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     int rc;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
-    check(block != NULL, "Block required");
-    check(event != NULL, "Event required");
+    assert(block != NULL);
+    assert(event != NULL);
 
     // Initialize path iterator.
     sky_path_iterator iterator;
@@ -992,10 +976,10 @@ int sky_block_split_with_event(sky_block *block, sky_event *event,
 {
     int rc;
     uint32_t i;
-    check(block != NULL, "Block required");
-    check(event != NULL, "Event required");
-    check(block->data_file != NULL, "Block data file required");
-    check(block->data_file->block_size > 0, "Block data file must have a nonzero block size");
+    assert(block != NULL);
+    assert(event != NULL);
+    assert(block->data_file != NULL);
+    assert(block->data_file->block_size > 0);
 
     // Initialize path stats.
     uint32_t path_count = 0;
@@ -1156,7 +1140,7 @@ error:
 int sky_block_memdump(sky_block *block)
 {
     int rc;
-    check(block != NULL, "Block required");
+    assert(block != NULL);
 
     // Retrieve block pointer.
     void *ptr = NULL;

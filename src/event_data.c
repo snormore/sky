@@ -236,7 +236,10 @@ int sky_event_data_pack(sky_event_data *data, void *ptr, size_t *sz)
             ptr += _sz;
 
             // Write actual string value.
-            memmove(ptr, bdata(data->string_value), blength(data->string_value));
+            if(blength(data->string_value) > 0) {
+                assert(bdata(data->string_value) != NULL);
+                memmove(ptr, bdata(data->string_value), blength(data->string_value));
+            }
             ptr += blength(data->string_value);
             break;
         default:

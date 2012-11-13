@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #include "dbg.h"
 #include "mem.h"
@@ -59,7 +60,7 @@ void sky_action_file_free(sky_action_file *action_file)
 // Returns 0 if successful, otherwise returns -1.
 int sky_action_file_get_path(sky_action_file *action_file, bstring *path)
 {
-    check(action_file != NULL, "Action file required");
+    assert(action_file != NULL);
 
     *path = bstrcpy(action_file->path);
     if(action_file->path) check_mem(*path);
@@ -79,12 +80,9 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_action_file_set_path(sky_action_file *action_file, bstring path)
 {
-    check(action_file != NULL, "Action file required");
+    assert(action_file != NULL);
 
-    if(action_file->path) {
-        bdestroy(action_file->path);
-    }
-    
+    if(action_file->path) bdestroy(action_file->path);
     action_file->path = bstrcpy(path);
     if(path) check_mem(action_file->path);
 
@@ -107,13 +105,12 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_action_file_load(sky_action_file *action_file)
 {
-    FILE *file;
-    sky_action **actions = NULL;
-    uint32_t count = 0;
-    size_t sz;
-
     int rc;
-    check(action_file != NULL, "Action file required");
+    size_t sz;
+    uint32_t count = 0;
+    FILE *file = NULL;
+    sky_action **actions = NULL;
+    assert(action_file != NULL);
     check(action_file->path != NULL, "Action file path required");
 
     // Unload any actions currently in memory.
@@ -130,8 +127,10 @@ int sky_action_file_load(sky_action_file *action_file)
         check(sz != 0, "Unable to read actions array at byte: %ld", ftell(file));
 
         // Allocate actions.
-        actions = malloc(sizeof(sky_action*) * count);
-        if(count > 0) check_mem(actions);
+        if(count > 0) {
+            actions = malloc(sizeof(sky_action*) * count);
+            check_mem(actions);
+        }
 
         // Read actions.
         uint32_t i;
@@ -164,6 +163,7 @@ int sky_action_file_load(sky_action_file *action_file)
 
 error:
     if(file) fclose(file);
+    if(actions) free(actions);
     return -1;
 }
 
@@ -174,11 +174,10 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_action_file_save(sky_action_file *action_file)
 {
-    FILE *file;
-    size_t sz;
-
     int rc;
-    check(action_file != NULL, "Action file required");
+    size_t sz;
+    FILE *file = NULL;
+    assert(action_file != NULL);
     check(action_file->path != NULL, "Action file path required");
 
     // Open file.
@@ -255,7 +254,7 @@ int sky_action_file_find_action_by_id(sky_action_file *action_file,
                                       sky_action_id_t action_id,
                                       sky_action **ret)
 {
-    check(action_file != NULL, "Action file required");
+    assert(action_file != NULL);
     
     // Initialize return values.
     *ret = NULL;
@@ -270,10 +269,6 @@ int sky_action_file_find_action_by_id(sky_action_file *action_file,
     }
     
     return 0;
-
-error:
-    *ret = NULL;
-    return -1;
 }
 
 // Retrieves the id for an action with a given name.
@@ -286,8 +281,8 @@ error:
 int sky_action_file_find_action_by_name(sky_action_file *action_file,
                                         bstring name, sky_action **ret)
 {
-    check(action_file != NULL, "Action file required");
-    check(name != NULL, "Action name required");
+    assert(action_file != NULL);
+    assert(name != NULL);
     
     // Initialize action id to zero.
     *ret = NULL;
@@ -302,10 +297,6 @@ int sky_action_file_find_action_by_name(sky_action_file *action_file,
     }
     
     return 0;
-
-error:
-    *ret = NULL;
-    return -1;
 }
 
 
@@ -318,8 +309,8 @@ error:
 int sky_action_file_add_action(sky_action_file *action_file,
                                sky_action *action)
 {
-    check(action_file != NULL, "Action file required");
-    check(action != NULL, "Action required");
+    assert(action_file != NULL);
+    assert(action != NULL);
     check(action->id == 0, "Action ID must be zero");
     check(action->action_file == NULL, "Action ID must be zero");
     

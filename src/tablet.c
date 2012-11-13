@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <math.h>
+#include <assert.h>
 
 #include "tablet.h"
 #include "dbg.h"
@@ -43,8 +44,9 @@ int sky_table_unload_data_file(sky_table *table);
 // null.
 sky_tablet *sky_tablet_create(sky_table *table)
 {
-    check(table != NULL, "Table required");
-    sky_tablet *tablet = calloc(sizeof(sky_tablet), 1); check_mem(tablet);
+    sky_tablet *tablet = NULL;
+    assert(table != NULL);
+    tablet = calloc(sizeof(sky_tablet), 1); check_mem(tablet);
     tablet->table = table;
     return tablet;
     
@@ -83,7 +85,7 @@ void sky_tablet_free(sky_tablet *tablet)
 // Returns 0 if successful, otherwise returns -1.
 int sky_tablet_set_path(sky_tablet *tablet, bstring path)
 {
-    check(tablet != NULL, "Tablet required");
+    assert(tablet != NULL);
 
     if(tablet->path) bdestroy(tablet->path);
     tablet->path = bstrcpy(path);
@@ -110,7 +112,7 @@ error:
 int sky_tablet_open(sky_tablet *tablet)
 {
     int rc;
-    check(tablet != NULL, "Tablet required");
+    assert(tablet != NULL);
     check(tablet->path != NULL, "Tablet path required");
     
     // Close the tablet if it's already open.
@@ -152,7 +154,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_tablet_close(sky_tablet *tablet)
 {
-    check(tablet != NULL, "Tablet required");
+    assert(tablet != NULL);
 
     if(tablet->data_file) {
         sky_data_file_free(tablet->data_file);
@@ -160,8 +162,6 @@ int sky_tablet_close(sky_tablet *tablet)
     }
 
     return 0;
-error:
-    return -1;
 }
 
 
@@ -178,8 +178,8 @@ error:
 int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
 {
     int rc;
-    check(tablet != NULL, "Table required");
-    check(event != NULL, "Event required");
+    assert(tablet != NULL);
+    assert(event != NULL);
 
     // Make sure that this event is being added to the correct tablet.
     sky_tablet *target_tablet = NULL;

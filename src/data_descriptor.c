@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "data_descriptor.h"
 #include "sky_string.h"
@@ -60,6 +61,7 @@ void sky_data_descriptor_clear_boolean(void *target);
 sky_data_descriptor *sky_data_descriptor_create(sky_property_id_t min_property_id,
                                                 sky_property_id_t max_property_id)
 {
+    sky_data_descriptor *descriptor = NULL;
     check(max_property_id >= min_property_id, "Max property id must be greater than or equal to min property id");
 
     // Normalize min/max so that range so that either min or max is on zero
@@ -77,7 +79,7 @@ sky_data_descriptor *sky_data_descriptor_create(sky_property_id_t min_property_i
 
     // Allocate memory for the descriptor and child descriptors in one block.
     size_t sz = sizeof(sky_data_descriptor) + (sizeof(sky_data_property_descriptor) * property_count);
-    sky_data_descriptor *descriptor = calloc(sz, 1);
+    descriptor = calloc(sz, 1);
     check_mem(descriptor);
     descriptor->min_property_id = min_property_id;
     descriptor->max_property_id = max_property_id;
@@ -140,10 +142,10 @@ int sky_data_descriptor_set_value(sky_data_descriptor *descriptor,
                                   void *target, sky_property_id_t property_id,
                                   void *ptr, size_t *sz)
 {
-    check(descriptor != NULL, "Descriptor required");
-    check(target != NULL, "Target struct required");
+    assert(descriptor != NULL);
+    assert(target != NULL);
+    assert(ptr != NULL);
     check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID (%d) out of range (%d,%d)", property_id, descriptor->min_property_id, descriptor->max_property_id);
-    check(ptr != NULL, "Value pointer required");
     
     // Find the property descriptor and call the set_func.
     sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];
@@ -164,8 +166,8 @@ error:
 int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
                                           void *target)
 {
-    check(descriptor != NULL, "Data descriptor required");
-    check(target != NULL, "Target pointer required");
+    assert(descriptor != NULL);
+    assert(target != NULL);
     
     uint32_t i;
     for(i=0; i<descriptor->action_property_descriptor_count; i++) {
@@ -174,9 +176,6 @@ int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
     }
 
     return 0;
-
-error:
-    return -1;
 }
 
 
@@ -197,7 +196,7 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
                                      uint16_t offset,
                                      sky_data_type_e data_type)
 {
-    check(descriptor != NULL, "Descriptor required");
+    assert(descriptor != NULL);
     check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID out of range for descriptor");
 
     // Retrieve property descriptor.

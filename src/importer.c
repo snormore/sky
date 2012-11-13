@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "jsmn/jsmn.h"
 #include "importer.h"
@@ -106,7 +107,7 @@ void sky_importer_free(sky_importer *importer)
 // Returns 0 if successful, otherwise returns -1.
 int sky_importer_set_path(sky_importer *importer, bstring path)
 {
-    check(importer != NULL, "Importer required");
+    assert(importer != NULL);
     
     if(importer->path) bdestroy(importer->path);
     importer->path = bstrcpy(path);
@@ -133,8 +134,8 @@ error:
 int sky_importer_import(sky_importer *importer, FILE *file)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(file != NULL, "File stream required");
+    assert(importer != NULL);
+    assert(file != NULL);
     
     // Process json into table structure and events.
     rc = sky_importer_parse(importer, file);
@@ -164,9 +165,9 @@ error:
 int sky_importer_tokenize(sky_importer *importer, bstring source,
                           jsmntok_t **tokens)
 {
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "File source required");
-    check(tokens != NULL, "Tokens return pointer required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
     
     // Initialize return values.
     *tokens = NULL;
@@ -205,14 +206,16 @@ error:
 int sky_importer_parse(sky_importer *importer, FILE *file)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(file != NULL, "File stream required");
+    bstring source = NULL;
+    jsmntok_t *tokens = NULL;
+    assert(importer != NULL);
+    assert(file != NULL);
 
     // Read in entire stream.
-    bstring source = bread((bNread)fread, file); check_mem(source);
+    source = bread((bNread)fread, file); check_mem(source);
 
     // Read json into tokens.
-    jsmntok_t *tokens = NULL;
+    tokens = NULL;
     rc = sky_importer_tokenize(importer, source, &tokens);
     check(rc == 0, "Unable to tokenize import file");
 
@@ -246,9 +249,9 @@ int sky_importer_process(sky_importer *importer, bstring source,
                          jsmntok_t *tokens)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
 
     // Setup index to track current token and root token.
     uint32_t index = 1;
@@ -276,10 +279,10 @@ int sky_importer_process_table(sky_importer *importer, bstring source,
                                jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *table_token = &tokens[*index];
     (*index)++;
@@ -325,10 +328,10 @@ int sky_importer_process_actions(sky_importer *importer, bstring source,
                                  jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *actions_token = &tokens[*index];
     (*index)++;
@@ -354,10 +357,10 @@ int sky_importer_process_action(sky_importer *importer, bstring source,
                                 jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *action_token = &tokens[*index];
     (*index)++;
@@ -397,10 +400,10 @@ int sky_importer_process_properties(sky_importer *importer, bstring source,
                                     jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *properties_token = &tokens[*index];
     (*index)++;
@@ -426,10 +429,10 @@ int sky_importer_process_property(sky_importer *importer, bstring source,
                                   jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *property_token = &tokens[*index];
     (*index)++;
@@ -480,10 +483,10 @@ int sky_importer_process_events(sky_importer *importer, bstring source,
                                 jsmntok_t *tokens, uint32_t *index)
 {
     int rc;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *events_token = &tokens[*index];
     (*index)++;
@@ -506,10 +509,10 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
 {
     int rc;
     sky_event *event = NULL;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *event_token = &tokens[*index];
     (*index)++;
@@ -571,10 +574,10 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
 {
     int rc;
     bstring property_name = NULL;
-    check(importer != NULL, "Importer required");
-    check(source != NULL, "Source required");
-    check(tokens != NULL, "Tokens required");
-    check(index != NULL, "Token index required");
+    assert(importer != NULL);
+    assert(source != NULL);
+    assert(tokens != NULL);
+    assert(index != NULL);
 
     jsmntok_t *data_token = &tokens[*index];
     (*index)++;
@@ -657,6 +660,9 @@ bool sky_importer_tokstr_equal(bstring source, jsmntok_t *token,
                                const char *str)
 {
     char *source_string = bdata(source);
+    assert(source_string != NULL);
+    assert(str != NULL);
+    
     int toklen = token->end - token->start;
     if(toklen > 0) {
         return (strncmp(str, &source_string[token->start], toklen) == 0);

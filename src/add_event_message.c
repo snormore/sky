@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include "types.h"
 #include "add_event_message.h"
@@ -155,13 +156,14 @@ int sky_add_event_message_process(sky_server *server,
 {
     int rc = 0;
     sky_add_event_message *message = NULL;
-    check(header != NULL, "Message header required");
-    check(table != NULL, "Table required");
-    check(input != NULL, "Input stream required");
-    check(output != NULL, "Output stream required");
+    sky_worker *worker = NULL;
+    assert(header != NULL);
+    assert(table != NULL);
+    assert(input != NULL);
+    assert(output != NULL);
     
     // Create worker.
-    sky_worker *worker = sky_worker_create(); check_mem(worker);
+    worker = sky_worker_create(); check_mem(worker);
     worker->context = server->context;
     worker->map = sky_add_event_message_worker_map;
     worker->write = sky_add_event_message_worker_write;
@@ -308,8 +310,8 @@ int sky_add_event_message_pack(sky_add_event_message *message, FILE *file)
 {
     int rc;
     size_t sz;
-    check(message != NULL, "Message required");
-    check(file != NULL, "File stream required");
+    assert(message != NULL);
+    assert(file != NULL);
 
     // Map
     minipack_fwrite_map(file, SKY_ADD_EVENT_KEY_COUNT, &sz);
@@ -351,8 +353,8 @@ int sky_add_event_message_pack_data(sky_add_event_message *message, FILE *file)
 {
     int rc;
     size_t sz;
-    check(message != NULL, "Message required");
-    check(file != NULL, "File stream required");
+    assert(message != NULL);
+    assert(file != NULL);
 
     // Map
     minipack_fwrite_map(file, message->data_count, &sz);
@@ -407,8 +409,8 @@ int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file)
     int rc;
     size_t sz;
     bstring key = NULL;
-    check(message != NULL, "Message required");
-    check(file != NULL, "File stream required");
+    assert(message != NULL);
+    assert(file != NULL);
 
     // Map
     uint32_t map_length = minipack_fread_map(file, &sz);
@@ -457,8 +459,8 @@ int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file
 {
     int rc;
     size_t sz;
-    check(message != NULL, "Message required");
-    check(file != NULL, "File stream required");
+    assert(message != NULL);
+    assert(file != NULL);
 
     // Map
     uint32_t map_length = minipack_fread_map(file, &sz);
@@ -527,9 +529,9 @@ int sky_add_event_message_worker_map(sky_worker *worker, sky_tablet *tablet,
                                      void **ret)
 {
     int rc;
-    check(worker != NULL, "Worker required");
-    check(tablet != NULL, "Tablet required");
-    check(ret != NULL, "Return pointer required");
+    assert(worker != NULL);
+    assert(tablet != NULL);
+    assert(ret != NULL);
 
     // Add event to tablet.
     sky_add_event_message *message = (sky_add_event_message*)worker->data;
@@ -540,7 +542,7 @@ int sky_add_event_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     return 0;
 
 error:
-    *ret = NULL;
+    if(ret) *ret = NULL;
     return -1;
 }
 
@@ -553,8 +555,8 @@ error:
 int sky_add_event_message_worker_write(sky_worker *worker, FILE *output)
 {
     size_t sz;
-    check(worker != NULL, "Worker required");
-    check(output != NULL, "Output stream required");
+    assert(worker != NULL);
+    assert(output != NULL);
     
     struct tagbstring status_str = bsStatic("status");
     struct tagbstring ok_str = bsStatic("ok");
@@ -577,7 +579,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_add_event_message_worker_free(sky_worker *worker)
 {
-    check(worker != NULL, "Worker required");
+    assert(worker != NULL);
     
     // Clean up.
     sky_add_event_message *message = (sky_add_event_message*)worker->data;
@@ -585,7 +587,4 @@ int sky_add_event_message_worker_free(sky_worker *worker)
     worker->data = NULL;
     
     return 0;
-
-error:
-    return -1;
 }

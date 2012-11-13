@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <math.h>
+#include <assert.h>
 
 #include "dbg.h"
 #include "mem.h"
@@ -109,7 +110,7 @@ void sky_table_free(sky_table *table)
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_set_path(sky_table *table, bstring path)
 {
-    check(table != NULL, "Table required");
+    assert(table != NULL);
 
     if(table->path) bdestroy(table->path);
     table->path = bstrcpy(path);
@@ -137,9 +138,9 @@ error:
 int sky_table_get_target_tablet(sky_table *table, sky_object_id_t object_id,
                                 sky_tablet **ret)
 {
-    check(table != NULL, "Table required");
+    assert(table != NULL);
+    assert(ret != NULL);
     check(table->tablet_count, "Table must have tablets available");
-    check(ret != NULL, "Return pointer required");
     
     // Calculate the tablet index.
     uint32_t target_index = object_id % table->tablet_count;
@@ -162,7 +163,7 @@ error:
 int sky_table_get_tablet_count(sky_table *table, uint32_t *ret)
 {
     bstring path = NULL;
-    check(table != NULL, "Table required");
+    assert(table != NULL);
     
     // Find the last tablet path.
     uint32_t index = 0;
@@ -202,7 +203,7 @@ int sky_table_load_tablets(sky_table *table)
 {
     int rc;
     sky_tablet *tablet = NULL;
-    check(table != NULL, "Table required");
+    assert(table != NULL);
     check(table->path != NULL, "Table path required");
     
     // Unload existing tablets.
@@ -252,7 +253,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_unload_tablets(sky_table *table)
 {
-    check(table != NULL, "Table required");
+    assert(table != NULL);
 
     uint32_t i;
     for(i=0; i<table->tablet_count; i++) {
@@ -266,9 +267,6 @@ int sky_table_unload_tablets(sky_table *table)
     table->tablet_count = 0;
 
     return 0;
-
-error:
-    return -1;
 }
 
 
@@ -284,7 +282,7 @@ error:
 int sky_table_load_action_file(sky_table *table)
 {
     int rc;
-    check(table != NULL, "Table required");
+    assert(table != NULL);
     check(table->path != NULL, "Table path required");
     
     // Unload any existing action file.
@@ -313,7 +311,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_unload_action_file(sky_table *table)
 {
-    check(table != NULL, "Table required");
+    assert(table != NULL);
 
     if(table->action_file) {
         sky_action_file_free(table->action_file);
@@ -321,9 +319,6 @@ int sky_table_unload_action_file(sky_table *table)
     }
 
     return 0;
-    
-error:
-    return -1;
 }
 
 
@@ -339,7 +334,7 @@ error:
 int sky_table_load_property_file(sky_table *table)
 {
     int rc;
-    check(table != NULL, "Table required");
+    assert(table != NULL);
     check(table->path != NULL, "Table path required");
     
     // Unload any existing property file.
@@ -368,7 +363,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_unload_property_file(sky_table *table)
 {
-    check(table != NULL, "Table required");
+    assert(table != NULL);
 
     if(table->property_file) {
         sky_property_file_free(table->property_file);
@@ -376,8 +371,6 @@ int sky_table_unload_property_file(sky_table *table)
     }
 
     return 0;
-error:
-    return -1;
 }
 
 
@@ -393,7 +386,7 @@ error:
 int sky_table_open(sky_table *table)
 {
     int rc;
-    check(table != NULL, "Table required");
+    assert(table != NULL);
     check(table->path != NULL, "Table path is required");
     check(!table->opened, "Table is already open");
 
@@ -437,7 +430,7 @@ error:
 int sky_table_close(sky_table *table)
 {
     int rc;
-    check(table != NULL, "Table required to close");
+    assert(table != NULL);
 
     // Unload tablets.
     rc = sky_table_unload_tablets(table);
@@ -476,7 +469,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_lock(sky_table *table)
 {
-    check(table != NULL, "Table required to lock");
+    assert(table != NULL);
 
     // Construct path to lock.
     bstring path = bformat("%s/%s", bdata(table->path), SKY_LOCK_NAME); check_mem(path);
@@ -503,7 +496,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_table_unlock(sky_table *table)
 {
-    check(table != NULL, "Table required to unlock");
+    assert(table != NULL);
 
     // Generate lock file path.
     bstring path = NULL;
@@ -542,8 +535,8 @@ error:
 int sky_table_add_event(sky_table *table, sky_event *event)
 {
     int rc;
-    check(table != NULL, "Table required");
-    check(event != NULL, "Event required");
+    assert(table != NULL);
+    assert(event != NULL);
     check(table->opened, "Table must be open to add an event");
 
     // Retrieve the target tablet.

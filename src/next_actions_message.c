@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <assert.h>
 
 #include "types.h"
 #include "next_actions_message.h"
@@ -132,10 +133,10 @@ int sky_next_actions_message_process(sky_server *server,
 {
     int rc = 0;
     sky_next_actions_message *message = NULL;
-    check(table != NULL, "Table required");
-    check(header != NULL, "Message header required");
-    check(input != NULL, "Input stream required");
-    check(output != NULL, "Output stream required");
+    assert(table != NULL);
+    assert(header != NULL);
+    assert(input != NULL);
+    assert(output != NULL);
     
     // Create worker.
     sky_worker *worker = sky_worker_create(); check_mem(worker);
@@ -191,9 +192,9 @@ int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *mess
 {
     int rc;
     sky_data_descriptor *descriptor = NULL;
-    check(message != NULL, "Message required");
-    check(property_file != NULL, "Property file required");
-    check(message->data_descriptor == NULL, "Message already has a data descriptor");
+    assert(message != NULL);
+    assert(property_file != NULL);
+    assert(message->data_descriptor == NULL);
     
     // Create data descriptor.
     rc = sky_property_file_create_data_descriptor(property_file, &descriptor);
@@ -244,8 +245,8 @@ size_t sky_next_actions_message_sizeof(sky_next_actions_message *message)
 int sky_next_actions_message_pack(sky_next_actions_message *message, FILE *file)
 {
     size_t sz;
-    check(message != NULL, "Message required");
-    check(file != NULL, "File stream required");
+    assert(message != NULL);
+    assert(file != NULL);
 
     minipack_fwrite_array(file, message->prior_action_id_count, &sz);
     check(sz > 0, "Unable to pack prior action id array");
@@ -271,8 +272,8 @@ error:
 int sky_next_actions_message_unpack(sky_next_actions_message *message, FILE *file)
 {
     size_t sz;
-    check(message != NULL, "Message required");
-    check(file != NULL, "File stream required");
+    assert(message != NULL);
+    assert(file != NULL);
 
     message->prior_action_id_count = minipack_fread_array(file, &sz);
     check(sz > 0, "Unable to unpack prior action id array");
@@ -306,8 +307,8 @@ error:
 int sky_next_actions_message_worker_read(sky_worker *worker, FILE *input)
 {
     int rc;
-    check(worker != NULL, "Worker required");
-    check(input != NULL, "Input stream required");
+    assert(worker != NULL);
+    assert(input != NULL);
 
     // Parse message.
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
@@ -334,10 +335,9 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     int rc;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
-
-    check(worker != NULL, "Worker required");
-    check(tablet != NULL, "Tablet required");
-    check(ret != NULL, "Return pointer required");
+    assert(worker != NULL);
+    assert(tablet != NULL);
+    assert(ret != NULL);
 
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
 
@@ -359,7 +359,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
     rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
-    check(rc == 0, "Unable to initialze path iterator");
+    check(rc == 0, "Unable to initialize path iterator");
 
     // Iterate over each path.
     uint64_t event_count = 0;
@@ -426,6 +426,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     return 0;
 
 error:
+    free(results);
     *ret = NULL;
     sky_cursor_uninit(&cursor);
     return -1;
@@ -438,12 +439,9 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_next_actions_message_worker_map_free(void *data)
 {
-    check(data != NULL, "Data required");
+    assert(data != NULL);
     free(data);
     return 0;
-
-error:
-    return -1;
 }
 
 // Combines the data from a single execution of the map() function into data
@@ -455,8 +453,8 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_next_actions_message_worker_reduce(sky_worker *worker, void *data)
 {
-    check(worker != NULL, "Worker required");
-    check(data != NULL, "Map data required");
+    assert(worker != NULL);
+    assert(data != NULL);
     
     // Ease-of-use references.
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
@@ -469,9 +467,6 @@ int sky_next_actions_message_worker_reduce(sky_worker *worker, void *data)
     }
     
     return 0;
-
-error:
-    return -1;
 }
 
 // Writes the results to an output stream.
@@ -483,8 +478,8 @@ error:
 int sky_next_actions_message_worker_write(sky_worker *worker, FILE *output)
 {
     size_t sz;
-    check(worker != NULL, "Worker required");
-    check(output != NULL, "Output stream required");
+    assert(worker != NULL);
+    assert(output != NULL);
     
     // Ease-of-use references.
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
@@ -529,7 +524,7 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_next_actions_message_worker_free(sky_worker *worker)
 {
-    check(worker != NULL, "Worker required");
+    assert(worker != NULL);
     
     // Clean up.
     sky_next_actions_message *message = (sky_next_actions_message*)worker->data;
@@ -537,8 +532,5 @@ int sky_next_actions_message_worker_free(sky_worker *worker)
     worker->data = NULL;
     
     return 0;
-
-error:
-    return -1;
 }
 

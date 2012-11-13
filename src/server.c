@@ -326,6 +326,8 @@ error:
 int sky_server_accept(sky_server *server)
 {
     int rc;
+    FILE *input = NULL;
+    FILE *output = NULL;
     check(server != NULL, "Server required");
 
     // Accept the next connection.
@@ -334,8 +336,8 @@ int sky_server_accept(sky_server *server)
     check(socket != -1, "Unable to accept connection");
 
     // Wrap socket in a buffered file reference.
-    FILE *input = fdopen(socket, "r");
-    FILE *output = fdopen(dup(socket), "w");
+    input = fdopen(socket, "r");
+    output = fdopen(dup(socket), "w");
     check(input != NULL, "Unable to open buffered socket input");
     check(output != NULL, "Unable to open buffered socket output");
     
@@ -346,8 +348,10 @@ int sky_server_accept(sky_server *server)
     return 0;
 
 error:
-    fclose(input);
-    fclose(output);
+    if(input) fclose(input);
+    input = NULL;
+    if(output) fclose(output);
+    output = NULL;
     return -1;
 }
 
@@ -661,7 +665,7 @@ int sky_server_open_table(sky_server *server, bstring name, bstring path,
 
 error:
     sky_table_free(table);
-    *ret = NULL;
+    if(ret) *ret = NULL;
     return -1;
 }
 
@@ -695,7 +699,7 @@ int sky_server_get_tablet_servlet(sky_server *server, sky_tablet *tablet,
     return 0;
 
 error:
-    *servlet = NULL;
+    if(servlet) *servlet = NULL;
     return -1;
 }
 
@@ -717,7 +721,7 @@ int sky_server_get_table_servlets(sky_server *server, sky_table *table,
     
     // Allocate array.
     *count = table->tablet_count;
-    *servlets = calloc(*count, sizeof(*servlets));
+    *servlets = calloc(*count, sizeof(**servlets));
     check_mem(*servlets);
     
     // Loop over all servlets and find ones associated with the table.
@@ -733,8 +737,11 @@ int sky_server_get_table_servlets(sky_server *server, sky_table *table,
     return 0;
 
 error:
-    *count = 0;
-    free(*servlets);
+    if(count) *count = 0;
+    if(servlets) {
+        free(*servlets);
+        *servlets = NULL;
+    }
     return -1;
 }
 

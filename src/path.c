@@ -175,6 +175,7 @@ int sky_path_pack(sky_path *path, void *ptr, size_t *sz)
     // Write header.
     size_t event_data_length = get_event_data_length(path);
     rc = sky_path_pack_hdr(path->object_id, event_data_length, ptr, &_sz);
+    check(rc == 0, "Unable to pack path header");
     ptr += _sz;
 
     // Pack events.
@@ -371,9 +372,11 @@ int sky_path_get_event_stats(void *path_ptr, sky_event *event,
     return 0;
 
 error:
-    free(*events);
-    *events = NULL;
-    *event_count = 0;
+    if(events) {
+        free(*events);
+        *events = NULL;
+    }
+    if(event_count) *event_count = 0;
     sky_cursor_uninit(&cursor);
     return -1;
 }
@@ -446,8 +449,14 @@ int sky_path_remove_event(sky_path *path, sky_event *event)
             
             // Reallocate memory.
             path->event_count--;
-            path->events = realloc(path->events, sizeof(sky_event*) * path->event_count);
-            check_mem(path->events);
+            if(path->event_count == 0) {
+                free(path->events);
+                path->events = NULL;
+            }
+            else {
+                path->events = realloc(path->events, sizeof(sky_event*) * path->event_count);
+                check_mem(path->events);
+            }
             
             break;
         }

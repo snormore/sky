@@ -82,6 +82,9 @@ int main(int argc, char **argv)
     return 0;
 
 error:
+    sky_server_stop(server);
+    sky_server_free(server);
+    skyd_options_free(options);
     return 1;
 }
 

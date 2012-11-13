@@ -122,12 +122,12 @@ error:
 int sky_file_cp_r(bstring src, bstring dest)
 {
     int rc;
+    bstring ent_src = NULL;
+    bstring ent_dest = NULL;
     check(src != NULL, "Source path required");
     check(dest != NULL, "Destination path required");
     check(sky_file_exists(src), "Source file does not exist");
 
-    bstring ent_src, ent_dest;
-    
     // If this is a directory then create a new dest directory and copy the
     // contents.
     if(sky_file_is_dir(src)) {
@@ -211,9 +211,8 @@ error:
 int sky_file_rm_r(bstring path)
 {
     int rc;
+    bstring ent_path = NULL;
     check(path != NULL, "Path required");
-
-    bstring ent_path;
     
     // If path doesn't exist then just ignore it.
     if(sky_file_exists(path)) {
