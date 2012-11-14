@@ -97,7 +97,8 @@ int sky_server_get_table_servlets(sky_server *server, sky_table *table,
 // Message Processing
 //--------------------------------------
 
-int sky_server_process_message(sky_server *server, FILE *input, FILE *output);
+int sky_server_process_message(sky_server *server, bool multi,
+    FILE *input, FILE *output);
 
 //--------------------------------------
 // Message Handlers

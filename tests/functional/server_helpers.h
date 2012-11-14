@@ -114,7 +114,7 @@ int _send_msg(char *path)
     // Read output message.
     output_len = read(sock, output_msg, sizeof(output_msg));
     check(sz > 0, "Unable to recv output message");
-    
+
     // Write output to file.
     FILE *output_file = fopen("tmp/output", "w");
     check(output_file != NULL, "Unable to open output message path: tmp/output");

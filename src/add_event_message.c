@@ -152,7 +152,8 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_add_event_message_process(sky_server *server,
                                   sky_message_header *header,
-                                  sky_table *table, FILE *input, FILE *output)
+                                  sky_table *table, 
+                                  FILE *input, FILE *output)
 {
     int rc = 0;
     sky_add_event_message *message = NULL;
@@ -168,6 +169,7 @@ int sky_add_event_message_process(sky_server *server,
     worker->map = sky_add_event_message_worker_map;
     worker->write = sky_add_event_message_worker_write;
     worker->free = sky_add_event_message_worker_free;
+    worker->multi = header->multi;
     worker->input = input;
     worker->output = output;
     
@@ -230,7 +232,7 @@ int sky_add_event_message_process(sky_server *server,
     // Start worker.
     rc = sky_worker_start(worker);
     check(rc == 0, "Unable to start worker");
-    
+
     return 0;
 
 error:

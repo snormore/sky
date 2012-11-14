@@ -135,9 +135,9 @@ void sky_worker_free(sky_worker *worker)
         sky_worker_free_push_sockets(worker);
         sky_worker_free_pull_socket(worker);
         worker->context = NULL;
-        if(worker->input) fclose(worker->input);
+        if(worker->input && !worker->multi) fclose(worker->input);
         worker->input = NULL;
-        if(worker->output) fclose(worker->output);
+        if(worker->output && !worker->multi) fclose(worker->output);
         worker->output = NULL;
         free(worker);
     }
@@ -228,25 +228,33 @@ int sky_worker_start(sky_worker *worker)
     rc = zmq_bind(worker->pull_socket, bdata(worker->pull_socket_uri));
     check(rc == 0, "Unable to bind worker pull socket");
 
-    // Setup thread attributes.
-    pthread_attr_t attr;
-    rc = pthread_attr_init(&attr);
-    check(rc == 0, "Unable to init thread attributes");
-    rc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    check(rc == 0, "Unable to set thread detach state");
+    // If this worker is part of a group then run it serially.
+    if(worker->multi) {
+        void *ret = sky_worker_run(worker);
+        check(ret == NULL, "Serial worker failed to execute");
+    }
+    // Otherwise start the worker as a detached thread.
+    else {
+        // Setup thread attributes.
+        pthread_attr_t attr;
+        rc = pthread_attr_init(&attr);
+        check(rc == 0, "Unable to init thread attributes");
+        rc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        check(rc == 0, "Unable to set thread detach state");
 
-    // Create the worker thread.
-    rc = pthread_create(&worker->thread, NULL, sky_worker_run, worker);
-    check(rc == 0, "Unable to create worker thread");
+        // Create the worker thread.
+        rc = pthread_create(&worker->thread, NULL, sky_worker_run, worker);
+        check(rc == 0, "Unable to create worker thread");
 
-    // Destory thread attributes.
-    rc = pthread_attr_destroy(&attr);
-    check(rc == 0, "Unable to destroy thread attributes");
+        // Destory thread attributes.
+        rc = pthread_attr_destroy(&attr);
+        check(rc == 0, "Unable to destroy thread attributes");
 
-    // Detach from the thread.
-    rc = pthread_detach(worker->thread);
-    check(rc == 0, "Unable to detach worker thread");
-
+        // Detach from the thread.
+        rc = pthread_detach(worker->thread);
+        check(rc == 0, "Unable to detach worker thread");
+    }
+    
     return 0;
 
 error:
@@ -316,10 +324,6 @@ void *sky_worker_run(void *_worker)
         check(rc == 0, "Worker unable to write output");
     }
     
-    // Close streams.
-    if(worker->input) fclose(worker->input);
-    if(worker->output) fclose(worker->output);
-
     // End benchmark.
     gettimeofday(&tv, NULL);
     int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
@@ -329,9 +333,9 @@ void *sky_worker_run(void *_worker)
     worker->free(worker);
     sky_worker_free(worker);
     
-    pthread_exit(NULL);
+    return NULL;
 
 error:
     sky_worker_free(worker);
-    pthread_exit(NULL);
+    return NULL;
 }

@@ -46,6 +46,7 @@ typedef enum {
 struct sky_worker {
     int64_t id;
     sky_worker_state_e state;
+    bool multi;
     sky_servlet **servlets;
     uint32_t servlet_count;
     void **push_sockets;

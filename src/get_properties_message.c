@@ -57,7 +57,7 @@ void sky_get_properties_message_free(sky_get_properties_message *message)
 sky_message_handler *sky_get_properties_message_handler_create()
 {
     sky_message_handler *handler = sky_message_handler_create(); check_mem(handler);
-    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_SERVER;
+    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_TABLE;
     handler->name = bfromcstr("get_properties");
     handler->process = sky_get_properties_message_process;
     return handler;

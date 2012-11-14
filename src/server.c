@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <assert.h>
 #include <zmq.h>
 
 #include "bstring.h"
@@ -16,6 +17,7 @@
 #include "add_property_message.h"
 #include "get_property_message.h"
 #include "get_properties_message.h"
+#include "multi_message.h"
 #include "sky_zmq.h"
 #include "dbg.h"
 
@@ -169,8 +171,7 @@ void sky_server_free(sky_server *server)
 int sky_server_start(sky_server *server)
 {
     int rc;
-
-    check(server != NULL, "Server required");
+    assert(server != NULL);
     check(server->state == SKY_SERVER_STATE_STOPPED, "Server already running");
     check(server->port > 0, "Port required");
 
@@ -217,7 +218,7 @@ error:
 int sky_server_stop(sky_server *server)
 {
     int rc;
-    check(server != NULL, "Server required");
+    assert(server != NULL);
     
     // Close socket if open.
     if(server->socket > 0) {
@@ -255,7 +256,7 @@ int sky_server_stop_servlets(sky_server *server)
     int rc;
     void *pull_socket = NULL;
     void *push_socket = NULL;
-    check(server != NULL, "Server required");
+    assert(server != NULL);
 
     // Ignore if there are no servlets.
     if(server->servlet_count == 0) {
@@ -328,7 +329,7 @@ int sky_server_accept(sky_server *server)
     int rc;
     FILE *input = NULL;
     FILE *output = NULL;
-    check(server != NULL, "Server required");
+    assert(server != NULL);
 
     // Accept the next connection.
     int sockaddr_size = sizeof(struct sockaddr_in);
@@ -342,7 +343,7 @@ int sky_server_accept(sky_server *server)
     check(output != NULL, "Unable to open buffered socket output");
     
     // Process message.
-    rc = sky_server_process_message(server, input, output);
+    rc = sky_server_process_message(server, false, input, output);
     check(rc == 0, "Unable to process message");
     
     return 0;
@@ -363,17 +364,23 @@ error:
 // Processes a single message.
 //
 // server - The server.
+// multi  - A flag stating if this message is part of a 'multi' message.
 // input  - The input stream.
 // output - The output stream.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
+int sky_server_process_message(sky_server *server, bool multi,
+                               FILE *input, FILE *output)
 {
     int rc;
     sky_message_header *header = NULL;
+    assert(server != NULL);
+    check(input != NULL, "Input stream required");
+    check(output != NULL, "Output stream required");
     
     // Parse message header.
     header = sky_message_header_create(); check_mem(header);
+    header->multi = multi;
     rc = sky_message_header_unpack(header, input);
     check(rc == 0, "Unable to unpack message header");
 
@@ -382,10 +389,12 @@ int sky_server_process_message(sky_server *server, FILE *input, FILE *output)
     rc = sky_server_get_message_handler(server, header->name, &handler);
     check(rc == 0, "Unable to get message handler");
 
-    // Open table.
+    // Open table if within scope.
     sky_table *table = NULL;
-    rc = sky_server_get_table(server, header->table_name, &table);
-    check(rc == 0, "Unable to open table");
+    if(handler->scope != SKY_MESSAGE_HANDLER_SCOPE_SERVER) {
+        rc = sky_server_get_table(server, header->table_name, &table);
+        check(rc == 0, "Unable to open table");
+    }
 
     // If the handler exists then use it to process the message.
     if(handler != NULL) {
@@ -426,9 +435,9 @@ error:
 int sky_server_get_message_handler(sky_server *server, bstring name,
                                    sky_message_handler **ret)
 {
-    check(server != NULL, "Server required");
+    assert(server != NULL);
+    assert(ret != NULL);
     check(blength(name), "Message name required");
-    check(ret != NULL, "Return pointer required");
     
     // Initialize return value.
     *ret = NULL;
@@ -459,8 +468,8 @@ int sky_server_add_message_handler(sky_server *server,
                                    sky_message_handler *handler)
 {
     int rc;
-    check(server != NULL, "Server required");
-    check(handler != NULL, "Message handler required");
+    assert(server != NULL);
+    assert(handler != NULL);
     
     // Make sure a handler with the same name doesn't exist.
     sky_message_handler *existing_handler = NULL;
@@ -489,8 +498,8 @@ error:
 int sky_server_remove_message_handler(sky_server *server,
                                       sky_message_handler *handler)
 {
-    check(server != NULL, "Server required");
-    check(handler != NULL, "Message handler required");
+    assert(server != NULL);
+    assert(handler != NULL);
     
     // Remove handler from server's list of message handlers.
     uint32_t i,j;
@@ -507,9 +516,6 @@ int sky_server_remove_message_handler(sky_server *server,
     }
     
     return 0;
-
-error:
-    return -1;
 }
 
 // Add the standard message handlers to the server.
@@ -521,7 +527,7 @@ int sky_server_add_default_message_handlers(sky_server *server)
 {
     int rc;
     sky_message_handler *handler = NULL;
-    check(server != NULL, "Server required");
+    assert(server != NULL);
     
     // 'Add Event' message.
     handler = sky_add_event_message_handler_create(); check_mem(handler);
@@ -558,6 +564,11 @@ int sky_server_add_default_message_handlers(sky_server *server)
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 
+    // 'Multi' message.
+    handler = sky_multi_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
     return 0;
 
 error:
@@ -582,7 +593,7 @@ int sky_server_get_table(sky_server *server, bstring name, sky_table **ret)
     int rc;
     sky_table *table = NULL;
     bstring path = NULL;
-    check(server != NULL, "Server required");
+    assert(server != NULL);
     check(blength(name) > 0, "Table name required");
     
     // Initialize return values.
@@ -631,9 +642,9 @@ int sky_server_open_table(sky_server *server, bstring name, bstring path,
 {
     int rc;
     sky_table *table = NULL;
-    check(server != NULL, "Server required");
+    assert(server != NULL);
+    assert(ret != NULL);
     check(blength(path) > 0, "Table path required");
-    check(ret != NULL, "Return pointer required");
     
     // Initialize return values.
     *ret = NULL;
@@ -683,9 +694,9 @@ error:
 int sky_server_get_tablet_servlet(sky_server *server, sky_tablet *tablet,
                                   sky_servlet **servlet)
 {
-    check(server != NULL, "Server required");
-    check(tablet != NULL, "Tablet required");
-    check(servlet != NULL, "Servlet return pointer required");
+    assert(server != NULL);
+    assert(tablet != NULL);
+    assert(servlet != NULL);
     
     // Loop over all servlets and find the one associated with the tablet.
     uint32_t i;
@@ -697,10 +708,6 @@ int sky_server_get_tablet_servlet(sky_server *server, sky_tablet *tablet,
     }
     
     return 0;
-
-error:
-    if(servlet) *servlet = NULL;
-    return -1;
 }
 
 // Retrieves a list of servlets associated with a given table.
@@ -714,10 +721,10 @@ error:
 int sky_server_get_table_servlets(sky_server *server, sky_table *table,
                                   sky_servlet ***servlets, uint32_t *count)
 {
-    check(server != NULL, "Server required");
-    check(table != NULL, "Table required");
-    check(servlets != NULL, "Servlets return pointer required");
-    check(count != NULL, "Servlet count return pointer required");
+    assert(server != NULL);
+    assert(table != NULL);
+    assert(servlets != NULL);
+    assert(count != NULL);
     
     // Allocate array.
     *count = table->tablet_count;
@@ -756,8 +763,8 @@ int sky_server_create_servlets(sky_server *server, sky_table *table)
 {
     int rc;
     sky_servlet *servlet = NULL;
-    check(server != NULL, "Server required");
-    check(table, "Table required");
+    assert(server != NULL);
+    assert(table);
     
     // Allocate additional space for the new servlets.
     uint32_t new_servlet_count = table->tablet_count;

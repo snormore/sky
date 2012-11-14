@@ -75,7 +75,7 @@ void sky_add_property_message_free_property(sky_add_property_message *message)
 sky_message_handler *sky_add_property_message_handler_create()
 {
     sky_message_handler *handler = sky_message_handler_create(); check_mem(handler);
-    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_SERVER;
+    handler->scope = SKY_MESSAGE_HANDLER_SCOPE_TABLE;
     handler->name = bfromcstr("add_property");
     handler->process = sky_add_property_message_process;
     return handler;

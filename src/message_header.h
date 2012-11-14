@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include "bstring.h"
 #include "types.h"
@@ -19,6 +20,7 @@ typedef struct {
     uint64_t version;
     bstring name;
     bstring table_name;
+    bool multi;
 } sky_message_header;
 
 
