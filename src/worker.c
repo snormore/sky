@@ -228,9 +228,24 @@ int sky_worker_start(sky_worker *worker)
     rc = zmq_bind(worker->pull_socket, bdata(worker->pull_socket_uri));
     check(rc == 0, "Unable to bind worker pull socket");
 
+    // Setup thread attributes.
+    pthread_attr_t attr;
+    rc = pthread_attr_init(&attr);
+    check(rc == 0, "Unable to init thread attributes");
+    rc = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    check(rc == 0, "Unable to set thread detach state");
+
     // Create the worker thread.
     rc = pthread_create(&worker->thread, NULL, sky_worker_run, worker);
     check(rc == 0, "Unable to create worker thread");
+
+    // Destory thread attributes.
+    rc = pthread_attr_destroy(&attr);
+    check(rc == 0, "Unable to destroy thread attributes");
+
+    // Detach from the thread.
+    rc = pthread_detach(worker->thread);
+    check(rc == 0, "Unable to detach worker thread");
 
     return 0;
 
@@ -314,9 +329,9 @@ void *sky_worker_run(void *_worker)
     worker->free(worker);
     sky_worker_free(worker);
     
-    return NULL;
+    pthread_exit(NULL);
 
 error:
     sky_worker_free(worker);
-    return NULL;
+    pthread_exit(NULL);
 }

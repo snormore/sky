@@ -368,6 +368,8 @@ int sky_block_full_update(sky_block *block)
     rc = sky_block_save_header(block);
     check(rc == 0, "Unable to save block header");
 
+    sky_cursor_uninit(&cursor);
+
     return 0;
 
 error:
@@ -948,6 +950,7 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     // determined after the iterator has reached EOF.
     *block_data_length = iterator.block_data_length;
 
+    sky_cursor_uninit(&cursor);
     return 0;
 
 error:

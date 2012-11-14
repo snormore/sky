@@ -3,7 +3,7 @@ echo "Unit Tests"
 
 if [ "$1" = 'valgrind' ]
 then
-    VALGRIND_CMD="valgrind --leak-check=full"
+    VALGRIND_CMD="valgrind --leak-check=full --show-reachable=yes"
     VALGRIND="$VALGRIND_CMD --log-file=/tmp/valgrind.log"
 fi
 
