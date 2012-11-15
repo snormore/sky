@@ -19,29 +19,43 @@ sky_add_event_message *create_message_with_data()
     sky_add_event_message *message = sky_add_event_message_create();
     message->object_id = 10;
     message->timestamp = 1000LL;
-    message->action_id = 20;
+    message->action_name = bfromcstr("foo");
     message->data_count = 4;
     message->data = malloc(sizeof(message->data) * message->data_count);
 
     message->data[0] = sky_add_event_message_data_create();
-    message->data[0]->key = bfromcstr("myString");
+    message->data[0]->key = bfromcstr("ostring");
     message->data[0]->data_type = SKY_DATA_TYPE_STRING;
     message->data[0]->string_value = bfromcstr("xyz");
 
     message->data[1] = sky_add_event_message_data_create();
-    message->data[1]->key = bfromcstr("myInt");
+    message->data[1]->key = bfromcstr("oint");
     message->data[1]->data_type = SKY_DATA_TYPE_INT;
     message->data[1]->int_value = 200;
 
     message->data[2] = sky_add_event_message_data_create();
-    message->data[2]->key = bfromcstr("myFloat");
+    message->data[2]->key = bfromcstr("odouble");
     message->data[2]->data_type = SKY_DATA_TYPE_DOUBLE;
     message->data[2]->double_value = 100.2;
 
     message->data[3] = sky_add_event_message_data_create();
-    message->data[3]->key = bfromcstr("myBoolean");
+    message->data[3]->key = bfromcstr("oboolean");
     message->data[3]->data_type = SKY_DATA_TYPE_BOOLEAN;
     message->data[3]->boolean_value = true;
+
+
+    message->action_data_count = 2;
+    message->action_data = malloc(sizeof(message->action_data) * message->action_data_count);
+
+    message->action_data[0] = sky_add_event_message_data_create();
+    message->action_data[0]->key = bfromcstr("astring");
+    message->action_data[0]->data_type = SKY_DATA_TYPE_STRING;
+    message->action_data[0]->string_value = bfromcstr("zzzzzz");
+
+    message->action_data[1] = sky_add_event_message_data_create();
+    message->action_data[1]->key = bfromcstr("aint");
+    message->action_data[1]->data_type = SKY_DATA_TYPE_INT;
+    message->action_data[1]->int_value = 10;
 
     return message;
 }
@@ -76,14 +90,14 @@ int test_sky_add_event_message_unpack() {
 
     mu_assert_int_equals(message->object_id, 10);
     mu_assert_int64_equals(message->timestamp, 1000LL);
-    mu_assert_int_equals(message->action_id, 20);
+    mu_assert_bstring(message->action_name, "foo");
     sky_add_event_message_free(message);
     return 0;
 }
 
 int test_sky_add_event_message_sizeof() {
     sky_add_event_message *message = create_message_with_data();
-    mu_assert_long_equals(sky_add_event_message_sizeof(message), 90L);
+    mu_assert_long_equals(sky_add_event_message_sizeof(message), 115L);
     sky_add_event_message_free(message);
     return 0;
 }

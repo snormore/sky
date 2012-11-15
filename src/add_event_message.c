@@ -23,7 +23,9 @@ struct tagbstring SKY_ADD_EVENT_KEY_OBJECT_ID = bsStatic("objectId");
 
 struct tagbstring SKY_ADD_EVENT_KEY_TIMESTAMP = bsStatic("timestamp");
 
-struct tagbstring SKY_ADD_EVENT_KEY_ACTION_ID = bsStatic("actionId");
+struct tagbstring SKY_ADD_EVENT_KEY_ACTION = bsStatic("action");
+
+struct tagbstring SKY_ADD_EVENT_KEY_NAME = bsStatic("name");
 
 struct tagbstring SKY_ADD_EVENT_KEY_DATA = bsStatic("data");
 
@@ -34,9 +36,19 @@ struct tagbstring SKY_ADD_EVENT_KEY_DATA = bsStatic("data");
 //
 //==============================================================================
 
+int sky_add_event_message_copy_data(sky_property_file *property_file,
+    bool is_action, sky_add_event_message_data **msg_data, uint32_t msg_data_count,
+    sky_event_data ***event_data, uint32_t *event_data_count);
+
+size_t sky_add_event_message_sizeof_action(sky_add_event_message *message);
+
 size_t sky_add_event_message_sizeof_data(sky_add_event_message *message);
 
+int sky_add_event_message_pack_action(sky_add_event_message *message, FILE *file);
+
 int sky_add_event_message_pack_data(sky_add_event_message *message, FILE *file);
+
+int sky_add_event_message_unpack_action(sky_add_event_message *message, FILE *file);
 
 int sky_add_event_message_unpack_data(sky_add_event_message *message, FILE *file);
 
@@ -94,6 +106,16 @@ void sky_add_event_message_free(sky_add_event_message *message)
         }
         free(message->data);
         message->data = NULL;
+        for(i=0; i<message->action_data_count; i++) {
+            sky_add_event_message_data_free(message->action_data[i]);
+            message->action_data[i] = NULL;
+        }
+        free(message->action_data);
+        message->action_data = NULL;
+
+        bdestroy(message->action_name);
+        message->action_name = NULL;
+
         sky_event_free(message->event);
         message->event = NULL;
         
@@ -158,6 +180,7 @@ int sky_add_event_message_process(sky_server *server,
     int rc = 0;
     sky_add_event_message *message = NULL;
     sky_worker *worker = NULL;
+    sky_action *action = NULL;
     assert(header != NULL);
     assert(table != NULL);
     assert(input != NULL);
@@ -179,43 +202,36 @@ int sky_add_event_message_process(sky_server *server,
     check(rc == 0, "Unable to unpack 'add_event' message");
     check(message->object_id > 0, "Object ID must be greater than zero");
 
+    // Find or create action.
+    rc = sky_action_file_find_action_by_name(table->action_file, message->action_name, &action);
+    check(rc == 0, "Unable to search for action by name");
+    
+    // If action doesn't exist then create it.
+    if(action == NULL) {
+        action = sky_action_create(); check_mem(action);
+        action->name = bstrcpy(message->action_name);
+        if(message->action_name) check_mem(action->name);
+
+        // Add action.
+        rc = sky_action_file_add_action(table->action_file, action);
+        check(rc == 0, "Unable to add action");
+
+        // Save action file.
+        rc = sky_action_file_save(table->action_file);
+        check(rc == 0, "Unable to save action file");
+    }
+
     // Create event object and attach it to the message.
-    message->event = sky_event_create(message->object_id, message->timestamp, message->action_id);
+    message->event = sky_event_create(message->object_id, message->timestamp, action->id);
     check_mem(message->event);
-    message->event->data = calloc(message->data_count, sizeof(*message->event->data)); check_mem(message->event->data);
-    message->event->data_count = message->data_count;
+    
+    // Copy action data from message.
+    rc = sky_add_event_message_copy_data(table->property_file, true, message->action_data, message->action_data_count, &message->event->data, &message->event->data_count);
+    check(rc == 0, "Unable to copy event action data");
     
     // Copy data from message.
-    uint32_t i;
-    for(i=0; i<message->data_count; i++) {
-        sky_event_data *data = NULL;
-        sky_add_event_message_data *message_data = message->data[i];
-        
-        // Look up property id by name.
-        sky_property *property = NULL;
-        rc = sky_property_file_find_by_name(table->property_file, message_data->key, &property);
-        check(rc == 0 && property != NULL, "Unable to find property '%s' in table: %s", bdata(message_data->key), bdata(table->path));
-        
-        // Create event data based on data type.
-        switch(message_data->data_type) {
-            case SKY_DATA_TYPE_STRING:
-                data = sky_event_data_create_string(property->id, message_data->string_value);
-                break;
-            case SKY_DATA_TYPE_INT:
-                data = sky_event_data_create_int(property->id, message_data->int_value);
-                break;
-            case SKY_DATA_TYPE_DOUBLE:
-                data = sky_event_data_create_double(property->id, message_data->double_value);
-                break;
-            case SKY_DATA_TYPE_BOOLEAN:
-                data = sky_event_data_create_boolean(property->id, message_data->boolean_value);
-                break;
-            default:
-                sentinel("Invalid data type in 'add_event' message");
-        }
-        
-        message->event->data[i] = data;
-    }
+    rc = sky_add_event_message_copy_data(table->property_file, false, message->data, message->data_count, &message->event->data, &message->event->data_count);
+    check(rc == 0, "Unable to copy event data");
     
     // Attach the message to the worker.
     worker->data = (void*)message;
@@ -238,9 +254,94 @@ int sky_add_event_message_process(sky_server *server,
 error:
     sky_add_event_message_free(message);
     sky_worker_free(worker);
+    if(action && action->action_file == NULL) sky_action_free(action);
     return -1;
 }
 
+// Copies a set of data from the message to the event.
+//
+// property_file    - The property file.
+// is_action        - A flag stating if action data is being copied.
+// msg_data         - An array of message data.
+// msg_data_count   - The number of message data items.
+// event_data       - A pointer to where the event data should be returned.
+// event_data_count - A pointer to where the event data count should be
+//                    returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_event_message_copy_data(sky_property_file *property_file,
+                                    bool is_action,
+                                    sky_add_event_message_data **msg_data,
+                                    uint32_t msg_data_count,
+                                    sky_event_data ***event_data,
+                                    uint32_t *event_data_count)
+{
+    int rc = 0;
+    sky_property *property = NULL;
+    assert(property_file != NULL);
+    assert(msg_data != NULL || msg_data_count == 0);
+    assert(event_data != NULL);
+    assert(event_data_count != NULL);
+
+    // Allocate event data space.
+    *event_data = realloc(*event_data, (*event_data_count + msg_data_count) * sizeof(**event_data));
+    check_mem(*event_data);
+
+    // Copy message data to event data.
+    uint32_t i;
+    for(i=0; i<msg_data_count; i++) {
+        sky_event_data *event_item = NULL;
+        sky_add_event_message_data *msg_item = msg_data[i];
+        
+        // Look up property id by name.
+        rc = sky_property_file_find_by_name(property_file, msg_item->key, &property);
+        check(rc == 0, "Unable to find property '%s'", bdata(msg_item->key));
+        
+        // Create property if it doesn't exist.
+        if(property == NULL) {
+            property = sky_property_create(); check_mem(property);
+            property->data_type = msg_item->data_type;
+            property->type = (is_action ? SKY_PROPERTY_TYPE_ACTION : SKY_PROPERTY_TYPE_OBJECT);
+            property->name = bstrcpy(msg_item->key); check_mem(property->name);
+
+            // Add property.
+            rc = sky_property_file_add_property(property_file, property);
+            check(rc == 0, "Unable to add property");
+            
+            // Save property file.
+            rc = sky_property_file_save(property_file);
+            check(rc == 0, "Unable to save property file");
+        }
+        
+        // Create event data based on data type.
+        switch(msg_item->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                event_item = sky_event_data_create_string(property->id, msg_item->string_value);
+                break;
+            case SKY_DATA_TYPE_INT:
+                event_item = sky_event_data_create_int(property->id, msg_item->int_value);
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                event_item = sky_event_data_create_double(property->id, msg_item->double_value);
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                event_item = sky_event_data_create_boolean(property->id, msg_item->boolean_value);
+                break;
+            default:
+                sentinel("Invalid data type in 'add_event' message");
+        }
+        
+        // Append event item.
+        (*event_data)[*event_data_count] = event_item;
+        (*event_data_count)++;
+    }
+
+    return 0;
+
+error:
+    if(property->property_file == NULL) sky_property_free(property);
+    return -1;
+}
 
 //--------------------------------------
 // Serialization
@@ -259,10 +360,52 @@ size_t sky_add_event_message_sizeof(sky_add_event_message *message)
     sz += minipack_sizeof_uint(message->object_id);
     sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_TIMESTAMP)) + blength(&SKY_ADD_EVENT_KEY_TIMESTAMP);
     sz += minipack_sizeof_int(message->timestamp);
-    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_ACTION_ID)) + blength(&SKY_ADD_EVENT_KEY_ACTION_ID);
-    sz += minipack_sizeof_uint(message->action_id);
+    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_ACTION)) + blength(&SKY_ADD_EVENT_KEY_ACTION);
+    sz += sky_add_event_message_sizeof_action(message);
     sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_DATA)) + blength(&SKY_ADD_EVENT_KEY_DATA);
     sz += sky_add_event_message_sizeof_data(message);
+    return sz;
+}
+
+// Calculates the total number of bytes needed to store the action property of
+// the message.
+//
+// message - The message.
+//
+// Returns the number of bytes required to store the data property of the
+// message.
+size_t sky_add_event_message_sizeof_action(sky_add_event_message *message)
+{
+    uint32_t i;
+    size_t sz = 0;
+    sz += minipack_sizeof_map(message->action_data_count + 1);
+
+    // Action name.
+    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_NAME)) + blength(&SKY_ADD_EVENT_KEY_NAME);
+    sz += minipack_sizeof_raw(blength(message->action_name)) + blength(message->action_name);
+
+    // Action data.
+    for(i=0; i<message->action_data_count; i++) {
+        sky_add_event_message_data *data = message->action_data[i];
+        sz += minipack_sizeof_raw(blength(data->key)) + blength(data->key);
+        
+        switch(data->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                sz += minipack_sizeof_raw(blength(data->string_value)) + blength(data->string_value);
+                break;
+            case SKY_DATA_TYPE_INT:
+                sz += minipack_sizeof_int(data->int_value);
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                sz += minipack_sizeof_double(data->double_value);
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                sz += minipack_sizeof_bool(data->boolean_value);
+                break;
+            default:
+                return 0;
+        }
+    }
     return sz;
 }
 
@@ -329,16 +472,75 @@ int sky_add_event_message_pack(sky_add_event_message *message, FILE *file)
     minipack_fwrite_int(file, message->timestamp, &sz);
     check(sz != 0, "Unable to pack timestamp");
 
-    // Action ID
-    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_ACTION_ID) == 0, "Unable to pack action_id key");
-    minipack_fwrite_int(file, message->action_id, &sz);
-    check(sz != 0, "Unable to pack action id");
+    // Action
+    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_ACTION) == 0, "Unable to pack action key");
+    rc = sky_add_event_message_pack_action(message, file);
+    check(rc == 0, "Unable to pack 'add_event' action");
     
     // Data
     check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_DATA) == 0, "Unable to pack data key");
     rc = sky_add_event_message_pack_data(message, file);
     check(rc == 0, "Unable to pack 'add_event' data");
     
+    return 0;
+
+error:
+    return -1;
+}
+
+// Serializes the action map of an 'add_event' message.
+//
+// message - The message.
+// file    - The file stream to read from.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_event_message_pack_action(sky_add_event_message *message, FILE *file)
+{
+    int rc;
+    size_t sz;
+    assert(message != NULL);
+    assert(file != NULL);
+
+    // Map
+    minipack_fwrite_map(file, message->action_data_count + 1, &sz);
+    check(sz > 0, "Unable to write map");
+    
+    // Action name
+    check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_NAME) == 0, "Unable to pack action name key");
+    check(sky_minipack_fwrite_bstring(file, message->action_name) == 0, "Unable to pack action name");
+
+    // Map items
+    uint32_t i;
+    for(i=0; i<message->action_data_count; i++) {
+        sky_add_event_message_data *data = message->action_data[i];
+        
+        // Write key.
+        rc = sky_minipack_fwrite_bstring(file, data->key);
+        check(rc == 0, "Unable to pack data key");
+        
+        // Write in the appropriate data type.
+        switch(data->data_type) {
+            case SKY_DATA_TYPE_STRING:
+                rc = sky_minipack_fwrite_bstring(file, data->string_value);
+                check(rc == 0, "Unable to pack string value");
+                break;
+            case SKY_DATA_TYPE_INT:
+                minipack_fwrite_int(file, data->int_value, &sz);
+                check(sz > 0, "Unable to pack int value");
+                break;
+            case SKY_DATA_TYPE_DOUBLE:
+                minipack_fwrite_double(file, data->double_value, &sz);
+                check(sz > 0, "Unable to pack float value");
+                break;
+            case SKY_DATA_TYPE_BOOLEAN:
+                minipack_fwrite_bool(file, data->boolean_value, &sz);
+                check(sz > 0, "Unable to pack boolean value");
+                break;
+            default:
+                sentinel("Unsupported data type in 'add_event' action data message struct");
+        }
+    }
+
     return 0;
 
 error:
@@ -432,9 +634,9 @@ int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file)
             message->timestamp = (sky_timestamp_t)minipack_fread_int(file, &sz);
             check(sz != 0, "Unable to unpack timestamp");
         }
-        else if(biseq(key, &SKY_ADD_EVENT_KEY_ACTION_ID) == 1) {
-            message->action_id = (sky_action_id_t)minipack_fread_uint(file, &sz);
-            check(sz != 0, "Unable to unpack action id");
+        else if(biseq(key, &SKY_ADD_EVENT_KEY_ACTION) == 1) {
+            rc = sky_add_event_message_unpack_action(message, file);
+            check(rc == 0, "Unable to unpack 'add_event' action value");
         }
         else if(biseq(key, &SKY_ADD_EVENT_KEY_DATA) == 1) {
             rc = sky_add_event_message_unpack_data(message, file);
@@ -448,6 +650,85 @@ int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file)
 
 error:
     bdestroy(key);
+    return -1;
+}
+
+// Deserializes the action map of an 'add_event' message.
+//
+// message - The message.
+// file    - The file stream to read from.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_add_event_message_unpack_action(sky_add_event_message *message, FILE *file)
+{
+    int rc;
+    size_t sz;
+    sky_add_event_message_data *data = NULL;
+    assert(message != NULL);
+    assert(file != NULL);
+
+    // Map
+    uint32_t map_length = minipack_fread_map(file, &sz);
+    check(sz > 0, "Unable to read map");
+    
+    // Allocate action data array.
+    message->action_data_count = map_length;
+    message->action_data = calloc(1, sizeof(*message->action_data) * message->action_data_count); check_mem(message->action_data);
+    
+    // Map items
+    uint32_t i, index = 0;
+    for(i=0; i<map_length; i++) {
+        bstring key = NULL;
+        rc = sky_minipack_fread_bstring(file, &key);
+        check(rc == 0, "Unable to read data key");
+
+        // If this is the action name then save it to the message.
+        if(biseq(key, &SKY_ADD_EVENT_KEY_NAME) == 1) {
+            rc = sky_minipack_fread_bstring(file, &message->action_name);
+            check(rc == 0, "Unable to unpack action name");
+
+            // Decrement the total action data count if one of the data items
+            // is the name.
+            message->action_data_count--;
+        }
+        // Otherwise create an action data item.
+        else {
+            data = sky_add_event_message_data_create(); check_mem(data);
+            message->action_data[index++] = data;
+            data->key = key;
+        
+            // Read the first byte of the message to determine the type.
+            uint8_t buffer[1];
+            check(fread(buffer, sizeof(*buffer), 1, file) == 1, "Unable to read data type");
+            ungetc(buffer[0], file);
+        
+            // Read in the appropriate data type.
+            if(minipack_is_raw((void*)buffer)) {
+                data->data_type = SKY_DATA_TYPE_STRING;
+                rc = sky_minipack_fread_bstring(file, &data->string_value);
+                check(rc == 0, "Unable to unpack string value");
+            }
+            else if(minipack_is_bool((void*)buffer)) {
+                data->data_type = SKY_DATA_TYPE_BOOLEAN;
+                data->boolean_value = minipack_fread_bool(file, &sz);
+                check(sz != 0, "Unable to unpack boolean value");
+            }
+            else if(minipack_is_double((void*)buffer)) {
+                data->data_type = SKY_DATA_TYPE_DOUBLE;
+                data->double_value = minipack_fread_double(file, &sz);
+                check(sz != 0, "Unable to unpack float value");
+            }
+            else {
+                data->data_type = SKY_DATA_TYPE_INT;
+                data->int_value = minipack_fread_int(file, &sz);
+                check(sz != 0, "Unable to unpack int value");
+            }
+        }
+    }
+
+    return 0;
+
+error:
     return -1;
 }
 

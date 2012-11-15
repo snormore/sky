@@ -27,9 +27,11 @@ typedef struct sky_add_event_message_data sky_add_event_message_data;
 typedef struct sky_add_event_message {
     sky_object_id_t object_id;
     sky_timestamp_t timestamp;
-    sky_action_id_t action_id;
+    bstring action_name;
     uint32_t data_count;
     sky_add_event_message_data **data;
+    uint32_t action_data_count;
+    sky_add_event_message_data **action_data;
     sky_event *event;
 } sky_add_event_message;
 

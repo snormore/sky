@@ -136,14 +136,19 @@ int sky_add_action_message_process(sky_server *server,
 
     // Clean up.
     sky_add_action_message_free(message);
-    fclose(input);
-    fclose(output);
+    
+    if(!header->multi) {
+        fclose(input);
+        fclose(output);
+    }
 
     return 0;
 
 error:
-    if(input) fclose(input);
-    if(output) fclose(output);
+    if(!header->multi) {
+        if(input) fclose(input);
+        if(output) fclose(output);
+    }
     sky_add_action_message_free(message);
     return -1;
 }

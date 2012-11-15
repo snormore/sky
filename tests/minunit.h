@@ -158,7 +158,7 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
     int32_t _i; \
     for(_i=0; _i<blength(content1); _i++) { \
         if(bchar(content1, _i) != bchar(content2, _i)) { \
-            mu_fail("Unexpected byte at %d. exp:%02x, recv:%02x", _i, bchar(content1, _i), bchar(content2, _i)); \
+            mu_fail("Unexpected byte at %d. exp:\\x%02x, recv:\\x%02x (%s, %s)", _i, bchar(content1, _i), bchar(content2, _i), FILENAME1, FILENAME2); \
         } \
     } \
     bdestroy(content1); \
