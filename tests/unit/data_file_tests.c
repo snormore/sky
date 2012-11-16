@@ -389,6 +389,63 @@ int test_sky_data_file_add_event_to_end_of_ending_path_causing_block_span() {
 }
 
 
+//--------------------------------------
+// Add Event (Deduplicate)
+//--------------------------------------
+
+int test_sky_data_file_deduplicate_insertion_event_data() {
+    struct tagbstring STR1 = bsStatic("foo");
+    struct tagbstring STR2 = bsStatic("bar");
+    struct tagbstring STR3 = bsStatic("zzz");
+    int rc;
+    sky_event *event;
+    sky_data_file *data_file;
+    INIT_DATA_FILE("tests/fixtures/data_files/dedup/0/a", 0);
+
+    // Add initial event.
+    event = sky_event_create(1, 10LL, 1);
+    event->data_count = 8;
+    event->data = calloc(event->data_count, sizeof(*event->data));
+    event->data[0] = sky_event_data_create_string(-1, &STR2);
+    event->data[1] = sky_event_data_create_int(-2, 200);
+    event->data[2] = sky_event_data_create_double(-3, 1.0);
+    event->data[3] = sky_event_data_create_boolean(-4, false);
+    event->data[4] = sky_event_data_create_string(1, &STR1);
+    event->data[5] = sky_event_data_create_int(2, 100);
+    event->data[6] = sky_event_data_create_double(3, 100.2);
+    event->data[7] = sky_event_data_create_boolean(4, true);
+    rc = sky_data_file_add_event(data_file, event);
+    mu_assert_int_equals(rc, 0);
+    
+    ASSERT_DATA_FILE("tests/fixtures/data_files/dedup/0/b");
+
+    // Add the same event data, different timestamp.
+    event->timestamp = 11LL;
+    rc = sky_data_file_add_event(data_file, event);
+    mu_assert_int_equals(rc, 0);
+    sky_event_free(event);
+    
+    ASSERT_DATA_FILE("tests/fixtures/data_files/dedup/0/c");
+
+    // Add somewhat different object state event.
+    event = sky_event_create(1, 12LL, 0);
+    event->data_count = 4;
+    event->data = calloc(event->data_count, sizeof(*event->data));
+    event->data[0] = sky_event_data_create_string(1, &STR3);
+    event->data[1] = sky_event_data_create_int(2, 20);
+    event->data[2] = sky_event_data_create_double(3, 100.2);
+    event->data[3] = sky_event_data_create_boolean(4, false);
+    rc = sky_data_file_add_event(data_file, event);
+    mu_assert_int_equals(rc, 0);
+    sky_event_free(event);
+
+    ASSERT_DATA_FILE("tests/fixtures/data_files/dedup/0/d");
+
+    sky_data_file_free(data_file);
+    return 0;
+}
+
+
 //==============================================================================
 //
 // Setup
@@ -426,6 +483,8 @@ int all_tests() {
     mu_run_test(test_sky_data_file_add_large_event_to_end_of_starting_path_causing_block_span);
     mu_run_test(test_sky_data_file_add_event_to_start_of_ending_path_causing_block_span);
     mu_run_test(test_sky_data_file_add_event_to_end_of_ending_path_causing_block_span);
+
+    mu_run_test(test_sky_data_file_deduplicate_insertion_event_data);
 
     return 0;
 }

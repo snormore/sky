@@ -189,7 +189,6 @@ int test_sky_block_get_path_stats_with_no_event() {
     ASSERT_PATH_STAT(paths[0], 3, 0L, 41L, 41L);
     ASSERT_PATH_STAT(paths[1], 10, 41L, 60L, 19L);
     sky_data_file_free(data_file);
-    exit(0);
     return 0;
 }
 
@@ -259,7 +258,6 @@ int test_sky_block_get_path_stats_with_event_in_new_ending_path() {
     sky_data_file_free(data_file);
     return 0;
 }
-
 
 
 //==============================================================================

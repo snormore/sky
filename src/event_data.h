@@ -19,6 +19,7 @@ typedef struct sky_event_data {
     sky_property_id_t key;
     sky_data_type_e data_type;
     union {
+        void *value;
         bool boolean_value;
         int64_t int_value;
         double double_value;

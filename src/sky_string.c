@@ -39,20 +39,37 @@ sky_string sky_string_create(int32_t length, char *data)
 // b - The second string.
 //
 // Returns true if the strings are equal. Otherwise returns false.
-bool sky_string_equals(sky_string a, sky_string b)
+bool sky_string_equals(sky_string *a, sky_string *b)
 {
     // Check length first. We could have two strings pointing at the same data
     // but one string only points to a subset of the data.
-    if(a.length == b.length) {
+    if(a->length == b->length) {
         // If both strings point at the same data it must be the same string.
-        if(a.data == b.data) {
+        if(a->data == b->data) {
             return true;
         }
         // If these are different data pointers then check the contents of
         // the data pointers.
         else {
-            return (memcmp(a.data, b.data, a.length)) == 0;
+            return (memcmp(a->data, b->data, a->length)) == 0;
         }
+    }
+    
+    return false;
+}
+
+// Evaluates whether a sky string is equal to a bstring.
+//
+// a - The sky string.
+// b - The bstring.
+//
+// Returns true if the strings are equal. Otherwise returns false.
+bool sky_string_bequals(sky_string *a, bstring b)
+{
+    // Check length first. We could have two strings pointing at the same data
+    // but one string only points to a subset of the data.
+    if(a->length == blength(b)) {
+        return (memcmp(a->data, bdata(b), a->length)) == 0;
     }
     
     return false;

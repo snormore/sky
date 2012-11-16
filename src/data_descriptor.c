@@ -143,7 +143,9 @@ int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
         check(rc == 0, "Unable to set property on data descriptor");
 
         // Increment data type offset.
-        *sz += sky_data_type_sizeof(data->data_type);
+        size_t _sz = sky_data_type_sizeof(data->data_type);
+        if(_sz < 8) _sz = 8;
+        *sz += _sz;
     }
     
     return 0;

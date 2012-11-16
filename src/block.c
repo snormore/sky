@@ -8,6 +8,7 @@
 #include "dbg.h"
 #include "endian.h"
 #include "bstring.h"
+#include "sky_string.h"
 #include "mem.h"
 #include "block.h"
 #include "path.h"
@@ -934,11 +935,6 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                 // reached.
                 if(data->timestamp >= event->timestamp) {
                     *event_ptr = cursor.ptr;
-                    
-                    // Clear off any object data on the event that
-                    // matches what is the current state of the event in the
-                    // database.
-                    
                     break;
                 }
                 
@@ -947,6 +943,41 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                 check(rc == 0, "Unable to move to next event");
             }
             
+            // Clear off any object data on the event that matches
+            // what is the current state of the event in the database.
+            uint32_t i;
+            for(i=0; i<event->data_count; i++) {
+                // Ignore any action properties.
+                if(event->data[i]->key > 0) {
+                    sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[event->data[i]->key];
+
+                    // If the values match then splice this from the array.
+                    // Compare strings.
+                    void *a = &event->data[i]->value;
+                    void *b = ((void*)data)+property_descriptor->offset;
+                    size_t n = sky_data_type_sizeof(event->data[i]->data_type);
+                    
+                    bool is_equal = false;
+                    if(event->data[i]->data_type == SKY_DATA_TYPE_STRING) {
+                        is_equal = sky_string_bequals((sky_string*)b, event->data[i]->string_value);
+                    }
+                    // Compare other types.
+                    else if(memcmp(a, b, n) == 0) {
+                        is_equal = true;
+                    }
+
+                    // If the data is equal then remove it.
+                    if(is_equal) {
+                        sky_event_data_free(event->data[i]);
+                        if(i < event->data_count - 1) {
+                            memmove(&event->data[i], &event->data[i+1], (event->data_count-i-1) * sizeof(*event->data));
+                        }
+                        i--;
+                        event->data_count--;
+                    }
+                }
+            }
+
             // If no insertion point was found then append the event to the
             // end of the path.
             if(*event_ptr == NULL) {
