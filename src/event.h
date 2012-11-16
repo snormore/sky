@@ -105,7 +105,6 @@ int sky_event_unpack(sky_event *event, void *ptr, size_t *sz);
 int sky_event_unpack_hdr(sky_timestamp_t *timestamp, sky_action_id_t *action_id,
     sky_event_data_length_t *data_length, void *ptr, size_t *sz);
 
-
 //--------------------------------------
 // Data Management
 //--------------------------------------
@@ -117,6 +116,5 @@ int sky_event_set_data(sky_event *event, sky_property_id_t key,
                        bstring value);
 
 int sky_event_unset_data(sky_event *event, sky_property_id_t key);
-
 
 #endif

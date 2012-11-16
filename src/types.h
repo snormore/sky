@@ -83,5 +83,6 @@ sky_data_type_e sky_data_type_to_enum(bstring name);
 
 bstring sky_data_type_to_str(sky_data_type_e data_type);
 
+size_t sky_data_type_sizeof(sky_data_type_e data_type);
 
 #endif

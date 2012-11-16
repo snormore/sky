@@ -12,6 +12,7 @@
 #include "block.h"
 #include "path.h"
 #include "path_iterator.h"
+#include "data_descriptor.h"
 
 
 //==============================================================================
@@ -885,6 +886,7 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     int rc;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
+    sky_data_descriptor *descriptor = NULL;
     assert(block != NULL);
     assert(event != NULL);
 
@@ -911,28 +913,29 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
             sky_cursor_set_path(&cursor, *path_ptr);
             check(rc == 0, "Unable to set cursor path");
             
-            // TODO: Initialize data descriptor and data object.
-            // sky_data_descriptor *descriptor = sky_data_descriptor_create();
+            // Initialize data descriptor.
+            size_t sz;
+            descriptor = sky_data_descriptor_create(); check_mem(descriptor);
+            rc = sky_data_descriptor_init_with_event(descriptor, event, &sz);
+            check(rc == 0, "Unable to initialize data descriptor for event insert");
+            
+            // Initialize data object.
+            int8_t _data[sz];
+            sky_data_object *data = (sky_data_object*)_data;
+            memset(data, 0, sz);
             
             // Loop over cursor until we reach the event insertion point.
             while(!cursor.eof) {
-                sky_timestamp_t timestamp;
-                sky_action_id_t action_id;
-                sky_event_data_length_t data_length;
+                // Set data using the descriptor.
+                rc = sky_cursor_set_data(&cursor, descriptor, (void*)data);
+                check(rc == 0, "Unable to set data on cursor");
 
-                // TODO: Set data using the descriptor.
-
-                // Retrieve current timestamp in cursor.
-                size_t hdrsz;
-                rc = sky_event_unpack_hdr(&timestamp, &action_id, &data_length, cursor.ptr, &hdrsz);
-                check(rc == 0, "Unable to unpack event header");
-                
                 // Retrieve event insertion pointer once the timestamp is
                 // reached.
-                if(timestamp >= event->timestamp) {
+                if(data->timestamp >= event->timestamp) {
                     *event_ptr = cursor.ptr;
                     
-                    // TODO: Clear off any object data on the event that
+                    // Clear off any object data on the event that
                     // matches what is the current state of the event in the
                     // database.
                     
@@ -966,6 +969,7 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     // determined after the iterator has reached EOF.
     *block_data_length = iterator.block_data_length;
 
+    sky_data_descriptor_free(descriptor);
     sky_cursor_uninit(&cursor);
     return 0;
 
@@ -973,6 +977,7 @@ error:
     *path_ptr  = NULL;
     *event_ptr = NULL;
     *block_data_length = 0;
+    sky_data_descriptor_free(descriptor);
     sky_cursor_uninit(&cursor);
     return -1;
 }

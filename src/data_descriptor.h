@@ -6,6 +6,7 @@
 
 #include "bstring.h"
 #include "types.h"
+#include "event.h"
 
 //==============================================================================
 //
@@ -20,6 +21,13 @@ typedef void (*sky_data_property_descriptor_set_func)(void *target, void *value,
 // Defines a function that clears the value at a given memory location to
 // a property descriptor.
 typedef void (*sky_data_property_descriptor_clear_func)(void *target);
+
+// Defines a structure for the beginning of a data descriptor data object that
+// includes the timestamp and action id.
+typedef struct {
+    sky_timestamp_t timestamp;
+    sky_action_id_t action_id;
+} sky_data_object;
 
 // Defines the offset in memory for where the timestamp should be set.
 typedef struct {
@@ -65,6 +73,9 @@ typedef struct {
 sky_data_descriptor *sky_data_descriptor_create();
 
 void sky_data_descriptor_free(sky_data_descriptor *descriptor);
+
+int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
+    sky_event *event, size_t *sz);
 
 //--------------------------------------
 // Value Management

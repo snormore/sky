@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include "types.h"
+#include "sky_string.h"
 #include "dbg.h"
 
 
@@ -53,3 +54,20 @@ bstring sky_data_type_to_str(sky_data_type_e data_type)
         default: return NULL;
     }
 }
+
+// Determines the size of the data type, in bytes.
+// 
+// data_type - The enumerated data type value.
+//
+// Returns the number of bytes required to store the data type.
+size_t sky_data_type_sizeof(sky_data_type_e data_type)
+{
+    switch(data_type) {
+        case SKY_DATA_TYPE_STRING: return sizeof(sky_string);
+        case SKY_DATA_TYPE_INT: return sizeof(int64_t);
+        case SKY_DATA_TYPE_DOUBLE: return sizeof(double);
+        case SKY_DATA_TYPE_BOOLEAN: return sizeof(bool);
+        default: return 0;
+    }
+}
+

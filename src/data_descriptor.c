@@ -107,6 +107,52 @@ void sky_data_descriptor_free(sky_data_descriptor *descriptor)
     }
 }
 
+// Initializes a data descriptor to track the data properties that are set on
+// an event. This assumes that the timestamp and action are being tracked
+// using the sky_data_object type at the head of the data structure.
+//
+// This function will also return the size of the data structure needed to
+// track using this descriptor.
+//
+// event      - The event.
+// descriptor - The data descriptor.
+// sz         - A pointer to where the target data object size is returned.
+//
+// Returns 0 if successful, otherwise -1.
+int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
+                                        sky_event *event,
+                                        size_t *sz)
+{
+    int rc;
+    assert(descriptor != NULL);
+    assert(event != NULL);
+    
+    // Initialize the offset to start right after timestamp and action.
+    *sz = sizeof(sky_data_object);
+    
+    // Set the standard timestamp and action offsets.
+    descriptor->timestamp_descriptor.offset = offsetof(sky_data_object, timestamp);
+    descriptor->action_descriptor.offset = offsetof(sky_data_object, action_id);
+    
+    // Loop over event data properties and set them on the descriptor.
+    uint32_t i;
+    for(i=0; i<event->data_count; i++) {
+        // Set the property on the descriptor.
+        sky_event_data *data = event->data[i];
+        rc = sky_data_descriptor_set_property(descriptor, data->key, *sz, data->data_type);
+        check(rc == 0, "Unable to set property on data descriptor");
+
+        // Increment data type offset.
+        *sz += sky_data_type_sizeof(data->data_type);
+    }
+    
+    return 0;
+
+error:
+    *sz = 0;
+    return -1;
+}
+
 
 //--------------------------------------
 // Value Management
