@@ -54,35 +54,18 @@ void sky_data_descriptor_clear_boolean(void *target);
 
 // Creates a data descriptor with a given number of properties.
 // 
-// min_property_id - The lowest property id.
-// max_property_id - The highest property id.
-//
 // Returns a reference to the new descriptor.
-sky_data_descriptor *sky_data_descriptor_create(sky_property_id_t min_property_id,
-                                                sky_property_id_t max_property_id)
+sky_data_descriptor *sky_data_descriptor_create()
 {
     sky_data_descriptor *descriptor = NULL;
-    check(max_property_id >= min_property_id, "Max property id must be greater than or equal to min property id");
-
-    // Normalize min/max so that range so that either min or max is on zero
-    // if it doesn't span across zero.
-    if(min_property_id == 1) {
-        min_property_id = 0;
-    }
-    else if(max_property_id == -1) {
-        max_property_id = 0;
-    }
-    check(min_property_id <= 0 && max_property_id >= 0, "Property range must touch or cross zero boundry");
 
     // Determine the total number of properties to track.
-    uint32_t property_count = max_property_id - min_property_id + 1;
+    uint32_t property_count = SKY_PROPERTY_ID_COUNT + 1;
 
     // Allocate memory for the descriptor and child descriptors in one block.
     size_t sz = sizeof(sky_data_descriptor) + (sizeof(sky_data_property_descriptor) * property_count);
     descriptor = calloc(sz, 1);
     check_mem(descriptor);
-    descriptor->min_property_id = min_property_id;
-    descriptor->max_property_id = max_property_id;
     descriptor->property_descriptors = (sky_data_property_descriptor*)(((void*)descriptor) + sizeof(sky_data_descriptor));
     descriptor->property_count = property_count;
     descriptor->property_zero_descriptor = NULL;
@@ -90,7 +73,7 @@ sky_data_descriptor *sky_data_descriptor_create(sky_property_id_t min_property_i
     // Initialize all property descriptors to noop.
     uint32_t i;
     for(i=0; i<property_count; i++) {
-        sky_property_id_t property_id = min_property_id + (sky_property_id_t)i;
+        sky_property_id_t property_id = SKY_PROPERTY_ID_MIN + (sky_property_id_t)i;
         descriptor->property_descriptors[i].property_id = property_id;
         descriptor->property_descriptors[i].set_func = sky_data_descriptor_set_noop;
         
@@ -145,16 +128,12 @@ int sky_data_descriptor_set_value(sky_data_descriptor *descriptor,
     assert(descriptor != NULL);
     assert(target != NULL);
     assert(ptr != NULL);
-    check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID (%d) out of range (%d,%d)", property_id, descriptor->min_property_id, descriptor->max_property_id);
     
     // Find the property descriptor and call the set_func.
     sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];
     property_descriptor->set_func(target + property_descriptor->offset, ptr, sz);
     
     return 0;
-
-error:
-    return -1;
 }
 
 // Clears all the action values that are being managed by the descriptor.
@@ -197,7 +176,6 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
                                      sky_data_type_e data_type)
 {
     assert(descriptor != NULL);
-    check(property_id >= descriptor->min_property_id && property_id <= descriptor->max_property_id, "Property ID out of range for descriptor");
 
     // Retrieve property descriptor.
     sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[property_id];

@@ -70,11 +70,4 @@ int sky_property_file_find_by_name(sky_property_file *property_file,
 
 int sky_property_file_add_property(sky_property_file *property_file, sky_property *ret);
 
-//--------------------------------------
-// Data Descriptors
-//--------------------------------------
-
-int sky_property_file_create_data_descriptor(sky_property_file *property_file,
-    sky_data_descriptor **descriptor);
-
 #endif

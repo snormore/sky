@@ -210,6 +210,11 @@ size_t sky_event_sizeof(sky_event *event)
 {
     size_t sz = 0;
     
+    // If there is no action and no data then simply return zero.
+    if(event->action_id == 0 && event->data_count == 0) {
+        return 0;
+    }
+    
     // Add event flag.
     sz += sizeof(sky_event_flag_t);
     

@@ -113,7 +113,7 @@ int test_sky_cursor_set_data() {
     
     // Setup data object & data descriptor.
     test_t obj; memset(&obj, 0, sizeof(obj));
-    sky_data_descriptor *descriptor = sky_data_descriptor_create(-4, 4);
+    sky_data_descriptor *descriptor = sky_data_descriptor_create();
     descriptor->timestamp_descriptor.offset = offsetof(test_t, timestamp);
     descriptor->action_descriptor.offset = offsetof(test_t, action_id);
     sky_data_descriptor_set_property(descriptor, -4, offsetof(test_t, action_boolean), SKY_DATA_TYPE_BOOLEAN);

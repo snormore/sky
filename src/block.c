@@ -799,6 +799,12 @@ int sky_block_add_event(sky_block *block, sky_event *event)
     size_t event_length = sky_event_sizeof(event);
     size_t sz = event_length + (!path_exists ? SKY_PATH_HEADER_LENGTH : 0);
     
+    // If the event length is zero (possibly because the object data has been
+    // stripped), then simply exit the function any do nothing.
+    if(event_length == 0) {
+        return 0;
+    }
+    
     // If adding the event will cause a split then go ahead and split and
     // recall this function.
     if(block_data_length + sz > block->data_file->block_size) {
@@ -905,11 +911,16 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
             sky_cursor_set_path(&cursor, *path_ptr);
             check(rc == 0, "Unable to set cursor path");
             
+            // TODO: Initialize data descriptor and data object.
+            // sky_data_descriptor *descriptor = sky_data_descriptor_create();
+            
             // Loop over cursor until we reach the event insertion point.
             while(!cursor.eof) {
                 sky_timestamp_t timestamp;
                 sky_action_id_t action_id;
                 sky_event_data_length_t data_length;
+
+                // TODO: Set data using the descriptor.
 
                 // Retrieve current timestamp in cursor.
                 size_t hdrsz;
@@ -920,6 +931,11 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                 // reached.
                 if(timestamp >= event->timestamp) {
                     *event_ptr = cursor.ptr;
+                    
+                    // TODO: Clear off any object data on the event that
+                    // matches what is the current state of the event in the
+                    // database.
+                    
                     break;
                 }
                 

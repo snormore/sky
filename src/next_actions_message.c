@@ -190,15 +190,13 @@ error:
 int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *message,
                                                   sky_property_file *property_file)
 {
-    int rc;
     sky_data_descriptor *descriptor = NULL;
     assert(message != NULL);
     assert(property_file != NULL);
     assert(message->data_descriptor == NULL);
     
     // Create data descriptor.
-    rc = sky_property_file_create_data_descriptor(property_file, &descriptor);
-    check(rc == 0, "Unable to create data descriptor");
+    descriptor = sky_data_descriptor_create(); check_mem(descriptor);
     descriptor->timestamp_descriptor.offset = offsetof(sky_next_actions_data, timestamp);
     descriptor->action_descriptor.offset = offsetof(sky_next_actions_data, action_id);
     

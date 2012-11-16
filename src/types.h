@@ -67,7 +67,7 @@
 typedef enum {
     SKY_DATA_TYPE_NONE     = 0,
     SKY_DATA_TYPE_STRING   = 1,
-    SKY_DATA_TYPE_INT    = 2,
+    SKY_DATA_TYPE_INT      = 2,
     SKY_DATA_TYPE_DOUBLE   = 3,
     SKY_DATA_TYPE_BOOLEAN  = 4,
 } sky_data_type_e;

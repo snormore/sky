@@ -47,8 +47,6 @@ typedef struct {
     sky_data_property_descriptor *property_zero_descriptor;
     sky_data_property_descriptor **action_property_descriptors;
     uint32_t action_property_descriptor_count;
-    sky_property_id_t min_property_id;
-    sky_property_id_t max_property_id;
     uint32_t property_count;
     uint32_t active_property_count;
 } sky_data_descriptor;
@@ -64,8 +62,7 @@ typedef struct {
 // Lifecycle
 //--------------------------------------
 
-sky_data_descriptor *sky_data_descriptor_create( sky_property_id_t min_property_id,
-    sky_property_id_t max_property_id);
+sky_data_descriptor *sky_data_descriptor_create();
 
 void sky_data_descriptor_free(sky_data_descriptor *descriptor);
 
