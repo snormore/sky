@@ -4,13 +4,9 @@
 #include <sys/time.h>
 #include <assert.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
-#include "lua/lua_cmsgpack.h"
-
 #include "types.h"
 #include "lua_map_reduce_message.h"
+#include "sky_lua.h"
 #include "path_iterator.h"
 #include "action.h"
 #include "minipack.h"
@@ -277,7 +273,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
 {
     int rc;
     lua_State *L = NULL;
-    bstring ret_string = NULL;
+    bstring msgpack_ret = NULL;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
     assert(worker != NULL);
@@ -286,33 +282,27 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
 
     sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
     
-    // Load Lua.
-    L = luaL_newstate(); check_mem(L);
-    luaL_openlibs(L);
-
-    // Compile lua script.
-    rc = luaL_loadstring(L, bdata(message->source));
-    check(rc == 0, "Unable to compile Lua script");
-
-    // Execute the script.
-    rc = lua_pcall(L, 0, 1, 0);
+    // Compile Lua script.
+    rc = sky_lua_initscript(message->source, &L);
+    check(rc == 0, "Unable to initialize script");
+    
+    // Execute the script and return a msgpack variable.
+    rc = sky_lua_pcall_msgpack(L, 0, &msgpack_ret);
     check(rc == 0, "Unable to execute Lua script");
-
-    // Encode result as msgpack.
-    rc = mp_pack(L);
-    check(rc == 1, "Unable to msgpack encode Lua result");
-    ret_string = bfromcstr(lua_tostring(L, -1)); check_mem(ret_string);
-    *ret = (void*)ret_string;
 
     // Close Lua.
     lua_close(L);
+    
+    // Return msgpack encoded response.
+    *ret = (void*)msgpack_ret;
     
     sky_cursor_uninit(&cursor);
     return 0;
 
 error:
     *ret = NULL;
-    bdestroy(ret_string);
+    bdestroy(msgpack_ret);
+    if(L) lua_close(L);
     sky_cursor_uninit(&cursor);
     return -1;
 }

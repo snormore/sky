@@ -83,6 +83,7 @@ int test_sky_lua_map_reduce_message_worker_map() {
     bstring results = NULL;
     int rc = sky_lua_map_reduce_message_worker_map(worker, table->tablets[0], (void**)&results);
     mu_assert_int_equals(rc, 0);
+    mu_assert_int_equals(blength(results), 10);
     mu_assert_mem(bdata(results), "\x82""\xA1""y""\xA3""foo""\xA1""x""\x0C", 10);
 
     bdestroy(results);
