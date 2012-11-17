@@ -7,6 +7,7 @@
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include "lua/lua_cmsgpack.h"
 
 #include "types.h"
 #include "lua_map_reduce_message.h"
@@ -27,7 +28,9 @@
 // String Constants
 //--------------------------------------
 
-#define SKY_LUA_MAP_REDUCE_KEY_COUNT 2
+#define SKY_LUA_MAP_REDUCE_KEY_COUNT 1
+
+struct tagbstring SKY_LUA_MAP_REDUCE_KEY_SOURCE     = bsStatic("source");
 
 struct tagbstring SKY_LUA_MAP_REDUCE_STATUS_STR = bsStatic("status");
 struct tagbstring SKY_LUA_MAP_REDUCE_OK_STR     = bsStatic("ok");
@@ -159,8 +162,11 @@ error:
 // Returns the number of bytes required to store the message.
 size_t sky_lua_map_reduce_message_sizeof(sky_lua_map_reduce_message *message)
 {
-    assert(message != NULL);
-    return 0;
+    size_t sz = 0;
+    sz += minipack_sizeof_map(SKY_LUA_MAP_REDUCE_KEY_COUNT);
+    sz += minipack_sizeof_raw(blength(&SKY_LUA_MAP_REDUCE_KEY_SOURCE)) + blength(&SKY_LUA_MAP_REDUCE_KEY_SOURCE);
+    sz += minipack_sizeof_raw(blength(message->source)) + blength(message->source);
+    return sz;
 }
 
 // Serializes a 'lua::map_reduce' message to a file stream.
@@ -172,9 +178,22 @@ size_t sky_lua_map_reduce_message_sizeof(sky_lua_map_reduce_message *message)
 int sky_lua_map_reduce_message_pack(sky_lua_map_reduce_message *message,
                                     FILE *file)
 {
+    size_t sz;
     assert(message != NULL);
     assert(file != NULL);
+
+    // Map
+    minipack_fwrite_map(file, SKY_LUA_MAP_REDUCE_KEY_COUNT, &sz);
+    check(sz > 0, "Unable to write map");
+    
+    // Source
+    check(sky_minipack_fwrite_bstring(file, &SKY_LUA_MAP_REDUCE_KEY_SOURCE) == 0, "Unable to pack source key");
+    check(sky_minipack_fwrite_bstring(file, message->source) == 0, "Unable to pack source");
+
     return 0;
+
+error:
+    return -1;
 }
 
 // Deserializes an 'lua::map_reduce' message from a file stream.
@@ -186,10 +205,36 @@ int sky_lua_map_reduce_message_pack(sky_lua_map_reduce_message *message,
 int sky_lua_map_reduce_message_unpack(sky_lua_map_reduce_message *message,
                                       FILE *file)
 {
+    int rc;
+    size_t sz;
+    bstring key = NULL;
     assert(message != NULL);
     assert(file != NULL);
 
+    // Map
+    uint32_t map_length = minipack_fread_map(file, &sz);
+    check(sz > 0, "Unable to read map");
+    
+    // Map items
+    uint32_t i;
+    for(i=0; i<map_length; i++) {
+        rc = sky_minipack_fread_bstring(file, &key);
+        check(rc == 0, "Unable to read map key");
+        
+        if(biseq(key, &SKY_LUA_MAP_REDUCE_KEY_SOURCE) == 1) {
+            rc = sky_minipack_fread_bstring(file, &message->source);
+            check(rc == 0, "Unable to read source");
+        }
+        
+        bdestroy(key);
+        key = NULL;
+    }
+
     return 0;
+
+error:
+    bdestroy(key);
+    return -1;
 }
 
 
@@ -232,6 +277,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
 {
     int rc;
     lua_State *L = NULL;
+    bstring ret_string = NULL;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
     assert(worker != NULL);
@@ -249,8 +295,14 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     check(rc == 0, "Unable to compile Lua script");
 
     // Execute the script.
-    rc = lua_pcall(L, 0, 0, 0);
+    rc = lua_pcall(L, 0, 1, 0);
     check(rc == 0, "Unable to execute Lua script");
+
+    // Encode result as msgpack.
+    rc = mp_pack(L);
+    check(rc == 1, "Unable to msgpack encode Lua result");
+    ret_string = bfromcstr(lua_tostring(L, -1)); check_mem(ret_string);
+    *ret = (void*)ret_string;
 
     // Close Lua.
     lua_close(L);
@@ -260,6 +312,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
 
 error:
     *ret = NULL;
+    bdestroy(ret_string);
     sky_cursor_uninit(&cursor);
     return -1;
 }
