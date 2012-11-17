@@ -3,6 +3,7 @@
 ################################################################################
 
 CFLAGS=-g -Wall -Wextra -Wno-self-assign -Wno-error=unknown-warning -std=c99 -D_FILE_OFFSET_BITS=64
+LIBS=-lzmq -lluajit-5.1 -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES}) $(patsubst %.l,%.o,${LEX_SOURCES}) $(patsubst %.y,%.o,${YACC_SOURCES})
@@ -12,6 +13,8 @@ LIB_SOURCES=$(filter-out ${BIN_SOURCES},${SOURCES})
 LIB_OBJECTS=$(filter-out ${BIN_OBJECTS},${OBJECTS})
 TEST_SOURCES=$(wildcard tests/*_tests.c tests/**/*_tests.c)
 TEST_OBJECTS=$(patsubst %.c,%,${TEST_SOURCES})
+
+LUAJIT_FLAGS=-pagezero_size 10000 -image_base 100000000
 
 PREFIX?=/usr/local
 
@@ -47,11 +50,11 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ranlib $@
 
 bin/skyd: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a -lzmq
+	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a $(LIBS)
 	chmod 700 $@
 
 bin/sky-gen: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a -lzmq
+	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a $(LIBS)
 	chmod 700 $@
 
 bin:
@@ -92,7 +95,7 @@ test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh $(VALGRIND)
 
 $(TEST_OBJECTS): %: %.c bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc -o $@ $< -lzmq bin/libsky.a
+	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $< $(LIBS) bin/libsky.a
 
 
 ################################################################################
