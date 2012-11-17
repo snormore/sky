@@ -3,7 +3,7 @@
 ################################################################################
 
 CFLAGS=-g -Wall -Wextra -Wno-self-assign -Wno-error=unknown-warning -std=c99 -D_FILE_OFFSET_BITS=64
-LIBS=-lzmq -lluajit-5.1 -ldl
+LIBS=-lzmq -ldl bin/libluajit-5.1.a
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES}) $(patsubst %.l,%.o,${LEX_SOURCES}) $(patsubst %.y,%.o,${YACC_SOURCES})
@@ -29,6 +29,15 @@ all: compile test
 
 
 ################################################################################
+# Dependencies
+################################################################################
+
+bin/libluajit-5.1.a:
+	${MAKE} -C deps/luajit-2.0.0
+	mv deps/luajit-2.0.0/src/libluajit.a bin/libluajit-5.1.a
+
+
+################################################################################
 # Installation
 ################################################################################
 
@@ -49,11 +58,11 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ar rcs $@ ${LIB_OBJECTS}
 	ranlib $@
 
-bin/skyd: bin ${OBJECTS} bin/libsky.a
+bin/skyd: bin ${OBJECTS} bin/libsky.a bin/libluajit-5.1.a
 	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a $(LIBS)
 	chmod 700 $@
 
-bin/sky-gen: bin ${OBJECTS} bin/libsky.a
+bin/sky-gen: bin ${OBJECTS} bin/libsky.a bin/libluajit-5.1.a
 	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a $(LIBS)
 	chmod 700 $@
 
@@ -94,7 +103,7 @@ release: clean all
 test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh $(VALGRIND)
 
-$(TEST_OBJECTS): %: %.c bin/libsky.a
+$(TEST_OBJECTS): %: %.c bin/libsky.a bin/libluajit-5.1.a
 	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $< $(LIBS) bin/libsky.a
 
 
