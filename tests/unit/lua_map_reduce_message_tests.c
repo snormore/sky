@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <lua_map_reduce_message.h>
+#include <sky_string.h>
 #include <dbg.h>
 #include <mem.h>
 
@@ -64,6 +65,10 @@ int test_sky_lua_map_reduce_message_worker_read() {
     return 0;
 }
 
+int sky_lua_test(int x, int y) {
+    return x + y;
+}
+
 int test_sky_lua_map_reduce_message_worker_map() {
     importtmp("tests/fixtures/lua_map_reduce_message/0/import.json");
     sky_table *table = sky_table_create();
@@ -72,10 +77,14 @@ int test_sky_lua_map_reduce_message_worker_map() {
 
     sky_lua_map_reduce_message *message = sky_lua_map_reduce_message_create();
     message->source = bfromcstr(
-        "table = {}\n"
-        "table.x = 12\n"
-        "table.y = \"foo\"\n"
-        "return table"
+        "local ffi = require(\"ffi\")\n"
+        "ffi.cdef[[\n"
+        "typedef struct event { int64_t x; double y; bool z; bool z2; } event_t;\n"
+        "]]\n"
+        "\n"
+        "sz = ffi.offsetof(\"event_t\", \"z2\")\n"
+        "io.write(\"sz equals \" .. sz .. \"\\n\")\n"
+        "return z"
     );
     sky_worker *worker = sky_worker_create();
     worker->data = (void*)message;
