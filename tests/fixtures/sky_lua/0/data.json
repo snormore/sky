@@ -4,6 +4,8 @@
     properties:[
       {type:"action", dataType:"String", name:"_test123"},
       {type:"object", dataType:"Int", name:"hello"}
+      {type:"object", dataType:"Int", name:"x"}
+      {type:"object", dataType:"Int", name:"y"}
    ]
   }
 }

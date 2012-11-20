@@ -39,6 +39,9 @@ int sky_lua_initscript(bstring source, lua_State **L)
     rc = luaL_loadstring(*L, bdata(source));
     check(rc == 0, "Unable to compile Lua script: %s", lua_tostring(*L, -1));
 
+    // Call once to make the functions available.
+    lua_call(*L, 0, 0);
+
     return 0;
 
 error:
@@ -47,18 +50,52 @@ error:
     return -1;
 }
 
+// Generates a special header to allow LuaJIT and Sky to interact and then
+// initializes the script.
+//
+// source - The script source code.
+// table  - The table used to generate the header.
+// L      - A reference to where the new Lua state should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_lua_initscript_with_table(bstring source, sky_table *table,
+                                  lua_State **L)
+{
+    int rc;
+    bstring header = NULL;
+    bstring new_source = NULL;
+    assert(source != NULL);
+    assert(table != NULL);
+    assert(L != NULL);
+    
+    // Generate header.
+    rc = sky_lua_generate_header(source, table, &header);
+    check(rc == 0, "Unable to generate header");
+    new_source = bformat("%s%s", bdata(header), bdata(source)); check_mem(new_source);
+    
+    // Initialize script.
+    rc = sky_lua_initscript(new_source, L);
+    check(rc == 0, "Unable to initialize Lua script");
+
+    return 0;
+
+error:
+    *L = NULL;
+    bdestroy(new_source);
+    return -1;
+}
+
 //--------------------------------------
-// Execution
+// MessagePack
 //--------------------------------------
 
-// Executes a function and returns a MessagePack encoded response.
+// Converts the top of the stack to a MessagePack encoded bstring.
 //
 // L     - The lua state.
-// nargs - The number of arguments.
 // ret   - A pointer to where the msgpack result should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_lua_pcall_msgpack(lua_State *L, int nargs, bstring *ret)
+int sky_lua_to_msgpack(lua_State *L, bstring *ret)
 {
     int rc;
     assert(L != NULL);
@@ -67,10 +104,6 @@ int sky_lua_pcall_msgpack(lua_State *L, int nargs, bstring *ret)
     // Initialize returned value.
     *ret = NULL;
     
-    // Execute function.
-    rc = lua_pcall(L, nargs, 1, 0);
-    check(rc == 0, "Unable to execute Lua script: %s", lua_tostring(L, -1));
-
     // Encode result as msgpack.
     rc = mp_pack(L);
     check(rc == 1, "Unable to msgpack encode Lua result");
@@ -89,6 +122,58 @@ error:
 //--------------------------------------
 // Property File Integration
 //--------------------------------------
+
+// Generates the LuaJIT header given a Lua script and a property file. The
+// header file is generated based on the property usage of the 'event'
+// variable in the script.
+//
+// source - The source code of the Lua script.
+// table  - The table used for generation.
+// ret    - A pointer to where the header contents should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
+{
+    int rc;
+    bstring event_decl = NULL;
+    assert(source != NULL);
+    assert(table != NULL);
+    assert(ret != NULL);
+
+    // Initialize returned value.
+    *ret = NULL;
+
+    // Generate sky_lua_event_t declaration.
+    rc = sky_lua_generate_event_struct_decl(source, table->property_file, &event_decl);
+    check(rc == 0, "Unable to generate lua event declaration");
+    
+    // Generate full header.
+    *ret = bformat(
+        "-- SKY GENERATED CODE BEGIN --\n"
+        "local ffi = require(\"ffi\")\n"
+        "ffi.cdef([[\n"
+        "typedef struct sky_lua_path_iterator_t sky_lua_path_iterator_t;\n"
+        "typedef struct sky_lua_cursor_t sky_lua_cursor_t;\n"
+        "%s\n"
+        "\n"
+        "sky_lua_cursor_t *sky_lua_path_iterator_next(sky_lua_path_iterator_t *);\n"
+        "sky_lua_event_t *sky_lua_cursor_next(sky_lua_cursor_t *);\n"
+        "]])\n"
+        "-- SKY GENERATED CODE END --\n\n",
+        bdata(event_decl)
+    );
+    check_mem(*ret);
+
+    bdestroy(event_decl);
+    return 0;
+
+error:
+    bdestroy(event_decl);
+    bdestroy(*ret);
+    *ret = NULL;
+    return -1;
+}
+
 
 // Generates the LuaJIT header given a Lua script and a property file. The
 // header file is generated based on the property usage of the 'event'
@@ -117,7 +202,7 @@ int sky_lua_generate_event_struct_decl(bstring source,
     memset(lookup, 0, sizeof(lookup));
 
     // Loop over every mention of an "event." property.
-    int pos;
+    int pos = 0;
     struct tagbstring EVENT_DOT_STR = bsStatic("event.");
     while((pos = binstr(source, pos, &EVENT_DOT_STR)) != BSTR_ERR) {
         // Make sure that this is not part of another identifier.
@@ -154,19 +239,19 @@ int sky_lua_generate_event_struct_decl(bstring source,
                     // Append property definition to *ret.
                     switch(property->data_type) {
                         case SKY_DATA_TYPE_STRING: {
-                            rc = bformata(*ret, "char %s[];\n", bdata(property->name));
+                            rc = bformata(*ret, "  char %s[];\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_INT: {
-                            rc = bformata(*ret, "int64_t %s;\n", bdata(property->name));
+                            rc = bformata(*ret, "  int64_t %s;\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_DOUBLE: {
-                            rc = bformata(*ret, "double %s;\n", bdata(property->name));
+                            rc = bformata(*ret, "  double %s;\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_BOOLEAN: {
-                            rc = bformata(*ret, "bool %s;\n", bdata(property->name));
+                            rc = bformata(*ret, "  bool %s;\n", bdata(property->name));
                             break;
                         }
                         default:{
@@ -185,10 +270,13 @@ int sky_lua_generate_event_struct_decl(bstring source,
         }
     }
 
-    // If there are any properties found then wrap the whole thing in a struct.
+    // Wrap properties in a struct.
     if(*ret != NULL) {
-        rc = bassignformat(*ret, "typedef struct {\n%s} sky_event_t;", bdata(*ret));
-        check(rc != BSTR_ERR, "Unable to append event property definition");
+        bassignformat(*ret, "typedef struct {\n%s} sky_lua_event_t;", bdata(*ret));
+        check_mem(*ret);
+    }
+    else {
+        *ret = bfromcstr("typedef struct sky_lua_event_t sky_lua_event_t;"); check_mem(*ret);
     }
 
     return 0;

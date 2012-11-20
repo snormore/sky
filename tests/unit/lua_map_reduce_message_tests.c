@@ -77,14 +77,9 @@ int test_sky_lua_map_reduce_message_worker_map() {
 
     sky_lua_map_reduce_message *message = sky_lua_map_reduce_message_create();
     message->source = bfromcstr(
-        "local ffi = require(\"ffi\")\n"
-        "ffi.cdef[[\n"
-        "typedef struct event { int64_t x; double y; bool z; bool z2; } event_t;\n"
-        "]]\n"
-        "\n"
-        "sz = ffi.offsetof(\"event_t\", \"z2\")\n"
-        "io.write(\"sz equals \" .. sz .. \"\\n\")\n"
-        "return z"
+        "function map(_event)\n"
+        "  return 10\n"
+        "end"
     );
     sky_worker *worker = sky_worker_create();
     worker->data = (void*)message;
@@ -92,8 +87,8 @@ int test_sky_lua_map_reduce_message_worker_map() {
     bstring results = NULL;
     int rc = sky_lua_map_reduce_message_worker_map(worker, table->tablets[0], (void**)&results);
     mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(blength(results), 10);
-    mu_assert_mem(bdata(results), "\x82""\xA1""y""\xA3""foo""\xA1""x""\x0C", 10);
+    mu_assert_int_equals(blength(results), 1);
+    mu_assert_mem(bdata(results), "\x0a", 1);
 
     bdestroy(results);
     sky_lua_map_reduce_message_free(message);

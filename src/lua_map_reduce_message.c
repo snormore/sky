@@ -283,11 +283,17 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
     
     // Compile Lua script.
-    rc = sky_lua_initscript(message->source, &L);
+    rc = sky_lua_initscript_with_table(message->source, tablet->table, &L);
     check(rc == 0, "Unable to initialize script");
     
+    // Execute function.
+    lua_getglobal(L, "map");
+    lua_pushlightuserdata(L, NULL);
+    rc = lua_pcall(L, 1, 1, 0);
+    check(rc == 0, "Unable to execute Lua script: %s", lua_tostring(L, -1));
+
     // Execute the script and return a msgpack variable.
-    rc = sky_lua_pcall_msgpack(L, 0, &msgpack_ret);
+    rc = sky_lua_to_msgpack(L, &msgpack_ret);
     check(rc == 0, "Unable to execute Lua script");
 
     // Close Lua.
