@@ -35,6 +35,8 @@ int sky_lua_initscript(bstring source, lua_State **L)
     rc = luaopen_cmsgpack(*L);
     check(rc == 1, "Unable to load lua-cmsgpack");
     
+    //debug("--SOURCE--\n%s", bdata(source));
+    
     // Compile lua script.
     rc = luaL_loadstring(*L, bdata(source));
     check(rc == 0, "Unable to compile Lua script: %s", lua_tostring(*L, -1));
@@ -53,12 +55,14 @@ error:
 // Generates a special header to allow LuaJIT and Sky to interact and then
 // initializes the script.
 //
-// source - The script source code.
-// table  - The table used to generate the header.
-// L      - A reference to where the new Lua state should be returned.
+// source     - The script source code.
+// table      - The table used to generate the header.
+// descriptor - The descriptor to initialize with the script.
+// L          - A reference to where the new Lua state should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_lua_initscript_with_table(bstring source, sky_table *table,
+                                  sky_data_descriptor *descriptor,
                                   lua_State **L)
 {
     int rc;
@@ -66,6 +70,7 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     bstring new_source = NULL;
     assert(source != NULL);
     assert(table != NULL);
+    assert(descriptor != NULL);
     assert(L != NULL);
     
     // Generate header.
@@ -76,6 +81,12 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     // Initialize script.
     rc = sky_lua_initscript(new_source, L);
     check(rc == 0, "Unable to initialize Lua script");
+
+    // Initialize data descriptor.
+    lua_getglobal(*L, "sky_init_descriptor");
+    lua_pushlightuserdata(*L, descriptor);
+    rc = lua_pcall(*L, 1, 0, 0);
+    check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
 
     return 0;
 
@@ -136,6 +147,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
 {
     int rc;
     bstring event_decl = NULL;
+    bstring init_descriptor_func = NULL;
     assert(source != NULL);
     assert(table != NULL);
     assert(ret != NULL);
@@ -144,23 +156,29 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
     *ret = NULL;
 
     // Generate sky_lua_event_t declaration.
-    rc = sky_lua_generate_event_struct_decl(source, table->property_file, &event_decl);
-    check(rc == 0, "Unable to generate lua event declaration");
+    rc = sky_lua_generate_event_info(source, table->property_file, &event_decl, &init_descriptor_func);
+    check(rc == 0, "Unable to generate lua event header");
     
     // Generate full header.
     *ret = bformat(
         "-- SKY GENERATED CODE BEGIN --\n"
         "local ffi = require(\"ffi\")\n"
         "ffi.cdef([[\n"
+        "typedef struct sky_data_descriptor_t sky_data_descriptor_t;\n"
         "typedef struct sky_lua_path_iterator_t sky_lua_path_iterator_t;\n"
         "typedef struct sky_lua_cursor_t sky_lua_cursor_t;\n"
         "%s\n"
         "\n"
+        "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
+        "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
+        "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint16_t offset, int data_type);\n"
         "sky_lua_cursor_t *sky_lua_path_iterator_next(sky_lua_path_iterator_t *);\n"
         "sky_lua_event_t *sky_lua_cursor_next(sky_lua_cursor_t *);\n"
         "]])\n"
+        "%s\n"
         "-- SKY GENERATED CODE END --\n\n",
-        bdata(event_decl)
+        bdata(event_decl),
+        bdata(init_descriptor_func)
     );
     check_mem(*ret);
 
@@ -179,23 +197,35 @@ error:
 // header file is generated based on the property usage of the 'event'
 // variable in the script.
 //
-// source        - The source code of the Lua script.
-// property_file - The property file used to lookup properties.
-// ret           - A pointer to where the header contents should be returned.
+// source          - The source code of the Lua script.
+// property_file   - The property file used to lookup properties.
+// event_decl      - A pointer to where the struct def should be returned.
+// init_descriptor_func - A pointer to where the descriptor init function should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_lua_generate_event_struct_decl(bstring source,
-                                       sky_property_file *property_file,
-                                       bstring *ret)
+int sky_lua_generate_event_info(bstring source,
+                                sky_property_file *property_file,
+                                bstring *event_decl,
+                                bstring *init_descriptor_func)
 {
     int rc;
     bstring identifier = NULL;
     assert(source != NULL);
     assert(property_file != NULL);
-    assert(ret != NULL);
+    assert(event_decl != NULL);
+    assert(init_descriptor_func != NULL);
 
     // Initialize returned value.
-    *ret = NULL;
+    *event_decl = bfromcstr(
+        "  int64_t timestamp;\n"
+        "  uint16_t action_id;\n"
+    );
+    check_mem(*event_decl);
+    *init_descriptor_func = bfromcstr(
+        "  ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
+        "  ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
+    );
+    check_mem(*init_descriptor_func);
 
     // Setup a lookup of properties.
     bool lookup[SKY_PROPERTY_ID_COUNT+1];
@@ -231,34 +261,32 @@ int sky_lua_generate_event_struct_decl(bstring source,
                 check(property != NULL, "Property not found: %s", bdata(identifier));
             
                 if(!lookup[property->id-SKY_PROPERTY_ID_MIN]) {
-                    if(*ret == NULL) {
-                        *ret = bfromcstr("");
-                        check_mem(*ret);
-                    }
-                
-                    // Append property definition to *ret.
+                    // Append property definition to event decl and function.
                     switch(property->data_type) {
                         case SKY_DATA_TYPE_STRING: {
-                            rc = bformata(*ret, "  char %s[];\n", bdata(property->name));
+                            bformata(*event_decl, "  char %s[];\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_INT: {
-                            rc = bformata(*ret, "  int64_t %s;\n", bdata(property->name));
+                            bformata(*event_decl, "  int64_t %s;\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_DOUBLE: {
-                            rc = bformata(*ret, "  double %s;\n", bdata(property->name));
+                            bformata(*event_decl, "  double %s;\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_BOOLEAN: {
-                            rc = bformata(*ret, "  bool %s;\n", bdata(property->name));
+                            bformata(*event_decl, "  bool %s;\n", bdata(property->name));
                             break;
                         }
                         default:{
                             sentinel("Invalid sky lua type: %d", property->data_type);
                         }
                     }
-                    check(rc != BSTR_ERR, "Unable to append event property definition: %d", rc);
+                    check_mem(*event_decl);
+
+                    bformata(*init_descriptor_func, "  ffi.C.sky_data_descriptor_set_property(descriptor, %d, ffi.offsetof(\"sky_lua_event_t\", \"%s\"), %d);\n", property->id, bdata(property->name), property->data_type);
+                    check_mem(*init_descriptor_func);
 
                     // Flag the property as already processed.
                     lookup[property->id - SKY_PROPERTY_ID_MIN] = true;
@@ -271,20 +299,27 @@ int sky_lua_generate_event_struct_decl(bstring source,
     }
 
     // Wrap properties in a struct.
-    if(*ret != NULL) {
-        bassignformat(*ret, "typedef struct {\n%s} sky_lua_event_t;", bdata(*ret));
-        check_mem(*ret);
-    }
-    else {
-        *ret = bfromcstr("typedef struct sky_lua_event_t sky_lua_event_t;"); check_mem(*ret);
-    }
+    bassignformat(*event_decl, "typedef struct {\n%s} sky_lua_event_t;", bdata(*event_decl));
+    check_mem(*event_decl);
+
+    // Wrap info function.
+    bassignformat(*init_descriptor_func,
+        "function sky_init_descriptor(_descriptor)\n"
+        "  descriptor = ffi.cast(\"sky_data_descriptor_t*\", _descriptor)\n"
+        "%s"
+        "end\n",
+        bdata(*init_descriptor_func)
+    );
+    check_mem(*init_descriptor_func);
 
     return 0;
 
 error:
     bdestroy(identifier);
-    bdestroy(*ret);
-    *ret = NULL;
+    bdestroy(*event_decl);
+    *event_decl = NULL;
+    bdestroy(*init_descriptor_func);
+    *init_descriptor_func = NULL;
     return -1;
 }
 

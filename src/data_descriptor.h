@@ -88,8 +88,14 @@ int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
     void *target);
 
 //--------------------------------------
-// Property Management
+// Descriptor Management
 //--------------------------------------
+
+int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
+    uint16_t offset);
+
+int sky_data_descriptor_set_action_id_offset(sky_data_descriptor *descriptor,
+    uint16_t offset);
 
 int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
     sky_property_id_t property_id, uint16_t offset, sky_data_type_e data_type);

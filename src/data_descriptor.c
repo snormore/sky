@@ -207,8 +207,37 @@ int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
 
 
 //--------------------------------------
-// Property Management
+// Descriptor Management
 //--------------------------------------
+
+// Sets the offset of the timestamp property on the data object.
+//
+// descriptor  - The data descriptor.
+// offset      - The offset in the struct where the timestamp should be set.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
+                                             uint16_t offset)
+{
+    assert(descriptor != NULL);
+    descriptor->timestamp_descriptor.offset = offset;
+    return 0;
+}
+
+// Sets the offset of the action_id property on the data object.
+//
+// descriptor  - The data descriptor.
+// offset      - The offset in the struct where the action_id should be set.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_data_descriptor_set_action_id_offset(sky_data_descriptor *descriptor,
+                                             uint16_t offset)
+{
+    assert(descriptor != NULL);
+    descriptor->action_descriptor.offset = offset;
+    return 0;
+}
+
 
 // Sets the data type and offset for a given property id.
 //
