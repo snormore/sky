@@ -125,28 +125,31 @@ int test_sky_cursor_set_data() {
     sky_data_descriptor_set_property(descriptor, 3, offsetof(test_t, object_double), SKY_DATA_TYPE_DOUBLE);
     sky_data_descriptor_set_property(descriptor, 4, offsetof(test_t, object_boolean), SKY_DATA_TYPE_BOOLEAN);
 
-    // Event 1 (State-Only)
     sky_cursor *cursor = sky_cursor_create();
+    cursor->data_descriptor = descriptor;
+    cursor->data = &obj;
+
+    // Event 1 (State-Only)
     sky_cursor_set_path(cursor, data);
-    rc = sky_cursor_set_data(cursor, descriptor, &obj);
+    rc = sky_cursor_set_data(cursor);
     mu_assert_int_equals(rc, 0);
     ASSERT_OBJ_STATE(obj, 0LL, 0, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
     
     // Event 2 (Action + Action Data)
     sky_cursor_next(cursor);
-    rc = sky_cursor_set_data(cursor, descriptor, &obj);
+    rc = sky_cursor_set_data(cursor);
     mu_assert_int_equals(rc, 0);
     ASSERT_OBJ_STATE(obj, 1000000LL, 1, "john doe", 1000LL, 100.2, true, "super", 21LL, 2.5, true);
     
     // Event 3 (Action-Only)
     sky_cursor_next(cursor);
-    rc = sky_cursor_set_data(cursor, descriptor, &obj);
+    rc = sky_cursor_set_data(cursor);
     mu_assert_int_equals(rc, 0);
     ASSERT_OBJ_STATE(obj, 2000000LL, 2, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
 
     // Event 4 (Data-Only)
     sky_cursor_next(cursor);
-    rc = sky_cursor_set_data(cursor, descriptor, &obj);
+    rc = sky_cursor_set_data(cursor);
     mu_assert_int_equals(rc, 0);
     ASSERT_OBJ_STATE(obj, 3000000LL, 0, "frank sinatra", 20LL, 1.5, false, "", 0LL, 0, false);
 

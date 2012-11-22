@@ -153,6 +153,10 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
         cursor->endptr = NULL;
     }
     
+    // Clear the data object if set.
+    rc = sky_cursor_clear_data(cursor);
+    check(rc == 0, "Unable to clear data");
+    
     return 0;
 
 error:
@@ -255,15 +259,18 @@ int sky_cursor_set_eof(sky_cursor *cursor)
 // action_id - A pointer to where the action id should be returned to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
-                        void *data)
+int sky_cursor_set_data(sky_cursor *cursor)
 {
     size_t sz;
     int rc;
     assert(cursor != NULL);
     assert(!cursor->eof);
-    assert(descriptor != NULL);
-    assert(data != NULL);
+    assert(cursor->data_descriptor != NULL);
+    assert(cursor->data != NULL);
+
+    // Localize variables.
+    sky_data_descriptor *descriptor = cursor->data_descriptor;
+    void *data = cursor->data;
 
     // Retrieve the flag off the event.
     void *ptr = cursor->ptr;
@@ -320,4 +327,20 @@ int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
 
 error:
     return -1;
+}
+
+// Clears the data object.
+//
+// cursor    - The cursor.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_cursor_clear_data(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+
+    if(cursor->data != NULL && cursor->data_sz > 0) {
+        memset(cursor->data, 0, cursor->data_sz);
+    }
+    
+    return 0;
 }
