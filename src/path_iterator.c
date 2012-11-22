@@ -21,6 +21,8 @@ int sky_path_iterator_get_current_block(sky_path_iterator *iterator,
 
 int sky_path_iterator_fast_forward(sky_path_iterator *iterator);
 
+int sky_path_iterator_set_cursor_path(sky_path_iterator *iterator);
+
 
 //==============================================================================
 //
@@ -64,6 +66,14 @@ void sky_path_iterator_init(sky_path_iterator *iterator)
     memset(iterator, 0, sizeof(sky_path_iterator));
 }
 
+// Uninitializes a path iterator.
+// 
+// iterator - The iterator.
+void sky_path_iterator_uninit(sky_path_iterator *iterator)
+{
+    sky_cursor_uninit(&iterator->cursor);
+}
+
 // Removes a path iterator reference from memory.
 //
 // iterator - The path iterator to free.
@@ -99,6 +109,10 @@ int sky_path_iterator_set_data_file(sky_path_iterator *iterator, sky_data_file *
     rc = sky_path_iterator_fast_forward(iterator);
     check(rc == 0, "Unable to find next available path");
 
+    // Set cursor path.
+    rc = sky_path_iterator_set_cursor_path(iterator);
+    check(rc == 0, "Unable to set cursor path");
+
     return 0;
     
 error:
@@ -123,6 +137,10 @@ int sky_path_iterator_set_block(sky_path_iterator *iterator, sky_block *block)
     // Position iterator at the first path.
     rc = sky_path_iterator_fast_forward(iterator);
     check(rc == 0, "Unable to find next available path");
+
+    // Set cursor path.
+    rc = sky_path_iterator_set_cursor_path(iterator);
+    check(rc == 0, "Unable to set cursor path");
 
     return 0;
     
@@ -254,6 +272,10 @@ int sky_path_iterator_next(sky_path_iterator *iterator)
     rc = sky_path_iterator_fast_forward(iterator);
     check(rc == 0, "Unable to find next available path");
     
+    // Set cursor path.
+    rc = sky_path_iterator_set_cursor_path(iterator);
+    check(rc == 0, "Unable to set cursor path");
+
     return 0;
     
 error:
@@ -317,6 +339,37 @@ int sky_path_iterator_fast_forward(sky_path_iterator *iterator)
     
     return 0;
     
+error:
+    return -1;
+}
+
+//--------------------------------------
+// Cursor Management
+//--------------------------------------
+
+// Initializes the path to the beginning of the current iterator path.
+// 
+// iterator - The iterator.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_path_iterator_set_cursor_path(sky_path_iterator *iterator)
+{
+    int rc;
+    assert(iterator != NULL);
+
+    if(!iterator->eof) {
+        // Retrieve the path pointer.
+        void *path_ptr = NULL;
+        rc = sky_path_iterator_get_ptr(iterator, &path_ptr);
+        check(rc == 0, "Unable to retrieve the path iterator pointer");
+
+        // Initialize the cursor.
+        rc = sky_cursor_set_path(&iterator->cursor, path_ptr);
+        check(rc == 0, "Unable to set cursor path");
+    }
+
+    return 0;
+
 error:
     return -1;
 }

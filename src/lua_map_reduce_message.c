@@ -275,14 +275,18 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     lua_State *L = NULL;
     bstring msgpack_ret = NULL;
     sky_data_descriptor *descriptor = NULL;
-    sky_cursor cursor;
-    sky_cursor_init(&cursor);
     assert(worker != NULL);
     assert(tablet != NULL);
     assert(ret != NULL);
 
     sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
     
+    // Initialize the path iterator.
+    sky_path_iterator iterator;
+    sky_path_iterator_init(&iterator);
+    rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
+    check(rc == 0, "Unable to initialize path iterator");
+
     // Compile Lua script.
     descriptor = sky_data_descriptor_create(); check_mem(descriptor);
     rc = sky_lua_initscript_with_table(message->source, tablet->table, descriptor, &L);
@@ -304,14 +308,14 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     // Return msgpack encoded response.
     *ret = (void*)msgpack_ret;
     
-    sky_cursor_uninit(&cursor);
+    sky_path_iterator_uninit(&iterator);
     return 0;
 
 error:
     *ret = NULL;
     bdestroy(msgpack_ret);
     if(L) lua_close(L);
-    sky_cursor_uninit(&cursor);
+    sky_path_iterator_uninit(&iterator);
     return -1;
 }
 
