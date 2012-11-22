@@ -362,6 +362,10 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
         // Loop over each event in the path.
         uint32_t prior_action_index = 0;
         while(!iterator.cursor.eof) {
+            // Find next event.
+            rc = sky_cursor_next(&iterator.cursor);
+            check(rc == 0, "Unable to find next event");
+        
             // Aggregate if we've reached the match.
             if(prior_action_index == message->prior_action_id_count) {
                 if(data.action_id <= action_count) {
@@ -378,10 +382,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
                 prior_action_index = 0;
             }
 
-            // Find next event.
-            rc = sky_cursor_next(&iterator.cursor);
-            check(rc == 0, "Unable to find next event");
-            
             // Increment event count.
             event_count++;
         }

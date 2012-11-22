@@ -66,6 +66,8 @@ int test_sky_cursor_next() {
     // Event 1
     int rc = sky_cursor_set_path(cursor, data);
     mu_assert_int_equals(rc, 0);
+    rc = sky_cursor_next(cursor);
+    mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(cursor->path_index, 0);
     mu_assert_int_equals(cursor->event_index, 0);
     mu_assert_long_equals(cursor->ptr-((void*)data), 8L);
@@ -85,15 +87,8 @@ int test_sky_cursor_next() {
     mu_assert_int_equals(cursor->path_index, 0);
     mu_assert_int_equals(cursor->event_index, 2);
     mu_assert_long_equals(cursor->ptr-((void*)data), 37L);
-    mu_assert_bool(!cursor->eof);
-    
-    // EOF
-    rc = sky_cursor_next(cursor);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(cursor->path_index, 0);
-    mu_assert_int_equals(cursor->event_index, 0);
     mu_assert_bool(cursor->eof);
-
+    
     sky_cursor_free(cursor);
     return 0;
 }
@@ -127,9 +122,10 @@ int test_sky_cursor_set_data() {
     sky_cursor *cursor = sky_cursor_create();
     cursor->data = (void*)&obj;
     cursor->data_descriptor = descriptor;
+    sky_cursor_set_path(cursor, data);
 
     // Event 1 (State-Only)
-    sky_cursor_set_path(cursor, data);
+    sky_cursor_next(cursor);
     ASSERT_OBJ_STATE(obj, 0LL, 0, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
     
     // Event 2 (Action + Action Data)

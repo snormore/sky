@@ -40,6 +40,7 @@ typedef struct sky_cursor {
     uint32_t event_index;
     void *ptr;
     void *endptr;
+    bool running;
     bool eof;
     void *data_descriptor;
     void *data;

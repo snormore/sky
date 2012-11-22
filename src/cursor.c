@@ -145,17 +145,13 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
     cursor->path_count = count;
     cursor->path_index = 0;
     cursor->event_index = 0;
+    cursor->running = false;
     cursor->eof = (count == 0);
     
     // Position the pointer at the first path if paths are passed.
     if(count > 0) {
         rc = sky_cursor_set_ptr(cursor, cursor->paths[0]);
         check(rc == 0, "Unable to set paths");
-
-        // Update the data on the cursor's data record.
-        if(cursor->data_descriptor != NULL && cursor->data != NULL) {
-            sky_cursor_set_data(cursor);
-        }
     }
     // Otherwise clear out the pointer.
     else {
@@ -186,8 +182,8 @@ int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr)
     assert(ptr != NULL);
     
     // Store position of first event and store position of end of path.
-    cursor->ptr    = ptr + SKY_PATH_HEADER_LENGTH;
-    cursor->endptr = ptr + sky_path_sizeof_raw(ptr);
+    cursor->ptr     = ptr + SKY_PATH_HEADER_LENGTH;
+    cursor->endptr  = ptr + sky_path_sizeof_raw(ptr);
     
     return 0;
 }
@@ -203,25 +199,14 @@ int sky_cursor_next(sky_cursor *cursor)
     assert(cursor != NULL);
     assert(!cursor->eof);
 
-    // Move to next event.
-    size_t event_length = sky_event_sizeof_raw(cursor->ptr);
-    cursor->ptr += event_length;
-    cursor->event_index++;
-
-    // If pointer is beyond the last event then move to next path.
-    if(cursor->ptr >= cursor->endptr) {
-        cursor->path_index++;
-
-        // Move to the next path if more paths are remaining.
-        if(cursor->path_index < cursor->path_count) {
-            rc = sky_cursor_set_ptr(cursor, cursor->paths[cursor->path_index]);
-            check(rc == 0, "Unable to set pointer to path");
-        }
-        // Otherwise set EOF.
-        else {
-            rc = sky_cursor_set_eof(cursor);
-            check(rc == 0, "Unable to set EOF on cursor");
-        }
+    // Don't move on the first "next".
+    if(!cursor->running) {
+        cursor->running = true;
+    }
+    else {
+        // Move to next event.
+        cursor->ptr += sky_event_sizeof_raw(cursor->ptr);
+        cursor->event_index++;
     }
 
     // Validate and update data.
@@ -234,6 +219,22 @@ int sky_cursor_next(sky_cursor *cursor)
         }
     }
 
+    // Determine total length of the next raw event, in bytes.
+    size_t event_length = sky_event_sizeof_raw(cursor->ptr);
+    if(cursor->ptr + event_length >= cursor->endptr) {
+        // Move to the next path if more paths are remaining.
+        if(cursor->path_index+1 < cursor->path_count) {
+            cursor->path_index++;
+            rc = sky_cursor_set_ptr(cursor, cursor->paths[cursor->path_index]);
+            check(rc == 0, "Unable to set pointer to path");
+        }
+        // Otherwise set EOF.
+        else {
+            rc = sky_cursor_set_eof(cursor);
+            check(rc == 0, "Unable to set EOF on cursor");
+        }
+    }
+    
     return 0;
 
 error:
@@ -248,13 +249,7 @@ error:
 int sky_cursor_set_eof(sky_cursor *cursor)
 {
     assert(cursor != NULL);
-    
-    cursor->path_index  = 0;
-    cursor->event_index = 0;
     cursor->eof         = true;
-    cursor->ptr         = NULL;
-    cursor->endptr      = NULL;
-
     return 0;
 }
 

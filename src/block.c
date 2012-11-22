@@ -336,6 +336,10 @@ int sky_block_full_update(sky_block *block)
             sky_action_id_t action_id;
             sky_event_data_length_t data_length;
 
+            // Move to next event.
+            rc = sky_cursor_next(&iterator.cursor);
+            check(rc == 0, "Unable to move to next event");
+
             // Retrieve current timestamp in cursor.
             size_t hdrsz;
             rc = sky_event_unpack_hdr(&timestamp, &action_id, &data_length, iterator.cursor.ptr, &hdrsz);
@@ -349,10 +353,6 @@ int sky_block_full_update(sky_block *block)
                 block->max_timestamp = timestamp;
             }
             event_initialized = true;
-
-            // Move to next event.
-            rc = sky_cursor_next(&iterator.cursor);
-            check(rc == 0, "Unable to move to next event");
         }
         
         // Move to next path.
@@ -916,16 +916,16 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
 
             // Loop over cursor until we reach the event insertion point.
             while(!iterator.cursor.eof) {
+                // Move to next event.
+                rc = sky_cursor_next(&iterator.cursor);
+                check(rc == 0, "Unable to move to next event");
+
                 // Retrieve event insertion pointer once the timestamp is
                 // reached.
                 if(data->timestamp >= event->timestamp) {
                     *event_ptr = iterator.cursor.ptr;
                     break;
                 }
-                
-                // Move to next event.
-                rc = sky_cursor_next(&iterator.cursor);
-                check(rc == 0, "Unable to move to next event");
             }
             
             // Clear off any object data on the event that matches
@@ -1138,6 +1138,9 @@ int sky_block_split_with_event(sky_block *block, sky_event *event,
                     // Move data into new block.
                     memmove(new_block_ptr, ptr, len);
                     memset(ptr, 0, len);
+
+                    debug("block#%d", block->index);
+                    memdump(block_ptr, block_size);
 
                     // Update block ranges.
                     rc = sky_block_full_update(new_block);
