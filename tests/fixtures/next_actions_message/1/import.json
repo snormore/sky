@@ -2,28 +2,28 @@
   table:{
     blockSize: 128,
     actions:[
-      {name: "hello"},
-      {name: "goodbye"}
-      {name: "farewell"}
-      {name: "so long"}
+      {name: "A1"},
+      {name: "A2"}
+      {name: "A3"}
+      {name: "A4"}
     ],
     events:[
-      {objectId:3, timestamp:"1970-01-01T00:00:01Z", action:"hello"},
-      {objectId:3, timestamp:"1970-01-01T00:00:02Z", action:"goodbye"},
-      {objectId:3, timestamp:"1970-01-01T00:00:03Z", action:"farewell"},
-      {objectId:3, timestamp:"1970-01-01T00:00:04Z", action:"so long"},
+      {objectId:3, timestamp:"1970-01-01T00:00:01Z", action:"A1"},
+      {objectId:3, timestamp:"1970-01-01T00:00:02Z", action:"A2"},
+      {objectId:3, timestamp:"1970-01-01T00:00:03Z", action:"A3"},
+      {objectId:3, timestamp:"1970-01-01T00:00:04Z", action:"A4"},
 
-      {objectId:4, timestamp:"1970-01-01T00:00:04Z", action:"hello"},
-      {objectId:4, timestamp:"1970-01-01T00:00:05Z", action:"goodbye"},
+      {objectId:4, timestamp:"1970-01-01T00:00:04Z", action:"A1"},
+      {objectId:4, timestamp:"1970-01-01T00:00:05Z", action:"A2"},
 
-      {objectId:5, timestamp:"1970-01-01T00:00:01Z", action:"hello"},
-      {objectId:5, timestamp:"1970-01-01T00:00:02Z", action:"farewell"}
-      {objectId:5, timestamp:"1970-01-01T00:00:03Z", action:"hello"},
-      {objectId:5, timestamp:"1970-01-01T00:00:04Z", action:"goodbye"},
-      {objectId:5, timestamp:"1970-01-01T00:00:05Z", action:"so long"},
-      {objectId:5, timestamp:"1970-01-01T00:00:06Z", action:"hello"},
-      {objectId:5, timestamp:"1970-01-01T00:00:07Z", action:"goodbye"},
-      {objectId:5, timestamp:"1970-01-01T00:00:08Z", action:"farewell"},
+      {objectId:5, timestamp:"1970-01-01T00:00:01Z", action:"A1"},
+      {objectId:5, timestamp:"1970-01-01T00:00:02Z", action:"A3"}
+      {objectId:5, timestamp:"1970-01-01T00:00:03Z", action:"A1"},
+      {objectId:5, timestamp:"1970-01-01T00:00:04Z", action:"A2"},
+      {objectId:5, timestamp:"1970-01-01T00:00:05Z", action:"A4"},
+      {objectId:5, timestamp:"1970-01-01T00:00:06Z", action:"A1"},
+      {objectId:5, timestamp:"1970-01-01T00:00:07Z", action:"A2"},
+      {objectId:5, timestamp:"1970-01-01T00:00:08Z", action:"A3"},
    ]
   }
 }

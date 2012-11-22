@@ -274,6 +274,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     int rc;
     lua_State *L = NULL;
     bstring msgpack_ret = NULL;
+    sky_data_descriptor *descriptor = NULL;
     sky_cursor cursor;
     sky_cursor_init(&cursor);
     assert(worker != NULL);
@@ -282,8 +283,9 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
 
     sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
     
-    // Compile Lua script.
-    rc = sky_lua_initscript_with_table(message->source, tablet->table, &L);
+    // Compile Lua script against table.
+    descriptor = sky_data_descriptor_create(); check_mem(descriptor);
+    rc = sky_lua_initscript_with_table(message->source, tablet->table, descriptor, &L);
     check(rc == 0, "Unable to initialize script");
     
     // Execute function.

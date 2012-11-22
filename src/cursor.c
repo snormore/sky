@@ -132,6 +132,11 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
         check_mem(cursor->paths);
     }
     
+    // Clear cursor data.
+    if(cursor->data != NULL && cursor->data_sz > 0) {
+        memset(cursor->data, 0, cursor->data_sz);
+    }
+    
     // Assign path data list.
     uint32_t i;
     for(i=0; i<count; i++) {
@@ -146,6 +151,11 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
     if(count > 0) {
         rc = sky_cursor_set_ptr(cursor, cursor->paths[0]);
         check(rc == 0, "Unable to set paths");
+
+        // Update the data on the cursor's data record.
+        if(cursor->data_descriptor != NULL && cursor->data != NULL) {
+            sky_cursor_set_data(cursor);
+        }
     }
     // Otherwise clear out the pointer.
     else {
@@ -214,10 +224,14 @@ int sky_cursor_next(sky_cursor *cursor)
         }
     }
 
-    // Make sure that we are point at an event.
+    // Validate and update data.
     if(!cursor->eof) {
         sky_event_flag_t flag = *((sky_event_flag_t*)cursor->ptr);
         check(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA, "Cursor pointing at invalid raw event data: %p", cursor->ptr);
+
+        if(cursor->data_descriptor != NULL && cursor->data != NULL) {
+            sky_cursor_set_data(cursor);
+        }
     }
 
     return 0;
@@ -251,19 +265,21 @@ int sky_cursor_set_eof(sky_cursor *cursor)
 
 // Updates a memory location based on the current event and a data descriptor.
 //
-// cursor    - The cursor.
-// action_id - A pointer to where the action id should be returned to.
+// cursor - The cursor.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
-                        void *data)
+int sky_cursor_set_data(sky_cursor *cursor)
 {
     size_t sz;
     int rc;
     assert(cursor != NULL);
     assert(!cursor->eof);
-    assert(descriptor != NULL);
-    assert(data != NULL);
+    assert(cursor->data_descriptor != NULL);
+    assert(cursor->data != NULL);
+
+    // Localize variables.
+    sky_data_descriptor *descriptor = cursor->data_descriptor;
+    void *data = cursor->data;
 
     // Retrieve the flag off the event.
     void *ptr = cursor->ptr;

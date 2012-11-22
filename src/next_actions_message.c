@@ -331,8 +331,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
                                         void **ret)
 {
     int rc;
-    sky_cursor cursor;
-    sky_cursor_init(&cursor);
     assert(worker != NULL);
     assert(tablet != NULL);
     assert(ret != NULL);
@@ -348,31 +346,22 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     sky_next_actions_result *results = calloc(action_count+1, sizeof(*results));
     check_mem(results);
 
-    // Initialize the path iterator.
+    // Initialize the path iterator & cursor.
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
     rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
     check(rc == 0, "Unable to initialize path iterator");
 
+    iterator.cursor.data = &data;
+    iterator.cursor.data_sz = sizeof(data);
+    iterator.cursor.data_descriptor = message->data_descriptor;
+
     // Iterate over each path.
     uint64_t event_count = 0;
     while(!iterator.eof) {
-        // Retrieve the path pointer.
-        void *path_ptr = NULL;
-        rc = sky_path_iterator_get_ptr(&iterator, &path_ptr);
-        check(rc == 0, "Unable to retrieve the path iterator pointer");
-    
-        // Initialize the cursor.
-        rc = sky_cursor_set_path(&cursor, path_ptr);
-        check(rc == 0, "Unable to set cursor path");
-
         // Loop over each event in the path.
         uint32_t prior_action_index = 0;
-        while(!cursor.eof) {
-            // Retrieve action.
-            rc = sky_cursor_set_data(&cursor, message->data_descriptor, (void*)(&data));
-            check(rc == 0, "Unable to retrieve first action");
-
+        while(!iterator.cursor.eof) {
             // Aggregate if we've reached the match.
             if(prior_action_index == message->prior_action_id_count) {
                 if(data.action_id <= action_count) {
@@ -390,7 +379,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
             }
 
             // Find next event.
-            rc = sky_cursor_next(&cursor);
+            rc = sky_cursor_next(&iterator.cursor);
             check(rc == 0, "Unable to find next event");
             
             // Increment event count.
@@ -409,13 +398,13 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     // Return data.
     *ret = (void*)results;
 
-    sky_cursor_uninit(&cursor);
+    sky_path_iterator_uninit(&iterator);
     return 0;
 
 error:
     free(results);
     *ret = NULL;
-    sky_cursor_uninit(&cursor);
+    sky_path_iterator_uninit(&iterator);
     return -1;
 }
 
