@@ -131,7 +131,7 @@ error:
 
 
 //--------------------------------------
-// Table Integration
+// Property File Integration
 //--------------------------------------
 
 // Generates the LuaJIT header given a Lua script and a property file. The
@@ -323,20 +323,3 @@ error:
     return -1;
 }
 
-
-//--------------------------------------
-// Iterator/Cursor Integration
-//--------------------------------------
-
-// Iterates a path iterator to return the next cursor. When the path iterator
-// is EOF then it will return NULL.
-//
-// iterator - The path iterator.
-//
-// Returns the next cursor.
-sky_cursor *sky_lua_path_iterator_next(sky_path_iterator *iterator)
-{
-    assert(iterator != NULL);
-
-    return 0;
-}

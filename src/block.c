@@ -296,6 +296,8 @@ error:
 int sky_block_full_update(sky_block *block)
 {
     int rc;
+    sky_cursor cursor;
+    sky_cursor_init(&cursor);
     assert(block != NULL);
 
     // Initialize path iterator.
@@ -330,19 +332,19 @@ int sky_block_full_update(sky_block *block)
         }
         path_initialized = true;
         
+        // Use cursor to loop over each event.
+        sky_cursor_set_path(&cursor, ptr);
+        check(rc == 0, "Unable to set cursor path");
+            
         // Loop over cursor until we reach the event insertion point.
-        while(!iterator.cursor.eof) {
+        while(!cursor.eof) {
             sky_timestamp_t timestamp;
             sky_action_id_t action_id;
             sky_event_data_length_t data_length;
 
-            // Move to next event.
-            rc = sky_cursor_next(&iterator.cursor);
-            check(rc == 0, "Unable to move to next event");
-
             // Retrieve current timestamp in cursor.
             size_t hdrsz;
-            rc = sky_event_unpack_hdr(&timestamp, &action_id, &data_length, iterator.cursor.ptr, &hdrsz);
+            rc = sky_event_unpack_hdr(&timestamp, &action_id, &data_length, cursor.ptr, &hdrsz);
             check(rc == 0, "Unable to unpack event header");
                 
             // Update timestamp ranges.
@@ -353,6 +355,10 @@ int sky_block_full_update(sky_block *block)
                 block->max_timestamp = timestamp;
             }
             event_initialized = true;
+
+            // Move to next event.
+            rc = sky_cursor_next(&cursor);
+            check(rc == 0, "Unable to move to next event");
         }
         
         // Move to next path.
@@ -364,11 +370,12 @@ int sky_block_full_update(sky_block *block)
     rc = sky_block_save_header(block);
     check(rc == 0, "Unable to save block header");
 
-    sky_path_iterator_uninit(&iterator);
+    sky_cursor_uninit(&cursor);
+
     return 0;
 
 error:
-    sky_path_iterator_uninit(&iterator);
+    sky_cursor_uninit(&cursor);
     return -1;
 }
 
@@ -784,7 +791,7 @@ int sky_block_add_event(sky_block *block, sky_event *event)
     check(rc == 0, "Unable to set path iterator block");
 
     // Retrieve insertion points and block info.
-    void *path_ptr = NULL, *event_ptr = NULL;
+    void *path_ptr, *event_ptr;
     size_t block_data_length;
     rc = sky_block_get_insertion_info(block, event, &path_ptr, &event_ptr, &block_data_length);
     check(rc == 0, "Unable to determine insertion info to add event");
@@ -878,26 +885,15 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                                  size_t *block_data_length)
 {
     int rc;
+    sky_cursor cursor;
+    sky_cursor_init(&cursor);
     sky_data_descriptor *descriptor = NULL;
-    sky_data_object *data = NULL;
     assert(block != NULL);
     assert(event != NULL);
-
-    // Initialize data descriptor.
-    size_t sz;
-    descriptor = sky_data_descriptor_create(); check_mem(descriptor);
-    rc = sky_data_descriptor_init_with_event(descriptor, event, &sz);
-    check(rc == 0, "Unable to initialize data descriptor for event insert");
-    
-    // Initialize data object (trailing bytes are use by the descriptor).
-    data = calloc(1, sz); check_mem(data);
 
     // Initialize path iterator.
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
-    iterator.cursor.data = (void*)data;
-    iterator.cursor.data_sz = sz;
-    iterator.cursor.data_descriptor = descriptor;
     rc = sky_path_iterator_set_block(&iterator, block);
     check(rc == 0, "Unable to set path iterator block");
 
@@ -910,22 +906,41 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
         // If we reached the correct path then retrieve the path pointer
         // and then use a cursor to find the insertion point.
         if(event->object_id == iterator.current_object_id) {
-            // Retrieve the path pointer.
+            // Save path pointer.
             rc = sky_path_iterator_get_ptr(&iterator, path_ptr);
-            check(rc == 0, "Unable to retrieve the path iterator pointer");
-
+            check(rc == 0, "Unable to retrieve iterator's current pointer");
+            
+            // Use cursor to find event insertion point.
+            sky_cursor_set_path(&cursor, *path_ptr);
+            check(rc == 0, "Unable to set cursor path");
+            
+            // Initialize data descriptor.
+            size_t sz;
+            descriptor = sky_data_descriptor_create(); check_mem(descriptor);
+            rc = sky_data_descriptor_init_with_event(descriptor, event, &sz);
+            check(rc == 0, "Unable to initialize data descriptor for event insert");
+            
+            // Initialize data object.
+            int8_t _data[sz];
+            sky_data_object *data = (sky_data_object*)_data;
+            memset(data, 0, sz);
+            
             // Loop over cursor until we reach the event insertion point.
-            while(!iterator.cursor.eof) {
-                // Move to next event.
-                rc = sky_cursor_next(&iterator.cursor);
-                check(rc == 0, "Unable to move to next event");
+            while(!cursor.eof) {
+                // Set data using the descriptor.
+                rc = sky_cursor_set_data(&cursor, descriptor, (void*)data);
+                check(rc == 0, "Unable to set data on cursor");
 
                 // Retrieve event insertion pointer once the timestamp is
                 // reached.
                 if(data->timestamp >= event->timestamp) {
-                    *event_ptr = iterator.cursor.ptr;
+                    *event_ptr = cursor.ptr;
                     break;
                 }
+                
+                // Move to next event.
+                rc = sky_cursor_next(&cursor);
+                check(rc == 0, "Unable to move to next event");
             }
             
             // Clear off any object data on the event that matches
@@ -985,18 +1000,16 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     // determined after the iterator has reached EOF.
     *block_data_length = iterator.block_data_length;
 
-    free(data);
     sky_data_descriptor_free(descriptor);
-    sky_path_iterator_uninit(&iterator);
+    sky_cursor_uninit(&cursor);
     return 0;
 
 error:
     *path_ptr  = NULL;
     *event_ptr = NULL;
     *block_data_length = 0;
-    free(data);
     sky_data_descriptor_free(descriptor);
-    sky_path_iterator_uninit(&iterator);
+    sky_cursor_uninit(&cursor);
     return -1;
 }
 
@@ -1138,9 +1151,6 @@ int sky_block_split_with_event(sky_block *block, sky_event *event,
                     // Move data into new block.
                     memmove(new_block_ptr, ptr, len);
                     memset(ptr, 0, len);
-
-                    debug("block#%d", block->index);
-                    memdump(block_ptr, block_size);
 
                     // Update block ranges.
                     rc = sky_block_full_update(new_block);

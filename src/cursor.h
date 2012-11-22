@@ -40,11 +40,7 @@ typedef struct sky_cursor {
     uint32_t event_index;
     void *ptr;
     void *endptr;
-    bool running;
     bool eof;
-    void *data_descriptor;
-    void *data;
-    size_t data_sz;
 } sky_cursor;
 
 
@@ -86,6 +82,7 @@ int sky_cursor_next(sky_cursor *cursor);
 // Event Management
 //--------------------------------------
 
-int sky_cursor_set_data(sky_cursor *cursor);
+int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
+    void *data);
 
 #endif

@@ -9,8 +9,6 @@
 #include "table.h"
 #include "property_file.h"
 #include "data_descriptor.h"
-#include "path_iterator.h"
-#include "cursor.h"
 #include "bstring.h"
 
 //==============================================================================

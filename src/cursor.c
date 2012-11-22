@@ -132,11 +132,6 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
         check_mem(cursor->paths);
     }
     
-    // Clear cursor data.
-    if(cursor->data != NULL && cursor->data_sz > 0) {
-        memset(cursor->data, 0, cursor->data_sz);
-    }
-    
     // Assign path data list.
     uint32_t i;
     for(i=0; i<count; i++) {
@@ -145,7 +140,6 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
     cursor->path_count = count;
     cursor->path_index = 0;
     cursor->event_index = 0;
-    cursor->running = false;
     cursor->eof = (count == 0);
     
     // Position the pointer at the first path if paths are passed.
@@ -182,8 +176,8 @@ int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr)
     assert(ptr != NULL);
     
     // Store position of first event and store position of end of path.
-    cursor->ptr     = ptr + SKY_PATH_HEADER_LENGTH;
-    cursor->endptr  = ptr + sky_path_sizeof_raw(ptr);
+    cursor->ptr    = ptr + SKY_PATH_HEADER_LENGTH;
+    cursor->endptr = ptr + sky_path_sizeof_raw(ptr);
     
     return 0;
 }
@@ -199,32 +193,17 @@ int sky_cursor_next(sky_cursor *cursor)
     assert(cursor != NULL);
     assert(!cursor->eof);
 
-    // Don't move on the first "next".
-    if(!cursor->running) {
-        cursor->running = true;
-    }
-    else {
-        // Move to next event.
-        cursor->ptr += sky_event_sizeof_raw(cursor->ptr);
-        cursor->event_index++;
-    }
-
-    // Validate and update data.
-    if(!cursor->eof) {
-        sky_event_flag_t flag = *((sky_event_flag_t*)cursor->ptr);
-        check(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA, "Cursor pointing at invalid raw event data: %p", cursor->ptr);
-
-        if(cursor->data_descriptor != NULL && cursor->data != NULL) {
-            sky_cursor_set_data(cursor);
-        }
-    }
-
-    // Determine total length of the next raw event, in bytes.
+    // Move to next event.
     size_t event_length = sky_event_sizeof_raw(cursor->ptr);
-    if(cursor->ptr + event_length >= cursor->endptr) {
+    cursor->ptr += event_length;
+    cursor->event_index++;
+
+    // If pointer is beyond the last event then move to next path.
+    if(cursor->ptr >= cursor->endptr) {
+        cursor->path_index++;
+
         // Move to the next path if more paths are remaining.
-        if(cursor->path_index+1 < cursor->path_count) {
-            cursor->path_index++;
+        if(cursor->path_index < cursor->path_count) {
             rc = sky_cursor_set_ptr(cursor, cursor->paths[cursor->path_index]);
             check(rc == 0, "Unable to set pointer to path");
         }
@@ -234,7 +213,13 @@ int sky_cursor_next(sky_cursor *cursor)
             check(rc == 0, "Unable to set EOF on cursor");
         }
     }
-    
+
+    // Make sure that we are point at an event.
+    if(!cursor->eof) {
+        sky_event_flag_t flag = *((sky_event_flag_t*)cursor->ptr);
+        check(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA, "Cursor pointing at invalid raw event data: %p", cursor->ptr);
+    }
+
     return 0;
 
 error:
@@ -249,7 +234,13 @@ error:
 int sky_cursor_set_eof(sky_cursor *cursor)
 {
     assert(cursor != NULL);
+    
+    cursor->path_index  = 0;
+    cursor->event_index = 0;
     cursor->eof         = true;
+    cursor->ptr         = NULL;
+    cursor->endptr      = NULL;
+
     return 0;
 }
 
@@ -260,21 +251,19 @@ int sky_cursor_set_eof(sky_cursor *cursor)
 
 // Updates a memory location based on the current event and a data descriptor.
 //
-// cursor - The cursor.
+// cursor    - The cursor.
+// action_id - A pointer to where the action id should be returned to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_data(sky_cursor *cursor)
+int sky_cursor_set_data(sky_cursor *cursor, sky_data_descriptor *descriptor,
+                        void *data)
 {
     size_t sz;
     int rc;
     assert(cursor != NULL);
     assert(!cursor->eof);
-    assert(cursor->data_descriptor != NULL);
-    assert(cursor->data != NULL);
-
-    // Localize variables.
-    sky_data_descriptor *descriptor = cursor->data_descriptor;
-    void *data = cursor->data;
+    assert(descriptor != NULL);
+    assert(data != NULL);
 
     // Retrieve the flag off the event.
     void *ptr = cursor->ptr;
