@@ -104,6 +104,7 @@ int sky_path_iterator_set_data_file(sky_path_iterator *iterator, sky_data_file *
     iterator->block_index = 0;
     iterator->block       = NULL;
     iterator->byte_index  = 0;
+    iterator->eof         = false;
 
     // Position iterator at the first path.
     rc = sky_path_iterator_fast_forward(iterator);

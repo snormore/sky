@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include <sky_lua.h>
 #include <path_iterator.h>
@@ -165,15 +166,25 @@ int test_sky_map_all() {
     mu_assert_int_equals(descriptor->data_sz, 32);
     iterator.cursor.data = calloc(1, descriptor->data_sz);
 
+    // Start benchmark.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+
     // Call sky_map_all() function.
-    lua_getglobal(L, "sky_map_all");
-    lua_pushlightuserdata(L, &iterator);
-    lua_call(L, 1, 3);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_long_equals(lua_tointeger(L, -3), 3L);
-    mu_assert_long_equals(lua_tointeger(L, -2), 7L);
-    mu_assert_long_equals(lua_tointeger(L, -1), 1230L);
-    
+    uint32_t i;
+    for(i=0; i<100000; i++) {
+        sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
+        lua_getglobal(L, "sky_map_all");
+        lua_pushlightuserdata(L, &iterator);
+        lua_call(L, 1, 0);
+    }
+
+    // End benchmark.
+    gettimeofday(&tv, NULL);
+    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+    printf("[lua] t=%.3fs\n", ((float)(t1-t0))/1000);
+
     sky_table_free(table);
     free(iterator.cursor.data);
     return 0;
