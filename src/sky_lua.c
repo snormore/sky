@@ -171,9 +171,10 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "typedef struct sky_cursor_t sky_cursor_t;\n"
         "%s\n"
         "\n"
-        "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
-        "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
-        "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint16_t offset, int data_type);\n"
+        "int sky_data_descriptor_set_data_sz(sky_data_descriptor_t *descriptor, uint32_t sz);\n"
+        "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
+        "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
+        "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint32_t offset, int data_type);\n"
         "\n"
         "bool sky_path_iterator_eof(sky_path_iterator_t *);\n"
         "void sky_path_iterator_next(sky_path_iterator_t *);\n"
@@ -187,13 +188,13 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "%s\n"
         "function sky_map_all(_iterator)\n"
         "  iterator = ffi.cast(\"sky_path_iterator_t*\", _iterator)\n"
-        "  data = {path_count=0, event_count=0}\n"
+        "  data = {path_count=0, event_count=0, z=0}\n"
         "  while not ffi.C.sky_path_iterator_eof(iterator) do\n"
         "    cursor = ffi.C.sky_lua_path_iterator_get_cursor(iterator)\n"
         "    map(cursor, data)\n"
         "    ffi.C.sky_path_iterator_next(iterator)\n"
         "  end\n"
-        "  return data.path_count, data.event_count\n"
+        "  return data.path_count, data.event_count, data.z\n"
         "end\n"
         "\n"
         "-- SKY GENERATED CODE END --\n"
@@ -243,6 +244,7 @@ int sky_lua_generate_event_info(bstring source,
     );
     check_mem(*event_decl);
     *init_descriptor_func = bfromcstr(
+        "  ffi.C.sky_data_descriptor_set_data_sz(descriptor, ffi.sizeof(\"sky_lua_event_t\"));\n"
         "  ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
         "  ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
     );
@@ -358,7 +360,6 @@ error:
 sky_cursor *sky_lua_path_iterator_get_cursor(sky_path_iterator *iterator)
 {
     assert(iterator != NULL);
-    debug("[lua] iterator.get_cursor.1: %p | %d", iterator, iterator->eof);
     return &iterator->cursor;
 }
 
@@ -371,6 +372,5 @@ sky_cursor *sky_lua_path_iterator_get_cursor(sky_path_iterator *iterator)
 void *sky_lua_cursor_get_event(sky_cursor *cursor)
 {
     assert(cursor != NULL);
-    debug("[lua] cursor.get_event.1");
     return cursor->data;
 }

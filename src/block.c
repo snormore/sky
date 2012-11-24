@@ -879,7 +879,6 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
                                  size_t *block_data_length)
 {
     int rc;
-    size_t sz;
     sky_data_object *data = NULL;
     sky_data_descriptor *descriptor = NULL;
     assert(block != NULL);
@@ -887,11 +886,11 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
 
     // Initialize data descriptor.
     descriptor = sky_data_descriptor_create(); check_mem(descriptor);
-    rc = sky_data_descriptor_init_with_event(descriptor, event, &sz);
+    rc = sky_data_descriptor_init_with_event(descriptor, event);
     check(rc == 0, "Unable to initialize data descriptor for event insert");
     
     // Initialize data object.
-    data = calloc(1, sz); check_mem(data);
+    data = calloc(1, descriptor->data_sz); check_mem(data);
 
     // Initialize path iterator.
     sky_path_iterator iterator;
@@ -902,7 +901,6 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     // Attach data & descriptor to the cursor.
     iterator.cursor.data_descriptor = descriptor;
     iterator.cursor.data = (void*)data;
-    iterator.cursor.data_sz = sz;
     
     // Initialize path and event pointers.
     *path_ptr  = NULL;

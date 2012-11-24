@@ -93,14 +93,16 @@ int test_sky_lua_generate_header() {
         "  int64_t y;\n"
         "} sky_lua_event_t;\n"
         "\n"
-        "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
-        "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
-        "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint16_t offset, int data_type);\n"
+        "int sky_data_descriptor_set_data_sz(sky_data_descriptor_t *descriptor, uint32_t sz);\n"
+        "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
+        "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
+        "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint32_t offset, int data_type);\n"
         "sky_cursor_t *sky_lua_path_iterator_next(sky_path_iterator_t *);\n"
         "sky_lua_event_t *sky_lua_cursor_next(sky_cursor_t *);\n"
         "]])\n"
         "function sky_init_descriptor(_descriptor)\n"
         "  descriptor = ffi.cast(\"sky_data_descriptor_t*\", _descriptor)\n"
+        "  ffi.C.sky_data_descriptor_set_data_sz(descriptor, ffi.sizeof(\"sky_lua_event_t\"));\n"
         "  ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
         "  ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
         "  ffi.C.sky_data_descriptor_set_property(descriptor, 2, ffi.offsetof(\"sky_lua_event_t\", \"x\"), 2);\n"
@@ -142,8 +144,6 @@ int test_sky_map_all() {
 
     // Attach data and descriptor to cursor.
     iterator.cursor.data_descriptor = descriptor;
-    iterator.cursor.data = calloc(1, sizeof(sky_data_object));
-    iterator.cursor.data_sz = sizeof(sky_data_object);
 
     struct tagbstring source = bsStatic(
         "function map(cursor, data)\n"
@@ -152,6 +152,7 @@ int test_sky_map_all() {
         "    ffi.C.sky_cursor_set_data(cursor)\n"
         "    event = ffi.C.sky_lua_cursor_get_event(cursor)\n"
         "    data.event_count = data.event_count + 1\n"
+        "    data.z = data.z + tonumber(event.x) + tonumber(event.y)\n"
         "    ffi.C.sky_cursor_next(cursor)\n"
         "  end\n"
         "end\n"
@@ -160,15 +161,18 @@ int test_sky_map_all() {
     int rc = sky_lua_initscript_with_table(&source, table, descriptor, &L);
     mu_assert_int_equals(rc, 0);
 
-    debug("sky_lua_tests.1: %p", &iterator);
+    // Allocate data.
+    mu_assert_int_equals(descriptor->data_sz, 32);
+    iterator.cursor.data = calloc(1, descriptor->data_sz);
 
     // Call sky_map_all() function.
     lua_getglobal(L, "sky_map_all");
     lua_pushlightuserdata(L, &iterator);
-    lua_call(L, 1, 2);
+    lua_call(L, 1, 3);
     mu_assert_int_equals(rc, 0);
-    mu_assert_long_equals(lua_tointeger(L, -2), 3L);
-    mu_assert_long_equals(lua_tointeger(L, -1), 7L);
+    mu_assert_long_equals(lua_tointeger(L, -3), 3L);
+    mu_assert_long_equals(lua_tointeger(L, -2), 7L);
+    mu_assert_long_equals(lua_tointeger(L, -1), 1230L);
     
     sky_table_free(table);
     free(iterator.cursor.data);

@@ -354,8 +354,8 @@ int sky_cursor_clear_data(sky_cursor *cursor)
 {
     assert(cursor != NULL);
 
-    if(cursor->data != NULL && cursor->data_sz > 0) {
-        memset(cursor->data, 0, cursor->data_sz);
+    if(cursor->data != NULL && cursor->data_descriptor != NULL && cursor->data_descriptor->data_sz > 0) {
+        memset(cursor->data, 0, cursor->data_descriptor->data_sz);
     }
     
     return 0;

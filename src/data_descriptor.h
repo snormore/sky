@@ -57,6 +57,7 @@ typedef struct {
     uint32_t action_property_descriptor_count;
     uint32_t property_count;
     uint32_t active_property_count;
+    uint32_t data_sz;
 } sky_data_descriptor;
 
 
@@ -75,7 +76,7 @@ sky_data_descriptor *sky_data_descriptor_create();
 void sky_data_descriptor_free(sky_data_descriptor *descriptor);
 
 int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
-    sky_event *event, size_t *sz);
+    sky_event *event);
 
 //--------------------------------------
 // Value Management
@@ -91,13 +92,16 @@ int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
 // Descriptor Management
 //--------------------------------------
 
+int sky_data_descriptor_set_data_sz(sky_data_descriptor *descriptor,
+    uint32_t sz);
+
 int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
-    uint16_t offset);
+    uint32_t offset);
 
 int sky_data_descriptor_set_action_id_offset(sky_data_descriptor *descriptor,
-    uint16_t offset);
+    uint32_t offset);
 
 int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
-    sky_property_id_t property_id, uint16_t offset, sky_data_type_e data_type);
+    sky_property_id_t property_id, uint32_t offset, sky_data_type_e data_type);
 
 #endif

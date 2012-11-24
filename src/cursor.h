@@ -42,8 +42,7 @@ typedef struct sky_cursor {
     void *endptr;
     bool eof;
     void *data;
-    size_t data_sz;
-    void *data_descriptor;
+    sky_data_descriptor *data_descriptor;
 } sky_cursor;
 
 

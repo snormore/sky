@@ -197,6 +197,7 @@ int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *mess
     
     // Create data descriptor.
     descriptor = sky_data_descriptor_create(); check_mem(descriptor);
+    descriptor->data_sz = (uint32_t)sizeof(sky_next_actions_data);
     descriptor->timestamp_descriptor.offset = offsetof(sky_next_actions_data, timestamp);
     descriptor->action_descriptor.offset = offsetof(sky_next_actions_data, action_id);
     
@@ -355,7 +356,6 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     // Attach data and descriptor to cursor.
     iterator.cursor.data_descriptor = message->data_descriptor;
     iterator.cursor.data = (void*)(&data);
-    iterator.cursor.data_sz = sizeof(data);
 
     // Iterate over each path.
     uint64_t event_count = 0;

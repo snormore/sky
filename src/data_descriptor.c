@@ -116,19 +116,17 @@ void sky_data_descriptor_free(sky_data_descriptor *descriptor)
 //
 // event      - The event.
 // descriptor - The data descriptor.
-// sz         - A pointer to where the target data object size is returned.
 //
 // Returns 0 if successful, otherwise -1.
 int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
-                                        sky_event *event,
-                                        size_t *sz)
+                                        sky_event *event)
 {
     int rc;
     assert(descriptor != NULL);
     assert(event != NULL);
     
     // Initialize the offset to start right after timestamp and action.
-    *sz = sizeof(sky_data_object);
+    descriptor->data_sz = (uint32_t)sizeof(sky_data_object);
     
     // Set the standard timestamp and action offsets.
     descriptor->timestamp_descriptor.offset = offsetof(sky_data_object, timestamp);
@@ -139,19 +137,19 @@ int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
     for(i=0; i<event->data_count; i++) {
         // Set the property on the descriptor.
         sky_event_data *data = event->data[i];
-        rc = sky_data_descriptor_set_property(descriptor, data->key, *sz, data->data_type);
+        rc = sky_data_descriptor_set_property(descriptor, data->key, descriptor->data_sz, data->data_type);
         check(rc == 0, "Unable to set property on data descriptor");
 
         // Increment data type offset.
         size_t _sz = sky_data_type_sizeof(data->data_type);
         if(_sz < 8) _sz = 8;
-        *sz += _sz;
+        descriptor->data_sz += _sz;
     }
     
     return 0;
 
 error:
-    *sz = 0;
+    descriptor->data_sz = 0;
     return -1;
 }
 
@@ -210,6 +208,20 @@ int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
 // Descriptor Management
 //--------------------------------------
 
+// Sets the total size of the data object, in bytes.
+//
+// descriptor  - The data descriptor.
+// sz          - The size of the data struct, in bytes.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_data_descriptor_set_data_sz(sky_data_descriptor *descriptor,
+                                    uint32_t sz)
+{
+    assert(descriptor != NULL);
+    descriptor->data_sz = sz;
+    return 0;
+}
+
 // Sets the offset of the timestamp property on the data object.
 //
 // descriptor  - The data descriptor.
@@ -217,7 +229,7 @@ int sky_data_descriptor_clear_action_data(sky_data_descriptor *descriptor,
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
-                                             uint16_t offset)
+                                             uint32_t offset)
 {
     assert(descriptor != NULL);
     descriptor->timestamp_descriptor.offset = offset;
@@ -231,7 +243,7 @@ int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_descriptor_set_action_id_offset(sky_data_descriptor *descriptor,
-                                             uint16_t offset)
+                                             uint32_t offset)
 {
     assert(descriptor != NULL);
     descriptor->action_descriptor.offset = offset;
@@ -249,7 +261,7 @@ int sky_data_descriptor_set_action_id_offset(sky_data_descriptor *descriptor,
 // Returns 0 if successful, otherwise returns -1.
 int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
                                      sky_property_id_t property_id,
-                                     uint16_t offset,
+                                     uint32_t offset,
                                      sky_data_type_e data_type)
 {
     assert(descriptor != NULL);
