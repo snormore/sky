@@ -191,6 +191,11 @@ int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr)
 // Iteration
 //--------------------------------------
 
+// Moves the cursor to the next event in a path.
+//
+// cursor - The cursor.
+//
+// Returns 0 if successful, otherwise returns -1.
 int sky_cursor_next(sky_cursor *cursor)
 {
     int rc;
@@ -228,6 +233,17 @@ int sky_cursor_next(sky_cursor *cursor)
 
 error:
     return -1;
+}
+
+// Returns whether the cursor is at the end or not.
+//
+// cursor - The cursor.
+//
+// Returns true if at the end, otherwise returns false.
+bool sky_cursor_eof(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+    return cursor->eof;
 }
 
 // Flags a cursor to say that it is at the end of all its paths.

@@ -81,6 +81,8 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count);
 
 int sky_cursor_next(sky_cursor *cursor);
 
+bool sky_cursor_eof(sky_cursor *cursor);
+
 //--------------------------------------
 // Event Management
 //--------------------------------------

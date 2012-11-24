@@ -66,7 +66,19 @@ int tests_run;
 #define mu_assert_int_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %d; Received: %d", EXPECTED, ACTUAL)
 #define mu_assert_long_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %ld; Received: %ld", EXPECTED, ACTUAL)
 #define mu_assert_int64_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %lld; Received: %lld", EXPECTED, ACTUAL)
-#define mu_assert_bstring(ACTUAL, EXPECTED) mu_assert_with_msg(biseqcstr(ACTUAL, EXPECTED), "Expected: %s; Received: %s", EXPECTED, bdata(ACTUAL))
+
+#define mu_assert_bstring(ACTUAL, EXPECTED) do {\
+    struct tagbstring expected = bsStatic(EXPECTED); \
+    if(blength(ACTUAL) != blength(&expected)) { \
+        mu_fail("String length doesn\'t not match. exp:%d, recv:%d", blength(&expected), blength(ACTUAL)); \
+    } \
+    int32_t _i; \
+    for(_i=0; _i<blength(ACTUAL); _i++) { \
+        if(bchar(ACTUAL, _i) != bchar(&expected, _i)) { \
+            mu_fail("Unexpected byte at %d. exp:\\x%02x, recv:\\x%02x", _i, bchar(&expected, _i), bchar(ACTUAL, _i)); \
+        } \
+    } \
+} while(0)
 
 
 

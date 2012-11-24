@@ -282,6 +282,16 @@ error:
     return -1;
 }
 
+// Checks if the path iterator is at the end.
+// 
+// iterator - The iterator.
+//
+// Returns true if at the end, otherwise returns false.
+bool sky_path_iterator_eof(sky_path_iterator *iterator)
+{
+    assert(iterator != NULL);
+    return iterator->eof;
+}
 
 // Moves the iterator to the next available path if it is not currently on a
 // valid path. This can occur when the current location has null data or if

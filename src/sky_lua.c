@@ -2,6 +2,8 @@
 #include <assert.h>
 
 #include "sky_lua.h"
+#include "path_iterator.h"
+#include "cursor.h"
 #include "dbg.h"
 
 
@@ -165,18 +167,37 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "local ffi = require(\"ffi\")\n"
         "ffi.cdef([[\n"
         "typedef struct sky_data_descriptor_t sky_data_descriptor_t;\n"
-        "typedef struct sky_lua_path_iterator_t sky_lua_path_iterator_t;\n"
-        "typedef struct sky_lua_cursor_t sky_lua_cursor_t;\n"
+        "typedef struct sky_path_iterator_t sky_path_iterator_t;\n"
+        "typedef struct sky_cursor_t sky_cursor_t;\n"
         "%s\n"
         "\n"
         "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
         "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint16_t offset);\n"
         "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint16_t offset, int data_type);\n"
-        "sky_lua_cursor_t *sky_lua_path_iterator_next(sky_lua_path_iterator_t *);\n"
-        "sky_lua_event_t *sky_lua_cursor_next(sky_lua_cursor_t *);\n"
+        "\n"
+        "bool sky_path_iterator_eof(sky_path_iterator_t *);\n"
+        "void sky_path_iterator_next(sky_path_iterator_t *);\n"
+        "sky_cursor_t *sky_lua_path_iterator_get_cursor(sky_path_iterator_t *);\n"
+        "\n"
+        "bool sky_cursor_eof(sky_cursor_t *);\n"
+        "void sky_cursor_next(sky_cursor_t *);\n"
+        "void sky_cursor_set_data(sky_cursor_t *);\n"
+        "sky_lua_event_t *sky_lua_cursor_get_event(sky_cursor_t *);\n"
         "]])\n"
         "%s\n"
-        "-- SKY GENERATED CODE END --\n\n",
+        "function sky_map_all(_iterator)\n"
+        "  iterator = ffi.cast(\"sky_path_iterator_t*\", _iterator)\n"
+        "  data = {path_count=0, event_count=0}\n"
+        "  while not ffi.C.sky_path_iterator_eof(iterator) do\n"
+        "    cursor = ffi.C.sky_lua_path_iterator_get_cursor(iterator)\n"
+        "    map(cursor, data)\n"
+        "    ffi.C.sky_path_iterator_next(iterator)\n"
+        "  end\n"
+        "  return data.path_count, data.event_count\n"
+        "end\n"
+        "\n"
+        "-- SKY GENERATED CODE END --\n"
+        ,
         bdata(event_decl),
         bdata(init_descriptor_func)
     );
@@ -323,3 +344,33 @@ error:
     return -1;
 }
 
+
+//--------------------------------------
+// Path Iterator/Cursor Management
+//--------------------------------------
+
+// Moves to the next path in the iterator and returns a cursor to traverse it.
+//
+// iterator - The path iterator.
+//
+// Returns a new cursor if there are more paths available. Otherwise returns
+// NULL.
+sky_cursor *sky_lua_path_iterator_get_cursor(sky_path_iterator *iterator)
+{
+    assert(iterator != NULL);
+    debug("[lua] iterator.get_cursor.1: %p | %d", iterator, iterator->eof);
+    return &iterator->cursor;
+}
+
+// Moves the cursor to the next event in a path.
+//
+// cursor - The cursor.
+//
+// Returns a pointer to the event data if there are remaining events.
+// Otherwise returns NULL.
+void *sky_lua_cursor_get_event(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+    debug("[lua] cursor.get_event.1");
+    return cursor->data;
+}
