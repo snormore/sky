@@ -75,6 +75,9 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     assert(descriptor != NULL);
     assert(L != NULL);
     
+    // Always use 32-bit integers.
+    descriptor->int_type = SKY_DATA_DESCRIPTOR_INT32;
+
     // Generate header.
     rc = sky_lua_generate_header(source, table, &header);
     check(rc == 0, "Unable to generate header");
@@ -314,7 +317,7 @@ int sky_lua_generate_event_info(bstring source,
                             break;
                         }
                         case SKY_DATA_TYPE_INT: {
-                            bformata(*event_decl, "  int64_t %s;\n", bdata(property->name));
+                            bformata(*event_decl, "  int32_t %s;\n", bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_DOUBLE: {

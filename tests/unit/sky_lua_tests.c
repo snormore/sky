@@ -22,7 +22,7 @@
 // Initialization
 //--------------------------------------
 
-typedef struct { sky_timestamp_t timestamp; sky_action_id_t action_id; int64_t x; int64_t y; } sky_lua_event_0_t;
+typedef struct { sky_timestamp_t timestamp; sky_action_id_t action_id; int32_t x; int32_t y; } sky_lua_event_0_t;
 
 int test_sky_lua_initscript_with_table() {
     int rc;
@@ -37,7 +37,7 @@ int test_sky_lua_initscript_with_table() {
     struct tagbstring source = bsStatic(
         "function map(_event)\n"
         "  event = ffi.cast(\"sky_lua_event_t*\", _event)\n"
-        "  return tonumber(event.x) + tonumber(event.y)\n"
+        "  return event.x + event.y\n"
         "end\n"
     );
     lua_State *L = NULL;
@@ -85,8 +85,8 @@ int test_sky_lua_generate_header() {
         "typedef struct {\n"
         "  int64_t timestamp;\n"
         "  uint16_t action_id;\n"
-        "  int64_t x;\n"
-        "  int64_t y;\n"
+        "  int32_t x;\n"
+        "  int32_t y;\n"
         "} sky_lua_event_t;"
     );
     mu_assert_bstring(init_descriptor_func,
@@ -129,7 +129,7 @@ int test_sky_map_all() {
         "  while not cursor:eof() do\n"
         "    event = cursor:event()\n"
         "    data.event_count = data.event_count + 1\n"
-        "    data.z = data.z + tonumber(event.x) + tonumber(event.y)\n"
+        "    data.z = data.z + event.x + event.y\n"
         "    cursor:next()\n"
         "  end\n"
         "end\n"
@@ -139,7 +139,7 @@ int test_sky_map_all() {
     mu_assert_int_equals(rc, 0);
 
     // Allocate data.
-    mu_assert_int_equals(descriptor->data_sz, 32);
+    mu_assert_int_equals(descriptor->data_sz, 24);
     iterator.cursor.data = calloc(1, descriptor->data_sz);
 
     // Start benchmark.
@@ -149,7 +149,7 @@ int test_sky_map_all() {
 
     // Call sky_map_all() function.
     uint32_t i;
-    for(i=0; i<1; i++) {
+    for(i=0; i<100000; i++) {
         sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
         lua_getglobal(L, "sky_map_all");
         lua_pushlightuserdata(L, &iterator);

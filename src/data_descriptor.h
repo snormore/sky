@@ -29,6 +29,12 @@ typedef struct {
     sky_action_id_t action_id;
 } sky_data_object;
 
+// The type of integer to use for storage.
+typedef enum {
+    SKY_DATA_DESCRIPTOR_INT64 = 0,
+    SKY_DATA_DESCRIPTOR_INT32 = 1,
+} sky_data_descriptor_int_type_e;
+
 // Defines the offset in memory for where the timestamp should be set.
 typedef struct {
     uint16_t offset;
@@ -58,6 +64,7 @@ typedef struct {
     uint32_t property_count;
     uint32_t active_property_count;
     uint32_t data_sz;
+    sky_data_descriptor_int_type_e int_type;
 } sky_data_descriptor;
 
 

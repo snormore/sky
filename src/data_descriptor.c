@@ -22,7 +22,9 @@ void sky_data_descriptor_set_noop(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_set_string(void *target, void *value, size_t *sz);
 
-void sky_data_descriptor_set_int(void *target, void *value, size_t *sz);
+void sky_data_descriptor_set_int32(void *target, void *value, size_t *sz);
+
+void sky_data_descriptor_set_int64(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_set_double(void *target, void *value, size_t *sz);
 
@@ -35,7 +37,9 @@ void sky_data_descriptor_set_boolean(void *target, void *value, size_t *sz);
 
 void sky_data_descriptor_clear_string(void *target);
 
-void sky_data_descriptor_clear_int(void *target);
+void sky_data_descriptor_clear_int32(void *target);
+
+void sky_data_descriptor_clear_int64(void *target);
 
 void sky_data_descriptor_clear_double(void *target);
 
@@ -66,6 +70,7 @@ sky_data_descriptor *sky_data_descriptor_create()
     size_t sz = sizeof(sky_data_descriptor) + (sizeof(sky_data_property_descriptor) * property_count);
     descriptor = calloc(sz, 1);
     check_mem(descriptor);
+    descriptor->int_type = SKY_DATA_DESCRIPTOR_INT64;
     descriptor->property_descriptors = (sky_data_property_descriptor*)(((void*)descriptor) + sizeof(sky_data_descriptor));
     descriptor->property_count = property_count;
     descriptor->property_zero_descriptor = NULL;
@@ -290,8 +295,14 @@ int sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
             break;
         }
         case SKY_DATA_TYPE_INT: {
-            property_descriptor->set_func = sky_data_descriptor_set_int;
-            property_descriptor->clear_func = sky_data_descriptor_clear_int;
+            if(descriptor->int_type == SKY_DATA_DESCRIPTOR_INT32) {
+                property_descriptor->set_func = sky_data_descriptor_set_int32;
+                property_descriptor->clear_func = sky_data_descriptor_clear_int32;
+            }
+            else {
+                property_descriptor->set_func = sky_data_descriptor_set_int64;
+                property_descriptor->clear_func = sky_data_descriptor_clear_int64;
+            }
             break;
         }
         case SKY_DATA_TYPE_DOUBLE: {
@@ -382,7 +393,20 @@ void sky_data_descriptor_set_string(void *target, void *value, size_t *sz)
 // sz     - A pointer to where the number of bytes read should be returned.
 //
 // Returns nothing.
-void sky_data_descriptor_set_int(void *target, void *value, size_t *sz)
+void sky_data_descriptor_set_int32(void *target, void *value, size_t *sz)
+{
+    *((int32_t*)target) = (int32_t)minipack_unpack_int(value, sz);
+}
+
+// Reads a MessagePack integer value from memory and sets the value to the
+// given memory location.
+//
+// target - The place where the integer should be written to.
+// value  - The memory location where a MessagePack encoded int is located.
+// sz     - A pointer to where the number of bytes read should be returned.
+//
+// Returns nothing.
+void sky_data_descriptor_set_int64(void *target, void *value, size_t *sz)
 {
     *((int64_t*)target) = minipack_unpack_int(value, sz);
 }
@@ -435,7 +459,17 @@ void sky_data_descriptor_clear_string(void *target)
 // target - The location of the int data to reset.
 //
 // Returns nothing.
-void sky_data_descriptor_clear_int(void *target)
+void sky_data_descriptor_clear_int32(void *target)
+{
+    *((int32_t*)target) = 0;
+}
+
+// Clears an integer.
+//
+// target - The location of the int data to reset.
+//
+// Returns nothing.
+void sky_data_descriptor_clear_int64(void *target)
 {
     *((int64_t*)target) = 0LL;
 }
