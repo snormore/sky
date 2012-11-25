@@ -120,10 +120,8 @@ int test_sky_map_all() {
     // Initialize the path iterator.
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
-    sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
-
-    // Attach data and descriptor to cursor.
     iterator.cursor.data_descriptor = descriptor;
+    sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
 
     struct tagbstring source = bsStatic(
         "function map(cursor, data)\n"
