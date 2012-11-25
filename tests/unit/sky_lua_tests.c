@@ -77,51 +77,30 @@ int test_sky_lua_generate_header() {
         "  return event.x + event.y\n"
         "end\n"
     );
-    bstring header = NULL;
-    int rc = sky_lua_generate_header(&source, table, &header);
+    bstring event_decl = NULL;
+    bstring init_descriptor_func = NULL;
+    int rc = sky_lua_generate_event_info(&source, table->property_file, &event_decl, &init_descriptor_func);
     mu_assert_int_equals(rc, 0);
-    mu_assert_bstring(header, 
-        "-- SKY GENERATED CODE BEGIN --\n"
-        "local ffi = require(\"ffi\")\n"
-        "ffi.cdef([[\n"
-        "typedef struct sky_data_descriptor_t sky_data_descriptor_t;\n"
-        "typedef struct sky_path_iterator_t sky_path_iterator_t;\n"
-        "typedef struct sky_cursor_t sky_cursor_t;\n"
+    mu_assert_bstring(event_decl,
         "typedef struct {\n"
         "  int64_t timestamp;\n"
         "  uint16_t action_id;\n"
         "  int64_t x;\n"
         "  int64_t y;\n"
-        "} sky_lua_event_t;\n"
-        "\n"
-        "int sky_data_descriptor_set_data_sz(sky_data_descriptor_t *descriptor, uint32_t sz);\n"
-        "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
-        "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
-        "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint32_t offset, int data_type);\n"
-        "sky_cursor_t *sky_lua_path_iterator_next(sky_path_iterator_t *);\n"
-        "sky_lua_event_t *sky_lua_cursor_next(sky_cursor_t *);\n"
-        "]])\n"
+        "} sky_lua_event_t;"
+    );
+    mu_assert_bstring(init_descriptor_func,
         "function sky_init_descriptor(_descriptor)\n"
         "  descriptor = ffi.cast(\"sky_data_descriptor_t*\", _descriptor)\n"
-        "  ffi.C.sky_data_descriptor_set_data_sz(descriptor, ffi.sizeof(\"sky_lua_event_t\"));\n"
-        "  ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
-        "  ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
-        "  ffi.C.sky_data_descriptor_set_property(descriptor, 2, ffi.offsetof(\"sky_lua_event_t\", \"x\"), 2);\n"
-        "  ffi.C.sky_data_descriptor_set_property(descriptor, 3, ffi.offsetof(\"sky_lua_event_t\", \"y\"), 2);\n"
+        "  descriptor:set_data_sz(ffi.sizeof(\"sky_lua_event_t\"));\n"
+        "  descriptor:set_timestamp_offset(ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
+        "  descriptor:set_action_id_offset(ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
+        "  descriptor:set_property(2, ffi.offsetof(\"sky_lua_event_t\", \"x\"), 2);\n"
+        "  descriptor:set_property(3, ffi.offsetof(\"sky_lua_event_t\", \"y\"), 2);\n"
         "end\n"
-        "\n"
-        "function sky_map_all(_iterator)\n"
-        "  iterator = ffi.cast(\"sky_path_iterator_t*\", _iterator)\n"
-        "  data = {}\n"
-        "  for cursor in ffi.C.sky_lua_path_iterator_next(iterator) do\n"
-        "    map(cursor, data)\n"
-        "  end\n"
-        "  return data\n"
-        "end\n"
-        "\n"
-        "-- SKY GENERATED CODE END --\n"
     );
-    bdestroy(header);
+    bdestroy(event_decl);
+    bdestroy(init_descriptor_func);
     sky_table_free(table);
     return 0;
 }
@@ -172,7 +151,7 @@ int test_sky_map_all() {
 
     // Call sky_map_all() function.
     uint32_t i;
-    for(i=0; i<100000; i++) {
+    for(i=0; i<1; i++) {
         sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
         lua_getglobal(L, "sky_map_all");
         lua_pushlightuserdata(L, &iterator);
@@ -198,7 +177,7 @@ int test_sky_map_all() {
 
 int all_tests() {
     mu_run_test(test_sky_lua_initscript_with_table);
-    //mu_run_test(test_sky_lua_generate_header);
+    mu_run_test(test_sky_lua_generate_header);
     mu_run_test(test_sky_map_all);
     return 0;
 }

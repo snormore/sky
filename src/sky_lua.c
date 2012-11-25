@@ -184,6 +184,14 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "void sky_cursor_next(sky_cursor_t *);\n"
         "sky_lua_event_t *sky_lua_cursor_get_event(sky_cursor_t *);\n"
         "]])\n"
+        "ffi.metatype(\"sky_data_descriptor_t\", {\n"
+        "  __index = {\n"
+        "    set_data_sz = function(descriptor, sz) return ffi.C.sky_data_descriptor_set_data_sz(descriptor, sz) end,\n"
+        "    set_timestamp_offset = function(descriptor, offset) return ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, offset) end,\n"
+        "    set_action_id_offset = function(descriptor, offset) return ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, offset) end,\n"
+        "    set_property = function(descriptor, property_id, offset, data_type) return ffi.C.sky_data_descriptor_set_property(descriptor, property_id, offset, data_type) end,\n"
+        "  }\n"
+        "})\n"
         "ffi.metatype(\"sky_path_iterator_t\", {\n"
         "  __index = {\n"
         "    eof = function(iterator) return ffi.C.sky_path_iterator_eof(iterator) end,\n"
@@ -259,9 +267,9 @@ int sky_lua_generate_event_info(bstring source,
     );
     check_mem(*event_decl);
     *init_descriptor_func = bfromcstr(
-        "  ffi.C.sky_data_descriptor_set_data_sz(descriptor, ffi.sizeof(\"sky_lua_event_t\"));\n"
-        "  ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
-        "  ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
+        "  descriptor:set_data_sz(ffi.sizeof(\"sky_lua_event_t\"));\n"
+        "  descriptor:set_timestamp_offset(ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
+        "  descriptor:set_action_id_offset(ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
     );
     check_mem(*init_descriptor_func);
 
@@ -323,7 +331,7 @@ int sky_lua_generate_event_info(bstring source,
                     }
                     check_mem(*event_decl);
 
-                    bformata(*init_descriptor_func, "  ffi.C.sky_data_descriptor_set_property(descriptor, %d, ffi.offsetof(\"sky_lua_event_t\", \"%s\"), %d);\n", property->id, bdata(property->name), property->data_type);
+                    bformata(*init_descriptor_func, "  descriptor:set_property(%d, ffi.offsetof(\"sky_lua_event_t\", \"%s\"), %d);\n", property->id, bdata(property->name), property->data_type);
                     check_mem(*init_descriptor_func);
 
                     // Flag the property as already processed.
