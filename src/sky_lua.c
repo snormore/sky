@@ -182,7 +182,6 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "\n"
         "bool sky_cursor_eof(sky_cursor_t *);\n"
         "void sky_cursor_next(sky_cursor_t *);\n"
-        "void sky_cursor_set_data(sky_cursor_t *);\n"
         "sky_lua_event_t *sky_lua_cursor_get_event(sky_cursor_t *);\n"
         "]])\n"
         "ffi.metatype(\"sky_path_iterator_t\", {\n"

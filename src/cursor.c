@@ -156,6 +156,12 @@ int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
     // Clear the data object if set.
     rc = sky_cursor_clear_data(cursor);
     check(rc == 0, "Unable to clear data");
+
+    // If the cursor has an event then set the data.
+    if(!cursor->eof && cursor->data != NULL && cursor->data_descriptor != NULL) {
+        rc = sky_cursor_set_data(cursor);
+        check(rc == 0, "Unable to set set data on cursor");
+    }
     
     return 0;
 
@@ -227,6 +233,11 @@ int sky_cursor_next(sky_cursor *cursor)
     if(!cursor->eof) {
         sky_event_flag_t flag = *((sky_event_flag_t*)cursor->ptr);
         check(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA, "Cursor pointing at invalid raw event data: %p", cursor->ptr);
+
+        if(cursor->data != NULL && cursor->data_descriptor != NULL) {
+            rc = sky_cursor_set_data(cursor);
+            check(rc == 0, "Unable to set set data on cursor");
+        }
     }
 
     return 0;

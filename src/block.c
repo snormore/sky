@@ -895,13 +895,14 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
     // Initialize path iterator.
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
-    rc = sky_path_iterator_set_block(&iterator, block);
-    check(rc == 0, "Unable to set path iterator block");
 
     // Attach data & descriptor to the cursor.
     iterator.cursor.data_descriptor = descriptor;
     iterator.cursor.data = (void*)data;
     
+    rc = sky_path_iterator_set_block(&iterator, block);
+    check(rc == 0, "Unable to set path iterator block");
+
     // Initialize path and event pointers.
     *path_ptr  = NULL;
     *event_ptr = NULL;
@@ -917,10 +918,6 @@ int sky_block_get_insertion_info(sky_block *block, sky_event *event,
             
             // Loop over cursor until we reach the event insertion point.
             while(!iterator.cursor.eof) {
-                // Set data using the descriptor.
-                rc = sky_cursor_set_data(&iterator.cursor);
-                check(rc == 0, "Unable to set data on cursor");
-
                 // Retrieve event insertion pointer once the timestamp is
                 // reached.
                 if(data->timestamp >= event->timestamp) {

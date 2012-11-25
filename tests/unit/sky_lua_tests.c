@@ -150,7 +150,6 @@ int test_sky_map_all() {
         "function map(cursor, data)\n"
         "  data.path_count = data.path_count + 1\n"
         "  while not cursor:eof() do\n"
-        "    ffi.C.sky_cursor_set_data(cursor)\n"
         "    event = cursor:event()\n"
         "    data.event_count = data.event_count + 1\n"
         "    data.z = data.z + tonumber(event.x) + tonumber(event.y)\n"
