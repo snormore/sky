@@ -48,23 +48,6 @@ int test_sky_lua_map_reduce_message_unpack() {
 // Worker
 //--------------------------------------
 
-int test_sky_lua_map_reduce_message_worker_read() {
-    sky_lua_map_reduce_message *message = sky_lua_map_reduce_message_create();
-    sky_worker *worker = sky_worker_create();
-    worker->data = (void*)message;
-    FILE *file = fopen("tests/fixtures/lua_map_reduce_message/1/message", "r");
-
-    int rc = sky_lua_map_reduce_message_worker_read(worker, file);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_bool(worker->data != NULL);
-    mu_assert_bstring(message->source, "foo");
-
-    fclose(file);
-    sky_lua_map_reduce_message_free(message);
-    sky_worker_free(worker);
-    return 0;
-}
-
 int sky_lua_test(int x, int y) {
     return x + y;
 }
@@ -153,7 +136,6 @@ int test_sky_lua_map_reduce_message_worker_reduce() {
 int all_tests() {
     mu_run_test(test_sky_lua_map_reduce_message_pack);
     mu_run_test(test_sky_lua_map_reduce_message_unpack);
-    mu_run_test(test_sky_lua_map_reduce_message_worker_read);
     mu_run_test(test_sky_lua_map_reduce_message_worker_map);
     mu_run_test(test_sky_lua_map_reduce_message_worker_reduce);
     return 0;

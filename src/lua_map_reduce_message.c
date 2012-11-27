@@ -119,7 +119,6 @@ int sky_lua_map_reduce_message_process(sky_server *server,
     // Create worker.
     sky_worker *worker = sky_worker_create(); check_mem(worker);
     worker->context = server->context;
-    worker->read = sky_lua_map_reduce_message_worker_read;
     worker->map = sky_lua_map_reduce_message_worker_map;
     worker->map_free = sky_lua_map_reduce_message_worker_map_free;
     worker->reduce = sky_lua_map_reduce_message_worker_reduce;
@@ -127,14 +126,17 @@ int sky_lua_map_reduce_message_process(sky_server *server,
     worker->free = sky_lua_map_reduce_message_worker_free;
     worker->input = input;
     worker->output = output;
-    
+
     // Attach servlets.
     rc = sky_server_get_table_servlets(server, table, &worker->servlets, &worker->servlet_count);
     check(rc == 0, "Unable to copy servlets to worker");
 
-    // Create a message object.
+    // Create and parse message object.
     message = sky_lua_map_reduce_message_create(); check_mem(message);
     message->results = bfromcstr("\x80"); check_mem(message->results);
+    rc = sky_lua_map_reduce_message_unpack(message, input);
+    check(rc == 0, "Unable to unpack 'lua::map_reduce' message");
+    check(message->source != NULL, "Lua source required");
 
     // Compile Lua script.
     rc = sky_lua_initscript_with_table(message->source, table, NULL, &message->L);
@@ -247,29 +249,6 @@ error:
 // Worker
 //--------------------------------------
 
-// Reads the message from the file stream.
-//
-// worker - The worker.
-// input  - The input stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_lua_map_reduce_message_worker_read(sky_worker *worker, FILE *input)
-{
-    int rc;
-    assert(worker != NULL);
-    assert(input != NULL);
-
-    // Parse message.
-    sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
-    rc = sky_lua_map_reduce_message_unpack(message, input);
-    check(rc == 0, "Unable to unpack 'lua::map_reduce' message");
-
-    return 0;
-
-error:
-    return -1;
-}
-
 // Maps tablet data to a next action summation data structure.
 //
 // worker - The worker.
@@ -380,6 +359,8 @@ int sky_lua_map_reduce_message_worker_reduce(sky_worker *worker, void *data)
     // Execute the script and return a msgpack variable.
     rc = sky_lua_msgpack_pack(message->L, &message->results);
     check(rc == 0, "Unable to unpack results table from Lua script");
+
+    memdump(bdata(message->results), blength(message->results));
 
     return 0;
 

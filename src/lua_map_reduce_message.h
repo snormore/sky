@@ -67,8 +67,6 @@ int sky_lua_map_reduce_message_unpack(sky_lua_map_reduce_message *message,
 // Worker
 //--------------------------------------
 
-int sky_lua_map_reduce_message_worker_read(sky_worker *worker, FILE *input);
-
 int sky_lua_map_reduce_message_worker_map(sky_worker *worker,
     sky_tablet *tablet, void **data);
 

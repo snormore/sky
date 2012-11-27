@@ -5,6 +5,7 @@
 #include "path_iterator.h"
 #include "cursor.h"
 #include "dbg.h"
+#include "mem.h"
 
 
 //==============================================================================
@@ -30,26 +31,27 @@ int sky_lua_initscript(bstring source, lua_State **L)
     assert(L != NULL);
     
     // Load Lua with standard library.
-    *L = luaL_newstate(); check_mem(L);
+    *L = luaL_newstate(); check_mem(*L);
     luaL_openlibs(*L);
     
     // Load Lua msgpack library.
     rc = luaopen_cmsgpack(*L);
     check(rc == 1, "Unable to load lua-cmsgpack");
     
-    debug("--SOURCE--\n%s", bdata(source));
+    //debug("--SOURCE--\n%s", bdata(source));
     
     // Compile lua script.
     rc = luaL_loadstring(*L, bdata(source));
     check(rc == 0, "Unable to compile Lua script: %s", lua_tostring(*L, -1));
 
     // Call once to make the functions available.
-    lua_call(*L, 0, 0);
+    rc = lua_pcall(*L, 0, 0, 0);
+    check(rc == 0, "Unable to initialize lua script");
 
     return 0;
 
 error:
-    lua_close(*L);
+    if(*L != NULL) lua_close(*L);
     *L = NULL;
     return -1;
 }
@@ -122,7 +124,10 @@ int sky_lua_msgpack_pack(lua_State *L, bstring *ret)
     // Encode result as msgpack.
     rc = mp_pack(L);
     check(rc == 1, "Unable to msgpack encode Lua result");
-    *ret = (void*)bfromcstr(lua_tostring(L, -1));
+
+    size_t sz;
+    const char *str = lua_tolstring(L, -1, &sz);
+    *ret = blk2bstr(str, sz);
     check_mem(*ret);
 
     lua_pop(L, 1);
@@ -147,7 +152,7 @@ int sky_lua_msgpack_unpack(lua_State *L, bstring data)
     int rc;
     assert(L != NULL);
     assert(data != NULL);
-
+    
     // Push msgpack value to the top of the stack.
     lua_pushlstring(L, bdata(data), blength(data));
     

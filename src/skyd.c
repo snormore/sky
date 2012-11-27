@@ -47,9 +47,14 @@ void skyd_options_free(skyd_options *options);
 // Main
 //--------------------------------------
 
+#include "sky_lua.h"
+
 int main(int argc, char **argv)
 {
     int rc;
+
+    lua_State *L = luaL_newstate();
+    debug("lua? %p", L);
 
     // Parse command line options.
     skyd_options *options = skyd_options_parse(argc, argv);

@@ -17,6 +17,7 @@
 #include "add_property_message.h"
 #include "get_property_message.h"
 #include "get_properties_message.h"
+#include "lua_map_reduce_message.h"
 #include "multi_message.h"
 #include "sky_zmq.h"
 #include "dbg.h"
@@ -561,6 +562,11 @@ int sky_server_add_default_message_handlers(sky_server *server)
 
     // 'Get Property' message.
     handler = sky_get_property_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
+    // 'Lua Map Reduce' message.
+    handler = sky_lua_map_reduce_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 

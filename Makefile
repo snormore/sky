@@ -3,7 +3,7 @@
 ################################################################################
 
 CFLAGS=-g -Wall -Wextra -Wno-self-assign -Wno-error=unknown-warning -std=c99 -D_FILE_OFFSET_BITS=64
-LIBS=-lzmq -ldl bin/libluajit-5.1.a
+LIBS=bin/libluajit-5.1.a -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES}) $(patsubst %.l,%.o,${LEX_SOURCES}) $(patsubst %.y,%.o,${YACC_SOURCES})
@@ -59,11 +59,11 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ranlib $@
 
 bin/skyd: bin ${OBJECTS} bin/libsky.a bin/libluajit-5.1.a
-	$(CC) $(CFLAGS) -Isrc -o $@ src/skyd.c bin/libsky.a $(LIBS)
+	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ src/skyd.c bin/libsky.a $(LIBS)
 	chmod 700 $@
 
 bin/sky-gen: bin ${OBJECTS} bin/libsky.a bin/libluajit-5.1.a
-	$(CC) $(CFLAGS) src/sky_gen.o -o $@ bin/libsky.a $(LIBS)
+	$(CC) $(CFLAGS) $(LUAJIT_FLAGS) src/sky_gen.o -o $@ bin/libsky.a $(LIBS)
 	chmod 700 $@
 
 bin:
