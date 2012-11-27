@@ -6,7 +6,6 @@
 
 #include "types.h"
 #include "lua_map_reduce_message.h"
-#include "sky_lua.h"
 #include "path_iterator.h"
 #include "action.h"
 #include "minipack.h"
@@ -65,6 +64,12 @@ error:
 void sky_lua_map_reduce_message_free(sky_lua_map_reduce_message *message)
 {
     if(message) {
+        if(message->L) lua_close(message->L);
+        message->L = NULL;
+        
+        bdestroy(message->results);
+        message->results = NULL;
+        
         free(message);
     }
 }
@@ -129,7 +134,11 @@ int sky_lua_map_reduce_message_process(sky_server *server,
 
     // Create a message object.
     message = sky_lua_map_reduce_message_create(); check_mem(message);
-    check_mem(message->results);
+    message->results = bfromcstr("\x80"); check_mem(message->results);
+
+    // Compile Lua script.
+    rc = sky_lua_initscript_with_table(message->source, table, NULL, &message->L);
+    check(rc == 0, "Unable to initialize script");
 
     // Attach message to worker.
     worker->data = (sky_lua_map_reduce_message*)message;
@@ -304,7 +313,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     check(rc == 0, "Unable to execute Lua script: %s", lua_tostring(L, -1));
 
     // Execute the script and return a msgpack variable.
-    rc = sky_lua_to_msgpack(L, &msgpack_ret);
+    rc = sky_lua_msgpack_pack(L, &msgpack_ret);
     check(rc == 0, "Unable to execute Lua script");
 
     // Close Lua.
@@ -345,15 +354,37 @@ int sky_lua_map_reduce_message_worker_map_free(void *data)
 // Returns 0 if successful, otherwise returns -1.
 int sky_lua_map_reduce_message_worker_reduce(sky_worker *worker, void *data)
 {
+    int rc;
     assert(worker != NULL);
     assert(data != NULL);
     
-    // Ease-of-use references.
-    //sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
+    sky_lua_map_reduce_message *message = (sky_lua_map_reduce_message*)worker->data;
 
-    // TODO: Merge results.
+    // Retrieve ref to 'reduce()' function.
+    lua_getglobal(message->L, "reduce");
+
+    // Push 'results' table to the function.
+    rc = sky_lua_msgpack_unpack(message->L, message->results);
+    check(rc == 0, "Unable to push results table to Lua");
+    bdestroy(message->results);
+    message->results = NULL;
+
+    // Push 'map_data' table to the function.
+    rc = sky_lua_msgpack_unpack(message->L, (bstring)data);
+    check(rc == 0, "Unable to push map data table to Lua");
     
+    // Execute 'reduce(results, data)'.
+    rc = lua_pcall(message->L, 2, 1, 0);
+    check(rc == 0, "Unable to execute Lua script: %s", lua_tostring(message->L, -1));
+
+    // Execute the script and return a msgpack variable.
+    rc = sky_lua_msgpack_pack(message->L, &message->results);
+    check(rc == 0, "Unable to unpack results table from Lua script");
+
     return 0;
+
+error:
+    return -1;
 }
 
 // Writes the results to an output stream.
@@ -377,10 +408,7 @@ int sky_lua_map_reduce_message_worker_write(sky_worker *worker, FILE *output)
     check(sky_minipack_fwrite_bstring(output, &SKY_LUA_MAP_REDUCE_STATUS_STR) == 0, "Unable to write status key");
     check(sky_minipack_fwrite_bstring(output, &SKY_LUA_MAP_REDUCE_OK_STR) == 0, "Unable to write status value");
     check(sky_minipack_fwrite_bstring(output, &SKY_LUA_MAP_REDUCE_DATA_STR) == 0, "Unable to write data key");
-    check(minipack_fwrite_nil(output, &sz) == 0, "Unable to write data value");
-    
-    // Write total number of events to log.
-    printf("[lua::map_reduce] events: %lld\n", message->event_count);
+    check(sky_minipack_fwrite_bstring(output, message->results) == 0, "Unable to write data value");
     
     return 0;
 

@@ -103,6 +103,46 @@ int test_sky_lua_map_reduce_message_worker_map() {
     return 0;
 }
 
+int test_sky_lua_map_reduce_message_worker_reduce() {
+    int rc;
+    importtmp("tests/fixtures/lua_map_reduce_message/0/import.json");
+    sky_table *table = sky_table_create();
+    table->path = bfromcstr("tmp");
+    sky_table_open(table);
+
+    sky_lua_map_reduce_message *message = sky_lua_map_reduce_message_create();
+    message->results = bfromcstr("\x80");
+    message->source = bfromcstr(
+        "function reduce(results, data)\n"
+        "  for k,v in pairs(data) do\n"
+        "    results[k] = (results[k] or 0) + v\n"
+        "  end\n"
+        "  return results\n"
+        "end"
+    );
+    rc = sky_lua_initscript_with_table(message->source, table, NULL, &message->L);
+    mu_assert_int_equals(rc, 0);
+    sky_worker *worker = sky_worker_create();
+    worker->data = (void*)message;
+
+    struct tagbstring map_data1 = bsStatic("\x81\x02\x08");
+    rc = sky_lua_map_reduce_message_worker_reduce(worker, &map_data1);
+    mu_assert_int_equals(rc, 0);
+    mu_assert_int_equals(blength(message->results), 3);
+    mu_assert_mem(bdata(message->results), "\x81\x02\x08", blength(message->results));
+
+    struct tagbstring map_data2 = bsStatic("\x83\x02\x02\x04\x01\xA3" "foo" "\02");
+    rc = sky_lua_map_reduce_message_worker_reduce(worker, &map_data2);
+    mu_assert_int_equals(rc, 0);
+    mu_assert_int_equals(blength(message->results), 10);
+    mu_assert_mem(bdata(message->results), "\x83\x02\x0A\x04\x01\xA3" "foo" "\x02", blength(message->results));
+
+    sky_lua_map_reduce_message_free(message);
+    sky_worker_free(worker);
+    sky_table_free(table);
+    return 0;
+}
+
 
 //==============================================================================
 //
@@ -115,6 +155,7 @@ int all_tests() {
     mu_run_test(test_sky_lua_map_reduce_message_unpack);
     mu_run_test(test_sky_lua_map_reduce_message_worker_read);
     mu_run_test(test_sky_lua_map_reduce_message_worker_map);
+    mu_run_test(test_sky_lua_map_reduce_message_worker_reduce);
     return 0;
 }
 

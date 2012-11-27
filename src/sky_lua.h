@@ -30,7 +30,9 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
 // MessagePack
 //--------------------------------------
 
-int sky_lua_to_msgpack(lua_State *L, bstring *ret);
+int sky_lua_msgpack_pack(lua_State *L, bstring *ret);
+
+int sky_lua_msgpack_unpack(lua_State *L, bstring data);
 
 //--------------------------------------
 // Property File Integration

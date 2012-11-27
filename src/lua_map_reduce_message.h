@@ -8,6 +8,7 @@
 #include "bstring.h"
 #include "message_header.h"
 #include "message_handler.h"
+#include "sky_lua.h"
 #include "table.h"
 #include "tablet.h"
 #include "event.h"
@@ -22,9 +23,9 @@
 
 // A message for executing a distributed map/reduce lua script across a table.
 typedef struct {
-    void *results;
+    bstring results;
     bstring source;
-    int64_t event_count;
+    lua_State *L;
 } sky_lua_map_reduce_message;
 
 

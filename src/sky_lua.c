@@ -72,12 +72,8 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     bstring new_source = NULL;
     assert(source != NULL);
     assert(table != NULL);
-    assert(descriptor != NULL);
     assert(L != NULL);
     
-    // Always use 32-bit integers.
-    descriptor->int_type = SKY_DATA_DESCRIPTOR_INT32;
-
     // Generate header.
     rc = sky_lua_generate_header(source, table, &header);
     check(rc == 0, "Unable to generate header");
@@ -88,10 +84,13 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     check(rc == 0, "Unable to initialize Lua script");
 
     // Initialize data descriptor.
-    lua_getglobal(*L, "sky_init_descriptor");
-    lua_pushlightuserdata(*L, descriptor);
-    rc = lua_pcall(*L, 1, 0, 0);
-    check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
+    if(descriptor != NULL) {
+        descriptor->int_type = SKY_DATA_DESCRIPTOR_INT32;
+        lua_getglobal(*L, "sky_init_descriptor");
+        lua_pushlightuserdata(*L, descriptor);
+        rc = lua_pcall(*L, 1, 0, 0);
+        check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
+    }
 
     return 0;
 
@@ -111,7 +110,7 @@ error:
 // ret   - A pointer to where the msgpack result should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_lua_to_msgpack(lua_State *L, bstring *ret)
+int sky_lua_msgpack_pack(lua_State *L, bstring *ret)
 {
     int rc;
     assert(L != NULL);
@@ -126,11 +125,41 @@ int sky_lua_to_msgpack(lua_State *L, bstring *ret)
     *ret = (void*)bfromcstr(lua_tostring(L, -1));
     check_mem(*ret);
 
+    lua_pop(L, 1);
+
     return 0;
 
 error:
     bdestroy(*ret);
     *ret = NULL;
+    return -1;
+}
+
+// Converts a MessagePack encoded string to a Lua object on the top of the
+// stack.
+//
+// L    - The lua state.
+// data - A pointer to where the msgpack result should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_lua_msgpack_unpack(lua_State *L, bstring data)
+{
+    int rc;
+    assert(L != NULL);
+    assert(data != NULL);
+
+    // Push msgpack value to the top of the stack.
+    lua_pushlstring(L, bdata(data), blength(data));
+    
+    // Decode into Lua object.
+    rc = mp_unpack(L);
+    check(rc == 1, "Unable to decode msgpack data into Lua object");
+
+    lua_remove(L, -2);
+
+    return 0;
+
+error:
     return -1;
 }
 
