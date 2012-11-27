@@ -125,11 +125,11 @@ int test_sky_map_all() {
 
     struct tagbstring source = bsStatic(
         "function map(cursor, data)\n"
-        "  data.path_count = data.path_count + 1\n"
+        "  data.path_count = (data.path_count or 0) + 1\n"
         "  while not cursor:eof() do\n"
         "    event = cursor:event()\n"
-        "    data.event_count = data.event_count + 1\n"
-        "    data.z = data.z + event.x + event.y\n"
+        "    data.event_count = (data.event_count or 0) + 1\n"
+        "    data.z = (data.z or 0) + event.x + event.y\n"
         "    cursor:next()\n"
         "  end\n"
         "end\n"
@@ -149,7 +149,7 @@ int test_sky_map_all() {
 
     // Call sky_map_all() function.
     uint32_t i;
-    for(i=0; i<100000; i++) {
+    for(i=0; i<1; i++) {
         sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
         lua_getglobal(L, "sky_map_all");
         lua_pushlightuserdata(L, &iterator);

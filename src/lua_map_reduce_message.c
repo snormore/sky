@@ -289,6 +289,9 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     descriptor = sky_data_descriptor_create(); check_mem(descriptor);
     rc = sky_lua_initscript_with_table(message->source, tablet->table, descriptor, &L);
     check(rc == 0, "Unable to initialize script");
+    
+    iterator.cursor.data_descriptor = descriptor;
+    iterator.cursor.data = calloc(1, descriptor->data_sz); check_mem(iterator.cursor.data);
 
     // Assign the data file to iterate over.
     rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
@@ -296,7 +299,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
 
     // Execute function.
     lua_getglobal(L, "sky_map_all");
-    lua_pushlightuserdata(L, NULL);
+    lua_pushlightuserdata(L, &iterator);
     rc = lua_pcall(L, 1, 1, 0);
     check(rc == 0, "Unable to execute Lua script: %s", lua_tostring(L, -1));
 

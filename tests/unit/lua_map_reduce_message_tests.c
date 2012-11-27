@@ -77,8 +77,14 @@ int test_sky_lua_map_reduce_message_worker_map() {
 
     sky_lua_map_reduce_message *message = sky_lua_map_reduce_message_create();
     message->source = bfromcstr(
-        "function map(event)\n"
-        "  return 10\n"
+        "function map(cursor, data)\n"
+        "  data.count = data.count or 0\n"
+        "  while not cursor:eof() do\n"
+        "    event = cursor:event()\n"
+        "    data.count = data.count + 1\n"
+        "    data[event.action_id] = (data[event.action_id] or 0) + 1\n"
+        "    cursor:next()\n"
+        "  end\n"
         "end"
     );
     sky_worker *worker = sky_worker_create();
@@ -87,8 +93,8 @@ int test_sky_lua_map_reduce_message_worker_map() {
     bstring results = NULL;
     int rc = sky_lua_map_reduce_message_worker_map(worker, table->tablets[0], (void**)&results);
     mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(blength(results), 1);
-    mu_assert_mem(bdata(results), "\x0a", 1);
+    mu_assert_int_equals(blength(results), 16);
+    mu_assert_mem(bdata(results), "\x85\x01\x02\x02\x02\x03\x01\x04\x01\xA5" "count" "\x06", 16);
 
     bdestroy(results);
     sky_lua_map_reduce_message_free(message);
@@ -108,7 +114,7 @@ int all_tests() {
     mu_run_test(test_sky_lua_map_reduce_message_pack);
     mu_run_test(test_sky_lua_map_reduce_message_unpack);
     mu_run_test(test_sky_lua_map_reduce_message_worker_read);
-    //mu_run_test(test_sky_lua_map_reduce_message_worker_map);
+    mu_run_test(test_sky_lua_map_reduce_message_worker_map);
     return 0;
 }
 

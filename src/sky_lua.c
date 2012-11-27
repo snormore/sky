@@ -37,7 +37,7 @@ int sky_lua_initscript(bstring source, lua_State **L)
     rc = luaopen_cmsgpack(*L);
     check(rc == 1, "Unable to load lua-cmsgpack");
     
-    //debug("--SOURCE--\n%s", bdata(source));
+    debug("--SOURCE--\n%s", bdata(source));
     
     // Compile lua script.
     rc = luaL_loadstring(*L, bdata(source));
@@ -213,14 +213,13 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "%s\n"
         "function sky_map_all(_iterator)\n"
         "  iterator = ffi.cast(\"sky_path_iterator_t*\", _iterator)\n"
-        "  data = {path_count=0, event_count=0, z=0}\n"
+        "  data = {}\n"
         "  while not iterator:eof() do\n"
         "    cursor = iterator:cursor()\n"
         "    map(cursor, data)\n"
         "    iterator:next()\n"
         "  end\n"
-        "  --io.write(\"data: \" .. data.event_count .. \" events!\\n\")\n"
-        "  return data.event_count\n"
+        "  return data\n"
         "end\n"
         "\n"
         "-- SKY GENERATED CODE END --\n"
@@ -293,16 +292,22 @@ int sky_lua_generate_event_info(bstring source,
         // Move past the "event." string.
         pos += blength(&EVENT_DOT_STR);
 
-        if(!skip) {
-            // Read in identifier.
-            int i;
-            for(i=pos+1; i<blength(source); i++) {
-                char ch = bchar(source, i);
-                if(!(isalnum(ch) || ch == '_')) {
-                    break;
-                }
+        // Read in identifier.
+        int i;
+        for(i=pos+1; i<blength(source); i++) {
+            char ch = bchar(source, i);
+            if(!(isalnum(ch) || ch == '_')) {
+                break;
             }
-            identifier = bmidstr(source, pos, i-pos); check_mem(identifier);
+        }
+        identifier = bmidstr(source, pos, i-pos); check_mem(identifier);
+
+        // Skip if the identifier refers to the action id or timestamp.
+        if(biseqcstr(identifier, "action_id") == 1 || biseqcstr(identifier, "timestamp") == 1) {
+            skip = true;
+        }
+
+        if(!skip) {
             if(blength(identifier)) {
                 sky_property *property = NULL;
                 rc = sky_property_file_find_by_name(property_file, identifier, &property);
@@ -341,10 +346,10 @@ int sky_lua_generate_event_info(bstring source,
                     lookup[property->id - SKY_PROPERTY_ID_MIN] = true;
                 }
             }
-
-            bdestroy(identifier);
-            identifier = NULL;
         }
+
+        bdestroy(identifier);
+        identifier = NULL;
     }
 
     // Wrap properties in a struct.
