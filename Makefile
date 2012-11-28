@@ -2,7 +2,7 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -Wall -Wextra -Wno-self-assign -Wno-error=unknown-warning -std=c99 -D_FILE_OFFSET_BITS=64
+CFLAGS=-g -O3 -Wall -Wextra -Wno-self-assign -Wno-error=unknown-warning -std=c99 -D_FILE_OFFSET_BITS=64
 LIBS=bin/libluajit-5.1.a -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
