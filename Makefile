@@ -2,11 +2,11 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -O3 -Wall -Wextra -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64
+CFLAGS=-g -O3 -Wall -Wextra -Wno-strict-overflow -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64
 LIBS=-lluajit-5.1 -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
-OBJECTS=$(patsubst %.c,%.o,${SOURCES}) $(patsubst %.l,%.o,${LEX_SOURCES}) $(patsubst %.y,%.o,${YACC_SOURCES})
+OBJECTS=$(patsubst %.c,%.o,${SOURCES})
 BIN_SOURCES=src/skyd.c,src/sky_gen.c
 BIN_OBJECTS=$(patsubst %.c,%.o,${BIN_SOURCES})
 LIB_SOURCES=$(filter-out ${BIN_SOURCES},${SOURCES})
@@ -106,7 +106,7 @@ tmp:
 	mkdir -p tmp
 
 clean: 
-	rm -rf bin ${OBJECTS} ${TEST_OBJECTS} ${LEX_OBJECTS} ${YACC_OBJECTS}
+	rm -rf bin ${OBJECTS} ${TEST_OBJECTS}
 	rm -rf tests/*.dSYM tests/**/*.dSYM
 	rm -rf  tests/*.o tests/**/*.o
 	rm -rf tmp/*

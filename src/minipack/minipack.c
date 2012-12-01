@@ -1,7 +1,9 @@
-// minipack v0.5.0
+// minipack v0.5.1
 
 #include "minipack.h"
-#include "string.h"
+#include <string.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 
 //==============================================================================
 //
@@ -171,7 +173,7 @@
 #endif
 #endif
 
-#if !defined(BYTE_ORDER)
+#if !defined(BYTE_ORDER) && !defined(__BYTE_ORDER)
 #error "Undefined byte order"
 #endif
 
@@ -189,7 +191,7 @@ uint64_t bswap64(uint64_t value)
     );
 }
 
-#if (BYTE_ORDER == LITTLE_ENDIAN)
+#if (BYTE_ORDER == LITTLE_ENDIAN) || (__BYTE_ORDER == __LITTLE_ENDIAN)
 #define htonll(x) bswap64(x)
 #define ntohll(x) bswap64(x)
 #else
@@ -1273,7 +1275,8 @@ float minipack_unpack_float(void *ptr, size_t *sz)
     // Cast bytes to int32 to use ntohl.
     uint32_t value = *((uint32_t*)(ptr+1));
     value = ntohl(value);
-    return *((float*)&value);
+    float *float_value = (float*)&value;
+    return *float_value;
 }
 
 // Writes a float to a given memory address.
@@ -1283,10 +1286,14 @@ void minipack_pack_float(void *ptr, float value, size_t *sz)
 {
     *sz = FLOAT_SIZE;
     
-    uint32_t bytes = htonl(*((uint32_t*)&value));
+    uint32_t *bytes_ptr = (uint32_t*)&value;
+    uint32_t bytes = *bytes_ptr;
+    bytes = htonl(bytes);
     *((uint8_t*)ptr)   = FLOAT_TYPE;
-    *((float*)(ptr+1)) = *((float*)&bytes);
+    float *float_ptr = (float*)&bytes;
+    *((float*)(ptr+1)) = *float_ptr;
 }
+
 
 // Reads and unpacks a float from a file stream. If the element at the
 // current location is not a float then the sz is returned as 0.
@@ -1459,11 +1466,8 @@ size_t minipack_sizeof_raw(uint32_t length)
     else if(length <= RAW16_MAXSIZE) {
         return RAW16_SIZE;
     }
-    else if(length <= RAW32_MAXSIZE) {
-        return RAW32_SIZE;
-    }
 
-    return 0;
+    return RAW32_SIZE;
 }
 
 // Retrieves the size, in bytes, of how large the element at the given address
@@ -1520,16 +1524,13 @@ void minipack_pack_raw(void *ptr, uint32_t length, size_t *sz)
 {
     if(length <= FIXRAW_MAXSIZE) {
         minipack_pack_fixraw(ptr, (uint8_t)length, sz);
+        return;
     }
     else if(length <= RAW16_MAXSIZE) {
         minipack_pack_raw16(ptr, (uint16_t)length, sz);
+        return;
     }
-    else if(length <= RAW32_MAXSIZE) {
-        minipack_pack_raw32(ptr, length, sz);
-    }
-    else {
-        *sz = 0;
-    }
+    minipack_pack_raw32(ptr, length, sz);
 }
 
 // Reads and unpacks a raw bytes element from a file stream. If the element at
@@ -1727,11 +1728,7 @@ size_t minipack_sizeof_array(uint32_t count)
     else if(count <= ARRAY16_MAXSIZE) {
         return ARRAY16_SIZE;
     }
-    else if(count <= ARRAY32_MAXSIZE) {
-        return ARRAY32_SIZE;
-    }
-
-    return 0;
+    return ARRAY32_SIZE;
 }
 
 // Retrieves the size, in bytes, of how large the element at the given address
@@ -1788,16 +1785,13 @@ void minipack_pack_array(void *ptr, uint32_t count, size_t *sz)
 {
     if(count <= FIXARRAY_MAXSIZE) {
         minipack_pack_fixarray(ptr, (uint8_t)count, sz);
+        return;
     }
     else if(count <= ARRAY16_MAXSIZE) {
         minipack_pack_array16(ptr, (uint16_t)count, sz);
+        return;
     }
-    else if(count <= ARRAY32_MAXSIZE) {
-        minipack_pack_array32(ptr, count, sz);
-    }
-    else {
-        *sz = 0;
-    }
+    minipack_pack_array32(ptr, count, sz);
 }
 
 // Reads and unpacks an array element from a file stream. If the element at
@@ -1999,11 +1993,7 @@ size_t minipack_sizeof_map(uint32_t count)
     else if(count <= MAP16_MAXSIZE) {
         return MAP16_SIZE;
     }
-    else if(count <= MAP32_MAXSIZE) {
-        return MAP32_SIZE;
-    }
-
-    return 0;
+    return MAP32_SIZE;
 }
 
 // Retrieves the size, in bytes, of how large the element at the given address
@@ -2060,16 +2050,13 @@ void minipack_pack_map(void *ptr, uint32_t count, size_t *sz)
 {
     if(count <= FIXMAP_MAXSIZE) {
         minipack_pack_fixmap(ptr, (uint8_t)count, sz);
+        return;
     }
     else if(count <= MAP16_MAXSIZE) {
         minipack_pack_map16(ptr, (uint16_t)count, sz);
+        return;
     }
-    else if(count <= MAP32_MAXSIZE) {
-        minipack_pack_map32(ptr, count, sz);
-    }
-    else {
-        *sz = 0;
-    }
+    minipack_pack_map32(ptr, count, sz);
 }
 
 // Reads and unpacks a map element from a file stream. If the element at

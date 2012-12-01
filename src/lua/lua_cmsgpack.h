@@ -1,8 +1,8 @@
 #ifndef _lua_cmsgpack_h
 #define _lua_cmsgpack_h
 
-#include "lua.h"
-#include "lauxlib.h"
+#include "luajit-2.0/lua.h"
+#include "luajit-2.0/lauxlib.h"
 
 LUALIB_API int luaopen_cmsgpack(lua_State *L);
 
