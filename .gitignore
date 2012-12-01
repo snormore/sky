@@ -18,3 +18,5 @@ bin/cachegrind.out
 deps/luajit-2.0.0/*
 deps/luajit-2.0.0/**/*
 deps/luajit-2.0.0/**/**/*
+Vagrantfile
+.vagrant
