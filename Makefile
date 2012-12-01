@@ -24,9 +24,16 @@ PREFIX?=/usr/local
 # Main Targets
 ################################################################################
 
-compile: bin/libsky.a bin/skyd bin/sky-gen
+compile: bin/libleveldb.a bin/libsky.a bin/skyd bin/sky-gen
 all: compile test
 
+################################################################################
+# Dependencies
+################################################################################
+
+bin/libleveldb.a: bin
+	${MAKE} -C deps/leveldb-1.7.0
+	mv deps/leveldb-1.7.0/libleveldb.a bin/libleveldb.a
 
 ################################################################################
 # Installation
@@ -49,12 +56,12 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ar rcs $@ ${LIB_OBJECTS}
 	ranlib $@
 
-bin/skyd: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ src/skyd.c bin/libsky.a $(LIBS)
+bin/skyd: bin ${OBJECTS} bin/libsky.a bin/libleveldb.a
+	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ src/skyd.c bin/libsky.a bin/libleveldb.a $(LIBS)
 	chmod 700 $@
 
-bin/sky-gen: bin ${OBJECTS} bin/libsky.a
-	$(CC) $(CFLAGS) $(LUAJIT_FLAGS) src/sky_gen.o -o $@ bin/libsky.a $(LIBS)
+bin/sky-gen: bin ${OBJECTS} bin/libsky.a bin/libleveldb.a
+	$(CC) $(CFLAGS) $(LUAJIT_FLAGS) src/sky_gen.o -o $@ bin/libsky.a bin/libleveldb.a $(LIBS)
 	chmod 700 $@
 
 bin:
@@ -94,8 +101,8 @@ release: clean all
 test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh $(VALGRIND)
 
-$(TEST_OBJECTS): %: %.c bin/libsky.a
-	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $< $(LIBS) bin/libsky.a
+$(TEST_OBJECTS): %: %.c bin/libsky.a bin/libleveldb.a
+	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $< $(LIBS) bin/libsky.a bin/libleveldb.a
 
 
 ################################################################################
