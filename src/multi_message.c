@@ -144,7 +144,7 @@ size_t sky_multi_message_sizeof(sky_multi_message *message)
 {
     size_t sz = 0;
     sz += minipack_sizeof_map(SKY_MULTI_KEY_COUNT);
-    sz += minipack_sizeof_raw(blength(&SKY_MULTI_KEY_COUNT_STR)) + blength(&SKY_MULTI_KEY_COUNT_STR);
+    sz += minipack_sizeof_raw((&SKY_MULTI_KEY_COUNT_STR)->slen) + (&SKY_MULTI_KEY_COUNT_STR)->slen;
     sz += minipack_sizeof_uint(message->message_count);
     return sz;
 }

@@ -20,7 +20,7 @@
 #endif
 #endif
 
-#if !defined(BYTE_ORDER)
+#if !defined(BYTE_ORDER) && !defined(__BYTE_ORDER)
 #error "Undefined byte order"
 #endif
 
@@ -35,7 +35,7 @@ uint16_t bswap16(uint16_t value);
 uint32_t bswap32(uint32_t value);
 uint64_t bswap64(uint64_t value);
 
-#if (BYTE_ORDER == LITTLE_ENDIAN)
+#if (BYTE_ORDER == LITTLE_ENDIAN) || (__BYTE_ORDER == __LITTLE_ENDIAN)
 #define htonll(x) bswap64(x)
 #define ntohll(x) bswap64(x)
 #else

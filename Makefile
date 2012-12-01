@@ -3,7 +3,7 @@
 ################################################################################
 
 CFLAGS=-g -O3 -Wall -Wextra -Wno-strict-overflow -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64
-LIBS=-lluajit-5.1 -lzmq -ldl
+LIBS=-lpthread -lluajit-5.1 -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES})

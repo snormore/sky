@@ -69,9 +69,9 @@ size_t sky_action_sizeof(sky_action *action)
 {
     size_t sz = 0;
     sz += minipack_sizeof_map(SKY_ACTION_KEY_COUNT);
-    sz += minipack_sizeof_raw(blength(&SKY_ACTION_ID_STR)) + blength(&SKY_ACTION_ID_STR);
+    sz += minipack_sizeof_raw((&SKY_ACTION_ID_STR)->slen) + (&SKY_ACTION_ID_STR)->slen;
     sz += minipack_sizeof_uint(action->id);
-    sz += minipack_sizeof_raw(blength(&SKY_ACTION_NAME_STR)) + blength(&SKY_ACTION_NAME_STR);
+    sz += minipack_sizeof_raw((&SKY_ACTION_NAME_STR)->slen) + (&SKY_ACTION_NAME_STR)->slen;
     sz += blength(action->name);
     return sz;
 }

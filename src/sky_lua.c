@@ -324,7 +324,7 @@ int sky_lua_generate_event_info(bstring source,
         }
         
         // Move past the "event." string.
-        pos += blength(&EVENT_DOT_STR);
+        pos += (&EVENT_DOT_STR)->slen;
 
         // Read in identifier.
         int i;

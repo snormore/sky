@@ -69,8 +69,8 @@ int tests_run;
 
 #define mu_assert_bstring(ACTUAL, EXPECTED) do {\
     struct tagbstring expected = bsStatic(EXPECTED); \
-    if(blength(ACTUAL) != blength(&expected)) { \
-        mu_fail("String length doesn\'t not match. exp:%d, recv:%d", blength(&expected), blength(ACTUAL)); \
+    if(blength(ACTUAL) != (&expected)->slen) { \
+        mu_fail("String length doesn\'t not match. exp:%d, recv:%d", (&expected)->slen, blength(ACTUAL)); \
     } \
     int32_t _i; \
     for(_i=0; _i<blength(ACTUAL); _i++) { \

@@ -1,4 +1,4 @@
-// minipack v0.5.1
+// minipack v0.5.2
 
 #include "minipack.h"
 #include <string.h>
@@ -1373,7 +1373,8 @@ double minipack_unpack_double(void *ptr, size_t *sz)
     // Cast bytes to int64 to use ntohll.
     uint64_t value = *((uint64_t*)(ptr+1));
     value = ntohll(value);
-    return *((double*)&value);
+    double *double_ptr = (double*)&value;
+    return *double_ptr;
 }
 
 // Writes a double to a given memory address.
@@ -1383,9 +1384,11 @@ void minipack_pack_double(void *ptr, double value, size_t *sz)
 {
     *sz = DOUBLE_SIZE;
     
-    uint64_t bytes = htonll(*((uint64_t*)&value));
+    uint64_t *bytes_ptr = (uint64_t*)&value;
+    uint64_t bytes = htonll(*bytes_ptr);
     *((uint8_t*)ptr)    = DOUBLE_TYPE;
-    *((double*)(ptr+1)) = *((double*)&bytes);
+    double *double_ptr = (double*)&bytes;
+    *((double*)(ptr+1)) = *double_ptr;
 }
 
 // Reads and unpacks a double from a file stream. If the element at the

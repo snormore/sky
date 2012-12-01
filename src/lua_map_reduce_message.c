@@ -171,7 +171,7 @@ size_t sky_lua_map_reduce_message_sizeof(sky_lua_map_reduce_message *message)
 {
     size_t sz = 0;
     sz += minipack_sizeof_map(SKY_LUA_MAP_REDUCE_KEY_COUNT);
-    sz += minipack_sizeof_raw(blength(&SKY_LUA_MAP_REDUCE_KEY_SOURCE)) + blength(&SKY_LUA_MAP_REDUCE_KEY_SOURCE);
+    sz += minipack_sizeof_raw((&SKY_LUA_MAP_REDUCE_KEY_SOURCE)->slen) + (&SKY_LUA_MAP_REDUCE_KEY_SOURCE)->slen;
     sz += minipack_sizeof_raw(blength(message->source)) + blength(message->source);
     return sz;
 }

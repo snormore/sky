@@ -356,13 +356,13 @@ size_t sky_add_event_message_sizeof(sky_add_event_message *message)
 {
     size_t sz = 0;
     sz += minipack_sizeof_map(SKY_ADD_EVENT_KEY_COUNT);
-    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_OBJECT_ID)) + blength(&SKY_ADD_EVENT_KEY_OBJECT_ID);
+    sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_OBJECT_ID)->slen) + (&SKY_ADD_EVENT_KEY_OBJECT_ID)->slen;
     sz += minipack_sizeof_uint(message->object_id);
-    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_TIMESTAMP)) + blength(&SKY_ADD_EVENT_KEY_TIMESTAMP);
+    sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_TIMESTAMP)->slen) + (&SKY_ADD_EVENT_KEY_TIMESTAMP)->slen;
     sz += minipack_sizeof_int(message->timestamp);
-    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_ACTION)) + blength(&SKY_ADD_EVENT_KEY_ACTION);
+    sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_ACTION)->slen) + (&SKY_ADD_EVENT_KEY_ACTION)->slen;
     sz += sky_add_event_message_sizeof_action(message);
-    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_DATA)) + blength(&SKY_ADD_EVENT_KEY_DATA);
+    sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_DATA)->slen) + (&SKY_ADD_EVENT_KEY_DATA)->slen;
     sz += sky_add_event_message_sizeof_data(message);
     return sz;
 }
@@ -381,7 +381,7 @@ size_t sky_add_event_message_sizeof_action(sky_add_event_message *message)
     sz += minipack_sizeof_map(message->action_data_count + 1);
 
     // Action name.
-    sz += minipack_sizeof_raw(blength(&SKY_ADD_EVENT_KEY_NAME)) + blength(&SKY_ADD_EVENT_KEY_NAME);
+    sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_NAME)->slen) + (&SKY_ADD_EVENT_KEY_NAME)->slen;
     sz += minipack_sizeof_raw(blength(message->action_name)) + blength(message->action_name);
 
     // Action data.

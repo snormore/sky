@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 typedef struct sky_servlet sky_servlet;
 
