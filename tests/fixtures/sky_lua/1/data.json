@@ -1,6 +1,5 @@
 {
   table:{
-    blockSize: 128,
     properties:[
       {type:"object", dataType:"Int", name:"x"}
       {type:"object", dataType:"Int", name:"y"}

@@ -1,6 +1,5 @@
 {
   table:{
-    blockSize: 128,
     properties:[
       {type:"action", dataType:"String", name:"_test123"},
       {type:"object", dataType:"Int", name:"hello"}

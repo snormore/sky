@@ -20,15 +20,23 @@ int test() {
     start_server(1, &thread);
     send_msg("tests/functional/fixtures/add_event/0/input");
     pthread_join(thread, NULL);
+
     mu_assert_msg("tests/functional/fixtures/add_event/0/output");
-    mu_assert_file("tmp/0/data", "tests/functional/fixtures/add_event/0/0/data");
-    mu_assert_file("tmp/0/header", "tests/functional/fixtures/add_event/0/0/header");
-    mu_assert_file("tmp/1/data", "tests/functional/fixtures/add_event/0/1/data");
-    mu_assert_file("tmp/1/header", "tests/functional/fixtures/add_event/0/1/header");
-    mu_assert_file("tmp/2/data", "tests/functional/fixtures/add_event/0/2/data");
-    mu_assert_file("tmp/2/header", "tests/functional/fixtures/add_event/0/2/header");
-    mu_assert_file("tmp/3/data", "tests/functional/fixtures/add_event/0/3/data");
-    mu_assert_file("tmp/3/header", "tests/functional/fixtures/add_event/0/3/header");
+
+    void *data;
+    size_t data_length;
+    sky_table *table = sky_table_create();
+    table->path = bfromcstr("tmp");
+    sky_table_open(table);
+    sky_tablet_get_path(table->tablets[2], 10, &data, &data_length);
+    mu_assert_mem(data, 
+        "\x03\xE8\x03\x00\x00\x00\x00\x00\x00\x05\x00\x1F\x00\x00\x00\xFF"
+        "\xA6\x7A\x7A\x7A\x7A\x7A\x7A\xFE\x0A\x01\xA3\x78\x79\x7A\x02\xD1"
+        "\x00\xC8\x03\xCB\x40\x59\x0C\xCC\xCC\xCC\xCC\xCD\x04\xC3\x01\x40"
+        "\x42\x0F\x00\x00\x00\x00\x00\x01\x00\x01\x80\x84\x1E\x00\x00\x00"
+        "\x00\x00\x02\x00\x01\xC0\xC6\x2D\x00\x00\x00\x00\x00\x03\x00",
+        data_length
+    );
     return 0;
 }
 

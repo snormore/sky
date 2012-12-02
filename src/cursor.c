@@ -10,16 +10,6 @@
 
 //==============================================================================
 //
-// Forward Declarations
-//
-//==============================================================================
-
-int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr);
-int sky_cursor_set_eof(sky_cursor *cursor);
-
-
-//==============================================================================
-//
 // Functions
 //
 //==============================================================================
@@ -61,113 +51,10 @@ void sky_cursor_init(sky_cursor *cursor)
 void sky_cursor_free(sky_cursor *cursor)
 {
     if(cursor) {
-        sky_cursor_uninit(cursor);
         free(cursor);
     }
 }
 
-// Deallocates child members.
-//
-// cursor - The cursor.
-void sky_cursor_uninit(sky_cursor *cursor)
-{
-    if(cursor) {
-        if(cursor->paths) free(cursor->paths);
-        cursor->paths = NULL;
-        cursor->path_bcount = 0;
-    }
-}
-
-
-//--------------------------------------
-// Path Management
-//--------------------------------------
-
-// Assigns a single path to the cursor.
-// 
-// cursor - The cursor.
-// ptr    - A pointer to the raw data where the path starts.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_path(sky_cursor *cursor, void *ptr)
-{
-    int rc;
-    assert(cursor != NULL);
-
-    // If data is not null then create an array of one pointer.
-    if(ptr != NULL) {
-        void *ptrs[1];
-        ptrs[0] = ptr;
-        rc = sky_cursor_set_paths(cursor, ptrs, 1);
-        check(rc == 0, "Unable to set path data to cursor");
-    }
-    // Otherwise clear out pointer paths.
-    else {
-        rc = sky_cursor_set_paths(cursor, NULL, 0);
-        check(rc == 0, "Unable to remove path data");
-    }
-
-    return 0;
-
-error:
-    return -1;
-}
-
-// Assigns a list of path pointers to the cursor.
-// 
-// cursor - The cursor.
-// ptrs   - An array to pointers of raw paths.
-// count  - The number of paths in the array.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count)
-{
-    int rc;
-    assert(cursor != NULL);
-    
-    // Reallocate if the paths buffer is too small.
-    if(count > cursor->path_bcount) {
-        cursor->path_bcount = count;
-        cursor->paths = realloc(cursor->paths, sizeof(*cursor->paths) * cursor->path_bcount);
-        check_mem(cursor->paths);
-    }
-    
-    // Assign path data list.
-    uint32_t i;
-    for(i=0; i<count; i++) {
-        cursor->paths[i] = ptrs[i];
-    }
-    cursor->path_count = count;
-    cursor->path_index = 0;
-    cursor->event_index = 0;
-    cursor->eof = (count == 0);
-    
-    // Position the pointer at the first path if paths are passed.
-    if(count > 0) {
-        rc = sky_cursor_set_ptr(cursor, cursor->paths[0]);
-        check(rc == 0, "Unable to set paths");
-    }
-    // Otherwise clear out the pointer.
-    else {
-        cursor->ptr = NULL;
-        cursor->endptr = NULL;
-    }
-    
-    // Clear the data object if set.
-    rc = sky_cursor_clear_data(cursor);
-    check(rc == 0, "Unable to clear data");
-
-    // If the cursor has an event then set the data.
-    if(!cursor->eof && cursor->data != NULL && cursor->data_descriptor != NULL) {
-        rc = sky_cursor_set_data(cursor);
-        check(rc == 0, "Unable to set set data on cursor");
-    }
-    
-    return 0;
-
-error:
-    return -1;
-}
 
 
 //--------------------------------------
@@ -178,18 +65,34 @@ error:
 //
 // cursor - The cursor to update.
 // ptr    - The address of the start of a path.
+// sz     - The length of the path data, in bytes.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr)
+int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
 {
+    int rc;
     assert(cursor != NULL);
     assert(ptr != NULL);
     
-    // Store position of first event and store position of end of path.
-    cursor->ptr    = ptr + SKY_PATH_HEADER_LENGTH;
-    cursor->endptr = ptr + sky_path_sizeof_raw(ptr);
+    // Set the start of the path and the length of the data.
+    cursor->ptr    = ptr;
+    cursor->endptr = ptr + sz;
+    cursor->eof    = !(ptr != NULL && cursor->ptr < cursor->endptr);
     
+    // Clear the data object if set.
+    rc = sky_cursor_clear_data(cursor);
+    check(rc == 0, "Unable to clear data");
+
+    // If the cursor has an event then set the data.
+    if(!cursor->eof && cursor->data != NULL && cursor->data_descriptor != NULL) {
+        rc = sky_cursor_set_data(cursor);
+        check(rc == 0, "Unable to set set data on cursor");
+    }
+
     return 0;
+
+error:
+    return -1;
 }
 
 
@@ -215,18 +118,10 @@ int sky_cursor_next(sky_cursor *cursor)
 
     // If pointer is beyond the last event then move to next path.
     if(cursor->ptr >= cursor->endptr) {
-        cursor->path_index++;
-
-        // Move to the next path if more paths are remaining.
-        if(cursor->path_index < cursor->path_count) {
-            rc = sky_cursor_set_ptr(cursor, cursor->paths[cursor->path_index]);
-            check(rc == 0, "Unable to set pointer to path");
-        }
-        // Otherwise set EOF.
-        else {
-            rc = sky_cursor_set_eof(cursor);
-            check(rc == 0, "Unable to set EOF on cursor");
-        }
+        cursor->event_index = 0;
+        cursor->eof = true;
+        cursor->ptr = NULL;
+        cursor->endptr = NULL;
     }
 
     // Make sure that we are point at an event.
@@ -255,24 +150,6 @@ bool sky_cursor_eof(sky_cursor *cursor)
 {
     assert(cursor != NULL);
     return cursor->eof;
-}
-
-// Flags a cursor to say that it is at the end of all its paths.
-//
-// cursor - The cursor to set EOF on.
-//
-// Returns 0 if successful, otherwise returns -1.
-int sky_cursor_set_eof(sky_cursor *cursor)
-{
-    assert(cursor != NULL);
-    
-    cursor->path_index  = 0;
-    cursor->event_index = 0;
-    cursor->eof         = true;
-    cursor->ptr         = NULL;
-    cursor->endptr      = NULL;
-
-    return 0;
 }
 
 

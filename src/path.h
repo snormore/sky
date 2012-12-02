@@ -65,7 +65,6 @@ sky_path *sky_path_create(sky_object_id_t object_id);
 
 void sky_path_free(sky_path *path);
 
-
 //--------------------------------------
 // Serialization
 //--------------------------------------
@@ -83,15 +82,6 @@ int sky_path_unpack(sky_path *path, void *addr, size_t *length);
 
 int sky_path_unpack_hdr(sky_object_id_t *object_id, uint32_t *event_data_length,
     void *addr, size_t *length);
-
-
-//--------------------------------------
-// Stats
-//--------------------------------------
-
-int sky_path_get_event_stats(void *path_ptr, sky_event *event,
-    sky_path_event_stat **events, uint32_t *event_count);
-
 
 //--------------------------------------
 // Event Management

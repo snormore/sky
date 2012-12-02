@@ -355,7 +355,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     iterator.cursor.data_descriptor = message->data_descriptor;
     iterator.cursor.data = (void*)(&data);
 
-    rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
+    rc = sky_path_iterator_set_tablet(&iterator, tablet);
     check(rc == 0, "Unable to initialize path iterator");
 
     // Iterate over each path.

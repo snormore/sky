@@ -1,6 +1,5 @@
 {
   table:{
-    blockSize: 128,
     actions:[
       {name: "hello"},
       {name: "goodbye"}

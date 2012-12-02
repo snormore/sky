@@ -108,7 +108,7 @@ int test_sky_add_event_message_sizeof() {
 //--------------------------------------
 
 int test_sky_add_event_message_worker_map() {
-    loadtmp("tests/fixtures/add_event_message/1/table/pre");
+    importtmp("tests/fixtures/add_event_message/1/import.json");
     sky_table *table = sky_table_create();
     table->path = bfromcstr("tmp");
     table->default_tablet_count = 1;
@@ -129,8 +129,18 @@ int test_sky_add_event_message_worker_map() {
     void *null = NULL;
     int rc = sky_add_event_message_worker_map(worker, table->tablets[0], &null);
     mu_assert_int_equals(rc, 0);
-    mu_assert_file("tmp/0/header", "tests/fixtures/add_event_message/1/table/post/0/header");
-    mu_assert_file("tmp/0/data", "tests/fixtures/add_event_message/1/table/post/0/data");
+
+    void *data;
+    size_t data_length;
+    sky_tablet_get_path(table->tablets[0], 10, &data, &data_length);
+    mu_assert_int_equals(rc, 0);
+    mu_assert_mem(
+        data, 
+        "\x03\xE8\x03\x00\x00\x00\x00\x00\x00\x14\x00\x15\x00\x00\x00\x01"
+        "\xA3\x78\x79\x7A\x02\xD1\x00\xC8\x03\xCB\x40\x59\x0C\xCC\xCC\xCC"
+        "\xCC\xCD\x04\xC3",
+        data_length
+    );
 
     sky_add_event_message_free(message);
     sky_worker_free(worker);

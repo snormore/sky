@@ -2,12 +2,12 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -O3 -Wall -Wextra -Wno-strict-overflow -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64
+CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include
 LIBS=-lpthread -lluajit-5.1 -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES})
-BIN_SOURCES=src/skyd.c,src/sky_gen.c
+BIN_SOURCES=src/skyd.c
 BIN_OBJECTS=$(patsubst %.c,%.o,${BIN_SOURCES})
 LIB_SOURCES=$(filter-out ${BIN_SOURCES},${SOURCES})
 LIB_OBJECTS=$(filter-out ${BIN_OBJECTS},${OBJECTS})
@@ -24,7 +24,7 @@ PREFIX?=/usr/local
 # Main Targets
 ################################################################################
 
-compile: bin/libleveldb.a bin/libsky.a bin/skyd bin/sky-gen
+compile: bin/libleveldb.a bin/libsky.a bin/skyd
 all: compile test
 
 ################################################################################
@@ -57,11 +57,8 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ranlib $@
 
 bin/skyd: bin ${OBJECTS} bin/libsky.a bin/libleveldb.a
-	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ src/skyd.c bin/libsky.a bin/libleveldb.a $(LIBS)
-	chmod 700 $@
-
-bin/sky-gen: bin ${OBJECTS} bin/libsky.a bin/libleveldb.a
-	$(CC) $(CFLAGS) $(LUAJIT_FLAGS) src/sky_gen.o -o $@ bin/libsky.a bin/libleveldb.a $(LIBS)
+	$(CC) $(CFLAGS) -Isrc -c -o $@.o src/skyd.c
+	$(CXX) $(CXXFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $@.o bin/libsky.a bin/libleveldb.a $(LIBS)
 	chmod 700 $@
 
 bin:
@@ -102,7 +99,8 @@ test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh $(VALGRIND)
 
 $(TEST_OBJECTS): %: %.c bin/libsky.a bin/libleveldb.a
-	$(CC) $(CFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $< $(LIBS) bin/libsky.a bin/libleveldb.a
+	$(CC) $(CFLAGS) -Isrc -c -o $@.o $<
+	$(CXX) $(CXXFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $@.o $(LIBS) bin/libsky.a bin/libleveldb.a
 
 
 ################################################################################

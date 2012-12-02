@@ -1,0 +1,10 @@
+{
+  table:{
+    properties:[
+      {type:"object", dataType:"String", name:"myString"},
+      {type:"object", dataType:"Int", name:"myInt"},
+      {type:"object", dataType:"Double", name:"myFloat"},
+      {type:"object", dataType:"Boolean", name:"myBoolean"}
+    ]
+  }
+}

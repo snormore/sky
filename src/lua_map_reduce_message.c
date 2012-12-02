@@ -282,7 +282,7 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     iterator.cursor.data = calloc(1, descriptor->data_sz); check_mem(iterator.cursor.data);
 
     // Assign the data file to iterate over.
-    rc = sky_path_iterator_set_data_file(&iterator, tablet->data_file);
+    rc = sky_path_iterator_set_tablet(&iterator, tablet);
     check(rc == 0, "Unable to initialize path iterator");
 
     // Execute function.

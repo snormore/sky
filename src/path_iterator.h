@@ -3,9 +3,10 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <leveldb/c.h>
 
 #include "bstring.h"
-#include "data_file.h"
+#include "tablet.h"
 #include "cursor.h"
 
 
@@ -16,14 +17,10 @@
 //==============================================================================
 
 typedef struct sky_path_iterator {
-    sky_block *block;
-    sky_data_file *data_file;
-    uint32_t block_index;
-    uint32_t byte_index;
+    sky_tablet *tablet;
+    leveldb_iterator_t* leveldb_iterator;
     bool running;
     bool eof;
-    sky_object_id_t current_object_id;
-    size_t block_data_length;
     sky_cursor cursor;
 } sky_path_iterator;
 
@@ -52,17 +49,12 @@ void sky_path_iterator_free(sky_path_iterator *iterator);
 // Source
 //--------------------------------------
 
-int sky_path_iterator_set_data_file(sky_path_iterator *iterator,
-    sky_data_file *data_file);
-
-int sky_path_iterator_set_block(sky_path_iterator *iterator,
-    sky_block *block);
+int sky_path_iterator_set_tablet(sky_path_iterator *iterator,
+    sky_tablet *tablet);
 
 //--------------------------------------
 // Iteration
 //--------------------------------------
-
-int sky_path_iterator_get_ptr(sky_path_iterator *iterator, void **ptr);
 
 int sky_path_iterator_next(sky_path_iterator *iterator);
 

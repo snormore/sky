@@ -8,22 +8,10 @@
 #include <assert.h>
 
 #include "tablet.h"
+#include "cursor.h"
+#include "sky_string.h"
+#include "mem.h"
 #include "dbg.h"
-
-//==============================================================================
-//
-// Forward Declarations
-//
-//==============================================================================
-
-//--------------------------------------
-// Data file
-//--------------------------------------
-
-int sky_table_load_data_file(sky_table *table);
-
-int sky_table_unload_data_file(sky_table *table);
-
 
 //==============================================================================
 //
@@ -48,6 +36,8 @@ sky_tablet *sky_tablet_create(sky_table *table)
     assert(table != NULL);
     tablet = calloc(sizeof(sky_tablet), 1); check_mem(tablet);
     tablet->table = table;
+    tablet->readoptions = leveldb_readoptions_create();
+    tablet->writeoptions = leveldb_writeoptions_create();
     return tablet;
     
 error:
@@ -64,9 +54,17 @@ void sky_tablet_free(sky_tablet *tablet)
 {
     if(tablet) {
         tablet->table = NULL;
+        tablet->index = 0;
+
         bdestroy(tablet->path);
         tablet->path = NULL;
-        tablet->index = 0;
+
+        if(tablet->readoptions) leveldb_readoptions_destroy(tablet->readoptions);
+        tablet->readoptions = NULL;
+
+        if(tablet->writeoptions) leveldb_writeoptions_destroy(tablet->writeoptions);
+        tablet->writeoptions = NULL;
+
         sky_tablet_close(tablet);
         free(tablet);
     }
@@ -111,38 +109,27 @@ error:
 // Returns 0 if successful, otherwise returns -1.
 int sky_tablet_open(sky_tablet *tablet)
 {
-    int rc;
+    char* errptr = NULL;
+    leveldb_options_t* options = NULL;
+
     assert(tablet != NULL);
     check(tablet->path != NULL, "Tablet path required");
     
     // Close the tablet if it's already open.
     sky_tablet_close(tablet);
     
-    // Initialize tablet space (0).
-    if(!sky_file_exists(tablet->path)) {
-        rc = mkdir(bdata(tablet->path), S_IRWXU);
-        check(rc == 0, "Unable to create tablet directory: %s", bdata(tablet->path));
-    }
-    
     // Initialize data file.
-    tablet->data_file = sky_data_file_create();
-    check_mem(tablet->data_file);
-    tablet->data_file->path = bformat("%s/data", bdata(tablet->path));
-    check_mem(tablet->data_file->path);
-    tablet->data_file->header_path = bformat("%s/header", bdata(tablet->path));
-    check_mem(tablet->data_file->header_path);
-    
-    // Initialize settings on the block.
-    if(tablet->table->default_block_size > 0) {
-        tablet->data_file->block_size = tablet->table->default_block_size;
-    }
-    
-    // Load data
-    rc = sky_data_file_load(tablet->data_file);
-    check(rc == 0, "Unable to load data file");
+    options = leveldb_options_create();
+    leveldb_options_set_create_if_missing(options, true);
+    tablet->leveldb_db = leveldb_open(options, bdata(tablet->path), &errptr);
+    check(errptr == NULL, "LevelDB Error: %s", errptr);
+    check(tablet->leveldb_db != NULL, "Unable to create LevelDB data file");
+    leveldb_options_destroy(options);
 
     return 0;
 error:
+    if(errptr) leveldb_free(errptr);
+    if(options) leveldb_options_destroy(options);
     sky_tablet_close(tablet);
     return -1;
 }
@@ -156,12 +143,43 @@ int sky_tablet_close(sky_tablet *tablet)
 {
     assert(tablet != NULL);
 
-    if(tablet->data_file) {
-        sky_data_file_free(tablet->data_file);
-        tablet->data_file = NULL;
+    if(tablet->leveldb_db) {
+        leveldb_close(tablet->leveldb_db);
+        tablet->leveldb_db = NULL;
     }
 
     return 0;
+}
+
+
+//--------------------------------------
+// Path Management
+//--------------------------------------
+
+// Retrieves a path for an object in the tablet.
+//
+// tablet      - The tablet.
+// object_id   - The object identifier for the path.
+// data        - A pointer to where the path data should be returned.
+// data_length - A pointer to where the length of the path data should be returned.
+// 
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_tablet_get_path(sky_tablet *tablet, sky_object_id_t object_id,
+                        void **data, size_t *data_length)
+{
+    char *errptr = NULL;
+    assert(tablet != NULL);
+
+    // Retrieve the existing value.
+    *data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)&object_id, sizeof(object_id), data_length, &errptr);
+    check(errptr == NULL, "LevelDB get path error: %s", errptr);
+    return 0;
+
+error:
+    *data = NULL;
+    *data_length = 0;
+    return -1;
 }
 
 
@@ -178,6 +196,11 @@ int sky_tablet_close(sky_tablet *tablet)
 int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
 {
     int rc;
+    char *errptr = NULL;
+    void *new_data = NULL;
+    sky_data_object *data_object = NULL;
+    sky_data_descriptor *descriptor = NULL;
+    sky_cursor cursor; memset(&cursor, 0, sizeof(cursor));
     assert(tablet != NULL);
     assert(event != NULL);
 
@@ -187,13 +210,135 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
     check(rc == 0, "Unable to determine target tablet");
     check(tablet == target_tablet, "Event added to invalid tablet; IDX:%d of %d, OID:%d", tablet->index, tablet->table->tablet_count, event->object_id);
 
-    // Delegate to the data file.
-    rc = sky_data_file_add_event(tablet->data_file, event);
-    check(rc == 0, "Unable to add event to data file");
+    // Retrieve the existing value.
+    size_t data_length;
+    void *data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)&event->object_id, sizeof(event->object_id), &data_length, &errptr);
+    check(errptr == NULL, "LevelDB get error: %s", errptr);
+    
+    // Find the insertion point on the path.
+    size_t insert_offset = 0;
+    size_t event_length;
+    
+    // If the object doesn't exist yet then just set the single event. Easy peasy.
+    if(data == NULL) {
+        event_length = sky_event_sizeof(event);
+        new_data = calloc(1, event_length); check_mem(new_data);
+        insert_offset = 0;
+    }
+    // If the object does exist, we need to find where to insert the event data.
+    // Also, we need to strip off any state which is redundant at the point of
+    // insertion.
+    else {
+        void *insert_ptr = NULL;
+
+        // Initialize data descriptor.
+        descriptor = sky_data_descriptor_create(); check_mem(descriptor);
+        rc = sky_data_descriptor_init_with_event(descriptor, event);
+        check(rc == 0, "Unable to initialize data descriptor for event insert");
+    
+        // Initialize data object.
+        data_object = calloc(1, descriptor->data_sz); check_mem(data);
+
+        // Attach data & descriptor to the cursor.
+        cursor.data_descriptor = descriptor;
+        cursor.data = (void*)data_object;
+
+        // Initialize the cursor.
+        rc = sky_cursor_set_ptr(&cursor, data, data_length);
+        check(rc == 0, "Unable to set pointer on cursor");
+        
+        // Loop over cursor until we reach the event insertion point.
+        while(!cursor.eof) {
+            // Retrieve event insertion pointer once the timestamp is reached.
+            if(data_object->timestamp >= event->timestamp) {
+                insert_ptr = cursor.ptr;
+                break;
+            }
+            
+            // Move to next event.
+            check(sky_cursor_next(&cursor) == 0, "Unable to move to next event");
+        }
+
+        // If no insertion point was found then append the event to the
+        // end of the path.
+        if(insert_ptr == NULL) {
+            insert_ptr = data + data_length;
+        }
+        insert_offset = insert_ptr - data;
+
+        // Clear off any object data on the event that matches
+        // what is the current state of the event in the database.
+        uint32_t i;
+        for(i=0; i<event->data_count; i++) {
+            // Ignore any action properties.
+            if(event->data[i]->key > 0) {
+                sky_data_property_descriptor *property_descriptor = &descriptor->property_zero_descriptor[event->data[i]->key];
+
+                // If the values match then splice this from the array.
+                // Compare strings.
+                void *a = &event->data[i]->value;
+                void *b = ((void*)data)+property_descriptor->offset;
+                size_t n = sky_data_type_sizeof(event->data[i]->data_type);
+                
+                bool is_equal = false;
+                if(event->data[i]->data_type == SKY_DATA_TYPE_STRING) {
+                    is_equal = sky_string_bequals((sky_string*)b, event->data[i]->string_value);
+                }
+                // Compare other types.
+                else if(memcmp(a, b, n) == 0) {
+                    is_equal = true;
+                }
+
+                // If the data is equal then remove it.
+                if(is_equal) {
+                    sky_event_data_free(event->data[i]);
+                    if(i < event->data_count - 1) {
+                        memmove(&event->data[i], &event->data[i+1], (event->data_count-i-1) * sizeof(*event->data));
+                    }
+                    i--;
+                    event->data_count--;
+                }
+            }
+        }
+
+        // Determine the serialized size of the event. If the event is
+        // completely redundant (e.g. it is a data-only event and the event
+        // matches the current object state) then don't allocate space for a
+        // new path value.
+        event_length = sky_event_sizeof(event);
+        if(event_length > 0) {
+            // Allocate space for the existing data plus the new data.
+            new_data = calloc(1, data_length + event_length); check_mem(new_data);
+
+            // Copy in data before event.
+            if(insert_offset > 0) {
+                memmove(new_data, data, insert_ptr-data);
+            }
+
+            // Copy in data after event.
+            if(insert_offset < data_length) {
+                event_length = sky_event_sizeof(event);
+                memmove(new_data+insert_offset+event_length, data+insert_offset, data_length-insert_offset);
+            }
+        }
+    }
+    
+    // If no space was allocated then it means the event is redundant and
+    // should be ignored.
+    if(new_data != NULL) {
+        // If the object doesn't exist then just set the event as the data.
+        size_t event_sz;
+        rc = sky_event_pack(event, new_data + insert_offset, &event_sz);
+        check(rc == 0, "Unable to pack event");
+        check(event_sz == event_length, "Expected event size (%ld) does not match actual event size (%ld)", event_length, event_sz);
+
+        leveldb_put(tablet->leveldb_db, tablet->writeoptions, (const char*)&event->object_id, sizeof(event->object_id), new_data, data_length + event_length, &errptr);
+        check(errptr == NULL, "LevelDB put error: %s", errptr);
+    }
     
     return 0;
 
 error:
+    if(errptr) leveldb_free(errptr);
     return -1;
 }
-

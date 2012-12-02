@@ -190,72 +190,6 @@ int test_sky_path_unpack() {
 }
 
 
-//--------------------------------------
-// Event Stats
-//--------------------------------------
-
-int test_sky_path_get_event_stats_with_no_event() {
-    uint32_t event_count = 0;
-    sky_path_event_stat *events = NULL;
-    int rc = sky_path_get_event_stats(&DATA, NULL, &events, &event_count);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(event_count, 3);
-    ASSERT_EVENT_STAT(events[0], 26LL, 8L, 19L, 11L);
-    ASSERT_EVENT_STAT(events[1], 28LL, 19L, 44L, 25L);
-    ASSERT_EVENT_STAT(events[2], 29LL, 44L, 62L, 18L);
-    free(events);
-    return 0;
-}
-
-int test_sky_path_get_event_stats_with_starting_event() {
-    uint32_t event_count = 0;
-    sky_path_event_stat *events = NULL;
-    sky_event *event = sky_event_create(2, 25LL, 20);
-    int rc = sky_path_get_event_stats(&DATA, event, &events, &event_count);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(event_count, 4);
-    ASSERT_EVENT_STAT(events[0], 25LL, 8L, 8L, 11L);
-    ASSERT_EVENT_STAT(events[1], 26LL, 8L, 19L, 11L);
-    ASSERT_EVENT_STAT(events[2], 28LL, 19L, 44L, 25L);
-    ASSERT_EVENT_STAT(events[3], 29LL, 44L, 62L, 18L);
-    sky_event_free(event);
-    free(events);
-    return 0;
-}
-
-int test_sky_path_get_event_stats_with_middle_event() {
-    uint32_t event_count = 0;
-    sky_path_event_stat *events = NULL;
-    sky_event *event = sky_event_create(2, 27LL, 20);
-    int rc = sky_path_get_event_stats(&DATA, event, &events, &event_count);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(event_count, 4);
-    ASSERT_EVENT_STAT(events[0], 26LL, 8L, 19L, 11L);
-    ASSERT_EVENT_STAT(events[1], 27LL, 19L, 19L, 11L);
-    ASSERT_EVENT_STAT(events[2], 28LL, 19L, 44L, 25L);
-    ASSERT_EVENT_STAT(events[3], 29LL, 44L, 62L, 18L);
-    sky_event_free(event);
-    free(events);
-    return 0;
-}
-
-int test_sky_path_get_event_stats_with_ending_event() {
-    uint32_t event_count = 0;
-    sky_path_event_stat *events = NULL;
-    sky_event *event = sky_event_create(2, 30LL, 20);
-    int rc = sky_path_get_event_stats(&DATA, event, &events, &event_count);
-    mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(event_count, 4);
-    ASSERT_EVENT_STAT(events[0], 26LL, 8L, 19L, 11L);
-    ASSERT_EVENT_STAT(events[1], 28LL, 19L, 44L, 25L);
-    ASSERT_EVENT_STAT(events[2], 29LL, 44L, 62L, 18L);
-    ASSERT_EVENT_STAT(events[3], 30LL, 62L, 62L, 11L);
-    sky_event_free(event);
-    free(events);
-    return 0;
-}
-
-
 //==============================================================================
 //
 // Setup
@@ -268,11 +202,6 @@ int all_tests() {
     mu_run_test(test_sky_path_sizeof);
     mu_run_test(test_sky_path_pack);
     mu_run_test(test_sky_path_unpack);
-
-    mu_run_test(test_sky_path_get_event_stats_with_no_event);
-    mu_run_test(test_sky_path_get_event_stats_with_starting_event);
-    mu_run_test(test_sky_path_get_event_stats_with_middle_event);
-    mu_run_test(test_sky_path_get_event_stats_with_ending_event);
 
     return 0;
 }

@@ -12,31 +12,11 @@
 
 //==============================================================================
 //
-// Overview
-//
-//==============================================================================
-
-// The cursor is used to iterate over the events of a path. It provides fast
-// access to events in a path by performing data access on the raw bytes of the
-// data file. It also abstracts away the underlying storage of the events by
-// seamlessly combining spanned blocks into a single path.
-//
-// The current API to the cursor is simple. It provides forward-only access to
-// basic event data in a path. However, future releases will allow bidirectional
-// traversal, event search, & object state management.
-
-
-//==============================================================================
-//
 // Typedefs
 //
 //==============================================================================
 
 typedef struct sky_cursor {
-    void **paths;
-    uint32_t path_count;
-    uint32_t path_bcount;   // path buffer size
-    uint32_t path_index;
     uint32_t event_index;
     void *ptr;
     void *endptr;
@@ -64,15 +44,11 @@ void sky_cursor_init(sky_cursor *cursor);
 
 void sky_cursor_free(sky_cursor *cursor);
 
-void sky_cursor_uninit(sky_cursor *cursor);
-
 //--------------------------------------
 // Path Management
 //--------------------------------------
 
-int sky_cursor_set_path(sky_cursor *cursor, void *ptr);
-
-int sky_cursor_set_paths(sky_cursor *cursor, void **ptrs, uint32_t count);
+int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz);
 
 //--------------------------------------
 // Iteration

@@ -21,14 +21,21 @@ int test() {
     send_msg("tests/functional/fixtures/multi/0/input");
     pthread_join(thread, NULL);
     mu_assert_msg("tests/functional/fixtures/multi/0/output");
-    mu_assert_file("tmp/0/data", "tests/functional/fixtures/multi/0/0/data");
-    mu_assert_file("tmp/0/header", "tests/functional/fixtures/multi/0/0/header");
-    mu_assert_file("tmp/1/data", "tests/functional/fixtures/multi/0/1/data");
-    mu_assert_file("tmp/1/header", "tests/functional/fixtures/multi/0/1/header");
-    mu_assert_file("tmp/2/data", "tests/functional/fixtures/multi/0/2/data");
-    mu_assert_file("tmp/2/header", "tests/functional/fixtures/multi/0/2/header");
-    mu_assert_file("tmp/3/data", "tests/functional/fixtures/multi/0/3/data");
-    mu_assert_file("tmp/3/header", "tests/functional/fixtures/multi/0/3/header");
+
+    void *data;
+    size_t data_length;
+    sky_table *table = sky_table_create();
+    table->path = bfromcstr("tmp");
+    sky_table_open(table);
+
+    sky_tablet_get_path(table->tablets[1], 1, &data, &data_length);
+    mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x04\x00", data_length);
+    sky_tablet_get_path(table->tablets[2], 2, &data, &data_length);
+    mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x03\x00", data_length);
+    sky_tablet_get_path(table->tablets[3], 3, &data, &data_length);
+    mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x02\x00", data_length);
+    sky_tablet_get_path(table->tablets[0], 4, &data, &data_length);
+    mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x01\x00", data_length);
     return 0;
 }
 

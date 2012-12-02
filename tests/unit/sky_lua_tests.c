@@ -121,7 +121,7 @@ int test_sky_map_all() {
     sky_path_iterator iterator;
     sky_path_iterator_init(&iterator);
     iterator.cursor.data_descriptor = descriptor;
-    sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
+    sky_path_iterator_set_tablet(&iterator, table->tablets[0]);
 
     struct tagbstring source = bsStatic(
         "function map(cursor, data)\n"
@@ -150,7 +150,7 @@ int test_sky_map_all() {
     // Call sky_map_all() function.
     uint32_t i;
     for(i=0; i<1; i++) {
-        sky_path_iterator_set_data_file(&iterator, table->tablets[0]->data_file);
+        sky_path_iterator_set_tablet(&iterator, table->tablets[0]);
         lua_getglobal(L, "sky_map_all");
         lua_pushlightuserdata(L, &iterator);
         lua_call(L, 1, 0);

@@ -298,10 +298,7 @@ int sky_importer_process_table(sky_importer *importer, bstring source,
         jsmntok_t *token = &tokens[*index];
         (*index)++;
         
-        if(sky_importer_tokstr_equal(source, token, "blockSize")) {
-            importer->table->default_block_size = (uint32_t)sky_importer_token_parse_int(source, &tokens[(*index)++]);
-        }
-        else if(sky_importer_tokstr_equal(source, token, "actions")) {
+        if(sky_importer_tokstr_equal(source, token, "actions")) {
             rc = sky_importer_process_actions(importer, source, tokens, index);
             check(rc == 0, "Unable to process actions import");
         }
