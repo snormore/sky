@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include <assert.h>
 
 #include "types.h"
@@ -110,12 +112,27 @@ int sky_multi_message_process(sky_server *server,
     minipack_fwrite_array(output, message->message_count, &sz);
     check(sz > 0, "Unable to write multi message array");
 
+    // Start benchmark.
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+
     // Loop over child messages and process.
     uint32_t i;
     for(i=0; i<message->message_count; i++) {
         rc = sky_server_process_message(server, true, input, output);
         check(rc == 0, "Unable to process child message");
+
+        // HACK: ZeroMQ is not releasing file handles soon enough so the sleep
+        // is used to wait for some to close. This needs to be changed so that
+        // all workers share the same ZeroMQ sockets.
+        if(i % 1000 == 0) usleep(100000);
     }
+
+    // End benchmark.
+    gettimeofday(&tv, NULL);
+    int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
+    printf("[multi] t=%.3fs, i=%d\n", ((float)(t1-t0))/1000, i);
 
     // Close streams.
     fclose(input);
