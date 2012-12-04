@@ -56,7 +56,6 @@ int test_sky_get_properties_message_process() {
     FILE *output = fopen("tmp/output", "w");
     int rc = sky_get_properties_message_process(server, header, table, input, output);
     mu_assert_int_equals(rc, 0);
-    fclose(output);
     mu_assert_file("tmp/output", "tests/fixtures/get_properties_message/1/output");
 
     sky_table_free(table);

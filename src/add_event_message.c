@@ -284,8 +284,15 @@ int sky_add_event_message_copy_data(sky_property_file *property_file,
     assert(event_data_count != NULL);
 
     // Allocate event data space.
-    *event_data = realloc(*event_data, (*event_data_count + msg_data_count) * sizeof(**event_data));
-    check_mem(*event_data);
+    size_t sz = (*event_data_count + msg_data_count) * sizeof(**event_data);
+    if(sz > 0) {
+        *event_data = realloc(*event_data, sz);
+        check_mem(*event_data);
+    }
+    else {
+        if(*event_data) free(*event_data);
+        *event_data = NULL;
+    }
 
     // Copy message data to event data.
     uint32_t i;

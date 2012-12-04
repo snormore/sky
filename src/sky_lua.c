@@ -90,8 +90,8 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
         descriptor->int_type = SKY_DATA_DESCRIPTOR_INT32;
         lua_getglobal(*L, "sky_init_descriptor");
         lua_pushlightuserdata(*L, descriptor);
-        rc = lua_pcall(*L, 1, 0, 0);
-        check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
+        lua_call(*L, 1, 0);
+        //check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
     }
 
     return 0;

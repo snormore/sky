@@ -1,9 +1,9 @@
 #ifndef _sky_lua_h
 #define _sky_lua_h
 
-#include <luajit-2.0/lua.h>
-#include <luajit-2.0/lualib.h>
-#include <luajit-2.0/lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 #include "lua/lua_cmsgpack.h"
 
 #include "table.h"

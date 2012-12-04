@@ -2,8 +2,8 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
-CXXFLAGS=-g -Wall -Wextra -Wno-strict-overflow -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
+CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -rdynamic -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
+CXXFLAGS=-g -Wall -Wextra -Wno-strict-overflow -rdynamic -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
 LIBS=-lpthread -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
