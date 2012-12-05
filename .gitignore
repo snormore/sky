@@ -16,5 +16,6 @@ valgrind.log
 bin/callgrind.out
 bin/cachegrind.out
 deps/leveldb-1.7.0/**
+deps/LuaJIT-2.0.0/**
 Vagrantfile
 .vagrant
