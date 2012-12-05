@@ -198,6 +198,7 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
     int rc;
     char *errptr = NULL;
     void *new_data = NULL;
+    void *data = NULL;
     sky_data_object *data_object = NULL;
     sky_data_descriptor *descriptor = NULL;
     sky_cursor cursor; memset(&cursor, 0, sizeof(cursor));
@@ -212,7 +213,7 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
 
     // Retrieve the existing value.
     size_t data_length;
-    void *data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)&event->object_id, sizeof(event->object_id), &data_length, &errptr);
+    data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)&event->object_id, sizeof(event->object_id), &data_length, &errptr);
     check(errptr == NULL, "LevelDB get error: %s", errptr);
     
     // Find the insertion point on the path.
@@ -336,9 +337,18 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
         check(errptr == NULL, "LevelDB put error: %s", errptr);
     }
     
+    free(data_object);
+    sky_data_descriptor_free(descriptor);
+    free(data);
+    free(new_data);
+    
     return 0;
 
 error:
     if(errptr) leveldb_free(errptr);
+    sky_data_descriptor_free(descriptor);
+    if(data) free(data);
+    if(new_data) free(new_data);
+    if(data_object) free(data_object);
     return -1;
 }

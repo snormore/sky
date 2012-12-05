@@ -53,7 +53,7 @@ install: all
 	install -d $(DESTDIR)/$(PREFIX)/sky/bin/
 	install -d $(DESTDIR)/$(PREFIX)/sky/data/
 	install bin/skyd $(DESTDIR)/$(PREFIX)/sky/bin/
-	rm $(DESTDIR)/$(PREFIX)/bin/skyd
+	rm -f $(DESTDIR)/$(PREFIX)/bin/skyd
 	ln -s $(DESTDIR)/$(PREFIX)/sky/bin/skyd $(DESTDIR)/$(PREFIX)/bin/skyd
 
 ################################################################################

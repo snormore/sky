@@ -691,6 +691,8 @@ int sky_add_event_message_unpack_action(sky_add_event_message *message, FILE *fi
 
         // If this is the action name then save it to the message.
         if(biseq(key, &SKY_ADD_EVENT_KEY_NAME) == 1) {
+            bdestroy(key); key = NULL;
+
             rc = sky_minipack_fread_bstring(file, &message->action_name);
             check(rc == 0, "Unable to unpack action name");
 

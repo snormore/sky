@@ -142,6 +142,7 @@ int test_sky_add_event_message_worker_map() {
         data_length
     );
 
+    free(data);
     sky_add_event_message_free(message);
     sky_worker_free(worker);
     sky_table_free(table);

@@ -67,9 +67,12 @@ void sky_lua_map_reduce_message_free(sky_lua_map_reduce_message *message)
         if(message->L) lua_close(message->L);
         message->L = NULL;
         
+        bdestroy(message->source);
+        message->source = NULL;
+        
         bdestroy(message->results);
         message->results = NULL;
-        
+
         free(message);
     }
 }
@@ -301,6 +304,8 @@ int sky_lua_map_reduce_message_worker_map(sky_worker *worker, sky_tablet *tablet
     // Return msgpack encoded response.
     *ret = (void*)msgpack_ret;
     
+    free(iterator.cursor.data);
+    sky_data_descriptor_free(descriptor);
     sky_path_iterator_uninit(&iterator);
     return 0;
 
@@ -308,6 +313,8 @@ error:
     *ret = NULL;
     bdestroy(msgpack_ret);
     if(L) lua_close(L);
+    free(iterator.cursor.data);
+    sky_data_descriptor_free(descriptor);
     sky_path_iterator_uninit(&iterator);
     return -1;
 }

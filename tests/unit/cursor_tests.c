@@ -100,6 +100,7 @@ int test_sky_cursor_set_data() {
     sky_cursor_next(cursor);
     ASSERT_OBJ_STATE(obj, 3000000LL, 0, "frank sinatra", 20LL, 1.5, false, "", 0LL, 0, false);
 
+    free(data);
     sky_cursor_free(cursor);
     sky_data_descriptor_free(descriptor);
     sky_table_free(table);

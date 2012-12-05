@@ -90,15 +90,20 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
         descriptor->int_type = SKY_DATA_DESCRIPTOR_INT32;
         lua_getglobal(*L, "sky_init_descriptor");
         lua_pushlightuserdata(*L, descriptor);
-        lua_call(*L, 1, 0);
-        //check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
+        rc = lua_pcall(*L, 1, 0, 0);
+        check(rc == 0, "Lua error while initializing descriptor: %s", lua_tostring(*L, -1));
     }
 
+    bdestroy(new_source);
+    bdestroy(header);
     return 0;
 
 error:
+lua_pop(*L, 1);
+    if(*L != NULL) lua_close(*L);
     *L = NULL;
     bdestroy(new_source);
+    bdestroy(header);
     return -1;
 }
 
@@ -264,10 +269,12 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
     check_mem(*ret);
 
     bdestroy(event_decl);
+    bdestroy(init_descriptor_func);
     return 0;
 
 error:
     bdestroy(event_decl);
+    bdestroy(init_descriptor_func);
     bdestroy(*ret);
     *ret = NULL;
     return -1;

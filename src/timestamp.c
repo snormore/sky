@@ -28,7 +28,7 @@ int sky_timestamp_parse(bstring str, sky_timestamp_t *ret)
     bstring str2 = bformat("%s GMT", bdata(str)); check_mem(str2);
     
     // Parse date.
-    struct tm tp;
+    struct tm tp; memset(&tp, 0, sizeof(tp));
     char *ch;
     ch = strptime(bdata(str2), "%Y-%m-%dT%H:%M:%SZ %Z", &tp);
     check(ch != NULL, "Unable to parse timestamp");
