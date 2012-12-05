@@ -223,7 +223,7 @@ int sky_worker_start(sky_worker *worker)
     check(worker->pull_socket != NULL, "Unable to create worker pull socket");
 
     // Bind pull socket.
-    worker->pull_socket_uri = bformat("inproc://worker.%lld.pull", worker->id);
+    worker->pull_socket_uri = bformat("inproc://worker.%" PRId64 ".pull", worker->id);
     check_mem(worker->pull_socket_uri);
     rc = zmq_bind(worker->pull_socket, bdata(worker->pull_socket_uri));
     check(rc == 0, "Unable to bind worker pull socket");

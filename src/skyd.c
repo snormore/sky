@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "bstring.h"
 #include "dbg.h"

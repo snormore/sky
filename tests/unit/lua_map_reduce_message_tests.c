@@ -77,7 +77,7 @@ int test_sky_lua_map_reduce_message_worker_map() {
     int rc = sky_lua_map_reduce_message_worker_map(worker, table->tablets[0], (void**)&results);
     mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(blength(results), 16);
-    mu_assert_mem(bdata(results), "\x85\x01\x02\x02\x02\x03\x01\x04\x01\xA5" "count" "\x06", 16);
+    mu_assert_mem(bdatae(results, ""), "\x85\x01\x02\x02\x02\x03\x01\x04\x01\xA5" "count" "\x06", 16);
 
     bdestroy(results);
     sky_lua_map_reduce_message_free(message);
@@ -112,13 +112,13 @@ int test_sky_lua_map_reduce_message_worker_reduce() {
     rc = sky_lua_map_reduce_message_worker_reduce(worker, &map_data1);
     mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(blength(message->results), 3);
-    mu_assert_mem(bdata(message->results), "\x81\x02\x08", blength(message->results));
+    mu_assert_mem(bdatae(message->results, ""), "\x81\x02\x08", blength(message->results));
 
     struct tagbstring map_data2 = bsStatic("\x83\x02\x02\x04\x01\xA3" "foo" "\02");
     rc = sky_lua_map_reduce_message_worker_reduce(worker, &map_data2);
     mu_assert_int_equals(rc, 0);
     mu_assert_int_equals(blength(message->results), 10);
-    mu_assert_mem(bdata(message->results), "\x83\x02\x0A\x04\x01\xA3" "foo" "\x02", blength(message->results));
+    mu_assert_mem(bdatae(message->results, ""), "\x83\x02\x0A\x04\x01\xA3" "foo" "\x02", blength(message->results));
 
     sky_lua_map_reduce_message_free(message);
     sky_worker_free(worker);

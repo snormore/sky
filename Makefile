@@ -2,8 +2,9 @@
 # Variables
 ################################################################################
 
-CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -Wno-self-assign -std=c99 -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include
-LIBS=-lpthread -lluajit-5.1 -lzmq -ldl
+CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
+CXXFLAGS=-g -Wall -Wextra -Wno-strict-overflow -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
+LIBS=-lpthread -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES})
@@ -14,7 +15,11 @@ LIB_OBJECTS=$(filter-out ${BIN_OBJECTS},${OBJECTS})
 TEST_SOURCES=$(wildcard tests/*_tests.c tests/**/*_tests.c)
 TEST_OBJECTS=$(patsubst %.c,%,${TEST_SOURCES})
 
+UNAME=$(shell uname)
+ifeq ($(UNAME), Darwin)
 LUAJIT_FLAGS=-pagezero_size 10000 -image_base 100000000
+CFLAGS+=-Wno-self-assign
+endif
 
 PREFIX?=/usr/local
 
@@ -24,7 +29,7 @@ PREFIX?=/usr/local
 # Main Targets
 ################################################################################
 
-compile: bin/libleveldb.a bin/libsky.a bin/skyd
+compile: bin/libleveldb.a bin/libluajit.a bin/libsky.a bin/skyd
 all: compile test
 
 ################################################################################
@@ -34,6 +39,10 @@ all: compile test
 bin/libleveldb.a: bin
 	${MAKE} -C deps/leveldb-1.7.0
 	mv deps/leveldb-1.7.0/libleveldb.a bin/libleveldb.a
+
+bin/libluajit.a: bin
+	${MAKE} -C deps/LuaJIT-2.0.0
+	mv deps/LuaJIT-2.0.0/src/libluajit.a bin/libluajit.a
 
 ################################################################################
 # Installation
@@ -56,9 +65,9 @@ bin/libsky.a: bin ${LIB_OBJECTS}
 	ar rcs $@ ${LIB_OBJECTS}
 	ranlib $@
 
-bin/skyd: bin ${OBJECTS} bin/libsky.a bin/libleveldb.a
+bin/skyd: bin ${OBJECTS} bin/libsky.a bin/libleveldb.a bin/libluajit.a
 	$(CC) $(CFLAGS) -Isrc -c -o $@.o src/skyd.c
-	$(CXX) $(CXXFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $@.o bin/libsky.a bin/libleveldb.a $(LIBS)
+	$(CXX) $(CXXFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $@.o bin/libsky.a bin/libleveldb.a bin/libluajit.a $(LIBS)
 	chmod 700 $@
 
 bin:
@@ -82,7 +91,6 @@ valgrind: VALGRIND=valgrind
 valgrind: CFLAGS+=-DVALGRIND
 valgrind: clean all
 
-
 ################################################################################
 # Release Build (No Debug)
 ################################################################################
@@ -98,20 +106,38 @@ release: clean all
 test: $(TEST_OBJECTS) tmp
 	@sh ./tests/runtests.sh $(VALGRIND)
 
-$(TEST_OBJECTS): %: %.c bin/libsky.a bin/libleveldb.a
+$(TEST_OBJECTS): %: %.c bin/libsky.a bin/libleveldb.a bin/libluajit.a
 	$(CC) $(CFLAGS) -Isrc -c -o $@.o $<
-	$(CXX) $(CXXFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $@.o $(LIBS) bin/libsky.a bin/libleveldb.a
+	$(CXX) $(CXXFLAGS) -Isrc $(LUAJIT_FLAGS) -o $@ $@.o bin/libsky.a bin/libleveldb.a bin/libluajit.a $(LIBS)
 
 
 ################################################################################
 # Misc
 ################################################################################
 
+info:
+	echo $(CFLAGS)
+
 tmp:
 	mkdir -p tmp
+
+
+################################################################################
+# Clean
+################################################################################
 
 clean: 
 	rm -rf bin ${OBJECTS} ${TEST_OBJECTS}
 	rm -rf tests/*.dSYM tests/**/*.dSYM
 	rm -rf  tests/*.o tests/**/*.o
 	rm -rf tmp/*
+
+clean-leveldb:
+	rm -f bin/libleveldb.a
+	${MAKE} clean -C deps/leveldb-1.7.0
+
+clean-luajit:
+	rm -f bin/libluajit.a
+	${MAKE} clean -C deps/LuaJIT-2.0.0
+
+cleaner: clean clean-leveldb clean-luajit

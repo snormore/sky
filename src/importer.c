@@ -620,10 +620,10 @@ int sky_importer_process_event_data(sky_importer *importer, sky_event *event,
             // Numbers (or null, which evaluates to Int 0).
             else {
                 if(property->data_type == SKY_DATA_TYPE_DOUBLE) {
-                    event_data = sky_event_data_create_double(property->id, atof(bdata(value))); check_mem(event_data);
+                    event_data = sky_event_data_create_double(property->id, atof(bdatae(value, ""))); check_mem(event_data);
                 }
                 else {
-                    event_data = sky_event_data_create_int(property->id, atoll(bdata(value))); check_mem(event_data);
+                    event_data = sky_event_data_create_int(property->id, atoll(bdatae(value, ""))); check_mem(event_data);
                 }
             }
         }
@@ -675,7 +675,7 @@ int32_t sky_importer_token_parse_int(bstring source, jsmntok_t *token)
         int toklen = token->end - token->start;
         bstring str;
         str = bmidstr(source, token->start, toklen);
-        int32_t value = (int32_t)atoi(bdata(str));
+        int32_t value = (int32_t)atoi(bdatae(str, ""));
         bdestroy(str);
         return value;
     }

@@ -1,4 +1,4 @@
-#include "endian.h"
+#include "sky_endian.h"
 
 //==============================================================================
 //
@@ -24,7 +24,7 @@ uint32_t bswap32(uint32_t value)
     );
 }
 
-uint64_t bswap64(uint64_t value)
+uint64_t __bswap64(uint64_t value)
 {
     return (
         ((value & 0x00000000000000FF) << 56) |

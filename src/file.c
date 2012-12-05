@@ -23,7 +23,7 @@
 bool sky_file_exists(bstring path)
 {
     struct stat buffer;
-    int rc = stat(bdata(path), &buffer);
+    int rc = stat(bdatae(path, ""), &buffer);
     return (rc == 0);
 }
 
@@ -36,7 +36,7 @@ bool sky_file_exists(bstring path)
 bool sky_file_is_dir(bstring path)
 {
     struct stat buffer;
-    int rc = stat(bdata(path), &buffer);
+    int rc = stat(bdatae(path, ""), &buffer);
     if(rc == 0) {
         return S_ISDIR(buffer.st_mode);
     }
@@ -53,7 +53,7 @@ bool sky_file_is_dir(bstring path)
 off_t sky_file_get_size(bstring path)
 {
     struct stat buffer;
-    if(stat(bdata(path), &buffer) == 0) {
+    if(stat(bdatae(path, ""), &buffer) == 0) {
         return buffer.st_size;
     }
     else {
@@ -81,11 +81,11 @@ int sky_file_cp(bstring src, bstring dest)
     check(!sky_file_is_dir(src), "Source file cannot be a directory");
 
     // Open source files.
-    FILE *src_file = fopen(bdata(src), "r");
+    FILE *src_file = fopen(bdatae(src, ""), "r");
     check(src_file != NULL, "Unable to open source file for reading");
 
     // Open destination file.
-    FILE *dest_file = fopen(bdata(dest), "w");
+    FILE *dest_file = fopen(bdatae(dest, ""), "w");
     check(dest_file != NULL, "Unable to open destination file for writing");
     
     // Read from source and write to destination until done.
@@ -103,8 +103,8 @@ int sky_file_cp(bstring src, bstring dest)
     
     // Copy permissions to destination file.
     struct stat st;
-    stat(bdata(src), &st);
-    rc = chmod(bdata(dest), st.st_mode);
+    stat(bdatae(src, ""), &st);
+    rc = chmod(bdatae(dest, ""), st.st_mode);
     check(rc == 0, "Unable to copy permissions");
     
     return 0;
@@ -134,25 +134,25 @@ int sky_file_cp_r(bstring src, bstring dest)
         // Create destination directory if it doesn't exist.
         if(!sky_file_exists(dest)) {
             struct stat st;
-            rc = stat(bdata(src), &st);
-            check(rc == 0, "Unable to stat source directory: %s", bdata(src));
-            rc = mkdir(bdata(dest), st.st_mode);
-            check(rc == 0, "Unable to create directory: %s", bdata(dest));
+            rc = stat(bdatae(src, ""), &st);
+            check(rc == 0, "Unable to stat source directory: %s", bdatae(src, ""));
+            rc = mkdir(bdatae(dest, ""), st.st_mode);
+            check(rc == 0, "Unable to create directory: %s", bdatae(dest, ""));
         }
         
         // Open directory.
-        DIR *dir = opendir(bdata(src));
-        check(dir != NULL, "Unable to open directory: %s", bdata(src));
+        DIR *dir = opendir(bdatae(src, ""));
+        check(dir != NULL, "Unable to open directory: %s", bdatae(src, ""));
         
         // Copy over contents of directory.
         struct dirent *ent;
         while((ent = readdir(dir))) {
             if(strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0) {
-                ent_src  = bformat("%s/%s", bdata(src), ent->d_name); check_mem(ent_src);
-                ent_dest = bformat("%s/%s", bdata(dest), ent->d_name); check_mem(ent_dest);
+                ent_src  = bformat("%s/%s", bdatae(src, ""), ent->d_name); check_mem(ent_src);
+                ent_dest = bformat("%s/%s", bdatae(dest, ""), ent->d_name); check_mem(ent_dest);
 
                 rc = sky_file_cp_r(ent_src, ent_dest);
-                check(rc == 0, "Unable to copy: %s", bdata(ent_src));
+                check(rc == 0, "Unable to copy: %s", bdatae(ent_src, ""));
 
                 bdestroy(ent_src);
                 bdestroy(ent_dest);
@@ -165,7 +165,7 @@ int sky_file_cp_r(bstring src, bstring dest)
     // If this is a file then copy its contents.
     else {
         rc = sky_file_cp(src, dest);
-        check(rc == 0, "Unable to copy file: %s", bdata(src));
+        check(rc == 0, "Unable to copy file: %s", bdatae(src, ""));
     }
     
     return 0;
@@ -193,7 +193,7 @@ int sky_file_rm(bstring path)
     check(!sky_file_is_dir(path), "File cannot be a directory");
 
     if(sky_file_exists(path)) {
-        rc = remove(bdata(path));
+        rc = remove(bdatae(path, ""));
         check(rc == 0, "Unable to delete file");
     }
 
@@ -220,16 +220,16 @@ int sky_file_rm_r(bstring path)
         // delete it.
         if(sky_file_is_dir(path)) {
             // Open directory.
-            DIR *dir = opendir(bdata(path));
-            check(dir != NULL, "Unable to open directory: %s", bdata(path));
+            DIR *dir = opendir(bdatae(path, ""));
+            check(dir != NULL, "Unable to open directory: %s", bdatae(path, ""));
 
             // Remove each file inside directory.
             struct dirent *ent;
             while((ent = readdir(dir))) {
                 if(strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0) {
-                    ent_path  = bformat("%s/%s", bdata(path), ent->d_name); check_mem(ent_path);
+                    ent_path  = bformat("%s/%s", bdatae(path, ""), ent->d_name); check_mem(ent_path);
                     rc = sky_file_rm_r(ent_path);
-                    check(rc == 0, "Unable to delete: %s", bdata(ent_path));
+                    check(rc == 0, "Unable to delete: %s", bdatae(ent_path, ""));
                     bdestroy(ent_path);
                 }
             }
@@ -238,12 +238,12 @@ int sky_file_rm_r(bstring path)
             closedir(dir);
 
             // Remove directory.
-            remove(bdata(path));
+            remove(bdatae(path, ""));
         }
         // If this is a file then delete it.
         else {
             rc = sky_file_rm(path);
-            check(rc == 0, "Unable to delete file: %s", bdata(path));
+            check(rc == 0, "Unable to delete file: %s", bdatae(path, ""));
         }
     }
     

@@ -67,7 +67,7 @@ int sky_minipack_fwrite_bstring(FILE *file, bstring str)
 
     // Write raw bytes.
     if(str) {
-        sz = fwrite(bdata(str), sizeof(char), length, file);
+        sz = fwrite(bdatae(str, ""), sizeof(char), length, file);
         check(sz == (size_t)length, "Attempted to write %d bytes, only wrote %ld bytes", length, sz);
     }
     

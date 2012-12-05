@@ -487,7 +487,7 @@ int sky_next_actions_message_worker_write(sky_worker *worker, FILE *output)
     }
     
     // Write total number of events to log.
-    printf("[next_actions] events: %lld\n", message->event_count);
+    printf("[next_actions] events: %" PRIu64 "\n", message->event_count);
     
     return 0;
 

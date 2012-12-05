@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 #include "dbg.h"
-#include "endian.h"
+#include "sky_endian.h"
 #include "bstring.h"
 #include "event.h"
 #include "mem.h"

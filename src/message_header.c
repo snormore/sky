@@ -4,7 +4,7 @@
 #include "types.h"
 #include "minipack.h"
 #include "message_header.h"
-#include "endian.h"
+#include "sky_endian.h"
 #include "mem.h"
 #include "dbg.h"
 
@@ -144,7 +144,7 @@ int sky_message_header_unpack(sky_message_header *header, FILE *file)
     rc = sky_minipack_fread_bstring(file, &header->table_name);
     check(rc == 0, "Unable to pack table name");
 
-    printf("[%s#%lld:%s]\n", bdata(header->name), header->version, bdata(header->table_name));
+    printf("[%s#%" PRIu64 ":%s]\n", bdata(header->name), header->version, bdata(header->table_name));
 
     return 0;
 

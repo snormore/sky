@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <endian.h>
+#include <sky_endian.h>
 
 #include "../minunit.h"
 
@@ -25,7 +25,7 @@ int test_bswap32() {
 
 int test_bswap64() {
     uint64_t value = 0x0807060504030201;
-    mu_assert(bswap64(value) == 0x0102030405060708, "");
+    mu_assert(__bswap64(value) == 0x0102030405060708, "");
     return 0;
 }
 

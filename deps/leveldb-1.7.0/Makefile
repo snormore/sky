@@ -59,6 +59,7 @@ MEMENVLIBRARY = libmemenv.a
 default: all
 
 # Should we build shared libraries?
+PLATFORM_SHARED_EXT=
 ifneq ($(PLATFORM_SHARED_EXT),)
 
 ifneq ($(PLATFORM_SHARED_VERSIONED),true)

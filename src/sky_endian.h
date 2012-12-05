@@ -1,5 +1,5 @@
-#ifndef _endian_h
-#define _endian_h
+#ifndef _sky_endian_h
+#define _sky_endian_h
 
 #include <inttypes.h>
 
@@ -33,11 +33,11 @@
 
 uint16_t bswap16(uint16_t value);
 uint32_t bswap32(uint32_t value);
-uint64_t bswap64(uint64_t value);
+uint64_t __bswap64(uint64_t value);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN) || (__BYTE_ORDER == __LITTLE_ENDIAN)
-#define htonll(x) bswap64(x)
-#define ntohll(x) bswap64(x)
+#define htonll(x) __bswap64(x)
+#define ntohll(x) __bswap64(x)
 #else
 #define htonll(x) x
 #define ntohll(x) x

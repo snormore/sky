@@ -387,7 +387,7 @@ int sky_lua_map_reduce_message_worker_write(sky_worker *worker, FILE *output)
     check(sky_minipack_fwrite_bstring(output, &SKY_LUA_MAP_REDUCE_STATUS_STR) == 0, "Unable to write status key");
     check(sky_minipack_fwrite_bstring(output, &SKY_LUA_MAP_REDUCE_OK_STR) == 0, "Unable to write status value");
     check(sky_minipack_fwrite_bstring(output, &SKY_LUA_MAP_REDUCE_DATA_STR) == 0, "Unable to write data key");
-    check(fwrite(bdata(message->results), blength(message->results), 1, output) == 1, "Unable to write data value");
+    check(fwrite(bdatae(message->results, ""), blength(message->results), 1, output) == 1, "Unable to write data value");
     
     return 0;
 

@@ -7,7 +7,7 @@
 #include <bstring.h>
 #include <file.h>
 
-#import <importer.h>
+#include <importer.h>
 
 //==============================================================================
 //
@@ -65,19 +65,20 @@ int tests_run;
 #define mu_assert_bool(ACTUAL) mu_assert_with_msg(ACTUAL, "Expected value to be true but was %d", ACTUAL)
 #define mu_assert_int_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %d; Received: %d", EXPECTED, ACTUAL)
 #define mu_assert_long_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %ld; Received: %ld", EXPECTED, ACTUAL)
-#define mu_assert_int64_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %lld; Received: %lld", EXPECTED, ACTUAL)
+#define mu_assert_int64_equals(ACTUAL, EXPECTED) mu_assert_with_msg(ACTUAL == EXPECTED, "Expected: %lld; Received: %lld", (long long int)EXPECTED, (long long int)ACTUAL)
 
 #define mu_assert_bstring(ACTUAL, EXPECTED) do {\
-    struct tagbstring expected = bsStatic(EXPECTED); \
-    if(blength(ACTUAL) != (&expected)->slen) { \
-        mu_fail("String length doesn\'t not match. exp:%d, recv:%d", (&expected)->slen, blength(ACTUAL)); \
+    bstring expected = bfromcstr(EXPECTED); \
+    if(blength(ACTUAL) != blength(expected)) { \
+        mu_fail("String length doesn\'t not match. exp:%d, recv:%d", blength(expected), blength(ACTUAL)); \
     } \
     int32_t _i; \
     for(_i=0; _i<blength(ACTUAL); _i++) { \
-        if(bchar(ACTUAL, _i) != bchar(&expected, _i)) { \
-            mu_fail("Unexpected byte at %d. exp:\\x%02x, recv:\\x%02x", _i, bchar(&expected, _i), bchar(ACTUAL, _i)); \
+        if(bchar(ACTUAL, _i) != bchar(expected, _i)) { \
+            mu_fail("Unexpected byte at %d. exp:\\x%02x, recv:\\x%02x", _i, bchar(expected, _i), bchar(ACTUAL, _i)); \
         } \
     } \
+    bdestroy(expected); \
 } while(0)
 
 
@@ -110,7 +111,7 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
 // Empties the tmp directory.
 #define cleantmp() do {\
     mu_assert_with_msg(sky_file_rm_r(&BSTMPDIR) == 0, "Unable to clean tmp directory"); \
-    mu_assert_with_msg(mkdir(bdata(&BSTMPDIR), S_IRWXU | S_IRWXG | S_IRWXO) == 0, "Unable to create tmp directory"); \
+    mu_assert_with_msg(mkdir(TMPDIR, S_IRWXU | S_IRWXG | S_IRWXO) == 0, "Unable to create tmp directory"); \
 } while(0)
     
 // Loads the tmp directory with the contents of another directory.

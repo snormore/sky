@@ -9,10 +9,9 @@
 
 #include "dbg.h"
 #include "mem.h"
-#include "endian.h"
+#include "sky_endian.h"
 #include "bstring.h"
 #include "file.h"
-#include "block.h"
 #include "table.h"
 
 //==============================================================================
@@ -392,7 +391,7 @@ int sky_table_open(sky_table *table)
 
     // Create directory if it doesn't exist.
     if(!sky_file_exists(table->path)) {
-        rc = mkdir(bdata(table->path), S_IRWXU);
+        rc = mkdir(bdatae(table->path, ""), S_IRWXU);
         check(rc == 0, "Unable to create table directory: %s", bdata(table->path));
     }
 
@@ -510,7 +509,7 @@ int sky_table_unlock(sky_table *table)
         // up so don't check for an error. The write lock is the more
         // important piece.
         path = bformat("%s/%s", bdata(table->path), SKY_LOCK_NAME); check_mem(path);
-        unlink(bdata(path));
+        unlink(bdatae(path, ""));
     }
 
     bdestroy(path);
