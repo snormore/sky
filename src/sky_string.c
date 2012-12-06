@@ -68,8 +68,10 @@ bool sky_string_bequals(sky_string *a, bstring b)
 {
     // Check length first. We could have two strings pointing at the same data
     // but one string only points to a subset of the data.
-    if(a->length == blength(b)) {
-        return (memcmp(a->data, bdatae(b, ""), a->length)) == 0;
+    int32_t length;
+    memmove(&length, &a->length, sizeof(length));
+    if(length == blength(b)) {
+        return (memcmp(a->data, bdatae(b, ""), length)) == 0;
     }
     
     return false;

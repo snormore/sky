@@ -150,7 +150,7 @@ int test_sky_map_all() {
     // Call sky_map_all() function.
     uint32_t i;
     for(i=0; i<1; i++) {
-        sky_path_iterator_set_tablet(&iterator, table->tablets[0]);
+        //sky_path_iterator_set_tablet(&iterator, table->tablets[0]);
         lua_getglobal(L, "sky_map_all");
         lua_pushlightuserdata(L, &iterator);
         lua_call(L, 1, 0);
@@ -161,6 +161,7 @@ int test_sky_map_all() {
     int64_t t1 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
     printf("[lua] t=%.3fs\n", ((float)(t1-t0))/1000);
 
+    sky_path_iterator_uninit(&iterator);
     sky_table_free(table);
     free(iterator.cursor.data);
     return 0;

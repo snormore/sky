@@ -37,6 +37,8 @@ int test() {
         "\x00\x00\x02\x00\x01\xC0\xC6\x2D\x00\x00\x00\x00\x00\x03\x00",
         data_length
     );
+    sky_table_free(table);
+    free(data);
     return 0;
 }
 

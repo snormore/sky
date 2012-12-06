@@ -278,7 +278,7 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
                 // If the values match then splice this from the array.
                 // Compare strings.
                 void *a = &event->data[i]->value;
-                void *b = ((void*)data)+property_descriptor->offset;
+                void *b = ((void*)data_object)+property_descriptor->offset;
                 size_t n = sky_data_type_sizeof(event->data[i]->data_type);
                 
                 bool is_equal = false;

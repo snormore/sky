@@ -30,12 +30,17 @@ int test() {
 
     sky_tablet_get_path(table->tablets[1], 1, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x04\x00", data_length);
+    free(data);
     sky_tablet_get_path(table->tablets[2], 2, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x03\x00", data_length);
+    free(data);
     sky_tablet_get_path(table->tablets[3], 3, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x02\x00", data_length);
+    free(data);
     sky_tablet_get_path(table->tablets[0], 4, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x01\x00", data_length);
+    free(data);
+    sky_table_free(table);
     return 0;
 }
 

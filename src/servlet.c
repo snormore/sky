@@ -117,9 +117,18 @@ int sky_servlet_start(sky_servlet *servlet)
     // Update servlet state.
     servlet->state = SKY_SERVLET_STATE_RUNNING;
 
+    // Setup thread attributes.
+    pthread_attr_t attr;
+    check(pthread_attr_init(&attr) == 0, "Unable to init thread attributes");
+    check(pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == 0, "Unable to set thread detach state");
+
     // Create the worker thread.
     rc = pthread_create(&servlet->thread, NULL, sky_servlet_run, (void*)servlet);
     check(rc == 0, "Unable to create servlet thread");
+
+    // Destory thread attributes & detach thread.
+    check(pthread_attr_destroy(&attr) == 0, "Unable to destroy thread attributes");
+    check(pthread_detach(servlet->thread) == 0, "Unable to detach worker thread");
 
     return 0;
 

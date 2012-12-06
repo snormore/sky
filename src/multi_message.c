@@ -138,6 +138,8 @@ int sky_multi_message_process(sky_server *server,
     fclose(input);
     fclose(output);
     
+    sky_multi_message_free(message);
+
     return 0;
 
 error:
