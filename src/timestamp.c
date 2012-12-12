@@ -19,31 +19,39 @@
 // str - The string containing an ISO 8601 formatted date.
 int sky_timestamp_parse(bstring str, sky_timestamp_t *ret)
 {
+    char *tz = NULL;
+
     // Validate string.
     if(str == NULL) {
         return -1;
     }
     
-    // Append "GMT" to end of string so that strptime will parse in UTC.
-    bstring str2 = bformat("%s GMT", bdata(str)); check_mem(str2);
-    
     // Parse date.
     struct tm tp; memset(&tp, 0, sizeof(tp));
     char *ch;
-    ch = strptime(bdata(str2), "%Y-%m-%dT%H:%M:%SZ %Z", &tp);
+    ch = strptime(bdata(str), "%Y-%m-%dT%H:%M:%SZ", &tp);
     check(ch != NULL, "Unable to parse timestamp");
     
     // Convert to microseconds since epoch in UTC.
     char buffer[100];
+    tz = getenv("TZ");
+    setenv("TZ","",1);
+    tzset();
     strftime(buffer, 100, "%s", &tp);
+    if(tz) {
+        setenv("TZ",tz,1);
+    }
+    else {
+        unsetenv("TZ");
+    }
+
+    // Convert to an integer.
     sky_timestamp_t value = atoll(buffer);
     *ret = value * 1000000;
-    bdestroy(str2);
     
     return 0;
 
 error:
-    bdestroy(str2);
     return -1;
 }
 
