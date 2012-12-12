@@ -306,13 +306,13 @@ void *sky_worker_run(void *_worker)
         check(rc == 0 && worklet != NULL, "Worker unable to receive worklet");
         
         // Reduce worklet.
-        if(worker->reduce != NULL) {
+        if(worker->reduce != NULL && worklet->data != NULL) {
             rc = worker->reduce(worker, worklet->data);
             check(rc == 0, "Worker unable to reduce");
         }
 
         // Free worklet.
-        if(worker->map_free) worker->map_free(worklet->data);
+        if(worker->map_free && worklet->data) worker->map_free(worklet->data);
         worklet->data = NULL;
         sky_worklet_free(worklet);
         worklet = NULL;

@@ -99,9 +99,11 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     return 0;
 
 error:
-lua_pop(*L, 1);
-    if(*L != NULL) lua_close(*L);
-    *L = NULL;
+    if(*L != NULL) {
+        lua_pop(*L, 1);
+        lua_close(*L);
+        *L = NULL;
+    }
     bdestroy(new_source);
     bdestroy(header);
     return -1;

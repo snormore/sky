@@ -25,7 +25,7 @@
 
 #define SKY_LUA_MAP_REDUCE_KEY_COUNT 1
 
-struct tagbstring SKY_LUA_MAP_REDUCE_KEY_SOURCE     = bsStatic("source");
+struct tagbstring SKY_LUA_MAP_REDUCE_KEY_SOURCE = bsStatic("source");
 
 struct tagbstring SKY_LUA_MAP_REDUCE_STATUS_STR = bsStatic("status");
 struct tagbstring SKY_LUA_MAP_REDUCE_OK_STR     = bsStatic("ok");
