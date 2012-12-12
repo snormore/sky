@@ -99,7 +99,7 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
 // The path where memory dumps are directed to.
 #define MEMDUMPFILE "/tmp/memdump"
 
-#define TEST_PORT 9000
+#define TEST_PORT 10001
 
 
 //==============================================================================

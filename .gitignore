@@ -1,5 +1,6 @@
 bin/
 build/
+pkg/
 misc/eql/ir/*.s
 src/*.o
 src/**/*.o

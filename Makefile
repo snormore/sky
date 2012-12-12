@@ -2,6 +2,8 @@
 # Variables
 ################################################################################
 
+VERSION=0.2.0
+
 CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -rdynamic -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
 CXXFLAGS=-g -Wall -Wextra -Wno-strict-overflow -rdynamic -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
 LIBS=-lpthread -lzmq -ldl
@@ -14,6 +16,9 @@ LIB_SOURCES=$(filter-out ${BIN_SOURCES},${SOURCES})
 LIB_OBJECTS=$(filter-out ${BIN_OBJECTS},${OBJECTS})
 TEST_SOURCES=$(wildcard tests/*_tests.c tests/**/*_tests.c)
 TEST_OBJECTS=$(patsubst %.c,%,${TEST_SOURCES})
+
+PACKAGE=pkg/sky-${VERSION}.tar.gz
+PKGTMPDIR=pkg/tmp/sky-${VERSION}
 
 UNAME=$(shell uname)
 ifeq ($(UNAME), Darwin)
@@ -48,13 +53,27 @@ bin/libluajit.a: bin
 # Installation
 ################################################################################
 
-install: all
+install:
 	install -d $(DESTDIR)/$(PREFIX)/sky/
 	install -d $(DESTDIR)/$(PREFIX)/sky/bin/
 	install -d $(DESTDIR)/$(PREFIX)/sky/data/
 	install bin/skyd $(DESTDIR)/$(PREFIX)/sky/bin/
 	rm -f $(DESTDIR)/$(PREFIX)/bin/skyd
 	ln -s $(DESTDIR)/$(PREFIX)/sky/bin/skyd $(DESTDIR)/$(PREFIX)/bin/skyd
+
+################################################################################
+# Package
+################################################################################
+
+package: cleaner
+	rm -rf pkg
+	mkdir -p ${PKGTMPDIR}
+	cp Makefile LICENSE README.md ${PKGTMPDIR}
+	cp -r deps ${PKGTMPDIR}/deps
+	cp -r src ${PKGTMPDIR}/src
+	cp -r tests ${PKGTMPDIR}/tests
+	tar czvf ${PACKAGE} -C pkg/tmp .
+	rm -rf pkg/tmp
 
 ################################################################################
 # Binaries
@@ -130,7 +149,7 @@ clean:
 	rm -rf bin ${OBJECTS} ${TEST_OBJECTS}
 	rm -rf tests/*.dSYM tests/**/*.dSYM
 	rm -rf  tests/*.o tests/**/*.o
-	rm -rf tmp/*
+	rm -rf tmp pkg
 
 clean-leveldb:
 	rm -f bin/libleveldb.a
