@@ -359,8 +359,16 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
     check(rc == 0, "Unable to initialize path iterator");
 
     // Iterate over each path.
+    uint64_t path_count  = 0;
     uint64_t event_count = 0;
     while(!iterator.eof) {
+        // Increment path count.
+        path_count++;
+
+        // Initialize cursor.
+        rc = sky_cursor_next(&iterator.cursor);
+        check(rc == 0, "Unable to initialize cursor");
+
         // Loop over each event in the path.
         uint32_t prior_action_index = 0;
         while(!iterator.cursor.eof) {
@@ -395,6 +403,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
 
     // HACK: Increment the total event count. Note that this is not thread
     // safe however this number is only meant for debugging.
+    message->path_count  += path_count;
     message->event_count += event_count;
 
     // Return data.
@@ -487,7 +496,7 @@ int sky_next_actions_message_worker_write(sky_worker *worker, FILE *output)
     }
     
     // Write total number of events to log.
-    printf("[next_actions] events: %" PRIu64 "\n", message->event_count);
+    printf("[next_actions] paths: %" PRIu64 ", events: %" PRIu64 "\n", message->path_count, message->event_count);
     
     return 0;
 

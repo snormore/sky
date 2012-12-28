@@ -62,11 +62,10 @@ int test_sky_lua_map_reduce_message_worker_map() {
     message->source = bfromcstr(
         "function map(cursor, data)\n"
         "  data.count = data.count or 0\n"
-        "  while not cursor:eof() do\n"
+        "  while cursor:next() do\n"
         "    event = cursor:event()\n"
         "    data.count = data.count + 1\n"
         "    data[event.action_id] = (data[event.action_id] or 0) + 1\n"
-        "    cursor:next()\n"
         "  end\n"
         "end"
     );

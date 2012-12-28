@@ -27,19 +27,19 @@ int test_sky_path_iterator_next() {
 
     sky_path_iterator *iterator = sky_path_iterator_create();
     sky_path_iterator_set_tablet(iterator, table->tablets[0]);
-    mu_assert_mem(iterator->cursor.ptr, "\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00", iterator->cursor.endptr-iterator->cursor.ptr);
+    mu_assert_mem(iterator->cursor.startptr, "\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00", iterator->cursor.endptr-iterator->cursor.startptr);
 
     rc = sky_path_iterator_next(iterator);
     mu_assert_int_equals(rc, 0);
-    mu_assert_mem(iterator->cursor.ptr, "\x01\x40\x42\x0F\x00\x00\x00\x00\x00\x02\x00", iterator->cursor.endptr-iterator->cursor.ptr);
+    mu_assert_mem(iterator->cursor.startptr, "\x01\x40\x42\x0F\x00\x00\x00\x00\x00\x02\x00", iterator->cursor.endptr-iterator->cursor.startptr);
     
     rc = sky_path_iterator_next(iterator);
     mu_assert_int_equals(rc, 0);
-    mu_assert_mem(iterator->cursor.ptr, "\x01\x80\x84\x1E\x00\x00\x00\x00\x00\x01\x00", iterator->cursor.endptr-iterator->cursor.ptr);
+    mu_assert_mem(iterator->cursor.startptr, "\x01\x80\x84\x1E\x00\x00\x00\x00\x00\x01\x00", iterator->cursor.endptr-iterator->cursor.startptr);
     
     rc = sky_path_iterator_next(iterator);
     mu_assert_int_equals(rc, 0);
-    mu_assert_mem(iterator->cursor.ptr, "\x01\x80\x84\x1E\x00\x00\x00\x00\x00\x01\x00", iterator->cursor.endptr-iterator->cursor.ptr);
+    mu_assert_mem(iterator->cursor.startptr, "\x01\x80\x84\x1E\x00\x00\x00\x00\x00\x01\x00", iterator->cursor.endptr-iterator->cursor.startptr);
     
     sky_path_iterator_free(iterator);
     sky_table_free(table);

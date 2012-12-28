@@ -84,21 +84,27 @@ int test_sky_cursor_set_data() {
     cursor->data_descriptor = descriptor;
     cursor->data = &obj;
 
-    // Event 1 (State-Only)
     sky_cursor_set_ptr(cursor, data, data_length);
+    ASSERT_OBJ_STATE(obj, 0LL, 0, "", 0LL, 0, false, "", 0LL, 0, false);
+
+    // Event 1 (State-Only)
+    mu_assert_bool(sky_lua_cursor_next(cursor));
     ASSERT_OBJ_STATE(obj, 0LL, 0, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
     
     // Event 2 (Action + Action Data)
-    sky_cursor_next(cursor);
+    mu_assert_bool(sky_lua_cursor_next(cursor));
     ASSERT_OBJ_STATE(obj, 1000000LL, 1, "john doe", 1000LL, 100.2, true, "super", 21LL, 2.5, true);
     
     // Event 3 (Action-Only)
-    sky_cursor_next(cursor);
+    mu_assert_bool(sky_lua_cursor_next(cursor));
     ASSERT_OBJ_STATE(obj, 2000000LL, 2, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
 
     // Event 4 (Data-Only)
-    sky_cursor_next(cursor);
+    mu_assert_bool(sky_lua_cursor_next(cursor));
     ASSERT_OBJ_STATE(obj, 3000000LL, 0, "frank sinatra", 20LL, 1.5, false, "", 0LL, 0, false);
+
+    // EOF
+    mu_assert_bool(!sky_lua_cursor_next(cursor));
 
     free(data);
     sky_cursor_free(cursor);

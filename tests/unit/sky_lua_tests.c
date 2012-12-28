@@ -126,11 +126,10 @@ int test_sky_map_all() {
     struct tagbstring source = bsStatic(
         "function map(cursor, data)\n"
         "  data.path_count = (data.path_count or 0) + 1\n"
-        "  while not cursor:eof() do\n"
+        "  while cursor:next() do\n"
         "    event = cursor:event()\n"
         "    data.event_count = (data.event_count or 0) + 1\n"
         "    data.z = (data.z or 0) + event.x + event.y\n"
-        "    cursor:next()\n"
         "  end\n"
         "end\n"
     );

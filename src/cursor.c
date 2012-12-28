@@ -75,19 +75,14 @@ int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     assert(ptr != NULL);
     
     // Set the start of the path and the length of the data.
-    cursor->ptr    = ptr;
-    cursor->endptr = ptr + sz;
-    cursor->eof    = !(ptr != NULL && cursor->ptr < cursor->endptr);
+    cursor->startptr = ptr;
+    cursor->endptr   = ptr + sz;
+    cursor->ptr      = NULL;
+    cursor->eof      = !(ptr != NULL && cursor->startptr < cursor->endptr);
     
     // Clear the data object if set.
     rc = sky_cursor_clear_data(cursor);
     check(rc == 0, "Unable to clear data");
-
-    // If the cursor has an event then set the data.
-    if(!cursor->eof && cursor->data != NULL && cursor->data_descriptor != NULL) {
-        rc = sky_cursor_set_data(cursor);
-        check(rc == 0, "Unable to set set data on cursor");
-    }
 
     return 0;
 
@@ -111,17 +106,24 @@ int sky_cursor_next(sky_cursor *cursor)
     assert(cursor != NULL);
     assert(!cursor->eof);
 
-    // Move to next event.
-    size_t event_length = sky_event_sizeof_raw(cursor->ptr);
-    cursor->ptr += event_length;
-    cursor->event_index++;
+    // If the cursor hasn't started then initialize it.
+    if(cursor->ptr == NULL) {
+        cursor->ptr = cursor->startptr;
+    }
+    // Otherwise move to next event.
+    else {
+        size_t event_length = sky_event_sizeof_raw(cursor->ptr);
+        cursor->ptr += event_length;
+        cursor->event_index++;
+    }
 
-    // If pointer is beyond the last event then move to next path.
+    // If pointer is beyond the last event then set eof.
     if(cursor->ptr >= cursor->endptr) {
         cursor->event_index = 0;
-        cursor->eof = true;
-        cursor->ptr = NULL;
-        cursor->endptr = NULL;
+        cursor->eof      = true;
+        cursor->ptr      = NULL;
+        cursor->startptr = NULL;
+        cursor->endptr   = NULL;
     }
 
     // Make sure that we are point at an event.
@@ -139,6 +141,19 @@ int sky_cursor_next(sky_cursor *cursor)
 
 error:
     return -1;
+}
+
+// Moves the cursor to the next event in a path and returns a flag stating
+// if the cursor is still valid (a.k.a. not EOF).
+//
+// cursor - The cursor.
+//
+// Returns true if still valid, otherwise returns false.
+bool sky_lua_cursor_next(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+    sky_cursor_next(cursor);
+    return !cursor->eof;
 }
 
 // Returns whether the cursor is at the end or not.
