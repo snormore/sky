@@ -340,6 +340,8 @@ int sky_server_accept(sky_server *server)
     // Wrap socket in a buffered file reference.
     input = fdopen(socket, "r");
     output = fdopen(dup(socket), "w");
+    if(input != NULL && output == NULL) fclose(input);
+    if(input == NULL && output != NULL) fclose(output);
     check(input != NULL, "Unable to open buffered socket input");
     check(output != NULL, "Unable to open buffered socket output");
     
@@ -350,10 +352,6 @@ int sky_server_accept(sky_server *server)
     return 0;
 
 error:
-    if(input) fclose(input);
-    input = NULL;
-    if(output) fclose(output);
-    output = NULL;
     return -1;
 }
 
