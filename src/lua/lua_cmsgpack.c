@@ -252,28 +252,28 @@ static void mp_encode_int(mp_buf *buf, int64_t n) {
     mp_buf_append(buf,b,enclen);
 }
 
-static void mp_encode_array(mp_buf *buf, int64_t n) {
-    unsigned char b[5];
-    int enclen;
-
-    if (n <= 15) {
-        b[0] = 0x90 | (n & 0xf);    /* fix array */
-        enclen = 1;
-    } else if (n <= 65535) {
-        b[0] = 0xdc;                /* array 16 */
-        b[1] = (n & 0xff00) >> 8;
-        b[2] = n & 0xff;
-        enclen = 3;
-    } else {
-        b[0] = 0xdd;                /* array 32 */
-        b[1] = (n & 0xff000000) >> 24;
-        b[2] = (n & 0xff0000) >> 16;
-        b[3] = (n & 0xff00) >> 8;
-        b[4] = n & 0xff;
-        enclen = 5;
-    }
-    mp_buf_append(buf,b,enclen);
-}
+// static void mp_encode_array(mp_buf *buf, int64_t n) {
+//     unsigned char b[5];
+//     int enclen;
+// 
+//     if (n <= 15) {
+//         b[0] = 0x90 | (n & 0xf);    /* fix array */
+//         enclen = 1;
+//     } else if (n <= 65535) {
+//         b[0] = 0xdc;                /* array 16 */
+//         b[1] = (n & 0xff00) >> 8;
+//         b[2] = n & 0xff;
+//         enclen = 3;
+//     } else {
+//         b[0] = 0xdd;                /* array 32 */
+//         b[1] = (n & 0xff000000) >> 24;
+//         b[2] = (n & 0xff0000) >> 16;
+//         b[3] = (n & 0xff00) >> 8;
+//         b[4] = n & 0xff;
+//         enclen = 5;
+//     }
+//     mp_buf_append(buf,b,enclen);
+// }
 
 static void mp_encode_map(mp_buf *buf, int64_t n) {
     unsigned char b[5];
@@ -326,6 +326,7 @@ static void mp_encode_lua_number(lua_State *L, mp_buf *buf) {
 static void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level);
 
 /* Convert a lua table into a message pack list. */
+/*
 static void mp_encode_lua_table_as_array(lua_State *L, mp_buf *buf, int level) {
     size_t len = lua_objlen(L,-1), j;
 
@@ -336,6 +337,7 @@ static void mp_encode_lua_table_as_array(lua_State *L, mp_buf *buf, int level) {
         mp_encode_lua_type(L,buf,level+1);
     }
 }
+*/
 
 /* Convert a lua table into a message pack key-value map. */
 static void mp_encode_lua_table_as_map(lua_State *L, mp_buf *buf, int level) {
@@ -365,40 +367,47 @@ static void mp_encode_lua_table_as_map(lua_State *L, mp_buf *buf, int level) {
 /* Returns true if the Lua table on top of the stack is exclusively composed
  * of keys from numerical keys from 1 up to N, with N being the total number
  * of elements, without any hole in the middle. */
-static int table_is_an_array(lua_State *L) {
-    long count = 0, idx = 0;
-    lua_Number n;
-
-    lua_pushnil(L);
-    while(lua_next(L,-2)) {
-        /* Stack: ... key value */
-        lua_pop(L,1); /* Stack: ... key */
-        if (!lua_isnumber(L,-1)) goto not_array;
-        n = lua_tonumber(L,-1);
-        idx = n;
-        if (idx != n || idx < 1) goto not_array;
-        count++;
-    }
-    /* We have the total number of elements in "count". Also we have
-     * the max index encountered in "idx". We can't reach this code
-     * if there are indexes <= 0. If you also note that there can not be
-     * repeated keys into a table, you have that if idx==count you are sure
-     * that there are all the keys form 1 to count (both included). */
-    return idx == count;
-
-not_array:
-    lua_pop(L,1);
-    return 0;
-}
+// static int table_is_an_array(lua_State *L) {
+//     long count = 0, idx = 0;
+//     lua_Number n;
+// 
+//     lua_pushnil(L);
+//     while(lua_next(L,-2)) {
+//         /* Stack: ... key value */
+//         lua_pop(L,1); /* Stack: ... key */
+//         if (!lua_isnumber(L,-1)) goto not_array;
+//         n = lua_tonumber(L,-1);
+//         idx = n;
+//         if (idx != n || idx < 1) goto not_array;
+//         count++;
+//     }
+//     /* We have the total number of elements in "count". Also we have
+//      * the max index encountered in "idx". We can't reach this code
+//      * if there are indexes <= 0. If you also note that there can not be
+//      * repeated keys into a table, you have that if idx==count you are sure
+//      * that there are all the keys form 1 to count (both included). */
+//     return idx == count;
+// 
+// not_array:
+//     lua_pop(L,1);
+//     return 0;
+// }
 
 /* If the length operator returns non-zero, that is, there is at least
  * an object at key '1', we serialize to message pack list. Otherwise
  * we use a map. */
 static void mp_encode_lua_table(lua_State *L, mp_buf *buf, int level) {
+    /*
     if (table_is_an_array(L))
         mp_encode_lua_table_as_array(L,buf,level);
     else
         mp_encode_lua_table_as_map(L,buf,level);
+    */
+
+    // SKY (Dec 27, 2012):
+    // Removed array encoding since it is difficult to determine if data keys
+    // will be numeric and in sequence. Always return a map.
+    mp_encode_lua_table_as_map(L,buf,level);
 }
 
 static void mp_encode_lua_null(lua_State *L, mp_buf *buf) {
