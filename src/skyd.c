@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "bstring.h"
+#include "bandicoot/bandicoot.h"
 #include "dbg.h"
 #include "server.h"
 #include "version.h"
@@ -66,7 +67,8 @@ int main(int argc, char **argv)
     printf("Sky Server v%s\n", SKY_VERSION);
     printf("Listening on 0.0.0.0:%d, CTRL+C to stop\n", server->port);
     
-    // Signal handlers.
+    // Initialize bandicoot for crash reporting.
+    bandicoot_init();
 
     // Run server.
     //uint32_t counter = 0;
