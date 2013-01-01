@@ -5,6 +5,7 @@
 #include <cursor.h>
 #include <data_descriptor.h>
 #include <sky_string.h>
+#include <timestamp.h>
 #include <dbg.h>
 #include <mem.h>
 
@@ -93,15 +94,15 @@ int test_sky_cursor_set_data() {
     
     // Event 2 (Action + Action Data)
     mu_assert_bool(sky_lua_cursor_next(cursor));
-    ASSERT_OBJ_STATE(obj, 1000000LL, 1, "john doe", 1000LL, 100.2, true, "super", 21LL, 2.5, true);
+    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(1000000LL), 1, "john doe", 1000LL, 100.2, true, "super", 21LL, 2.5, true);
     
     // Event 3 (Action-Only)
     mu_assert_bool(sky_lua_cursor_next(cursor));
-    ASSERT_OBJ_STATE(obj, 2000000LL, 2, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(2000000LL), 2, "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
 
     // Event 4 (Data-Only)
     mu_assert_bool(sky_lua_cursor_next(cursor));
-    ASSERT_OBJ_STATE(obj, 3000000LL, 0, "frank sinatra", 20LL, 1.5, false, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(3000000LL), 0, "frank sinatra", 20LL, 1.5, false, "", 0LL, 0, false);
 
     // EOF
     mu_assert_bool(!sky_lua_cursor_next(cursor));
