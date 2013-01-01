@@ -134,7 +134,8 @@ int sky_data_descriptor_init_with_event(sky_data_descriptor *descriptor,
     descriptor->data_sz = (uint32_t)sizeof(sky_data_object);
     
     // Set the standard timestamp and action offsets.
-    descriptor->timestamp_descriptor.offset = offsetof(sky_data_object, timestamp);
+    descriptor->timestamp_descriptor.timestamp_offset = offsetof(sky_data_object, timestamp);
+    descriptor->timestamp_descriptor.ts_offset = offsetof(sky_data_object, ts);
     descriptor->action_descriptor.offset = offsetof(sky_data_object, action_id);
     
     // Loop over event data properties and set them on the descriptor.
@@ -227,7 +228,7 @@ int sky_data_descriptor_set_data_sz(sky_data_descriptor *descriptor,
     return 0;
 }
 
-// Sets the offset of the timestamp property on the data object.
+// Sets the offset of the unix timestamp property on the data object.
 //
 // descriptor  - The data descriptor.
 // offset      - The offset in the struct where the timestamp should be set.
@@ -237,7 +238,21 @@ int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
                                              uint32_t offset)
 {
     assert(descriptor != NULL);
-    descriptor->timestamp_descriptor.offset = offset;
+    descriptor->timestamp_descriptor.timestamp_offset = offset;
+    return 0;
+}
+
+// Sets the offset of the internal Sky timestamp property on the data object.
+//
+// descriptor  - The data descriptor.
+// offset      - The offset in the struct where the Sky timestamp should be set.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_data_descriptor_set_ts_offset(sky_data_descriptor *descriptor,
+                                      uint32_t offset)
+{
+    assert(descriptor != NULL);
+    descriptor->timestamp_descriptor.ts_offset = offset;
     return 0;
 }
 

@@ -18,7 +18,7 @@
 //==============================================================================
 
 #define ASSERT_OBJ_STATE(OBJ, TIMESTAMP, ACTION_ID, OSTRING, OINT, ODOUBLE, OBOOLEAN, ASTRING, AINT, ADOUBLE, ABOOLEAN) do {\
-    mu_assert_int64_equals(OBJ.timestamp, TIMESTAMP); \
+    mu_assert_int64_equals(OBJ.ts, TIMESTAMP); \
     mu_assert_int_equals(OBJ.action_id, ACTION_ID); \
     mu_assert_int_equals(OBJ.object_string.length, (int)strlen(OSTRING)); \
     mu_assert_bool(memcmp(OBJ.object_string.data, OSTRING, strlen(OSTRING)) == 0); \
@@ -33,7 +33,8 @@
 } while(0)
 
 typedef struct {
-    sky_timestamp_t timestamp;
+    uint32_t timestamp;
+    sky_timestamp_t ts;
     sky_action_id_t action_id;
     sky_string action_string;
     int64_t    action_int;
@@ -70,7 +71,8 @@ int test_sky_cursor_set_data() {
     // Setup data object & data descriptor.
     test_t obj; memset(&obj, 0, sizeof(obj));
     sky_data_descriptor *descriptor = sky_data_descriptor_create();
-    descriptor->timestamp_descriptor.offset = offsetof(test_t, timestamp);
+    descriptor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
+    descriptor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
     descriptor->action_descriptor.offset = offsetof(test_t, action_id);
     sky_data_descriptor_set_property(descriptor, -4, offsetof(test_t, action_boolean), SKY_DATA_TYPE_BOOLEAN);
     sky_data_descriptor_set_property(descriptor, -3, offsetof(test_t, action_double), SKY_DATA_TYPE_DOUBLE);

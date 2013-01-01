@@ -22,7 +22,7 @@
 // Initialization
 //--------------------------------------
 
-typedef struct { sky_timestamp_t timestamp; sky_action_id_t action_id; int32_t x; int32_t y; } sky_lua_event_0_t;
+typedef struct { sky_timestamp_t ts; uint32_t timestamp; sky_action_id_t action_id; int32_t x; int32_t y; } sky_lua_event_0_t;
 
 int test_sky_lua_initscript_with_table() {
     int rc;
@@ -32,7 +32,7 @@ int test_sky_lua_initscript_with_table() {
     sky_table_open(table);
     sky_data_descriptor *descriptor = sky_data_descriptor_create();
 
-    sky_lua_event_0_t lua_event = {0, 1, 20, 30};
+    sky_lua_event_0_t lua_event = {0, 0, 1, 20, 30};
 
     struct tagbstring source = bsStatic(
         "function map(_event)\n"
@@ -43,8 +43,9 @@ int test_sky_lua_initscript_with_table() {
     lua_State *L = NULL;
     rc = sky_lua_initscript_with_table(&source, table, descriptor, &L);
     mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(descriptor->timestamp_descriptor.offset, 0);
-    mu_assert_int_equals(descriptor->action_descriptor.offset, 8);
+    mu_assert_int_equals(descriptor->timestamp_descriptor.ts_offset, 0);
+    mu_assert_int_equals(descriptor->timestamp_descriptor.timestamp_offset, 8);
+    mu_assert_int_equals(descriptor->action_descriptor.offset, 12);
     mu_assert_int_equals(descriptor->property_zero_descriptor[1].offset, 0);
     mu_assert_int_equals(descriptor->property_zero_descriptor[2].offset, (int)offsetof(sky_lua_event_0_t, x));
     mu_assert_int_equals(descriptor->property_zero_descriptor[3].offset, (int)offsetof(sky_lua_event_0_t, y));
@@ -83,7 +84,8 @@ int test_sky_lua_generate_header() {
     mu_assert_int_equals(rc, 0);
     mu_assert_bstring(event_decl,
         "typedef struct {\n"
-        "  int64_t timestamp;\n"
+        "  int64_t ts;\n"
+        "  uint32_t timestamp;\n"
         "  uint16_t action_id;\n"
         "  int32_t x;\n"
         "  int32_t y;\n"
@@ -93,6 +95,7 @@ int test_sky_lua_generate_header() {
         "function sky_init_descriptor(_descriptor)\n"
         "  descriptor = ffi.cast(\"sky_data_descriptor_t*\", _descriptor)\n"
         "  descriptor:set_data_sz(ffi.sizeof(\"sky_lua_event_t\"));\n"
+        "  descriptor:set_ts_offset(ffi.offsetof(\"sky_lua_event_t\", \"ts\"));\n"
         "  descriptor:set_timestamp_offset(ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
         "  descriptor:set_action_id_offset(ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
         "  descriptor:set_property(2, ffi.offsetof(\"sky_lua_event_t\", \"x\"), 2);\n"

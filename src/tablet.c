@@ -251,7 +251,7 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
         // Loop over cursor until we reach the event insertion point.
         while(!cursor.eof) {
             // Retrieve event insertion pointer once the timestamp is reached.
-            if(data_object->timestamp >= event->timestamp) {
+            if(data_object->ts >= event->timestamp) {
                 insert_ptr = cursor.ptr;
                 break;
             }

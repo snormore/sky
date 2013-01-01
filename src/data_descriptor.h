@@ -23,9 +23,10 @@ typedef void (*sky_data_property_descriptor_set_func)(void *target, void *value,
 typedef void (*sky_data_property_descriptor_clear_func)(void *target);
 
 // Defines a structure for the beginning of a data descriptor data object that
-// includes the timestamp and action id.
+// includes the unix timestamp, original Sky timestamp and action id.
 typedef struct {
-    sky_timestamp_t timestamp;
+    uint32_t timestamp;
+    sky_timestamp_t ts;
     sky_action_id_t action_id;
 } sky_data_object;
 
@@ -37,7 +38,8 @@ typedef enum {
 
 // Defines the offset in memory for where the timestamp should be set.
 typedef struct {
-    uint16_t offset;
+    uint16_t ts_offset;
+    uint16_t timestamp_offset;
 } sky_data_timestamp_descriptor;
 
 // Defines the offset in memory for where the action id should be set.
@@ -103,6 +105,9 @@ int sky_data_descriptor_set_data_sz(sky_data_descriptor *descriptor,
     uint32_t sz);
 
 int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor *descriptor,
+    uint32_t offset);
+
+int sky_data_descriptor_set_ts_offset(sky_data_descriptor *descriptor,
     uint32_t offset);
 
 int sky_data_descriptor_set_action_id_offset(sky_data_descriptor *descriptor,

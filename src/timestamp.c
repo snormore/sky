@@ -126,3 +126,13 @@ int64_t sky_timestamp_unshift(int64_t value)
     return (sec * USEC_PER_SEC) + usec;
 }
 
+// Converts a bit-shifted Sky timestamp to seconds since the epoch.
+//
+// value - Sky timestamp.
+//
+// Returns the number of seconds since the Unix epoch.
+int64_t sky_timestamp_to_seconds(int64_t value)
+{
+    return (value >> SECONDS_BIT_OFFSET);
+}
+

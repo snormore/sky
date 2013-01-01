@@ -29,5 +29,7 @@ int64_t sky_timestamp_shift(int64_t value);
 
 int64_t sky_timestamp_unshift(int64_t value);
 
+int64_t sky_timestamp_to_seconds(int64_t value);
+
 #endif
 

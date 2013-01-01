@@ -4,6 +4,7 @@
 #include "path.h"
 #include "event.h"
 #include "minipack.h"
+#include "timestamp.h"
 #include "mem.h"
 #include "dbg.h"
 
@@ -197,8 +198,11 @@ int sky_cursor_set_data(sky_cursor *cursor)
     ptr += sizeof(sky_event_flag_t);
     
     // Assign timestamp.
-    sky_timestamp_t *timestamp = (sky_timestamp_t*)(data + descriptor->timestamp_descriptor.offset);
-    *timestamp = *((sky_timestamp_t*)ptr);
+    sky_timestamp_t ts_value = *((sky_timestamp_t*)ptr);
+    sky_timestamp_t *ts = (sky_timestamp_t*)(data + descriptor->timestamp_descriptor.ts_offset);
+    uint32_t *timestamp = (uint32_t*)(data + descriptor->timestamp_descriptor.timestamp_offset);
+    *ts = ts_value;
+    *timestamp = (uint32_t)sky_timestamp_to_seconds(ts_value);
     ptr += sizeof(sky_timestamp_t);
 
     // Read action if this event contains an action.

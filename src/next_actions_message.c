@@ -25,7 +25,8 @@
 
 // The data object to track event data.
 typedef struct {
-    sky_timestamp_t timestamp;
+    uint32_t timestamp;
+    sky_timestamp_t ts;
     sky_action_id_t action_id;
 } sky_next_actions_data;
 
@@ -198,7 +199,8 @@ int sky_next_actions_message_init_data_descriptor(sky_next_actions_message *mess
     // Create data descriptor.
     descriptor = sky_data_descriptor_create(); check_mem(descriptor);
     descriptor->data_sz = (uint32_t)sizeof(sky_next_actions_data);
-    descriptor->timestamp_descriptor.offset = offsetof(sky_next_actions_data, timestamp);
+    descriptor->timestamp_descriptor.timestamp_offset = offsetof(sky_next_actions_data, timestamp);
+    descriptor->timestamp_descriptor.ts_offset = offsetof(sky_next_actions_data, ts);
     descriptor->action_descriptor.offset = offsetof(sky_next_actions_data, action_id);
     
     // Assign it to message.

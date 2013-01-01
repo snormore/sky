@@ -217,6 +217,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "\n"
         "int sky_data_descriptor_set_data_sz(sky_data_descriptor_t *descriptor, uint32_t sz);\n"
         "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
+        "int sky_data_descriptor_set_ts_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
         "int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
         "int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint32_t offset, int data_type);\n"
         "\n"
@@ -232,6 +233,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "  __index = {\n"
         "    set_data_sz = function(descriptor, sz) return ffi.C.sky_data_descriptor_set_data_sz(descriptor, sz) end,\n"
         "    set_timestamp_offset = function(descriptor, offset) return ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, offset) end,\n"
+        "    set_ts_offset = function(descriptor, offset) return ffi.C.sky_data_descriptor_set_ts_offset(descriptor, offset) end,\n"
         "    set_action_id_offset = function(descriptor, offset) return ffi.C.sky_data_descriptor_set_action_id_offset(descriptor, offset) end,\n"
         "    set_property = function(descriptor, property_id, offset, data_type) return ffi.C.sky_data_descriptor_set_property(descriptor, property_id, offset, data_type) end,\n"
         "  }\n"
@@ -334,12 +336,14 @@ int sky_lua_generate_event_info(bstring source,
 
     // Initialize returned value.
     *event_decl = bfromcstr(
-        "  int64_t timestamp;\n"
+        "  int64_t ts;\n"
+        "  uint32_t timestamp;\n"
         "  uint16_t action_id;\n"
     );
     check_mem(*event_decl);
     *init_descriptor_func = bfromcstr(
         "  descriptor:set_data_sz(ffi.sizeof(\"sky_lua_event_t\"));\n"
+        "  descriptor:set_ts_offset(ffi.offsetof(\"sky_lua_event_t\", \"ts\"));\n"
         "  descriptor:set_timestamp_offset(ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
         "  descriptor:set_action_id_offset(ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
     );
@@ -373,7 +377,7 @@ int sky_lua_generate_event_info(bstring source,
         identifier = bmidstr(source, pos, i-pos); check_mem(identifier);
 
         // Skip if the identifier refers to the action id or timestamp.
-        if(biseqcstr(identifier, "action_id") == 1 || biseqcstr(identifier, "timestamp") == 1) {
+        if(biseqcstr(identifier, "action_id") == 1 || biseqcstr(identifier, "timestamp") == 1 || biseqcstr(identifier, "ts") == 1) {
             skip = true;
         }
 
