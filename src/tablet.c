@@ -257,7 +257,7 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
             }
             
             // Move to next event.
-            check(sky_cursor_next(&cursor) == 0, "Unable to move to next event");
+            check(sky_cursor_next_event(&cursor) == 0, "Unable to move to next event");
         }
 
         // If no insertion point was found then append the event to the

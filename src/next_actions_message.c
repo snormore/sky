@@ -368,7 +368,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
         path_count++;
 
         // Initialize cursor.
-        rc = sky_cursor_next(&iterator.cursor);
+        rc = sky_cursor_next_event(&iterator.cursor);
         check(rc == 0, "Unable to initialize cursor");
 
         // Loop over each event in the path.
@@ -391,7 +391,7 @@ int sky_next_actions_message_worker_map(sky_worker *worker, sky_tablet *tablet,
             }
 
             // Find next event.
-            rc = sky_cursor_next(&iterator.cursor);
+            rc = sky_cursor_next_event(&iterator.cursor);
             check(rc == 0, "Unable to find next event");
             
             // Increment event count.

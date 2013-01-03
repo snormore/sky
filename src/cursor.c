@@ -76,10 +76,13 @@ int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     assert(ptr != NULL);
     
     // Set the start of the path and the length of the data.
-    cursor->startptr = ptr;
-    cursor->endptr   = ptr + sz;
-    cursor->ptr      = NULL;
-    cursor->eof      = !(ptr != NULL && cursor->startptr < cursor->endptr);
+    cursor->startptr   = ptr;
+    cursor->endptr     = ptr + sz;
+    cursor->ptr        = NULL;
+    cursor->in_session = true;
+    cursor->last_timestamp      = 0;
+    cursor->session_idle_in_sec = 0;
+    cursor->eof        = !(ptr != NULL && cursor->startptr < cursor->endptr);
     
     // Clear the data object if set.
     rc = sky_cursor_clear_data(cursor);
@@ -101,11 +104,16 @@ error:
 // cursor - The cursor.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_cursor_next(sky_cursor *cursor)
+int sky_cursor_next_event(sky_cursor *cursor)
 {
     int rc;
+    size_t event_length = 0;
     assert(cursor != NULL);
-    assert(!cursor->eof);
+
+    // Ignore any calls when the cursor is out of session or EOF.
+    if(cursor->eof || !cursor->in_session) {
+        return 0;
+    }
 
     // If the cursor hasn't started then initialize it.
     if(cursor->ptr == NULL) {
@@ -113,28 +121,49 @@ int sky_cursor_next(sky_cursor *cursor)
     }
     // Otherwise move to next event.
     else {
-        size_t event_length = sky_event_sizeof_raw(cursor->ptr);
+        event_length = sky_event_sizeof_raw(cursor->ptr);
         cursor->ptr += event_length;
-        cursor->event_index++;
     }
 
     // If pointer is beyond the last event then set eof.
     if(cursor->ptr >= cursor->endptr) {
-        cursor->event_index = 0;
-        cursor->eof      = true;
-        cursor->ptr      = NULL;
-        cursor->startptr = NULL;
-        cursor->endptr   = NULL;
+        cursor->eof        = true;
+        cursor->in_session = false;
+        cursor->ptr        = NULL;
+        cursor->startptr   = NULL;
+        cursor->endptr     = NULL;
     }
-
-    // Make sure that we are point at an event.
-    if(!cursor->eof) {
+    // Otherwise update the event object with data.
+    else {
         sky_event_flag_t flag = *((sky_event_flag_t*)cursor->ptr);
         check(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA, "Cursor pointing at invalid raw event data: %p", cursor->ptr);
 
-        if(cursor->data != NULL && cursor->data_descriptor != NULL) {
-            rc = sky_cursor_set_data(cursor);
-            check(rc == 0, "Unable to set set data on cursor");
+        // Retrieve current timestamp.
+        sky_timestamp_t ts;
+        uint32_t timestamp;
+        rc = sky_cursor_get_timestamp(cursor, &ts, &timestamp);
+        check(rc == 0, "Unable to retrieve current event timestamp");
+
+        // Check for session boundry. This only applies if this is not the
+        // first event in the session and a session idle time has been set.
+        if(cursor->last_timestamp > 0 && cursor->session_idle_in_sec > 0) {
+            // If the elapsed time is greater than the idle time then rewind
+            // back to the event we started on at the beginning of the function
+            // and mark the cursor as being "out of session".
+            if(timestamp - cursor->last_timestamp >= cursor->session_idle_in_sec) {
+                cursor->ptr -= event_length;
+                cursor->in_session = false;
+            }
+        }
+        cursor->last_timestamp = timestamp;
+
+        // Only process the event if we're still in session.
+        if(cursor->in_session) {
+            // Update data if it is available.
+            if(cursor->data != NULL && cursor->data_descriptor != NULL) {
+                rc = sky_cursor_set_data(cursor);
+                check(rc == 0, "Unable to set set data on cursor");
+            }
         }
     }
 
@@ -150,11 +179,11 @@ error:
 // cursor - The cursor.
 //
 // Returns true if still valid, otherwise returns false.
-bool sky_lua_cursor_next(sky_cursor *cursor)
+bool sky_lua_cursor_next_event(sky_cursor *cursor)
 {
     assert(cursor != NULL);
-    sky_cursor_next(cursor);
-    return !cursor->eof;
+    sky_cursor_next_event(cursor);
+    return (!cursor->eof && cursor->in_session);
 }
 
 // Returns whether the cursor is at the end or not.
@@ -170,13 +199,88 @@ bool sky_cursor_eof(sky_cursor *cursor)
 
 
 //--------------------------------------
-// Event Management
+// Session Management
 //--------------------------------------
+
+// Sets the minimum number of seconds to elapse between two events to make
+// a session demarcation.
+//
+// cursor  - The cursor.
+// seconds - The idle time, in seconds.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_cursor_set_session_idle(sky_cursor *cursor, uint32_t seconds)
+{
+    assert(cursor != NULL);
+    
+    // Save the idle value.
+    cursor->session_idle_in_sec = seconds;
+
+    // If the value is non-zero then start sessionizing the cursor.
+    cursor->in_session = (seconds > 0 ? false : !cursor->eof);
+    
+    return 0;
+}
+
+// Initializes the next session in the cursor unless the cursor has reached
+// EOF.
+//
+// cursor - The cursor.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_cursor_next_session(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+    
+    // Set a flag to allow the cursor to continue iterating unless EOF is set.
+    cursor->in_session = !cursor->eof;
+    
+    return 0;
+}
+
+// Moves the cursor to the next session in a path and returns a flag stating
+// if the cursor is still valid (a.k.a. not EOF).
+//
+// cursor - The cursor.
+//
+// Returns true if still valid, otherwise returns false.
+bool sky_lua_cursor_next_session(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+    sky_cursor_next_session(cursor);
+    return !cursor->eof;
+}
+
+
+//--------------------------------------
+// Data Management
+//--------------------------------------
+
+// Retrieves the current unix timestamp & Sky timestamp from the current event.
+//
+// cursor    - The cursor.
+// timestamp - A pointer to where the Unix timestamp should be returned.
+// ts        - A pointer to where the Sky timestamp should be returned.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_cursor_get_timestamp(sky_cursor *cursor, sky_timestamp_t *ts,
+                             uint32_t *timestamp)
+{
+    assert(cursor != NULL);
+    assert(ts != NULL);
+    assert(timestamp != NULL);
+    
+    sky_timestamp_t ts_value = *((sky_timestamp_t*)(cursor->ptr+sizeof(sky_event_flag_t)));
+    *ts = ts_value;
+    *timestamp = (uint32_t)sky_timestamp_to_seconds(ts_value);
+    
+    return 0;
+}
+
 
 // Updates a memory location based on the current event and a data descriptor.
 //
 // cursor    - The cursor.
-// action_id - A pointer to where the action id should be returned to.
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_cursor_set_data(sky_cursor *cursor)
@@ -198,11 +302,10 @@ int sky_cursor_set_data(sky_cursor *cursor)
     ptr += sizeof(sky_event_flag_t);
     
     // Assign timestamp.
-    sky_timestamp_t ts_value = *((sky_timestamp_t*)ptr);
     sky_timestamp_t *ts = (sky_timestamp_t*)(data + descriptor->timestamp_descriptor.ts_offset);
     uint32_t *timestamp = (uint32_t*)(data + descriptor->timestamp_descriptor.timestamp_offset);
-    *ts = ts_value;
-    *timestamp = (uint32_t)sky_timestamp_to_seconds(ts_value);
+    rc = sky_cursor_get_timestamp(cursor, ts, timestamp);
+    check(rc == 0, "Unable to retrieve cursor timestamp");
     ptr += sizeof(sky_timestamp_t);
 
     // Read action if this event contains an action.

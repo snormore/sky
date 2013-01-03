@@ -4,8 +4,8 @@
 
 VERSION=0.2.0
 
-CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -rdynamic -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
-CXXFLAGS=-g -Wall -Wextra -Wno-strict-overflow -rdynamic -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include -L/usr/local/lib
+CFLAGS=-g -Wall -Wextra -Wno-strict-overflow -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include
+CXXFLAGS=-g -Wall -Wextra -Wno-strict-overflow -std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -Ideps/leveldb-1.7.0/include -Ideps/LuaJIT-2.0.0/src -I/usr/local/include
 LIBS=-lpthread -lzmq -ldl
 
 SOURCES=$(wildcard src/**/*.c src/**/**/*.c src/*.c)
@@ -24,6 +24,10 @@ UNAME=$(shell uname)
 ifeq ($(UNAME), Darwin)
 LUAJIT_FLAGS=-pagezero_size 10000 -image_base 100000000
 CFLAGS+=-Wno-self-assign
+endif
+ifeq ($(UNAME), Linux)
+CFLAGS+=-rdynamic -L/usr/local/lib
+CXXFLAGS+=-rdynamic -L/usr/local/lib
 endif
 
 PREFIX?=/usr/local

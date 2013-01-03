@@ -1,0 +1,21 @@
+{
+  table:{
+    actions:[
+      {name: "A1"},
+      {name: "A2"}
+      {name: "A3"}
+    ],
+    properties:[
+      {type:"action", dataType:"Int", name:"aint"},
+      {type:"object", dataType:"Int", name:"oint"},
+    ],
+    events:[
+      {objectId:10, timestamp:"1970-01-01T00:00:00Z", action:"A1", data:{oint:1000}},
+      {objectId:10, timestamp:"1970-01-01T00:00:01Z", action:"A2", data:{aint:100}},
+      {objectId:10, timestamp:"1970-01-01T00:00:10Z", action:"A3", data:{aint:200}},
+      {objectId:10, timestamp:"1970-01-01T00:00:20Z", action:"A1", data:{aint:300}},
+      {objectId:10, timestamp:"1970-01-01T00:01:00Z", action:"A1", data:{oint:2000}},
+      {objectId:10, timestamp:"1970-01-01T00:01:03Z", action:"A2", data:{aint:400}},
+   ]
+  }
+}
