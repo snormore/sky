@@ -42,6 +42,6 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret);
 
 int sky_lua_generate_event_info(bstring source,
     sky_property_file *property_file, bstring *event_decl,
-    bstring *init_descriptor_func);
+    bstring *event_metatype, bstring *init_descriptor_func);
 
 #endif

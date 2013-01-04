@@ -2,9 +2,11 @@
   table:{
     properties:[
       {type:"action", dataType:"String", name:"_test123"},
-      {type:"object", dataType:"Int", name:"hello"}
-      {type:"object", dataType:"Int", name:"x"}
-      {type:"object", dataType:"Int", name:"y"}
+      {type:"object", dataType:"Int", name:"hello"},
+      {type:"object", dataType:"Int", name:"x"},
+      {type:"object", dataType:"Int", name:"y"},
+      {type:"object", dataType:"String", name:"first_name"},
+      {type:"object", dataType:"String", name:"last_name"}
    ]
   }
 }

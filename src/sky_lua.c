@@ -38,13 +38,14 @@ int sky_lua_initscript(bstring source, lua_State **L)
     rc = luaopen_cmsgpack(*L);
     check(rc == 1, "Unable to load lua-cmsgpack");
     
-    //debug("--SOURCE--\n%s", bdata(source));
+    //debug("--BEGIN SOURCE--\n%s\n--END SOURCE--", bdata(source));
     
     // Compile lua script.
     rc = luaL_loadstring(*L, bdata(source));
     check(rc == 0, "Unable to compile Lua script: %s", lua_tostring(*L, -1));
 
     // Call once to make the functions available.
+    //lua_call(*L, 0, 0);
     rc = lua_pcall(*L, 0, 0, 0);
     check(rc == 0, "Unable to initialize lua script");
 
@@ -193,6 +194,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
 {
     int rc;
     bstring event_decl = NULL;
+    bstring event_metatype = NULL;
     bstring init_descriptor_func = NULL;
     assert(source != NULL);
     assert(table != NULL);
@@ -202,14 +204,15 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
     *ret = NULL;
 
     // Generate sky_lua_event_t declaration.
-    rc = sky_lua_generate_event_info(source, table->property_file, &event_decl, &init_descriptor_func);
+    rc = sky_lua_generate_event_info(source, table->property_file, &event_decl, &event_metatype, &init_descriptor_func);
     check(rc == 0, "Unable to generate lua event header");
     
     // Generate full header.
     *ret = bformat(
         "-- SKY GENERATED CODE BEGIN --\n"
-        "local ffi = require(\"ffi\")\n"
+        "local ffi = require('ffi')\n"
         "ffi.cdef([[\n"
+        "typedef struct sky_string_t { int32_t length; char *data; } sky_string_t;\n"
         "typedef struct sky_data_descriptor_t sky_data_descriptor_t;\n"
         "typedef struct sky_path_iterator_t sky_path_iterator_t;\n"
         "typedef struct sky_cursor_t sky_cursor_t;\n"
@@ -229,7 +232,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "bool sky_lua_cursor_next_event(sky_cursor_t *);\n"
         "sky_lua_event_t *sky_lua_cursor_get_event(sky_cursor_t *);\n"
         "]])\n"
-        "ffi.metatype(\"sky_data_descriptor_t\", {\n"
+        "ffi.metatype('sky_data_descriptor_t', {\n"
         "  __index = {\n"
         "    set_data_sz = function(descriptor, sz) return ffi.C.sky_data_descriptor_set_data_sz(descriptor, sz) end,\n"
         "    set_timestamp_offset = function(descriptor, offset) return ffi.C.sky_data_descriptor_set_timestamp_offset(descriptor, offset) end,\n"
@@ -238,24 +241,25 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "    set_property = function(descriptor, property_id, offset, data_type) return ffi.C.sky_data_descriptor_set_property(descriptor, property_id, offset, data_type) end,\n"
         "  }\n"
         "})\n"
-        "ffi.metatype(\"sky_path_iterator_t\", {\n"
+        "ffi.metatype('sky_path_iterator_t', {\n"
         "  __index = {\n"
         "    eof = function(iterator) return ffi.C.sky_path_iterator_eof(iterator) end,\n"
         "    cursor = function(iterator) return ffi.C.sky_lua_path_iterator_get_cursor(iterator) end,\n"
         "    next = function(iterator) return ffi.C.sky_path_iterator_next(iterator) end,\n"
         "  }\n"
         "})\n"
-        "ffi.metatype(\"sky_cursor_t\", {\n"
+        "ffi.metatype('sky_cursor_t', {\n"
         "  __index = {\n"
         "    eof = function(cursor) return ffi.C.sky_cursor_eof(cursor) end,\n"
         "    event = function(cursor) return ffi.C.sky_lua_cursor_get_event(cursor) end,\n"
         "    next = function(cursor) return ffi.C.sky_lua_cursor_next_event(cursor) end,\n"
         "  }\n"
         "})\n"
+        "%s\n"
         "\n"
         "%s\n"
         "function sky_map_all(_iterator)\n"
-        "  iterator = ffi.cast(\"sky_path_iterator_t*\", _iterator)\n"
+        "  iterator = ffi.cast('sky_path_iterator_t*', _iterator)\n"
         "  data = {}\n"
         "  while not iterator:eof() do\n"
         "    cursor = iterator:cursor()\n"
@@ -295,6 +299,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "-- SKY GENERATED CODE END --\n"
         ,
         bdata(event_decl),
+        bdata(event_metatype),
         bdata(init_descriptor_func)
     );
     check_mem(*ret);
@@ -319,12 +324,14 @@ error:
 // source          - The source code of the Lua script.
 // property_file   - The property file used to lookup properties.
 // event_decl      - A pointer to where the struct def should be returned.
+// event_metatype  - A pointer to where the meta type should be defined.
 // init_descriptor_func - A pointer to where the descriptor init function should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_lua_generate_event_info(bstring source,
                                 sky_property_file *property_file,
                                 bstring *event_decl,
+                                bstring *event_metatype,
                                 bstring *init_descriptor_func)
 {
     int rc;
@@ -332,6 +339,7 @@ int sky_lua_generate_event_info(bstring source,
     assert(source != NULL);
     assert(property_file != NULL);
     assert(event_decl != NULL);
+    assert(event_metatype != NULL);
     assert(init_descriptor_func != NULL);
 
     // Initialize returned value.
@@ -341,11 +349,14 @@ int sky_lua_generate_event_info(bstring source,
         "  uint16_t action_id;\n"
     );
     check_mem(*event_decl);
+    
+    *event_metatype = bfromcstr(""); check_mem(*event_metatype);
+    
     *init_descriptor_func = bfromcstr(
-        "  descriptor:set_data_sz(ffi.sizeof(\"sky_lua_event_t\"));\n"
-        "  descriptor:set_ts_offset(ffi.offsetof(\"sky_lua_event_t\", \"ts\"));\n"
-        "  descriptor:set_timestamp_offset(ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
-        "  descriptor:set_action_id_offset(ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
+        "  descriptor:set_data_sz(ffi.sizeof('sky_lua_event_t'));\n"
+        "  descriptor:set_ts_offset(ffi.offsetof('sky_lua_event_t', 'ts'));\n"
+        "  descriptor:set_timestamp_offset(ffi.offsetof('sky_lua_event_t', 'timestamp'));\n"
+        "  descriptor:set_action_id_offset(ffi.offsetof('sky_lua_event_t', 'action_id'));\n"
     );
     check_mem(*init_descriptor_func);
 
@@ -353,19 +364,25 @@ int sky_lua_generate_event_info(bstring source,
     bool lookup[SKY_PROPERTY_ID_COUNT+1];
     memset(lookup, 0, sizeof(lookup));
 
-    // Loop over every mention of an "event." property.
+    // Loop over every mention of an "event" property.
     int pos = 0;
-    struct tagbstring EVENT_DOT_STR = bsStatic("event.");
-    while((pos = binstr(source, pos, &EVENT_DOT_STR)) != BSTR_ERR) {
+    struct tagbstring EVENT_STR = bsStatic("event");
+    while((pos = binstr(source, pos, &EVENT_STR)) != BSTR_ERR) {
         // Make sure that this is not part of another identifier.
         bool skip = false;
         if(pos > 0 && (isalnum(bchar(source, pos-1)) || bchar(source, pos-1) == '_')) {
             skip = true;
         }
         
-        // Move past the "event." string.
-        pos += (&EVENT_DOT_STR)->slen;
+        // Move past the "event" string.
+        pos += (&EVENT_STR)->slen;
 
+        // Make sure this is a property or method.
+        if(bchar(source, pos) != '.' && bchar(source, pos) != ':') {
+            skip = true;
+        }
+        pos++;
+        
         // Read in identifier.
         int i;
         for(i=pos+1; i<blength(source); i++) {
@@ -392,7 +409,8 @@ int sky_lua_generate_event_info(bstring source,
                     // Append property definition to event decl and function.
                     switch(property->data_type) {
                         case SKY_DATA_TYPE_STRING: {
-                            bformata(*event_decl, "  char %s[];\n", bdata(property->name));
+                            bformata(*event_decl, "  sky_string_t _%s;\n", bdata(property->name));
+                            bformata(*event_metatype, "    %s = function(event) return ffi.string(event._%s.data, event._%s.length) end,\n", bdata(property->name), bdata(property->name), bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_INT: {
@@ -413,7 +431,7 @@ int sky_lua_generate_event_info(bstring source,
                     }
                     check_mem(*event_decl);
 
-                    bformata(*init_descriptor_func, "  descriptor:set_property(%d, ffi.offsetof(\"sky_lua_event_t\", \"%s\"), %d);\n", property->id, bdata(property->name), property->data_type);
+                    bformata(*init_descriptor_func, "  descriptor:set_property(%d, ffi.offsetof('sky_lua_event_t', '%s%s'), %d);\n", property->id, (property->data_type == SKY_DATA_TYPE_STRING ? "_" : ""), bdata(property->name), property->data_type);
                     check_mem(*init_descriptor_func);
 
                     // Flag the property as already processed.
@@ -430,10 +448,21 @@ int sky_lua_generate_event_info(bstring source,
     bassignformat(*event_decl, "typedef struct {\n%s} sky_lua_event_t;", bdata(*event_decl));
     check_mem(*event_decl);
 
+    // Wrap event metatype.
+    bassignformat(*event_metatype,
+        "ffi.metatype('sky_lua_event_t', {\n"
+        "  __index = {\n"
+        "%s"
+        "  }\n"
+        "})\n",
+        bdata(*event_metatype)
+    );
+    check_mem(*event_metatype);
+
     // Wrap info function.
     bassignformat(*init_descriptor_func,
         "function sky_init_descriptor(_descriptor)\n"
-        "  descriptor = ffi.cast(\"sky_data_descriptor_t*\", _descriptor)\n"
+        "  descriptor = ffi.cast('sky_data_descriptor_t*', _descriptor)\n"
         "%s"
         "end\n",
         bdata(*init_descriptor_func)

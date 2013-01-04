@@ -61,11 +61,14 @@ int test_sky_lua_map_reduce_message_worker_map() {
     sky_lua_map_reduce_message *message = sky_lua_map_reduce_message_create();
     message->source = bfromcstr(
         "function map(cursor, data)\n"
+        "  event = cursor:event()\n"
         "  data.count = data.count or 0\n"
+        "  \n"
         "  while cursor:next() do\n"
-        "    event = cursor:event()\n"
+        "    mystr = event:mystr()\n"
         "    data.count = data.count + 1\n"
         "    data[event.action_id] = (data[event.action_id] or 0) + 1\n"
+        "    data[mystr] = (data[mystr] or 0) + 1\n"
         "  end\n"
         "end"
     );
@@ -75,8 +78,12 @@ int test_sky_lua_map_reduce_message_worker_map() {
     bstring results = NULL;
     int rc = sky_lua_map_reduce_message_worker_map(worker, table->tablets[0], (void**)&results);
     mu_assert_int_equals(rc, 0);
-    mu_assert_int_equals(blength(results), 16);
-    mu_assert_mem(bdatae(results, ""), "\x85\x01\x02\x02\x02\x03\x01\x04\x01\xA5" "count" "\x06", 16);
+    mu_assert_int_equals(blength(results), 31);
+    mu_assert_mem(
+        bdatae(results, ""), 
+        "\x88\x01\x02\x02\x02\x03\x01\x04\x01\xA3" "baz" "\x02\xA5" "count" "\x06\xA3" "foo" "\x03\xA3" "bar" "\x01",
+        blength(results)
+    );
 
     bdestroy(results);
     sky_lua_map_reduce_message_free(message);

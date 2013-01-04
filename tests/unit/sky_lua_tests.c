@@ -36,7 +36,7 @@ int test_sky_lua_initscript_with_table() {
 
     struct tagbstring source = bsStatic(
         "function map(_event)\n"
-        "  event = ffi.cast(\"sky_lua_event_t*\", _event)\n"
+        "  event = ffi.cast('sky_lua_event_t*', _event)\n"
         "  return event.x + event.y\n"
         "end\n"
     );
@@ -75,34 +75,49 @@ int test_sky_lua_generate_header() {
 
     struct tagbstring source = bsStatic(
         "function map(event)\n"
+        "  label = event:first_name() .. ' ' .. event:last_name()\n"
         "  return event.x + event.y\n"
         "end\n"
     );
     bstring event_decl = NULL;
+    bstring event_metatype = NULL;
     bstring init_descriptor_func = NULL;
-    int rc = sky_lua_generate_event_info(&source, table->property_file, &event_decl, &init_descriptor_func);
+    int rc = sky_lua_generate_event_info(&source, table->property_file, &event_decl, &event_metatype, &init_descriptor_func);
     mu_assert_int_equals(rc, 0);
     mu_assert_bstring(event_decl,
         "typedef struct {\n"
         "  int64_t ts;\n"
         "  uint32_t timestamp;\n"
         "  uint16_t action_id;\n"
+        "  sky_string_t _first_name;\n"
+        "  sky_string_t _last_name;\n"
         "  int32_t x;\n"
         "  int32_t y;\n"
         "} sky_lua_event_t;"
     );
+    mu_assert_bstring(event_metatype,
+        "ffi.metatype('sky_lua_event_t', {\n"
+        "  __index = {\n"
+        "    first_name = function(event) return ffi.string(event._first_name.data, event._first_name.length) end,\n"
+        "    last_name = function(event) return ffi.string(event._last_name.data, event._last_name.length) end,\n"
+        "  }\n"
+        "})\n"
+    );
     mu_assert_bstring(init_descriptor_func,
         "function sky_init_descriptor(_descriptor)\n"
-        "  descriptor = ffi.cast(\"sky_data_descriptor_t*\", _descriptor)\n"
-        "  descriptor:set_data_sz(ffi.sizeof(\"sky_lua_event_t\"));\n"
-        "  descriptor:set_ts_offset(ffi.offsetof(\"sky_lua_event_t\", \"ts\"));\n"
-        "  descriptor:set_timestamp_offset(ffi.offsetof(\"sky_lua_event_t\", \"timestamp\"));\n"
-        "  descriptor:set_action_id_offset(ffi.offsetof(\"sky_lua_event_t\", \"action_id\"));\n"
-        "  descriptor:set_property(2, ffi.offsetof(\"sky_lua_event_t\", \"x\"), 2);\n"
-        "  descriptor:set_property(3, ffi.offsetof(\"sky_lua_event_t\", \"y\"), 2);\n"
+        "  descriptor = ffi.cast('sky_data_descriptor_t*', _descriptor)\n"
+        "  descriptor:set_data_sz(ffi.sizeof('sky_lua_event_t'));\n"
+        "  descriptor:set_ts_offset(ffi.offsetof('sky_lua_event_t', 'ts'));\n"
+        "  descriptor:set_timestamp_offset(ffi.offsetof('sky_lua_event_t', 'timestamp'));\n"
+        "  descriptor:set_action_id_offset(ffi.offsetof('sky_lua_event_t', 'action_id'));\n"
+        "  descriptor:set_property(4, ffi.offsetof('sky_lua_event_t', '_first_name'), 1);\n"
+        "  descriptor:set_property(5, ffi.offsetof('sky_lua_event_t', '_last_name'), 1);\n"
+        "  descriptor:set_property(2, ffi.offsetof('sky_lua_event_t', 'x'), 2);\n"
+        "  descriptor:set_property(3, ffi.offsetof('sky_lua_event_t', 'y'), 2);\n"
         "end\n"
     );
     bdestroy(event_decl);
+    bdestroy(event_metatype);
     bdestroy(init_descriptor_func);
     sky_table_free(table);
     return 0;
