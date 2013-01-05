@@ -35,7 +35,7 @@ int test_sky_lua_initscript_with_table() {
     sky_lua_event_0_t lua_event = {0, 0, 1, 20, 30};
 
     struct tagbstring source = bsStatic(
-        "function map(_event)\n"
+        "function aggregate(_event)\n"
         "  event = ffi.cast('sky_lua_event_t*', _event)\n"
         "  return event.x + event.y\n"
         "end\n"
@@ -51,8 +51,8 @@ int test_sky_lua_initscript_with_table() {
     mu_assert_int_equals(descriptor->property_zero_descriptor[3].offset, (int)offsetof(sky_lua_event_0_t, y));
     mu_assert_int_equals(descriptor->property_zero_descriptor[4].offset, 0);
 
-    // Call map() function with the event pointer.
-    lua_getglobal(L, "map");
+    // Call aggregate() function with the event pointer.
+    lua_getglobal(L, "aggregate");
     lua_pushlightuserdata(L, &lua_event);
     lua_call(L, 1, 1);
     mu_assert_int_equals(rc, 0);
@@ -74,7 +74,7 @@ int test_sky_lua_generate_header() {
     sky_table_open(table);
 
     struct tagbstring source = bsStatic(
-        "function map(event)\n"
+        "function aggregate(event)\n"
         "  label = event:first_name() .. ' ' .. event:last_name()\n"
         "  return event.x + event.y\n"
         "end\n"
@@ -125,10 +125,10 @@ int test_sky_lua_generate_header() {
 
 
 //--------------------------------------
-// Map All
+// Aggregate
 //--------------------------------------
 
-int test_sky_map_all() {
+int test_sky_aggregate() {
     importtmp("tests/fixtures/sky_lua/1/data.json");
     sky_table *table = sky_table_create();
     table->path = bfromcstr("tmp");
@@ -142,7 +142,7 @@ int test_sky_map_all() {
     sky_path_iterator_set_tablet(&iterator, table->tablets[0]);
 
     struct tagbstring source = bsStatic(
-        "function map(cursor, data)\n"
+        "function aggregate(cursor, data)\n"
         "  data.path_count = (data.path_count or 0) + 1\n"
         "  while cursor:next() do\n"
         "    event = cursor:event()\n"
@@ -164,11 +164,11 @@ int test_sky_map_all() {
     gettimeofday(&tv, NULL);
     int64_t t0 = (tv.tv_sec*1000) + (tv.tv_usec/1000);
 
-    // Call sky_map_all() function.
+    // Call sky_aggregate() function.
     uint32_t i;
     for(i=0; i<1; i++) {
         //sky_path_iterator_set_tablet(&iterator, table->tablets[0]);
-        lua_getglobal(L, "sky_map_all");
+        lua_getglobal(L, "sky_aggregate");
         lua_pushlightuserdata(L, &iterator);
         lua_call(L, 1, 0);
     }
@@ -194,7 +194,7 @@ int test_sky_map_all() {
 int all_tests() {
     mu_run_test(test_sky_lua_initscript_with_table);
     mu_run_test(test_sky_lua_generate_header);
-    mu_run_test(test_sky_map_all);
+    mu_run_test(test_sky_aggregate);
     return 0;
 }
 

@@ -18,7 +18,7 @@
 #include "get_property_message.h"
 #include "get_properties_message.h"
 #include "ping_message.h"
-#include "lua_map_reduce_message.h"
+#include "lua_aggregate_message.h"
 #include "multi_message.h"
 #include "sky_zmq.h"
 #include "dbg.h"
@@ -389,15 +389,15 @@ int sky_server_process_message(sky_server *server, bool multi,
     rc = sky_server_get_message_handler(server, header->name, &handler);
     check(rc == 0, "Unable to get message handler");
 
-    // Open table if within scope.
-    sky_table *table = NULL;
-    if(handler->scope != SKY_MESSAGE_HANDLER_SCOPE_SERVER) {
-        rc = sky_server_get_table(server, header->table_name, &table);
-        check(rc == 0, "Unable to open table");
-    }
-
     // If the handler exists then use it to process the message.
     if(handler != NULL) {
+        // Open table if within scope.
+        sky_table *table = NULL;
+        if(handler->scope != SKY_MESSAGE_HANDLER_SCOPE_SERVER) {
+            rc = sky_server_get_table(server, header->table_name, &table);
+            check(rc == 0, "Unable to open table");
+        }
+
         rc = handler->process(server, header, table, input, output);
         
         // Closing the input/output is delegated to the handler at this point.
@@ -416,7 +416,7 @@ int sky_server_process_message(sky_server *server, bool multi,
 error:
     sky_message_header_free(header);
     if(input) fclose(input);
-    if(input) fclose(output);
+    if(output) fclose(output);
     return -1;
 }
 
@@ -570,7 +570,7 @@ int sky_server_add_default_message_handlers(sky_server *server)
     check(rc == 0, "Unable to add message handler");
 
     // 'Lua Map Reduce' message.
-    handler = sky_lua_map_reduce_message_handler_create(); check_mem(handler);
+    handler = sky_lua_aggregate_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 
