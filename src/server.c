@@ -37,7 +37,7 @@ int sky_server_open_table(sky_server *server, bstring name, bstring path, sky_ta
 
 int sky_server_create_servlets(sky_server *server, sky_table *table);
 
-int sky_server_stop_servlets(sky_server *server);
+int sky_server_stop_servlets(sky_server *server, sky_table *table);
 
 
 //==============================================================================
@@ -236,7 +236,7 @@ int sky_server_stop(sky_server *server)
     server->sockaddr = NULL;
     
     // Send a shutdown signal to all servlets and wait for response.
-    rc = sky_server_stop_servlets(server);
+    rc = sky_server_stop_servlets(server, NULL);
     check(rc == 0, "Unable to stop servlets");
 
     // Update server state.
@@ -252,19 +252,16 @@ error:
 // before returning.
 //
 // server - The server.
+// table  - The table to close servlets for. Or NULL if all servlets should be
+//          closed.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_server_stop_servlets(sky_server *server)
+int sky_server_stop_servlets(sky_server *server, sky_table *table)
 {
     int rc;
     void *pull_socket = NULL;
     void *push_socket = NULL;
     assert(server != NULL);
-
-    // Ignore if there are no servlets.
-    if(server->servlet_count == 0) {
-        return 0;
-    }
 
     // Create pull socket.
     pull_socket = zmq_socket(server->context, ZMQ_PULL);
@@ -275,29 +272,44 @@ int sky_server_stop_servlets(sky_server *server)
     check(rc == 0, "Unable to bind server shutdown socket");
 
     // Send a shutdown message to each servlet.
-    uint32_t i;
+    uint32_t i, j;
+    uint32_t count = 0;
     for(i=0; i<server->servlet_count; i++) {
-        // Create push socket.
-        push_socket = zmq_socket(server->context, ZMQ_PUSH);
-        check(push_socket != NULL, "Unable to create shutdown push socket");
+        // Check if this servlet matches the table.
+        if(table == NULL || server->servlets[i]->tablet->table == table) {
+            // Create push socket.
+            push_socket = zmq_socket(server->context, ZMQ_PUSH);
+            check(push_socket != NULL, "Unable to create shutdown push socket");
     
-        // Connect to servlet.
-        rc = zmq_connect(push_socket, bdata(server->servlets[i]->uri));
-        check(rc == 0, "Unable to connect to servlet for shutdown");
+            // Connect to servlet.
+            rc = zmq_connect(push_socket, bdata(server->servlets[i]->uri));
+            check(rc == 0, "Unable to connect to servlet for shutdown");
 
-        // Send NULL worklet for shutdown.
-        void *ptr = NULL;
-        rc = sky_zmq_send_ptr(push_socket, &ptr);
-        check(rc == 0, "Unable to send worklet message");
+            // Send NULL worklet for shutdown.
+            void *ptr = NULL;
+            rc = sky_zmq_send_ptr(push_socket, &ptr);
+            check(rc == 0, "Unable to send worklet message");
         
-        // Close socket.
-        rc = zmq_close(push_socket);
-        check(rc == 0, "Unable to close server shutdown push socket");
-        push_socket = NULL;
+            // Close socket.
+            rc = zmq_close(push_socket);
+            check(rc == 0, "Unable to close server shutdown push socket");
+            push_socket = NULL;
+            
+            // Clear the servlet.
+            for(j=i+1; j<server->servlet_count; j++) {
+                server->servlets[j-1] = server->servlets[j];
+            }
+            server->servlets[server->servlet_count-1] = NULL;
+            server->servlet_count--;
+            i--;
+            
+            // Increment the counter.
+            count++;
+        }
     }
 
     // Read in one pull message for every push message sent.
-    for(i=0; i<server->servlet_count; i++) {
+    for(i=0; i<count; i++) {
         // Receive servlet ref on shutdown.
         sky_servlet *servlet = NULL;
         rc = sky_zmq_recv_ptr(pull_socket, (void**)&servlet);
@@ -309,9 +321,10 @@ int sky_server_stop_servlets(sky_server *server)
     check(rc == 0, "Unable to close server shutdown pull socket");
 
     // Clean up servlets.
-    free(server->servlets);
-    server->servlets = NULL;
-    server->servlet_count = 0;
+    if(server->servlet_count == 0) {
+        free(server->servlets);
+        server->servlets = NULL;
+    }
 
     return 0;
 
