@@ -17,7 +17,7 @@
 #include "add_property_message.h"
 #include "get_property_message.h"
 #include "get_properties_message.h"
-#include "add_table_message.h"
+#include "create_table_message.h"
 #include "delete_table_message.h"
 #include "ping_message.h"
 #include "lua_aggregate_message.h"
@@ -576,7 +576,7 @@ int sky_server_add_default_message_handlers(sky_server *server)
     check(rc == 0, "Unable to add message handler");
 
     // 'Add Table' message.
-    handler = sky_add_table_message_handler_create(); check_mem(handler);
+    handler = sky_create_table_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 

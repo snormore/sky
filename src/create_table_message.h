@@ -1,5 +1,5 @@
-#ifndef _sky_add_table_message_h
-#define _sky_add_table_message_h
+#ifndef _sky_create_table_message_h
+#define _sky_create_table_message_h
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -21,7 +21,7 @@
 typedef struct {
     bstring data_path;
     sky_table* table;
-} sky_add_table_message;
+} sky_create_table_message;
 
 
 //==============================================================================
@@ -34,25 +34,25 @@ typedef struct {
 // Lifecycle
 //--------------------------------------
 
-sky_add_table_message *sky_add_table_message_create();
+sky_create_table_message *sky_create_table_message_create();
 
-void sky_add_table_message_free(sky_add_table_message *message);
+void sky_create_table_message_free(sky_create_table_message *message);
 
 //--------------------------------------
 // Message Handler
 //--------------------------------------
 
-sky_message_handler *sky_add_table_message_handler_create();
+sky_message_handler *sky_create_table_message_handler_create();
 
-int sky_add_table_message_process(sky_server *server,
+int sky_create_table_message_process(sky_server *server,
     sky_message_header *header, sky_table *table, FILE *input, FILE *output);
 
 //--------------------------------------
 // Serialization
 //--------------------------------------
 
-int sky_add_table_message_pack(sky_add_table_message *message, FILE *file);
+int sky_create_table_message_pack(sky_create_table_message *message, FILE *file);
 
-int sky_add_table_message_unpack(sky_add_table_message *message, FILE *file);
+int sky_create_table_message_unpack(sky_create_table_message *message, FILE *file);
 
 #endif
