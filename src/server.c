@@ -18,6 +18,7 @@
 #include "get_property_message.h"
 #include "get_properties_message.h"
 #include "add_table_message.h"
+#include "delete_table_message.h"
 #include "ping_message.h"
 #include "lua_aggregate_message.h"
 #include "multi_message.h"
@@ -30,10 +31,6 @@
 // Forward Declarations
 //
 //==============================================================================
-
-int sky_server_get_table(sky_server *server, bstring name, sky_table **ret);
-
-int sky_server_open_table(sky_server *server, bstring name, bstring path, sky_table **ret);
 
 int sky_server_create_servlets(sky_server *server, sky_table *table);
 
@@ -583,6 +580,11 @@ int sky_server_add_default_message_handlers(sky_server *server)
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 
+    // 'Delete Table' message.
+    handler = sky_delete_table_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
     // 'Ping' message.
     handler = sky_ping_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
@@ -657,8 +659,7 @@ error:
     return -1;
 }
 
-// Opens a table and attaches it to the server. Once a table is opened it
-// cannot be closed until the server shuts down.
+// Opens a table and attaches it to the server.
 //
 // server - The server.
 // name   - The table name.
@@ -678,28 +679,31 @@ int sky_server_open_table(sky_server *server, bstring name, bstring path,
     // Initialize return values.
     *ret = NULL;
     
-    // Create the table.
-    table = sky_table_create(); check_mem(table);
-    table->name = bstrcpy(name); check_mem(table->name);
-    rc = sky_table_set_path(table, path);
-    check(rc == 0, "Unable to set table path");
+    // Only open the table if it exists already.
+    if(sky_file_exists(path)) {
+        // Create the table.
+        table = sky_table_create(); check_mem(table);
+        table->name = bstrcpy(name); check_mem(table->name);
+        rc = sky_table_set_path(table, path);
+        check(rc == 0, "Unable to set table path");
 
-    // Open the table.
-    rc = sky_table_open(table);
-    check(rc == 0, "Unable to open table");
+        // Open the table.
+        rc = sky_table_open(table);
+        check(rc == 0, "Unable to open table");
     
-    // Append the table to the list of open tables.
-    server->table_count++;
-    server->tables = realloc(server->tables, server->table_count * sizeof(*server->tables));
-    check_mem(server->tables);
-    server->tables[server->table_count-1] = table;
+        // Append the table to the list of open tables.
+        server->table_count++;
+        server->tables = realloc(server->tables, server->table_count * sizeof(*server->tables));
+        check_mem(server->tables);
+        server->tables[server->table_count-1] = table;
 
-    // Open servlets for the table's tablets.
-    rc = sky_server_create_servlets(server, table);
-    check(rc == 0, "Unable to create servlets for table");
+        // Open servlets for the table's tablets.
+        rc = sky_server_create_servlets(server, table);
+        check(rc == 0, "Unable to create servlets for table");
 
-    // Return table.
-    *ret = table;
+        // Return table.
+        *ret = table;
+    }
 
     return 0;
 
@@ -708,6 +712,45 @@ error:
     if(ret) *ret = NULL;
     return -1;
 }
+
+// Closes a table and detaches it from the server.
+//
+// server - The server.
+// table  - The table to close.
+//
+// Returns 0 if successful, otherwise returns -1.
+int sky_server_close_table(sky_server *server, sky_table *table)
+{
+    int rc;
+    assert(server != NULL);
+    assert(table != NULL);
+    
+    // Send shutdown message for servlets associated with this table.
+    rc = sky_server_stop_servlets(server, table);
+    check(rc == 0, "Unable to shutdown servlets related to table: %s", bdata(table->path));
+
+    // Remove the server association.
+    uint32_t i, j;
+    for(i=0; i<server->table_count; i++) {
+        if(server->tables[i] == table) {
+            sky_table_free(table);
+            table = NULL;
+            
+            for(j=i+1; j<server->table_count; j++) {
+                server->tables[j-1] = server->tables[j];
+            }
+            server->tables[server->table_count-1] = NULL;
+            server->table_count--;
+            i--;
+        }
+    }
+    
+    return 0;
+
+error:
+    return -1;
+}
+
 
 //--------------------------------------
 // Servlet Management

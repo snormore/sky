@@ -115,4 +115,15 @@ int sky_server_remove_message_handler(sky_server *server,
 
 int sky_server_add_default_message_handlers(sky_server *server);
 
+//--------------------------------------
+// Table Management
+//--------------------------------------
+
+int sky_server_get_table(sky_server *server, bstring name, sky_table **ret);
+
+int sky_server_open_table(sky_server *server, bstring name, bstring path,
+    sky_table **ret);
+
+int sky_server_close_table(sky_server *server, sky_table *table);
+
 #endif
