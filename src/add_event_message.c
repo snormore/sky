@@ -202,6 +202,8 @@ int sky_add_event_message_process(sky_server *server,
     check(rc == 0, "Unable to unpack 'add_event' message");
     check(message->object_id > 0, "Object ID must be greater than zero");
 
+    // TODO: Reject action if there is no 'name' key.
+
     // Find or create action.
     rc = sky_action_file_find_action_by_name(table->action_file, message->action_name, &action);
     check(rc == 0, "Unable to search for action by name");
