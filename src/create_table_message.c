@@ -139,7 +139,7 @@ int sky_create_table_message_process(sky_server *server,
 
         // Return.
         //   {status:"OK"}
-        minipack_fwrite_map(output, 2, &sz);
+        minipack_fwrite_map(output, 1, &sz);
         check(sz > 0, "Unable to write output");
         check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write status key");
         check(sky_minipack_fwrite_bstring(output, &ok_str) == 0, "Unable to write status value");
