@@ -502,6 +502,7 @@ int sky_table_unlock(sky_table *table)
     if(table->lock_file != NULL) {
         // Close the lock file descriptor.
         fclose(table->lock_file);
+        table->lock_file = NULL;
 
         // Remove the lock file. We don't necessarily care if it gets cleaned
         // up so don't check for an error. The write lock is the more
