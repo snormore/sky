@@ -82,6 +82,8 @@ int sky_lua_initscript_with_table(bstring source, sky_table *table,
     check(rc == 0, "Unable to generate header");
     new_source = bformat("%s%s", bdata(header), bdata(source)); check_mem(new_source);
     
+    // debug("\n== BEGIN SOURCE ==\n%s\n== END SOURCE ==", bdata(new_source));
+    
     // Initialize script.
     rc = sky_lua_initscript(new_source, L);
     check(rc == 0, "Unable to initialize Lua script");
@@ -215,8 +217,8 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "typedef struct sky_string_t { int32_t length; char *data; } sky_string_t;\n"
         "typedef struct sky_data_descriptor_t sky_data_descriptor_t;\n"
         "typedef struct sky_path_iterator_t sky_path_iterator_t;\n"
-        "typedef struct sky_cursor_t sky_cursor_t;\n"
         "%s\n"
+        "typedef struct sky_cursor_t { sky_lua_event_t *event; } sky_cursor_t;\n"
         "\n"
         "int sky_data_descriptor_set_data_sz(sky_data_descriptor_t *descriptor, uint32_t sz);\n"
         "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"
@@ -232,7 +234,6 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "bool sky_lua_cursor_next_event(sky_cursor_t *);\n"
         "bool sky_lua_cursor_next_session(sky_cursor_t *);\n"
         "bool sky_cursor_set_session_idle(sky_cursor_t *, uint32_t);\n"
-        "sky_lua_event_t *sky_lua_cursor_get_event(sky_cursor_t *);\n"
         "]])\n"
         "ffi.metatype('sky_data_descriptor_t', {\n"
         "  __index = {\n"
@@ -253,7 +254,6 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "ffi.metatype('sky_cursor_t', {\n"
         "  __index = {\n"
         "    eof = function(cursor) return ffi.C.sky_cursor_eof(cursor) end,\n"
-        "    event = function(cursor) return ffi.C.sky_lua_cursor_get_event(cursor) end,\n"
         "    next = function(cursor) return ffi.C.sky_lua_cursor_next_event(cursor) end,\n"
         "    next_session = function(cursor) return ffi.C.sky_lua_cursor_next_session(cursor) end,\n"
         "    set_session_idle = function(cursor, seconds) return ffi.C.sky_cursor_set_session_idle(cursor, seconds) end,\n"
@@ -511,14 +511,3 @@ sky_cursor *sky_lua_path_iterator_get_cursor(sky_path_iterator *iterator)
     return &iterator->cursor;
 }
 
-// Moves the cursor to the next event in a path.
-//
-// cursor - The cursor.
-//
-// Returns a pointer to the event data if there are remaining events.
-// Otherwise returns NULL.
-void *sky_lua_cursor_get_event(sky_cursor *cursor)
-{
-    assert(cursor != NULL);
-    return cursor->data;
-}

@@ -147,9 +147,8 @@ int test_sky_aggregate() {
         "function aggregate(cursor, data)\n"
         "  data.path_count = (data.path_count or 0) + 1\n"
         "  while cursor:next() do\n"
-        "    event = cursor:event()\n"
         "    data.event_count = (data.event_count or 0) + 1\n"
-        "    data.z = (data.z or 0) + event.x + event.y\n"
+        "    data.z = (data.z or 0) + cursor.event.x + cursor.event.y\n"
         "  end\n"
         "end\n"
     );

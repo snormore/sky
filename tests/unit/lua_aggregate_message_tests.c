@@ -61,7 +61,7 @@ int test_sky_lua_aggregate_message_worker_map() {
     sky_lua_aggregate_message *message = sky_lua_aggregate_message_create();
     message->source = bfromcstr(
         "function aggregate(cursor, data)\n"
-        "  event = cursor:event()\n"
+        "  event = cursor.event\n"
         "  data.count = data.count or 0\n"
         "  \n"
         "  while cursor:next() do\n"

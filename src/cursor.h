@@ -17,11 +17,11 @@
 //==============================================================================
 
 typedef struct sky_cursor {
+    void *data;
     void *startptr;
     void *endptr;
     void *ptr;
     bool eof;
-    void *data;
     bool in_session;
     uint32_t last_timestamp;
     uint32_t session_idle_in_sec;
