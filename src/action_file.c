@@ -278,7 +278,7 @@ int sky_action_file_find_action_by_id(sky_action_file *action_file,
 // ret         - A pointer to where the action should be returned to.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_action_file_find_action_by_name(sky_action_file *action_file,
+int sky_action_file_find_by_name(sky_action_file *action_file,
                                         bstring name, sky_action **ret)
 {
     assert(action_file != NULL);
@@ -316,7 +316,7 @@ int sky_action_file_add_action(sky_action_file *action_file,
     
     // Make sure an action with that name doesn't already exist.
     sky_action *_action;
-    int rc = sky_action_file_find_action_by_name(action_file, action->name, &_action);
+    int rc = sky_action_file_find_by_name(action_file, action->name, &_action);
     check(rc == 0 && _action == NULL, "Action already exists with the same name");
     
     // Link to action file.

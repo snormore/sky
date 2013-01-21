@@ -540,7 +540,7 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
         else if(sky_importer_tokstr_equal(source, token, "action")) {
             sky_action *action = NULL;
             bstring action_name = sky_importer_token_parse_bstring(source, &tokens[(*index)++]);
-            rc = sky_action_file_find_action_by_name(importer->table->action_file, action_name, &action);
+            rc = sky_action_file_find_by_name(importer->table->action_file, action_name, &action);
             bdestroy(action_name);
             check(rc == 0, "Unable to find action: %s", bdata(action_name));
             event->action_id = action->id;

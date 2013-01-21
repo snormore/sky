@@ -17,6 +17,7 @@
 #include "add_property_message.h"
 #include "get_property_message.h"
 #include "get_properties_message.h"
+#include "lookup_message.h"
 #include "create_table_message.h"
 #include "delete_table_message.h"
 #include "get_table_message.h"
@@ -573,6 +574,16 @@ int sky_server_add_default_message_handlers(sky_server *server)
 
     // 'Get Property' message.
     handler = sky_get_property_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
+    // 'Get Properties' message.
+    handler = sky_get_properties_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
+    // 'Lookup' message.
+    handler = sky_lookup_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 

@@ -205,7 +205,7 @@ int sky_add_event_message_process(sky_server *server,
     // TODO: Reject action if there is no 'name' key.
 
     // Find or create action.
-    rc = sky_action_file_find_action_by_name(table->action_file, message->action_name, &action);
+    rc = sky_action_file_find_by_name(table->action_file, message->action_name, &action);
     check(rc == 0, "Unable to search for action by name");
     
     // If action doesn't exist then create it.
