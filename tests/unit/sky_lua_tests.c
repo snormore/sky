@@ -100,6 +100,8 @@ int test_sky_lua_generate_header() {
         "  __index = {\n"
         "    first_name = function(event) return ffi.string(event._first_name.data, event._first_name.length) end,\n"
         "    last_name = function(event) return ffi.string(event._last_name.data, event._last_name.length) end,\n"
+        "    x = function(event) return event.x end,\n"
+        "    y = function(event) return event.y end,\n"
         "  }\n"
         "})\n"
     );

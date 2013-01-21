@@ -418,7 +418,6 @@ int sky_lua_generate_event_info(bstring source,
                     switch(property->data_type) {
                         case SKY_DATA_TYPE_STRING: {
                             bformata(*event_decl, "  sky_string_t _%s;\n", bdata(property->name));
-                            bformata(*event_metatype, "    %s = function(event) return ffi.string(event._%s.data, event._%s.length) end,\n", bdata(property->name), bdata(property->name), bdata(property->name));
                             break;
                         }
                         case SKY_DATA_TYPE_INT: {
@@ -438,6 +437,13 @@ int sky_lua_generate_event_info(bstring source,
                         }
                     }
                     check_mem(*event_decl);
+
+                    if(property->data_type == SKY_DATA_TYPE_STRING) {
+                        bformata(*event_metatype, "    %s = function(event) return ffi.string(event._%s.data, event._%s.length) end,\n", bdata(property->name), bdata(property->name), bdata(property->name));
+                    }
+                    else {
+                        bformata(*event_metatype, "    %s = function(event) return event.%s end,\n", bdata(property->name), bdata(property->name));
+                    }
 
                     bformata(*init_descriptor_func, "  descriptor:set_property(%d, ffi.offsetof('sky_lua_event_t', '%s%s'), %d);\n", property->id, (property->data_type == SKY_DATA_TYPE_STRING ? "_" : ""), bdata(property->name), property->data_type);
                     check_mem(*init_descriptor_func);
