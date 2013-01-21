@@ -279,10 +279,9 @@ int sky_action_file_find_action_by_id(sky_action_file *action_file,
 //
 // Returns 0 if successful, otherwise returns -1.
 int sky_action_file_find_by_name(sky_action_file *action_file,
-                                        bstring name, sky_action **ret)
+                                 bstring name, sky_action **ret)
 {
     assert(action_file != NULL);
-    assert(name != NULL);
     
     // Initialize action id to zero.
     *ret = NULL;
