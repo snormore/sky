@@ -102,7 +102,7 @@ int test_sky_lua_aggregate_message_worker_reduce() {
     sky_lua_aggregate_message *message = sky_lua_aggregate_message_create();
     message->results = bfromcstr("\x80");
     message->source = bfromcstr(
-        "function reduce(results, data)\n"
+        "function merge(results, data)\n"
         "  for k,v in pairs(data) do\n"
         "    results[k] = (results[k] or 0) + v\n"
         "  end\n"
