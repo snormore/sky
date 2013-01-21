@@ -122,8 +122,8 @@ int sky_lookup_message_process(sky_server *server,
     
     struct tagbstring status_str = bsStatic("status");
     struct tagbstring ok_str = bsStatic("ok");
-    struct tagbstring action_ids_str = bsStatic("actionIds");
-    struct tagbstring property_ids_str = bsStatic("propertyIds");
+    struct tagbstring action_ids_str = bsStatic("actions");
+    struct tagbstring property_ids_str = bsStatic("properties");
 
     // Parse message.
     message = sky_lookup_message_create(); check_mem(message);
@@ -147,9 +147,13 @@ int sky_lookup_message_process(sky_server *server,
         rc = sky_action_file_find_by_name(table->action_file, message->action_names[i], &action);
         check(rc == 0, "Unable to search for action by name");
 
-        sky_action_id_t action_id = (action != NULL ? action->id : 0);
-        minipack_fwrite_uint(output, action_id, &sz);
-        check(sz > 0, "Unable to write action id");
+        if(action != NULL) {
+            check(sky_action_pack(action, output) == 0, "Unable to write action value");
+        }
+        else {
+            minipack_fwrite_nil(output, &sz);
+            check(sz > 0, "Unable to write null action value");
+        }
     }
 
     // Loop over property names and serialize them.
@@ -162,9 +166,13 @@ int sky_lookup_message_process(sky_server *server,
         rc = sky_property_file_find_by_name(table->property_file, message->property_names[i], &property);
         check(rc == 0, "Unable to search for property by name");
 
-        sky_property_id_t property_id = (property != NULL ? property->id : 0);
-        minipack_fwrite_int(output, property_id, &sz);
-        check(sz > 0, "Unable to write property id");
+        if(property != NULL) {
+            check(sky_property_pack(property, output) == 0, "Unable to write property value");
+        }
+        else {
+            minipack_fwrite_nil(output, &sz);
+            check(sz > 0, "Unable to write null property value");
+        }
     }
 
     // Clean up.
