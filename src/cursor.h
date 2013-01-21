@@ -63,6 +63,8 @@ bool sky_lua_cursor_next_event(sky_cursor *cursor);
 
 bool sky_cursor_eof(sky_cursor *cursor);
 
+bool sky_cursor_eos(sky_cursor *cursor);
+
 //--------------------------------------
 // Session Management
 //--------------------------------------

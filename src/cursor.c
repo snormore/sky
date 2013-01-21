@@ -186,7 +186,7 @@ bool sky_lua_cursor_next_event(sky_cursor *cursor)
     return (!cursor->eof && cursor->in_session);
 }
 
-// Returns whether the cursor is at the end or not.
+// Returns whether the cursor is at the end of the entire path.
 //
 // cursor - The cursor.
 //
@@ -195,6 +195,17 @@ bool sky_cursor_eof(sky_cursor *cursor)
 {
     assert(cursor != NULL);
     return cursor->eof;
+}
+
+// Returns whether the cursor is at the end of the current session.
+//
+// cursor - The cursor.
+//
+// Returns true if at the end, otherwise returns false.
+bool sky_cursor_eos(sky_cursor *cursor)
+{
+    assert(cursor != NULL);
+    return !cursor->in_session;
 }
 
 
