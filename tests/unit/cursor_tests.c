@@ -155,12 +155,12 @@ int test_sky_cursor_sessionize() {
     // Initialize data and set a 10 second idle time.
     sky_cursor_set_ptr(cursor, data, data_length);
     sky_cursor_set_session_idle(cursor, 10);
-    mu_assert_int_equals(cursor->session_event_index, 0);
+    mu_assert_int_equals(cursor->session_event_index, -1);
     ASSERT_OBJ_STATE2(obj, 0, 0, 0LL, 0LL);
     
     // Pre-session
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
-    mu_assert_int_equals(cursor->session_event_index, 0);
+    mu_assert_int_equals(cursor->session_event_index, -1);
     ASSERT_OBJ_STATE2(obj, 0, 0, 0LL, 0LL);
 
     // Session 1
@@ -222,6 +222,7 @@ int test_sky_cursor_sessionize() {
 
     // Reuse cursor.
     sky_cursor_set_ptr(cursor, data, data_length);
+    mu_assert_int_equals(cursor->session_event_index, -1);
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 0, 1, 1000LL, 0LL);
