@@ -6,6 +6,7 @@
 #include "types.h"
 #include "add_event_message.h"
 #include "worker.h"
+#include "timestamp.h"
 #include "minipack.h"
 #include "mem.h"
 #include "dbg.h"

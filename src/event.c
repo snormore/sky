@@ -6,6 +6,7 @@
 #include "sky_endian.h"
 #include "bstring.h"
 #include "event.h"
+#include "timestamp.h"
 #include "mem.h"
 
 //==============================================================================
@@ -355,7 +356,7 @@ int sky_event_pack_hdr(sky_timestamp_t timestamp,
     ptr += sizeof(flag);
     
     // Write timestamp.
-    *((sky_timestamp_t*)ptr) = timestamp;
+    *((sky_timestamp_t*)ptr) = sky_timestamp_shift(timestamp);
     ptr += sizeof(sky_timestamp_t);
     
     // Write action id.
@@ -456,7 +457,7 @@ int sky_event_unpack_hdr(sky_timestamp_t *timestamp,
     ptr += sizeof(flag);
 
     // Read timestamp.
-    *timestamp = *((sky_timestamp_t*)ptr);
+    *timestamp = sky_timestamp_unshift(*((sky_timestamp_t*)ptr));
     ptr += sizeof(sky_timestamp_t);
     
     // Read action if one exists.

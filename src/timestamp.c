@@ -70,8 +70,7 @@ int sky_timestamp_parse(bstring str, sky_timestamp_t *ret)
     value = value * 1000000;
     
     // Convert to a Sky timestamp and return.
-    *ret = sky_timestamp_shift(value);
-    
+    *ret = value;
     
     return 0;
 
