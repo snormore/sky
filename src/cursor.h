@@ -18,6 +18,7 @@
 
 typedef struct sky_cursor {
     void *data;
+    int32_t session_event_index;
     void *startptr;
     void *endptr;
     void *ptr;

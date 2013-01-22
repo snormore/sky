@@ -218,7 +218,7 @@ int sky_lua_generate_header(bstring source, sky_table *table, bstring *ret)
         "typedef struct sky_data_descriptor_t sky_data_descriptor_t;\n"
         "typedef struct sky_path_iterator_t sky_path_iterator_t;\n"
         "%s\n"
-        "typedef struct sky_cursor_t { sky_lua_event_t *event; } sky_cursor_t;\n"
+        "typedef struct sky_cursor_t { sky_lua_event_t *event; int32_t session_event_index; } sky_cursor_t;\n"
         "\n"
         "int sky_data_descriptor_set_data_sz(sky_data_descriptor_t *descriptor, uint32_t sz);\n"
         "int sky_data_descriptor_set_timestamp_offset(sky_data_descriptor_t *descriptor, uint32_t offset);\n"

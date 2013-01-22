@@ -155,50 +155,61 @@ int test_sky_cursor_sessionize() {
     // Initialize data and set a 10 second idle time.
     sky_cursor_set_ptr(cursor, data, data_length);
     sky_cursor_set_session_idle(cursor, 10);
+    mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 0, 0, 0LL, 0LL);
     
     // Pre-session
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
+    mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 0, 0, 0LL, 0LL);
 
     // Session 1
     mu_assert_bool(sky_lua_cursor_next_session(cursor));
+    mu_assert_int_equals(cursor->session_event_index, -1);
     ASSERT_OBJ_STATE2(obj, 0, 0, 0LL, 0LL);
 
     // Session 1, Event 1
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 0, 1, 1000LL, 0LL);
     
     // Session 1, Event 2
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 1);
     ASSERT_OBJ_STATE2(obj, 1, 2, 1000LL, 100LL);
     
     // Session 1, Event 3
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 2);
     ASSERT_OBJ_STATE2(obj, 10, 3, 1000LL, 200LL);
     
     // Prevent next session!
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
+    mu_assert_int_equals(cursor->session_event_index, 2);
     ASSERT_OBJ_STATE2(obj, 10, 3, 1000LL, 200LL);
     
 
     // Session 2 (Single Event)
     mu_assert_bool(sky_lua_cursor_next_session(cursor));
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 20, 1, 1000LL, 300LL);
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
 
 
     // Session 3 (with same data)
     mu_assert_bool(sky_lua_cursor_next_session(cursor));
+    mu_assert_int_equals(cursor->session_event_index, -1);
     ASSERT_OBJ_STATE2(obj, 20, 1, 1000LL, 300LL);
 
     // Session 3, Event 1
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 60, 1, 2000LL, 0LL);
 
     // Session 3, Event 2
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 1);
     ASSERT_OBJ_STATE2(obj, 63, 2, 2000LL, 400LL);
 
     // Prevent next session!
@@ -212,6 +223,7 @@ int test_sky_cursor_sessionize() {
     // Reuse cursor.
     sky_cursor_set_ptr(cursor, data, data_length);
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int_equals(cursor->session_event_index, 0);
     ASSERT_OBJ_STATE2(obj, 0, 1, 1000LL, 0LL);
     
 

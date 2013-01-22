@@ -159,6 +159,8 @@ int sky_cursor_next_event(sky_cursor *cursor)
 
         // Only process the event if we're still in session.
         if(cursor->in_session) {
+            cursor->session_event_index++;
+            
             // Update data if it is available.
             if(cursor->data != NULL && cursor->data_descriptor != NULL) {
                 rc = sky_cursor_set_data(cursor);
@@ -244,7 +246,10 @@ int sky_cursor_next_session(sky_cursor *cursor)
     assert(cursor != NULL);
     
     // Set a flag to allow the cursor to continue iterating unless EOF is set.
-    cursor->in_session = !cursor->eof;
+    if(!cursor->in_session) {
+        cursor->session_event_index = -1;
+        cursor->in_session = !cursor->eof;
+    }
     
     return 0;
 }
