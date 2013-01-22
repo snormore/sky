@@ -82,6 +82,7 @@ int sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     cursor->in_session = true;
     cursor->last_timestamp      = 0;
     cursor->session_idle_in_sec = 0;
+    cursor->session_event_index = -1;
     cursor->eof        = !(ptr != NULL && cursor->startptr < cursor->endptr);
     
     // Clear the data object if set.
