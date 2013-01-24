@@ -21,6 +21,7 @@
 #include "create_table_message.h"
 #include "delete_table_message.h"
 #include "get_table_message.h"
+#include "get_tables_message.h"
 #include "ping_message.h"
 #include "lua_aggregate_message.h"
 #include "multi_message.h"
@@ -599,6 +600,11 @@ int sky_server_add_default_message_handlers(sky_server *server)
 
     // 'Get Table' message.
     handler = sky_get_table_message_handler_create(); check_mem(handler);
+    rc = sky_server_add_message_handler(server, handler);
+    check(rc == 0, "Unable to add message handler");
+
+    // 'Get Tables' message.
+    handler = sky_get_tables_message_handler_create(); check_mem(handler);
     rc = sky_server_add_message_handler(server, handler);
     check(rc == 0, "Unable to add message handler");
 
