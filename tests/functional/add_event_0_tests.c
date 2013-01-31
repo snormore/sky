@@ -28,7 +28,9 @@ int test() {
     sky_table *table = sky_table_create();
     table->path = bfromcstr("tmp");
     sky_table_open(table);
-    sky_tablet_get_path(table->tablets[2], 10, &data, &data_length);
+
+    struct tagbstring ten_str = bsStatic("10");
+    sky_tablet_get_path(table->tablets[2], &ten_str, &data, &data_length);
     mu_assert_mem(data, 
         "\x03\xe8\x03\x00\x00\x00\x00\x00\x00\x05\x00\x1f\x00\x00\x00\xff"
         "\xa6\x7a\x7a\x7a\x7a\x7a\x7a\xfe\x0a\x01\xa3\x78\x79\x7a\x02\xd1"

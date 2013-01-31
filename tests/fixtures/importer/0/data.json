@@ -11,15 +11,15 @@
       {type:"action", dataType:"Double", name:"myFloat"}
     ],
     events:[
-      {objectId:1, timestamp:"2010-01-02T10:30:20Z", action:"hello", data:{myInt:20, myString:"foo", myBoolean:true}},
-      {objectId:1, timestamp:"2010-01-02T10:30:00Z", action:"goodbye"},
-      {objectId:2, timestamp:"2010-01-02T10:30:00Z", action:"goodbye", data:{myInt:21, myBoolean:false, myFloat:100.2}}
-      {objectId:3, timestamp:"2010-01-02T10:30:00Z", action:"hello"},
-      {objectId:4, timestamp:"2010-01-02T10:30:00Z", action:"hello"},
-      {objectId:5, timestamp:"2010-01-02T10:30:00Z", action:"hello"},
-      {objectId:6, timestamp:"2010-01-02T10:30:00Z", action:"hello"},
-      {objectId:7, timestamp:"2010-01-02T10:30:00Z", action:"hello"},
-      {objectId:8, timestamp:"2010-01-02T10:30:00Z", action:"hello"},
+      {objectId:"1", timestamp:"2010-01-02T10:30:20Z", action:"hello", data:{myInt:20, myString:"foo", myBoolean:true}},
+      {objectId:"1", timestamp:"2010-01-02T10:30:00Z", action:"goodbye"},
+      {objectId:"2", timestamp:"2010-01-02T10:30:00Z", action:"goodbye", data:{myInt:21, myBoolean:false, myFloat:100.2}}
+      {objectId:"3", timestamp:"2010-01-02T10:30:00Z", action:"hello"},
+      {objectId:"4", timestamp:"2010-01-02T10:30:00Z", action:"hello"},
+      {objectId:"5", timestamp:"2010-01-02T10:30:00Z", action:"hello"},
+      {objectId:"6", timestamp:"2010-01-02T10:30:00Z", action:"hello"},
+      {objectId:"7", timestamp:"2010-01-02T10:30:00Z", action:"hello"},
+      {objectId:"8", timestamp:"2010-01-02T10:30:00Z", action:"hello"},
     ]
   }
 }

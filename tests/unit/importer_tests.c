@@ -34,28 +34,43 @@ int test_sky_importer_import() {
     mu_assert_file("tmp/actions", "tests/fixtures/importer/0/table/actions");
     mu_assert_file("tmp/properties", "tests/fixtures/importer/0/table/properties");
 
-    sky_tablet_get_path(importer->table->tablets[1], 1, &data, &data_length);
+    struct tagbstring one_str = bsStatic("1");
+    sky_tablet_get_path(importer->table->tablets[1], &one_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x02\x00\x03\x00\x00\xc0\x03\xf2\xb3\x04\x00\x01\x00\x09\x00\x00\x00\x01\x14\xff\xa3\x66\x6f\x6f\x02\xc3", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[2], 2, &data, &data_length);
+
+    struct tagbstring two_str = bsStatic("2");
+    sky_tablet_get_path(importer->table->tablets[2], &two_str, &data, &data_length);
     mu_assert_mem(data, "\x03\x00\x00\x80\x02\xf2\xb3\x04\x00\x02\x00\x0e\x00\x00\x00\x01\x15\x02\xc2\xfe\xcb\x40\x59\x0c\xcc\xcc\xcc\xcc\xcd", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[3], 3, &data, &data_length);
+
+    struct tagbstring three_str = bsStatic("3");
+    sky_tablet_get_path(importer->table->tablets[3], &three_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x01\x00", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[0], 4, &data, &data_length);
+
+    struct tagbstring four_str = bsStatic("4");
+    sky_tablet_get_path(importer->table->tablets[0], &four_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x01\x00", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[1], 5, &data, &data_length);
+
+    struct tagbstring five_str = bsStatic("5");
+    sky_tablet_get_path(importer->table->tablets[1], &five_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x01\x00", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[2], 6, &data, &data_length);
+
+    struct tagbstring six_str = bsStatic("6");
+    sky_tablet_get_path(importer->table->tablets[2], &six_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x01\x00", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[3], 7, &data, &data_length);
+
+    struct tagbstring seven_str = bsStatic("7");
+    sky_tablet_get_path(importer->table->tablets[3], &seven_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x01\x00", data_length);
     free(data);
-    sky_tablet_get_path(importer->table->tablets[0], 8, &data, &data_length);
+
+    struct tagbstring eight_str = bsStatic("8");
+    sky_tablet_get_path(importer->table->tablets[0], &eight_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x00\x00\x80\x02\xf2\xb3\x04\x00\x01\x00", data_length);
     free(data);
 

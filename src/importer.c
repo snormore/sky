@@ -520,7 +520,7 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
     }
 
     // Create the event object.
-    event = sky_event_create(0, 0, 0); check_mem(event);
+    event = sky_event_create(NULL, 0, 0); check_mem(event);
         
     // Process over child tokens.
     int32_t i;
@@ -535,7 +535,7 @@ int sky_importer_process_event(sky_importer *importer, bstring source,
             bdestroy(timestamp);
         }
         else if(sky_importer_tokstr_equal(source, token, "objectId")) {
-            event->object_id = (sky_object_id_t)sky_importer_token_parse_int(source, &tokens[(*index)++]);
+            event->object_id = sky_importer_token_parse_bstring(source, &tokens[(*index)++]);
         }
         else if(sky_importer_tokstr_equal(source, token, "action")) {
             sky_action *action = NULL;

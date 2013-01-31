@@ -17,7 +17,7 @@
 sky_add_event_message *create_message_with_data()
 {
     sky_add_event_message *message = sky_add_event_message_create();
-    message->object_id = 10;
+    message->object_id = bfromcstr("10");
     message->timestamp = 1000LL;
     message->action_name = bfromcstr("foo");
     message->data_count = 4;
@@ -88,7 +88,7 @@ int test_sky_add_event_message_unpack() {
     mu_assert_bool(sky_add_event_message_unpack(message, file) == 0);
     fclose(file);
 
-    mu_assert_int_equals(message->object_id, 10);
+    mu_assert_bstring(message->object_id, "10");
     mu_assert_int64_equals(message->timestamp, 1000LL);
     mu_assert_bstring(message->action_name, "foo");
     sky_add_event_message_free(message);
@@ -97,7 +97,7 @@ int test_sky_add_event_message_unpack() {
 
 int test_sky_add_event_message_sizeof() {
     sky_add_event_message *message = create_message_with_data();
-    mu_assert_long_equals(sky_add_event_message_sizeof(message), 115L);
+    mu_assert_long_equals(sky_add_event_message_sizeof(message), 117L);
     sky_add_event_message_free(message);
     return 0;
 }
@@ -114,9 +114,10 @@ int test_sky_add_event_message_worker_map() {
     table->default_tablet_count = 1;
     sky_table_open(table);
 
+    struct tagbstring ten_str = bsStatic("10");
     struct tagbstring XYZ_STR = bsStatic("xyz");
     sky_add_event_message *message = sky_add_event_message_create();
-    message->event = sky_event_create(10, 1000L, 20);
+    message->event = sky_event_create(&ten_str, 1000L, 20);
     message->event->data_count = 4;
     message->event->data = calloc(message->event->data_count, sizeof(*message->event->data));
     message->event->data[0] = sky_event_data_create_string(1, &XYZ_STR);
@@ -132,7 +133,7 @@ int test_sky_add_event_message_worker_map() {
 
     void *data;
     size_t data_length;
-    sky_tablet_get_path(table->tablets[0], 10, &data, &data_length);
+    sky_tablet_get_path(table->tablets[0], &ten_str, &data, &data_length);
     mu_assert_int_equals(rc, 0);
     mu_assert_mem(
         data, 

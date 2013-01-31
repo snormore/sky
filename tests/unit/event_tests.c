@@ -47,10 +47,11 @@ char ACTION_DATA_EVENT_DATA[] =
 //--------------------------------------
 
 int test_sky_event_create() {
-    sky_event *event = sky_event_create(10, 1325376000000LL, 200);
+    struct tagbstring ten_str = bsStatic("10");
+    sky_event *event = sky_event_create(&ten_str, 1325376000000LL, 200);
     mu_assert(event != NULL, "Unable to allocate event");
     mu_assert(event->timestamp == 1325376000000LL, "Event timestamp not assigned");
-    mu_assert(event->object_id == 10, "Event object id not assigned");
+    mu_assert_bstring(event->object_id, "10");
     mu_assert(event->action_id == 200, "Event action id not assigned");
     mu_assert(event->data == NULL, "Event data non-null");
     mu_assert(event->data_count == 0, "Event data count not initialized");
@@ -202,7 +203,6 @@ int test_sky_event_action_event_unpack() {
     mu_assert_long_equals(sz, ACTION_EVENT_DATA_LENGTH);
     mu_assert_int64_equals(event->timestamp, 30LL);
     mu_assert(event->action_id == 20, "Expected action id to equal 20");
-    mu_assert(event->object_id == 0, "Expected object id to equal 0");
     mu_assert(event->data == NULL, "Expected data to be NULL");
     mu_assert(event->data_count == 0, "Expected data count to be 0");
 
@@ -220,7 +220,6 @@ int test_sky_event_data_event_unpack() {
     mu_assert_long_equals(sz, DATA_EVENT_DATA_LENGTH);
     mu_assert_int64_equals(event->timestamp, 30LL);
     mu_assert(event->action_id == 0, "Expected action id to equal 0");
-    mu_assert(event->object_id == 0, "Expected object id to equal 0");
     mu_assert(event->data != NULL, "Expected data to not be NULL");
     mu_assert(event->data_count == 2, "Expected data count to be 2");
 
@@ -244,7 +243,6 @@ int test_sky_event_action_data_event_unpack() {
     mu_assert_long_equals(sz, ACTION_DATA_EVENT_DATA_LENGTH);
     mu_assert_int64_equals(event->timestamp, 30LL);
     mu_assert(event->action_id == 20, "Expected action id to equal 20");
-    mu_assert(event->object_id == 0, "Expected object id to equal 0");
     mu_assert(event->data != NULL, "Expected data to not be NULL");
     mu_assert(event->data_count == 2, "Expected data count to be 2");
 

@@ -165,14 +165,14 @@ int sky_tablet_close(sky_tablet *tablet)
 // 
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_tablet_get_path(sky_tablet *tablet, sky_object_id_t object_id,
+int sky_tablet_get_path(sky_tablet *tablet, bstring object_id,
                         void **data, size_t *data_length)
 {
     char *errptr = NULL;
     assert(tablet != NULL);
 
     // Retrieve the existing value.
-    *data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)&object_id, sizeof(object_id), data_length, &errptr);
+    *data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)bdata(object_id), blength(object_id), data_length, &errptr);
     check(errptr == NULL, "LevelDB get path error: %s", errptr);
     return 0;
 
@@ -209,11 +209,11 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
     sky_tablet *target_tablet = NULL;
     rc = sky_table_get_target_tablet(tablet->table, event->object_id, &target_tablet);
     check(rc == 0, "Unable to determine target tablet");
-    check(tablet == target_tablet, "Event added to invalid tablet; IDX:%d of %d, OID:%d", tablet->index, tablet->table->tablet_count, event->object_id);
+    check(tablet == target_tablet, "Event added to invalid tablet; IDX:%d of %d", tablet->index, tablet->table->tablet_count);
 
     // Retrieve the existing value.
     size_t data_length;
-    data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)&event->object_id, sizeof(event->object_id), &data_length, &errptr);
+    data = (void*)leveldb_get(tablet->leveldb_db, tablet->readoptions, (const char*)bdata(event->object_id), blength(event->object_id), &data_length, &errptr);
     check(errptr == NULL, "LevelDB get error: %s", errptr);
     
     // Find the insertion point on the path.
@@ -333,7 +333,7 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
         check(rc == 0, "Unable to pack event");
         check(event_sz == event_length, "Expected event size (%ld) does not match actual event size (%ld)", event_length, event_sz);
 
-        leveldb_put(tablet->leveldb_db, tablet->writeoptions, (const char*)&event->object_id, sizeof(event->object_id), new_data, data_length + event_length, &errptr);
+        leveldb_put(tablet->leveldb_db, tablet->writeoptions, (const char*)bdata(event->object_id), blength(event->object_id), new_data, data_length + event_length, &errptr);
         check(errptr == NULL, "LevelDB put error: %s", errptr);
     }
     

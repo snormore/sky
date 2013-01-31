@@ -1,7 +1,6 @@
 #include <assert.h>
 
 #include "cursor.h"
-#include "path.h"
 #include "event.h"
 #include "minipack.h"
 #include "timestamp.h"

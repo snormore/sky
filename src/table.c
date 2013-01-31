@@ -132,7 +132,7 @@ error:
 // ret       - A pointer to where the tablet should be returned.
 //
 // Returns 0 if successful, otherwise returns -1.
-int sky_table_get_target_tablet(sky_table *table, sky_object_id_t object_id,
+int sky_table_get_target_tablet(sky_table *table, bstring object_id,
                                 sky_tablet **ret)
 {
     assert(table != NULL);
@@ -140,7 +140,8 @@ int sky_table_get_target_tablet(sky_table *table, sky_object_id_t object_id,
     check(table->tablet_count, "Table must have tablets available");
     
     // Calculate the tablet index.
-    uint32_t target_index = object_id % table->tablet_count;
+    uint32_t hash_code = sky_bstring_fnv1a(object_id);
+    uint32_t target_index = hash_code % table->tablet_count;
     *ret = table->tablets[target_index];
     
     return 0;

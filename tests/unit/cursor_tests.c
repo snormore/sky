@@ -72,8 +72,8 @@ int test_sky_cursor_set_data() {
 
     size_t data_length;
     char *errptr = NULL;
-    sky_object_id_t object_id = 10;
-    char *data = leveldb_get(table->tablets[0]->leveldb_db, table->tablets[0]->readoptions, (const char*)&object_id, sizeof(object_id), &data_length, &errptr);
+    bstring object_id = bfromcstr("10");
+    char *data = leveldb_get(table->tablets[0]->leveldb_db, table->tablets[0]->readoptions, (const char*)bdata(object_id), blength(object_id), &data_length, &errptr);
     
     // Setup data object & data descriptor.
     test_t obj; memset(&obj, 0, sizeof(obj));
@@ -117,6 +117,7 @@ int test_sky_cursor_set_data() {
     mu_assert_bool(!sky_lua_cursor_next_event(cursor));
 
     free(data);
+    bdestroy(object_id);
     sky_cursor_free(cursor);
     sky_data_descriptor_free(descriptor);
     sky_table_free(table);
@@ -136,8 +137,8 @@ int test_sky_cursor_sessionize() {
 
     size_t data_length;
     char *errptr = NULL;
-    sky_object_id_t object_id = 10;
-    char *data = leveldb_get(table->tablets[0]->leveldb_db, table->tablets[0]->readoptions, (const char*)&object_id, sizeof(object_id), &data_length, &errptr);
+    bstring object_id = bfromcstr("10");
+    char *data = leveldb_get(table->tablets[0]->leveldb_db, table->tablets[0]->readoptions, (const char*)bdata(object_id), blength(object_id), &data_length, &errptr);
     
     // Setup data object & data descriptor.
     test_t obj; memset(&obj, 0, sizeof(obj));
@@ -229,6 +230,7 @@ int test_sky_cursor_sessionize() {
     
 
     free(data);
+    bdestroy(object_id);
     sky_cursor_free(cursor);
     sky_data_descriptor_free(descriptor);
     sky_table_free(table);

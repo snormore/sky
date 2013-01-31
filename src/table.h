@@ -69,7 +69,7 @@ int sky_table_set_path(sky_table *table, bstring path);
 
 int sky_table_get_tablet_count(sky_table *table, uint32_t *ret);
 
-int sky_table_get_target_tablet(sky_table *table, sky_object_id_t object_id,
+int sky_table_get_target_tablet(sky_table *table, bstring object_id,
     sky_tablet **ret);
 
 //--------------------------------------

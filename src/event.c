@@ -103,13 +103,13 @@ error:
 
 // Creates a reference to an event.
 //
+// object_id - The identifier for the object that the event is related to.
 // timestamp - When the event occurred (in microseconds since midnight Jan 1,
 //             1970 UTC).
-// object_id - The identifier for the object that the event is related to.
 // action    - The name of the action that was performed.
 //
 // Returns a reference to the new event.
-sky_event *sky_event_create(sky_object_id_t object_id,
+sky_event *sky_event_create(bstring object_id,
                             sky_timestamp_t timestamp,
                             sky_action_id_t action_id)
 {
@@ -118,7 +118,8 @@ sky_event *sky_event_create(sky_object_id_t object_id,
     event = malloc(sizeof(sky_event)); check_mem(event);
     
     event->timestamp = timestamp;
-    event->object_id = object_id;
+    event->object_id = bstrcpy(object_id);
+    if(object_id != NULL) check_mem(event->object_id);
     event->action_id = action_id;
 
     event->data = NULL;
@@ -137,6 +138,9 @@ error:
 void sky_event_free(sky_event *event)
 {
     if(event) {
+        bdestroy(event->object_id);
+        event->object_id = NULL;
+        
         // Destroy data.
         if(event->data != NULL) {
             uint32_t i=0;
@@ -611,5 +615,4 @@ int sky_event_unset_data(sky_event *event, sky_property_id_t key)
 error:
     return -1;
 }
-
 

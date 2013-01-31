@@ -58,8 +58,8 @@
 //==============================================================================
 
 typedef struct sky_event {
+    bstring object_id;
     sky_timestamp_t timestamp;
-    sky_object_id_t object_id;
     sky_action_id_t action_id;
     uint32_t data_count;
     sky_event_data **data;
@@ -76,7 +76,7 @@ typedef struct sky_event {
 // Create/Destroy
 //--------------------------------------
 
-sky_event *sky_event_create(sky_object_id_t object_id,
+sky_event *sky_event_create(bstring object_id,
                             sky_timestamp_t timestamp,
                             sky_action_id_t action_id);
 

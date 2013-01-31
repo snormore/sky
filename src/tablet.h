@@ -65,7 +65,7 @@ int sky_tablet_close(sky_tablet *tablet);
 // Event Management
 //--------------------------------------
 
-int sky_tablet_get_path(sky_tablet *tablet, sky_object_id_t object_id,
+int sky_tablet_get_path(sky_tablet *tablet, bstring object_id,
     void **data, size_t *data_length);
 
 //--------------------------------------

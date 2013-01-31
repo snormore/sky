@@ -25,7 +25,7 @@ typedef struct sky_add_event_message_data sky_add_event_message_data;
 
 // A message for adding events to the database.
 typedef struct sky_add_event_message {
-    sky_object_id_t object_id;
+    bstring object_id;
     sky_timestamp_t timestamp;
     bstring action_name;
     uint32_t data_count;

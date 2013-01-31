@@ -28,18 +28,26 @@ int test() {
     table->path = bfromcstr("tmp");
     sky_table_open(table);
 
-    sky_tablet_get_path(table->tablets[1], 1, &data, &data_length);
+    struct tagbstring one_str = bsStatic("1");
+    sky_tablet_get_path(table->tablets[1], &one_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x04\x00", data_length);
     free(data);
-    sky_tablet_get_path(table->tablets[2], 2, &data, &data_length);
+
+    struct tagbstring two_str = bsStatic("2");
+    sky_tablet_get_path(table->tablets[2], &two_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x03\x00", data_length);
     free(data);
-    sky_tablet_get_path(table->tablets[3], 3, &data, &data_length);
+
+    struct tagbstring three_str = bsStatic("3");
+    sky_tablet_get_path(table->tablets[3], &three_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x02\x00", data_length);
     free(data);
-    sky_tablet_get_path(table->tablets[0], 4, &data, &data_length);
+
+    struct tagbstring four_str = bsStatic("4");
+    sky_tablet_get_path(table->tablets[0], &four_str, &data, &data_length);
     mu_assert_mem(data, "\x01\x1A\x00\x00\x00\x00\x00\x00\x00\x01\x00", data_length);
     free(data);
+
     sky_table_free(table);
     return 0;
 }

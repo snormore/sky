@@ -201,7 +201,7 @@ int sky_add_event_message_process(sky_server *server,
     message = sky_add_event_message_create(); check_mem(message);
     rc = sky_add_event_message_unpack(message, input);
     check(rc == 0, "Unable to unpack 'add_event' message");
-    check(message->object_id > 0, "Object ID must be greater than zero");
+    check(message->object_id != NULL, "Object ID cannot be null");
 
     // TODO: Reject action if there is no 'name' key.
 
@@ -244,7 +244,7 @@ int sky_add_event_message_process(sky_server *server,
     worker->servlet_count = 1;
     sky_tablet *tablet = NULL;
     rc = sky_table_get_target_tablet(table, message->object_id, &tablet);
-    check(rc == 0 && tablet != NULL, "Unable to find target tablet: %d", message->object_id);
+    check(rc == 0 && tablet != NULL, "Unable to find target tablet: %s", bdata(message->object_id));
     rc = sky_server_get_tablet_servlet(server, tablet, &worker->servlets[0]);
     check(rc == 0, "Unable to copy servlet to worker");
 
@@ -367,7 +367,7 @@ size_t sky_add_event_message_sizeof(sky_add_event_message *message)
     size_t sz = 0;
     sz += minipack_sizeof_map(SKY_ADD_EVENT_KEY_COUNT);
     sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_OBJECT_ID)->slen) + (&SKY_ADD_EVENT_KEY_OBJECT_ID)->slen;
-    sz += minipack_sizeof_uint(message->object_id);
+    sz += minipack_sizeof_raw(blength(message->object_id)) + blength(message->object_id);
     sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_TIMESTAMP)->slen) + (&SKY_ADD_EVENT_KEY_TIMESTAMP)->slen;
     sz += minipack_sizeof_int(message->timestamp);
     sz += minipack_sizeof_raw((&SKY_ADD_EVENT_KEY_ACTION)->slen) + (&SKY_ADD_EVENT_KEY_ACTION)->slen;
@@ -474,8 +474,7 @@ int sky_add_event_message_pack(sky_add_event_message *message, FILE *file)
     
     // Object ID
     check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_OBJECT_ID) == 0, "Unable to pack object id key");
-    minipack_fwrite_int(file, message->object_id, &sz);
-    check(sz != 0, "Unable to pack object id");
+    check(sky_minipack_fwrite_bstring(file, message->object_id) == 0, "Unable to pack object id");
 
     // Timestamp
     check(sky_minipack_fwrite_bstring(file, &SKY_ADD_EVENT_KEY_TIMESTAMP) == 0, "Unable to pack timestamp key");
@@ -637,8 +636,8 @@ int sky_add_event_message_unpack(sky_add_event_message *message, FILE *file)
         check(rc == 0, "Unable to read map key");
         
         if(biseq(key, &SKY_ADD_EVENT_KEY_OBJECT_ID) == 1) {
-            message->object_id = (sky_object_id_t)minipack_fread_uint(file, &sz);
-            check(sz != 0, "Unable to unpack object id");
+            rc = sky_minipack_fread_bstring(file, &message->object_id);
+            check(rc == 0, "Unable to read object id");
         }
         else if(biseq(key, &SKY_ADD_EVENT_KEY_TIMESTAMP) == 1) {
             message->timestamp = (sky_timestamp_t)minipack_fread_int(file, &sz);

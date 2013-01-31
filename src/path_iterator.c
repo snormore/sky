@@ -2,7 +2,6 @@
 #include <assert.h>
 
 #include "path_iterator.h"
-#include "path.h"
 #include "mem.h"
 #include "dbg.h"
 
@@ -122,10 +121,6 @@ int sky_path_iterator_next(sky_path_iterator *iterator)
 
     // Move to next path.
     if(leveldb_iter_valid(iterator->leveldb_iterator)) {
-        // Retrieve the object id.
-        //size_t key_length;
-        //sky_object_id_t object_id = *((sky_object_id_t*)leveldb_iter_key(iterator->leveldb_iterator, &key_length));
-        
         // Retrieve the path data for this object.
         size_t data_length;
         void *data = (void*)leveldb_iter_value(iterator->leveldb_iterator, &data_length);

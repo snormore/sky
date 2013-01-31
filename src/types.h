@@ -24,18 +24,6 @@
 
 
 //--------------------------------------
-// Object ID
-//--------------------------------------
-
-// Stores an object identifier.
-#define sky_object_id_t uint32_t
-
-#define SKY_OBJECT_ID_MIN 1
-
-#define SKY_OBJECT_ID_MAX UINT32_MAX
-
-
-//--------------------------------------
 // Actions
 //--------------------------------------
 

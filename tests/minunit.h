@@ -143,15 +143,6 @@ struct tagbstring BSTMPDIR = bsStatic(TMPDIR);
 // Uses an import file to create a table with a single tablet in a given directory.
 #define importtmp(PATH) importtmp_n(PATH, 1)
 
-// Asserts that a block has a specific block id and object id range.
-#define mu_assert_block_info(INDEX, ID, MIN_OBJECT_ID, MAX_OBJECT_ID, MIN_TIMESTAMP, MAX_TIMESTAMP, SPANNED) \
-    mu_assert(table->infos[INDEX]->id == ID, "Block " #INDEX " id expected to be " #ID); \
-    mu_assert(table->infos[INDEX]->min_object_id == MIN_OBJECT_ID, "Block " #INDEX " min object id expected to be " #MIN_OBJECT_ID); \
-    mu_assert(table->infos[INDEX]->max_object_id == MAX_OBJECT_ID, "Block " #INDEX " max object id expected to be " #MAX_OBJECT_ID); \
-    mu_assert(table->infos[INDEX]->min_timestamp == MIN_TIMESTAMP, "Block " #INDEX " min timestamp expected to be " #MIN_TIMESTAMP); \
-    mu_assert(table->infos[INDEX]->max_timestamp == MAX_TIMESTAMP, "Block " #INDEX " max timestamp expected to be " #MAX_TIMESTAMP); \
-    mu_assert(table->infos[INDEX]->spanned == SPANNED, "Block " #INDEX " spanned expected to be " #SPANNED);
-
 // Asserts property data.
 #define mu_assert_property(INDEX, ID, NAME) \
     mu_assert(table->properties[INDEX]->id == ID, "Expected property #" #INDEX " id to be: " #ID); \
