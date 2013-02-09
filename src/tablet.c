@@ -10,6 +10,7 @@
 #include "tablet.h"
 #include "cursor.h"
 #include "sky_string.h"
+#include "timestamp.h"
 #include "mem.h"
 #include "dbg.h"
 
@@ -231,7 +232,8 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
     // insertion.
     else {
         void *insert_ptr = NULL;
-
+        sky_timestamp_t event_ts = sky_timestamp_shift(event->timestamp);
+        
         // Initialize data descriptor.
         descriptor = sky_data_descriptor_create(); check_mem(descriptor);
         rc = sky_data_descriptor_init_with_event(descriptor, event);
@@ -247,11 +249,12 @@ int sky_tablet_add_event(sky_tablet *tablet, sky_event *event)
         // Initialize the cursor.
         rc = sky_cursor_set_ptr(&cursor, data, data_length);
         check(rc == 0, "Unable to set pointer on cursor");
+        check(sky_cursor_next_event(&cursor) == 0, "Unable to move to next event");
         
         // Loop over cursor until we reach the event insertion point.
         while(!cursor.eof) {
             // Retrieve event insertion pointer once the timestamp is reached.
-            if(data_object->ts >= event->timestamp) {
+            if(data_object->ts >= event_ts) {
                 insert_ptr = cursor.ptr;
                 break;
             }
