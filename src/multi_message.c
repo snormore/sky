@@ -126,7 +126,7 @@ int sky_multi_message_process(sky_server *server,
         // HACK: ZeroMQ is not releasing file handles soon enough so the sleep
         // is used to wait for some to close. This needs to be changed so that
         // all workers share the same ZeroMQ sockets.
-        if(i % 1000 == 0) sleep(1);
+        if(i % 500 == 0) sleep(1);
     }
 
     // End benchmark.
