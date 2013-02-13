@@ -136,7 +136,13 @@ int sky_cursor_next_event(sky_cursor *cursor)
     // Otherwise update the event object with data.
     else {
         sky_event_flag_t flag = *((sky_event_flag_t*)cursor->ptr);
-        check(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA, "Cursor pointing at invalid raw event data: %p", cursor->ptr);
+        
+        // Log any corrupt data.
+        if(!(flag & SKY_EVENT_FLAG_ACTION || flag & SKY_EVENT_FLAG_DATA)) {
+            log_err("Cursor pointing at invalid raw event data (%02x): %p", flag, cursor->ptr);
+            memdump(cursor->startptr, (cursor->endptr - cursor->startptr));
+            errno=0; goto error;
+        }
 
         // Retrieve current timestamp.
         sky_timestamp_t ts;
