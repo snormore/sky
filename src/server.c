@@ -8,6 +8,7 @@
 
 #include "bstring.h"
 #include "server.h"
+#include "minipack.h"
 #include "message_header.h"
 #include "add_event_message.h"
 #include "next_actions_message.h"
@@ -387,11 +388,18 @@ int sky_server_process_message(sky_server *server, bool multi,
                                FILE *input, FILE *output)
 {
     int rc;
+    size_t sz;
     sky_message_header *header = NULL;
     assert(server != NULL);
     check(input != NULL, "Input stream required");
     check(output != NULL, "Output stream required");
     
+    struct tagbstring status_str = bsStatic("status");
+    struct tagbstring error_str = bsStatic("error");
+    struct tagbstring message_str = bsStatic("error");
+    struct tagbstring table_not_found_str = bsStatic("Table not found.");
+
+
     // Parse message header.
     header = sky_message_header_create(); check_mem(header);
     header->multi = multi;
@@ -410,6 +418,18 @@ int sky_server_process_message(sky_server *server, bool multi,
         if(handler->scope != SKY_MESSAGE_HANDLER_SCOPE_SERVER) {
             rc = sky_server_get_table(server, header->table_name, &table);
             check(rc == 0, "Unable to open table");
+            
+            // If table is not found then report an error.
+            if(table == NULL) {
+              // Return {status:"error", message:"Table not found."}
+              check(minipack_fwrite_map(output, 2, &sz) == 0, "Unable to write output");
+              check(sky_minipack_fwrite_bstring(output, &status_str) == 0, "Unable to write output");
+              check(sky_minipack_fwrite_bstring(output, &error_str) == 0, "Unable to write output");
+              check(sky_minipack_fwrite_bstring(output, &message_str) == 0, "Unable to write output");
+              check(sky_minipack_fwrite_bstring(output, &table_not_found_str) == 0, "Unable to write output");
+
+              sentinel("Table not found: %s", bdata(header->table_name));
+            }
         }
 
         rc = handler->process(server, header, table, input, output);
