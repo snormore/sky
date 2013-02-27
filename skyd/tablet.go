@@ -8,13 +8,13 @@ import (
 // which is contained in LevelDB.
 type Tablet struct {
 	db   *levigo.DB
-	path string
+	Path string
 }
 
 // NewTablet returns a new Tablet that is stored at a given path.
 func NewTablet(path string) Tablet {
   return Tablet{
-    path: path,
+    Path: path,
   }
 }
 
@@ -22,7 +22,7 @@ func NewTablet(path string) Tablet {
 func (t *Tablet) Open() error {
 	opts := levigo.NewOptions()
 	opts.SetCreateIfMissing(true)
-	db, err := levigo.Open(t.path, opts)
+	db, err := levigo.Open(t.Path, opts)
 	if err != nil {
 		return err
 	}
