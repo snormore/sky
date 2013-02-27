@@ -18,17 +18,17 @@ func TestEncodeDecode(t *testing.T) {
 	buffer := new(bytes.Buffer)
   err = e1.EncodeRaw(buffer)
 	if err != nil {
-		t.Errorf("Unable to encode: %v", err)
+		t.Fatalf("Unable to encode: %v", err)
   }
 
   // Decode
   e2 := &Event{}
   err = e2.DecodeRaw(buffer)
   if err != nil {
-    t.Errorf("Unable to decode: %v", err)
+    t.Fatalf("Unable to decode: %v", err)
   }
   if !e1.Equal(e2) {
-    t.Errorf("Events do not match: %v <=> %v", e1, e2)
+    t.Fatalf("Events do not match: %v <=> %v", e1, e2)
   }
 }
 

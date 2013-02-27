@@ -22,44 +22,44 @@ func TestCastInt64(t *testing.T) {
   
   ret, _ = castInt64(i)
   if ret != 100 {
-    t.Errorf("Unable to cast int")
+    t.Fatalf("Unable to cast int")
   }
   ret, _ = castInt64(i8)
   if ret != 100 {
-    t.Errorf("Unable to cast int8")
+    t.Fatalf("Unable to cast int8")
   }
   ret, _ = castInt64(i16)
   if ret != 100 {
-    t.Errorf("Unable to cast int16")
+    t.Fatalf("Unable to cast int16")
   }
   ret, _ = castInt64(i32)
   if ret != 100 {
-    t.Errorf("Unable to cast int32")
+    t.Fatalf("Unable to cast int32")
   }
   ret, _ = castInt64(i64)
   if ret != 100 {
-    t.Errorf("Unable to cast int64")
+    t.Fatalf("Unable to cast int64")
   }
 
   ret, _ = castInt64(u)
   if ret != 100 {
-    t.Errorf("Unable to cast uint")
+    t.Fatalf("Unable to cast uint")
   }
   ret, _ = castInt64(u8)
   if ret != 100 {
-    t.Errorf("Unable to cast uint8")
+    t.Fatalf("Unable to cast uint8")
   }
   ret, _ = castInt64(u16)
   if ret != 100 {
-    t.Errorf("Unable to cast uint16")
+    t.Fatalf("Unable to cast uint16")
   }
   ret, _ = castInt64(u32)
   if ret != 100 {
-    t.Errorf("Unable to cast uint32")
+    t.Fatalf("Unable to cast uint32")
   }
   ret, _ = castInt64(u64)
   if ret != 100 {
-    t.Errorf("Unable to cast uint64")
+    t.Fatalf("Unable to cast uint64")
   }
 }
 
