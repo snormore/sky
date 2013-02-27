@@ -72,3 +72,35 @@ func (e *Event) decodeRawMap(raw map[interface{}]interface{}) (map[int64]interfa
   }
   return m, nil
 }
+
+// Compares two events for equality.
+func (e *Event) Equal(x *Event) bool {
+  if !e.Timestamp.Equal(x.Timestamp) {
+    return false
+  }
+  for k,v := range e.Action {
+    v2 := x.Action[k]
+    if v != v2 {
+      return false
+    }
+  }
+  for k,v := range x.Action {
+    v2 := e.Action[k]
+    if v != v2 {
+      return false
+    }
+  }
+  for k,v := range e.Data {
+    v2 := x.Data[k]
+    if v != v2 {
+      return false
+    }
+  }
+  for k,v := range x.Data {
+    v2 := e.Data[k]
+    if v != v2 {
+      return false
+    }
+  }
+	return true
+}

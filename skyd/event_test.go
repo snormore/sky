@@ -27,20 +27,8 @@ func TestEncodeDecode(t *testing.T) {
   if err != nil {
     t.Errorf("Unable to decode: %v", err)
   }
-  if !e1.Timestamp.Equal(e2.Timestamp) {
-    t.Errorf("Timestamps do not match: %v <=> %v", e1, e2)
-  }
-  for k,v := range e1.Action {
-    v2 := e2.Action[k]
-    if v != v2 {
-      t.Errorf("Action does not match: [%v] %v != %v", k, v, v2)
-    }
-  }
-  for k,v := range e1.Data {
-    v2 := e2.Data[k]
-    if v != v2 {
-      t.Errorf("Data does not match: [%v] %v != %v", k, v, v2)
-    }
+  if !e1.Equal(e2) {
+    t.Errorf("Events do not match: %v <=> %v", e1, e2)
   }
 }
 
