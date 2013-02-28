@@ -30,28 +30,40 @@ func TestAddEvent(t *testing.T) {
 	_ = tablet.Open()
 
   // Setup source events.
-  input := make([]*Event, 1)
+  input := make([]*Event, 2)
   input[0] = &Event{}
-  input[0].Timestamp, _ = time.Parse(time.RFC3339, "2012-01-01T00:00:00Z")
+  input[0].Timestamp, _ = time.Parse(time.RFC3339, "2012-01-02T00:00:00Z")
   input[0].Action = map[int64]interface{}{1:"foo"}
   input[0].Data = map[int64]interface{}{}
 
-  err = tablet.AddEvent("bob", input[0])
-	if err != nil {
-		t.Fatalf("Unable to add event: %v", err)
+  input[1] = &Event{}
+  input[1].Timestamp, _ = time.Parse(time.RFC3339, "2012-01-01T00:00:00Z")
+  input[1].Action = map[int64]interface{}{1:"foo"}
+  input[1].Data = map[int64]interface{}{}
+
+  for _, e := range input {
+    err = tablet.AddEvent("bob", e)
+  	if err != nil {
+  		t.Fatalf("Unable to add event: %v", err)
+    }
   }
+  
+  // Setup expected events.
+  expected := make([]*Event, len(input))
+  expected[0] = input[1]
+  expected[1] = input[0]
   
   // Read events out.
   output, err := tablet.GetEvents("bob")
   if err != nil {
     t.Fatalf("Unable to retrieve events: %v", err)
   }
-  if len(output) != len(input) {
-    t.Fatalf("Expected %v events, received %v", len(input), len(output))
+  if len(output) != len(expected) {
+    t.Fatalf("Expected %v events, received %v", len(expected), len(output))
   }
   for i := range output {
-    if !input[i].Equal(output[i]) {
-      t.Fatalf("Events not equal:\n  IN:  %v\n  OUT: %v", input[i], output[i])
+    if !expected[i].Equal(output[i]) {
+      t.Fatalf("Events not equal:\n  IN:  %v\n  OUT: %v", expected[i], output[i])
     }
   }
 }

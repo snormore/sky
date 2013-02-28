@@ -15,6 +15,8 @@ type Event struct {
 	Data      map[int64]interface{}
 }
 
+type EventSlice []*Event;
+
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(writer io.Writer) error {
 	raw := []interface{} {ShiftTime(e.Timestamp), e.Action, e.Data}
@@ -103,4 +105,20 @@ func (e *Event) Equal(x *Event) bool {
     }
   }
 	return true
+}
+
+
+// Determines the length of an event slice.
+func (s EventSlice) Len() int {
+  return len(s)
+}
+
+// Compares two events in an event slice.
+func (s EventSlice) Less(i, j int) bool {
+  return s[i].Timestamp.Before(s[j].Timestamp)
+}
+
+// Swaps two events in an event slice.
+func (s EventSlice) Swap(i, j int) {
+  s[i], s[j] = s[j], s[i]
 }

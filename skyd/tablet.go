@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 )
 
 // A Tablet is a small wrapper for the underlying data storage
@@ -118,6 +119,9 @@ func (t *Tablet) SetEvents(objectId interface{}, events []*Event) error {
   if t.db == nil {
 	  return fmt.Errorf("Tablet is not open: %v", t.Path)
   }
+
+  // Sort the events.
+  sort.Sort(EventSlice(events))
 
   // Encode object identifier.
   encodedObjectId, err := EncodeObjectId(objectId)
