@@ -13,9 +13,10 @@ import (
 
 // A Table is a collection of tablets.
 type Table struct {
-	Path    string
-	Name    string
-	Tablets []*Tablet
+	name         string
+	path         string
+	tablets      []*Tablet
+	propertyFile *PropertyFile
 }
 
 // NewTable returns a new Table that is stored at a given path.
@@ -26,28 +27,39 @@ func NewTable(path string) *Table {
 	}
 
 	return &Table{
-		Path: path,
-		Name: filepath.Base(path),
+		path:         path,
+		name:         filepath.Base(path),
+		propertyFile: NewPropertyFile(fmt.Sprintf("%v/%v", path, "properties")),
 	}
+}
+
+// Retrieves the path on the table.
+func (t *Table) Path() string {
+  return t.path
+}
+
+// Retrieves the name of the table.
+func (t *Table) Name() string {
+  return t.name
 }
 
 // Creates a table directory structure.
 func (t *Table) Create() error {
 	if t.Exists() {
-		return fmt.Errorf("Table already exist: %v", t.Path)
+		return fmt.Errorf("Table already exist: %v", t.name)
 	}
 
 	// Create root directory.
-	err := os.MkdirAll(t.Path, 0700)
+	err := os.MkdirAll(t.path, 0700)
 	if err != nil {
 		return err
 	}
 
 	// Create a subdirectory for each tablet.
 	for i := 0; i < runtime.NumCPU(); i++ {
-		err = os.Mkdir(fmt.Sprintf("%v/%v", t.Path, i), 0700)
+		err = os.Mkdir(fmt.Sprintf("%v/%v", t.path, i), 0700)
 		if err != nil {
-			os.RemoveAll(t.Path)
+			os.RemoveAll(t.path)
 			return nil
 		}
 	}
@@ -61,17 +73,28 @@ func (t *Table) Open() error {
 		return errors.New("Table does not exist")
 	}
 
+  // Load property file.
+  err := t.propertyFile.Load()
+  if err != nil {
+    t.Close()
+    return err
+  }
+
 	// Create tablets from child directories with numeric names.
-	infos, err := ioutil.ReadDir(t.Path)
+	infos, err := ioutil.ReadDir(t.path)
 	if err != nil {
 		return err
 	}
 	for _, info := range infos {
 		match, _ := regexp.MatchString("^\\d$", info.Name())
 		if info.IsDir() && match {
-			tablet := NewTablet(fmt.Sprintf("%s/%s", t.Path, info.Name()))
-			t.Tablets = append(t.Tablets, tablet)
-			tablet.Open()
+			tablet := NewTablet(fmt.Sprintf("%s/%s", t.path, info.Name()))
+			t.tablets = append(t.tablets, tablet)
+			err = tablet.Open()
+			if err != nil {
+	      t.Close()
+        return err
+			}
 		}
 	}
 
@@ -80,20 +103,22 @@ func (t *Table) Open() error {
 
 // Closes the table and all the tablets.
 func (t *Table) Close() {
-	for _, tablet := range t.Tablets {
+  t.propertyFile.Reset()
+
+	for _, tablet := range t.tablets {
 		tablet.Close()
 	}
-	t.Tablets = nil
+	t.tablets = nil
 }
 
 // Checks if the table is currently open.
 func (t *Table) IsOpen() bool {
-	return t.Tablets != nil
+	return t.tablets != nil
 }
 
 // Checks if the table exists on disk.
 func (t *Table) Exists() bool {
-	if _, err := os.Stat(t.Path); os.IsNotExist(err) {
+	if _, err := os.Stat(t.path); os.IsNotExist(err) {
 		return false
 	}
 	return true
@@ -112,7 +137,7 @@ func (t *Table) AddEvent(objectId interface{}, event *Event) error {
 	}
 
 	// Add event to the appropriate tablet.
-	tablet := t.Tablets[tabletIndex]
+	tablet := t.tablets[tabletIndex]
 	err = tablet.AddEvent(objectId, event)
 	if err != nil {
 		return err
@@ -134,7 +159,7 @@ func (t *Table) GetEvents(objectId interface{}) ([]*Event, error) {
 	}
 
 	// Add event to the appropriate tablet.
-	tablet := t.Tablets[tabletIndex]
+	tablet := t.tablets[tabletIndex]
 	events, err := tablet.GetEvents(objectId)
 	if err != nil {
 		return nil, err
@@ -160,7 +185,36 @@ func (t *Table) GetObjectTabletIndex(objectId interface{}) (uint32, error) {
 	h.Reset()
 	h.Write(encodedObjectId)
 	hashcode := h.Sum64()
-	index := CondenseUint64Even(hashcode) % uint32(len(t.Tablets))
+	index := CondenseUint64Even(hashcode) % uint32(len(t.tablets))
 
 	return index, nil
+}
+
+// Adds a property to the table.
+func (t *Table) CreateProperty(name string, typ string, dataType string) (*Property, error) {
+	if !t.IsOpen() {
+		return nil, errors.New("Table is not open")
+	}
+  
+  // Create property on property file.
+  property, err := t.propertyFile.CreateProperty(name, typ, dataType)
+  if err != nil {
+    return nil, err
+  }
+  
+  // Save the property file to disk.
+  err = t.propertyFile.Save()
+  if err != nil {
+    return nil, err
+  }
+  
+  return property, err
+}
+
+// Retrieves a list of all properties on the table.
+func (t *Table) GetProperties() ([]*Property, error) {
+	if !t.IsOpen() {
+		return nil, errors.New("Table is not open")
+	}
+  return t.propertyFile.GetProperties(), nil
 }

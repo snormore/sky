@@ -1,6 +1,6 @@
 package skyd
 
 const (
-  ObjectType   = "object"
-  ActionType   = "action"
+	ObjectType = "object"
+	ActionType = "action"
 )
