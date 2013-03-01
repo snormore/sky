@@ -17,6 +17,16 @@ type Event struct {
 
 type EventSlice []*Event;
 
+// NewEvent returns a new Event.
+func NewEvent(timestamp string, action map[int64]interface{}, data map[int64]interface{}) *Event {
+  t, _ := time.Parse(time.RFC3339, timestamp)
+  return &Event{
+    Timestamp: t,
+    Action: action,
+    Data: data,
+  }
+}
+
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(writer io.Writer) error {
 	raw := []interface{} {ShiftTime(e.Timestamp), e.Action, e.Data}

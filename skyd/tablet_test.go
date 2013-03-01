@@ -3,7 +3,6 @@ package skyd
 import (
 	"io/ioutil"
 	"os"
-	"time"
 	"testing"
 )
 
@@ -21,7 +20,7 @@ func TestOpen(t *testing.T) {
 }
 
 // Ensure that we can add events and read them back.
-func TestAddEvent(t *testing.T) {
+func TestTabletAddEvent(t *testing.T) {
 	// Setup blank database.
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
@@ -31,16 +30,10 @@ func TestAddEvent(t *testing.T) {
 
   // Setup source events.
   input := make([]*Event, 2)
-  input[0] = &Event{}
-  input[0].Timestamp, _ = time.Parse(time.RFC3339, "2012-01-02T00:00:00Z")
-  input[0].Action = map[int64]interface{}{1:"foo"}
-  input[0].Data = map[int64]interface{}{}
+  input[0] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{1:"foo"}, map[int64]interface{}{})
+  input[1] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{2:"bar"}, map[int64]interface{}{})
 
-  input[1] = &Event{}
-  input[1].Timestamp, _ = time.Parse(time.RFC3339, "2012-01-01T00:00:00Z")
-  input[1].Action = map[int64]interface{}{1:"foo"}
-  input[1].Data = map[int64]interface{}{}
-
+  // Add events.
   for _, e := range input {
     err = tablet.AddEvent("bob", e)
   	if err != nil {

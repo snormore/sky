@@ -17,8 +17,8 @@ type Tablet struct {
 }
 
 // NewTablet returns a new Tablet that is stored at a given path.
-func NewTablet(path string) Tablet {
-  return Tablet{
+func NewTablet(path string) *Tablet {
+  return &Tablet{
     Path: path,
   }
 }
