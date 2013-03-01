@@ -8,4 +8,3 @@ import (
 func EncodeObjectId(objectId interface{}) ([]byte, error) {
 	return msgpack.Marshal(objectId)
 }
-

@@ -1,8 +1,8 @@
 package skyd
 
 import (
-	"github.com/ugorji/go-msgpack"
 	"fmt"
+	"github.com/ugorji/go-msgpack"
 	"io"
 	"time"
 )
@@ -15,21 +15,19 @@ type Event struct {
 	Data      map[int64]interface{}
 }
 
-type EventSlice []*Event;
-
 // NewEvent returns a new Event.
 func NewEvent(timestamp string, action map[int64]interface{}, data map[int64]interface{}) *Event {
-  t, _ := time.Parse(time.RFC3339, timestamp)
-  return &Event{
-    Timestamp: t,
-    Action: action,
-    Data: data,
-  }
+	t, _ := time.Parse(time.RFC3339, timestamp)
+	return &Event{
+		Timestamp: t,
+		Action:    action,
+		Data:      data,
+	}
 }
 
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(writer io.Writer) error {
-	raw := []interface{} {ShiftTime(e.Timestamp), e.Action, e.Data}
+	raw := []interface{}{ShiftTime(e.Timestamp), e.Action, e.Data}
 	encoder := msgpack.NewEncoder(writer)
 	err := encoder.Encode(raw)
 	return err
@@ -41,26 +39,26 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
 	decoder := msgpack.NewDecoder(reader, nil)
 	err := decoder.Decode(&raw)
 	if err != nil {
-	  return err
+		return err
 	}
 
 	// Convert the timestamp to int64.
 	timestamp, err := castInt64(raw[0])
 	if err != nil {
-	  return fmt.Errorf("Unable to parse timestamp: '%v'", raw[0])
+		return fmt.Errorf("Unable to parse timestamp: '%v'", raw[0])
 	}
-  e.Timestamp = UnshiftTime(timestamp)
+	e.Timestamp = UnshiftTime(timestamp)
 
-  // Convert action to appropriate map.
+	// Convert action to appropriate map.
 	e.Action, err = e.decodeRawMap(raw[1].(map[interface{}]interface{}))
 	if err != nil {
-	  return err
+		return err
 	}
 
-  // Convert data to appropriate map.
+	// Convert data to appropriate map.
 	e.Data, err = e.decodeRawMap(raw[2].(map[interface{}]interface{}))
 	if err != nil {
-	  return err
+		return err
 	}
 
 	return nil
@@ -68,67 +66,51 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
 
 // Decodes the action map.
 func (e *Event) decodeRawMap(raw map[interface{}]interface{}) (map[int64]interface{}, error) {
-  m := make(map[int64]interface{})
-  for k,v := range raw {
-    kInt64, err := castInt64(k)
-    if err != nil {
-      return nil, err
-    }
+	m := make(map[int64]interface{})
+	for k, v := range raw {
+		kInt64, err := castInt64(k)
+		if err != nil {
+			return nil, err
+		}
 
-    vInt64, err := castInt64(v)
-    if err == nil {
-      m[kInt64] = vInt64
-    } else {
-      m[kInt64] = v
-    }
-  }
-  return m, nil
+		vInt64, err := castInt64(v)
+		if err == nil {
+			m[kInt64] = vInt64
+		} else {
+			m[kInt64] = v
+		}
+	}
+	return m, nil
 }
 
 // Compares two events for equality.
 func (e *Event) Equal(x *Event) bool {
-  if !e.Timestamp.Equal(x.Timestamp) {
-    return false
-  }
-  for k,v := range e.Action {
-    v2 := x.Action[k]
-    if v != v2 {
-      return false
-    }
-  }
-  for k,v := range x.Action {
-    v2 := e.Action[k]
-    if v != v2 {
-      return false
-    }
-  }
-  for k,v := range e.Data {
-    v2 := x.Data[k]
-    if v != v2 {
-      return false
-    }
-  }
-  for k,v := range x.Data {
-    v2 := e.Data[k]
-    if v != v2 {
-      return false
-    }
-  }
+	if !e.Timestamp.Equal(x.Timestamp) {
+		return false
+	}
+	for k, v := range e.Action {
+		v2 := x.Action[k]
+		if v != v2 {
+			return false
+		}
+	}
+	for k, v := range x.Action {
+		v2 := e.Action[k]
+		if v != v2 {
+			return false
+		}
+	}
+	for k, v := range e.Data {
+		v2 := x.Data[k]
+		if v != v2 {
+			return false
+		}
+	}
+	for k, v := range x.Data {
+		v2 := e.Data[k]
+		if v != v2 {
+			return false
+		}
+	}
 	return true
-}
-
-
-// Determines the length of an event slice.
-func (s EventSlice) Len() int {
-  return len(s)
-}
-
-// Compares two events in an event slice.
-func (s EventSlice) Less(i, j int) bool {
-  return s[i].Timestamp.Before(s[j].Timestamp)
-}
-
-// Swaps two events in an event slice.
-func (s EventSlice) Swap(i, j int) {
-  s[i], s[j] = s[j], s[i]
 }
