@@ -32,8 +32,27 @@ func TestCreate(t *testing.T) {
 // Ensure that we can add an event to the appropriate tablet.
 func TestTableAddEvent(t *testing.T) {
   table := createTable(t)
+  table.Open()
+  defer table.Close()
+  
   input := NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{1:"foo"}, map[int64]interface{}{})
-  table.AddEvent("bob", input)
+  err := table.AddEvent("bob", input)
+  if err != nil {
+    t.Fatalf("Unable to add event to table: %v", err)
+  }
+
+  output, err := table.GetEvents("bob")
+  if err != nil {
+    t.Fatalf("Unable to retrieve events: %v", err)
+  }
+  if len(output) != 1 {
+    t.Fatalf("Expected %v events, received %v", 1, len(output))
+  }
+  for i := range output {
+    if !input.Equal(output[i]) {
+      t.Fatalf("Events not equal:\n  IN:  %v\n  OUT: %v", input, output[i])
+    }
+  }
 }
 
 // Creates a table.
@@ -49,3 +68,4 @@ func createTable(t *testing.T) *Table {
 
   return table
 }
+

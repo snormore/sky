@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"errors"
+	"hash/fnv"
 	"path/filepath"
 	"fmt"
 	"regexp"
@@ -70,6 +71,7 @@ func (t *Table) Open() error {
 	  if info.IsDir() && match {
 	    tablet := NewTablet(fmt.Sprintf("%s/%s", t.Path, info.Name()))
 	    t.Tablets = append(t.Tablets, tablet)
+	    tablet.Open()
 	  }
 	}
 	
@@ -105,19 +107,63 @@ func (t *Table) AddEvent(objectId interface{}, event *Event) error {
   }
   
   // Determine tablet number that event should go to.
+  tabletIndex, err := t.GetObjectTabletIndex(objectId)
+  if err != nil {
+    return err
+  }
+  
+  // Add event to the appropriate tablet.
+  tablet := t.Tablets[tabletIndex]
+  err = tablet.AddEvent(objectId, event)
+  if err != nil {
+    return err
+  }
+  
   return nil
 }
 
+// Retrieves a list of events for a given object.
+func (t *Table) GetEvents(objectId interface{}) ([]*Event, error) {
+  if !t.IsOpen() {
+    return nil, errors.New("Table is not open")
+  }
+  
+  // Determine tablet number that event should go to.
+  tabletIndex, err := t.GetObjectTabletIndex(objectId)
+  if err != nil {
+    return nil, err
+  }
+  
+  // Add event to the appropriate tablet.
+  tablet := t.Tablets[tabletIndex]
+  events, err := tablet.GetEvents(objectId)
+  if err != nil {
+    return nil, err
+  }
+  
+  return events, nil
+}
 
-// Calculates a tablet
-/*
-func getObjectTabletIndex(objectId interface{}) int, error {
+
+// Calculates a tablet index based on the object identifier even hash.
+func (t *Table) GetObjectTabletIndex(objectId interface{}) (uint32, error) {
+  if !t.IsOpen() {
+    return 0, errors.New("Table is not open")
+  }
+  
   // Encode object identifier.
   encodedObjectId, err := EncodeObjectId(objectId)
   if err != nil {
-    return -1, err
+    return 0, err
   }
   
-  // 
+  // Calculate the even bits of the FNV1a hash.
+  h := fnv.New64a()
+  h.Reset()
+  h.Write(encodedObjectId)
+  hashcode := h.Sum64()
+  index := CondenseUint64Even(hashcode) % uint32(len(t.Tablets))
+
+  return index, nil
 }
-*/
+
