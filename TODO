@@ -1,0 +1,21 @@
+# Property Endpoints
+GET    /tables/:name/properties
+POST   /tables/:name/properties
+PUT    /tables/:name/properties/:name
+PATCH  /tables/:name/properties/:name
+GET    /tables/:name/properties/:name
+DELETE /tables/:name/properties/:name
+
+# Object/Event Endpoints
+GET    /tables/:name/objects/:oid
+DELETE /tables/:name/objects/:oid
+GET    /tables/:name/objects/:oid/events/:timestamp
+PUT    /tables/:name/objects/:oid/events/:timestamp
+PATCH  /tables/:name/objects/:oid/events/:timestamp
+DELETE /tables/:name/objects/:oid/events/:timestamp
+
+# Query Endpoints
+POST   /tables/:name/query
+
+# Utility Endpoints
+GET    /ping
