@@ -3,6 +3,7 @@ package skyd
 import (
 	"net/http"
 	"io/ioutil"
+	"strings"
 	"testing"
 )
 
@@ -27,4 +28,11 @@ func assertResponse(t *testing.T, resp *http.Response, statusCode int, content s
   if resp.StatusCode != 200 || string(body) != "" {
 		t.Fatalf("%v: Expected [%v] '%v', got [%v] '%v.", message, statusCode, content, resp.StatusCode, string(body))
   }
+}
+
+func sendTestHttpRequest(method string, url string, contentType string, body string) (*http.Response, error) {
+  client := &http.Client{Transport: &http.Transport{DisableKeepAlives:true}}
+  req, _ := http.NewRequest(method, url, strings.NewReader(body))
+  req.Header.Add("Content-Type", contentType)
+  return client.Do(req)
 }

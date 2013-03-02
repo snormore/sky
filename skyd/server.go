@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io"
 	"net"
 	"net/http"
 )
@@ -54,6 +55,11 @@ func (s *Server) Shutdown() error {
 	return nil
 }
 
+// Checks if the server is listening for new connections.
+func (s *Server) Running() bool {
+	return (s.listener != nil)
+}
+
 // Processes a request and return the appropriate data format.
 func (s *Server) process(w http.ResponseWriter, req *http.Request, f func(params map[string]interface{})(interface{}, error)) {
   // Parses body parameters.
@@ -62,7 +68,8 @@ func (s *Server) process(w http.ResponseWriter, req *http.Request, f func(params
   if contentType == "application/json" {
 	  decoder := json.NewDecoder(req.Body)
   	err := decoder.Decode(&params)
-  	if err != nil {
+  	if err != nil && err != io.EOF {
+  	  fmt.Println(err.Error())
       w.WriteHeader(http.StatusBadRequest)
   		return
   	}
