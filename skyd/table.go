@@ -35,12 +35,12 @@ func NewTable(path string) *Table {
 
 // Retrieves the path on the table.
 func (t *Table) Path() string {
-  return t.path
+	return t.path
 }
 
 // Retrieves the name of the table.
 func (t *Table) Name() string {
-  return t.name
+	return t.name
 }
 
 // Creates a table directory structure.
@@ -73,12 +73,12 @@ func (t *Table) Open() error {
 		return errors.New("Table does not exist")
 	}
 
-  // Load property file.
-  err := t.propertyFile.Load()
-  if err != nil {
-    t.Close()
-    return err
-  }
+	// Load property file.
+	err := t.propertyFile.Load()
+	if err != nil {
+		t.Close()
+		return err
+	}
 
 	// Create tablets from child directories with numeric names.
 	infos, err := ioutil.ReadDir(t.path)
@@ -92,8 +92,8 @@ func (t *Table) Open() error {
 			t.tablets = append(t.tablets, tablet)
 			err = tablet.Open()
 			if err != nil {
-	      t.Close()
-        return err
+				t.Close()
+				return err
 			}
 		}
 	}
@@ -103,7 +103,7 @@ func (t *Table) Open() error {
 
 // Closes the table and all the tablets.
 func (t *Table) Close() {
-  t.propertyFile.Reset()
+	t.propertyFile.Reset()
 
 	for _, tablet := range t.tablets {
 		tablet.Close()
@@ -195,20 +195,20 @@ func (t *Table) CreateProperty(name string, typ string, dataType string) (*Prope
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
-  
-  // Create property on property file.
-  property, err := t.propertyFile.CreateProperty(name, typ, dataType)
-  if err != nil {
-    return nil, err
-  }
-  
-  // Save the property file to disk.
-  err = t.propertyFile.Save()
-  if err != nil {
-    return nil, err
-  }
-  
-  return property, err
+
+	// Create property on property file.
+	property, err := t.propertyFile.CreateProperty(name, typ, dataType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save the property file to disk.
+	err = t.propertyFile.Save()
+	if err != nil {
+		return nil, err
+	}
+
+	return property, err
 }
 
 // Retrieves a list of all properties on the table.
@@ -216,5 +216,5 @@ func (t *Table) GetProperties() ([]*Property, error) {
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
-  return t.propertyFile.GetProperties(), nil
+	return t.propertyFile.GetProperties(), nil
 }

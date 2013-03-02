@@ -19,7 +19,7 @@ type PropertyFile struct {
 // NewProperty returns a new PropertyFile.
 func NewPropertyFile(path string) *PropertyFile {
 	p := &PropertyFile{
-		path:             path,
+		path: path,
 	}
 	p.Reset()
 	return p
@@ -145,13 +145,12 @@ func (p *PropertyFile) Reset() {
 	p.propertiesByName = make(map[string]*Property)
 }
 
-
 // Retrieves a list of properties sorted by id.
 func (p *PropertyFile) GetProperties() []*Property {
-  list := make([]*Property, 0)
+	list := make([]*Property, 0)
 	for _, property := range p.properties {
 		list = append(list, property)
 	}
 	sort.Sort(PropertyList(list))
-  return list
+	return list
 }

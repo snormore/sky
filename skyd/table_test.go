@@ -66,10 +66,10 @@ func TestTableCreateProperty(t *testing.T) {
 		t.Fatalf("Unable to add property to table: %v", err)
 	}
 
-  content, _ := ioutil.ReadFile(fmt.Sprintf("%v/properties", table.Path()))
-  if string(content) != "[{\"id\":1,\"name\":\"name\",\"type\":\"object\",\"dataType\":\"string\"}]\n" {
-    t.Fatalf("Invalid properties file:\n%v", string(content))
-  }
+	content, _ := ioutil.ReadFile(fmt.Sprintf("%v/properties", table.Path()))
+	if string(content) != "[{\"id\":1,\"name\":\"name\",\"type\":\"object\",\"dataType\":\"string\"}]\n" {
+		t.Fatalf("Invalid properties file:\n%v", string(content))
+	}
 }
 
 // Creates a table.
