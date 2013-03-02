@@ -2,7 +2,6 @@ package skyd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net"
@@ -24,14 +23,13 @@ type Server struct {
 // NewServer returns a new Server.
 func NewServer(port uint, path string) *Server {
 	r := mux.NewRouter()
-	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r}
 	s := &Server{
-	  httpServer: httpServer,
+	  httpServer: &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
 	  path:       path,
 	  tables:     make(map[string]*Table),
 	}
 
-	r.HandleFunc("/tables", func(w http.ResponseWriter, req *http.Request) { s.createTableHandler(w, req) }).Methods("POST")
+  s.addTableHandlers(r)
 
 	return s
 }
@@ -123,30 +121,4 @@ func (s *Server) OpenTable(name string) (*Table, error) {
   s.tables[name] = table
   
   return table, nil
-}
-
-// POST /tables
-func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request) {
-  s.process(w, req, func(params map[string]interface{})(interface{}, error) {
-    // Retrieve table parameters.
-    tableName, ok := params["name"].(string)
-    if !ok {
-      return nil, errors.New("Table name required.")
-    }
-    
-    // Return an error if the table already exists.
-    table, err := s.OpenTable(tableName)
-    if table != nil {
-      return nil, errors.New("Table already exists.")
-    }
-    
-    // Otherwise create it.
-    table = NewTable(s.GetTablePath(tableName))
-    err = table.Create()
-    if err != nil {
-      return nil, err
-    }
-    
-  	return nil, nil
-  })
 }

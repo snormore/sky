@@ -59,10 +59,27 @@ func (t *Table) Create() error {
 	for i := 0; i < runtime.NumCPU(); i++ {
 		err = os.Mkdir(fmt.Sprintf("%v/%v", t.path, i), 0700)
 		if err != nil {
-			os.RemoveAll(t.path)
+			_ = t.Delete()
 			return nil
 		}
 	}
+
+	return nil
+}
+
+// Deletes a table.
+func (t *Table) Delete() error {
+	if !t.Exists() {
+		return fmt.Errorf("Table does not exist: %v", t.name)
+	}
+
+	// Close everything if it's open.
+	if t.IsOpen() {
+	  t.Close()
+	}
+
+	// Delete the whole damn directory.
+	os.RemoveAll(t.path)
 
 	return nil
 }
