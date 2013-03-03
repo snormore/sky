@@ -235,3 +235,19 @@ func (t *Table) GetProperties() ([]*Property, error) {
 	}
 	return t.propertyFile.GetProperties(), nil
 }
+
+// Retrieves a single property from the table by id.
+func (t *Table) GetProperty(id int64) (*Property, error) {
+	if !t.IsOpen() {
+		return nil, errors.New("Table is not open")
+	}
+	return t.propertyFile.GetProperty(id), nil
+}
+
+// Retrieves a single property from the table by name.
+func (t *Table) GetPropertyByName(name string) (*Property, error) {
+	if !t.IsOpen() {
+		return nil, errors.New("Table is not open")
+	}
+	return t.propertyFile.GetPropertyByName(name), nil
+}

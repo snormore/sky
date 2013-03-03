@@ -30,3 +30,17 @@ func TestServerGetProperties(t *testing.T) {
   })
 }
 
+// Ensure that we can retrieve a single property through the server.
+func TestServerGetProperty(t *testing.T) {
+  runTestServer(func() {
+    setupTestTable("foo")
+    setupTestProperty("foo", "bar", "object", "string")
+    setupTestProperty("foo", "baz", "action", "integer")
+    resp, err := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties/bar", "application/json", "")
+    if err != nil {
+  		t.Fatalf("Unable to get properties: %v", err)
+    }
+    assertResponse(t, resp, 200, `{"id":1,"name":"bar","type":"object","dataType":"string"}`+"\n", "GET /tables/:name/properties/:propertyName failed.")
+  })
+}
+

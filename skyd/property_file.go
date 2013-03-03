@@ -154,3 +154,13 @@ func (p *PropertyFile) GetProperties() []*Property {
 	sort.Sort(PropertyList(list))
 	return list
 }
+
+// Retrieves a single property by id.
+func (p *PropertyFile) GetProperty(id int64) *Property {
+	return p.properties[id]
+}
+
+// Retrieves a single property by name.
+func (p *PropertyFile) GetPropertyByName(name string) *Property {
+	return p.propertiesByName[name]
+}
