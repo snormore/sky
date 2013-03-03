@@ -41,7 +41,9 @@ func NewServer(port uint, path string) *Server {
 	  channel:    make(chan *ServerMessage),
 	}
 
+  s.addHandlers(r)
   s.addTableHandlers(r)
+  s.addPropertyHandlers(r)
 
 	return s
 }

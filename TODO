@@ -16,6 +16,3 @@ DELETE /tables/:name/objects/:oid/events/:timestamp
 
 # Query Endpoints
 POST   /tables/:name/query
-
-# Utility Endpoints
-GET    /ping

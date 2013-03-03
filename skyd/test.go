@@ -1,6 +1,7 @@
 package skyd
 
 import (
+  "fmt"
 	"net/http"
 	"io/ioutil"
 	"strings"
@@ -25,8 +26,8 @@ func assertProperty(t *testing.T, property *Property, id int64, name string, typ
 func assertResponse(t *testing.T, resp *http.Response, statusCode int, content string, message string) {
   defer resp.Body.Close()
   body, _ := ioutil.ReadAll(resp.Body)
-  if resp.StatusCode != 200 || string(body) != "" {
-		t.Fatalf("%v: Expected [%v] '%v', got [%v] '%v.", message, statusCode, content, resp.StatusCode, string(body))
+  if resp.StatusCode != 200 || content != string(body) {
+		t.Fatalf("%v: Expected [%v] %q, got [%v] %q.", message, statusCode, content, resp.StatusCode, string(body))
   }
 }
 
@@ -35,4 +36,14 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
   req, _ := http.NewRequest(method, url, strings.NewReader(body))
   req.Header.Add("Content-Type", contentType)
   return client.Do(req)
+}
+
+
+
+func setupTestTable(name string) {
+  _, _ = sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
+}
+
+func setupTestProperty(tableName string, name string, typ string, dataType string) {
+  _, _ = sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "type":"%v", "dataType":"%v"}`, name, typ, dataType))
 }
