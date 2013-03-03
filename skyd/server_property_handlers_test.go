@@ -8,10 +8,7 @@ import (
 func TestServerCreateProperty(t *testing.T) {
   runTestServer(func() {
     setupTestTable("foo")
-    resp, err := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/properties", "application/json", `{"name":"bar", "type":"object", "dataType":"string"}`)
-    if err != nil {
-  		t.Fatalf("Unable to create property: %v", err)
-    }
+    resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/properties", "application/json", `{"name":"bar", "type":"object", "dataType":"string"}`)
     assertResponse(t, resp, 200, `{"id":1,"name":"bar","type":"object","dataType":"string"}`+"\n", "POST /tables/:name/properties failed.")
   })
 }
@@ -22,10 +19,7 @@ func TestServerGetProperties(t *testing.T) {
     setupTestTable("foo")
     setupTestProperty("foo", "bar", "object", "string")
     setupTestProperty("foo", "baz", "action", "integer")
-    resp, err := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties", "application/json", "")
-    if err != nil {
-  		t.Fatalf("Unable to get properties: %v", err)
-    }
+    resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties", "application/json", "")
     assertResponse(t, resp, 200, `[{"id":-1,"name":"baz","type":"action","dataType":"integer"},{"id":1,"name":"bar","type":"object","dataType":"string"}]`+"\n", "GET /tables/:name/properties failed.")
   })
 }
@@ -36,11 +30,18 @@ func TestServerGetProperty(t *testing.T) {
     setupTestTable("foo")
     setupTestProperty("foo", "bar", "object", "string")
     setupTestProperty("foo", "baz", "action", "integer")
-    resp, err := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties/bar", "application/json", "")
-    if err != nil {
-  		t.Fatalf("Unable to get properties: %v", err)
-    }
+    resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties/bar", "application/json", "")
     assertResponse(t, resp, 200, `{"id":1,"name":"bar","type":"object","dataType":"string"}`+"\n", "GET /tables/:name/properties/:propertyName failed.")
   })
 }
 
+// Ensure that we can update a property name through the server.
+func TestServerUpdateProperty(t *testing.T) {
+  runTestServer(func() {
+    setupTestTable("foo")
+    setupTestProperty("foo", "bar", "object", "string")
+    setupTestProperty("foo", "baz", "action", "integer")
+    resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8585/tables/foo/properties/bar", "application/json", `{"name":"bat"}`)
+    assertResponse(t, resp, 200, `{"id":1,"name":"bat","type":"object","dataType":"string"}`+"\n", "PATCH /tables/:name/properties/:propertyName failed.")
+  })
+}

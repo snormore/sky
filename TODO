@@ -1,5 +1,4 @@
 # Property Endpoints
-PATCH  /tables/:name/properties/:name
 DELETE /tables/:name/properties/:name
 
 # Object/Event Endpoints
