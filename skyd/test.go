@@ -4,6 +4,7 @@ import (
   "fmt"
 	"net/http"
 	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
@@ -39,6 +40,14 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
 }
 
 
+func runTestServer(f func()) {
+	path, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(path)
+	server := NewServer(8585, path)
+	go server.ListenAndServe()
+	defer server.Shutdown()
+  f()
+}
 
 func setupTestTable(name string) {
   _, _ = sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
