@@ -19,6 +19,16 @@ type Server struct {
 	path       string
 	listener   net.Listener
 	tables     map[string]*Table
+	channel    chan *ServerMessage
+}
+
+// The request, response and handler function used for processing a message.
+type ServerMessage struct {
+  w       http.ResponseWriter
+  req     *http.Request
+  params  map[string]interface{}
+  f       func(params map[string]interface{})(interface{}, error)
+  channel chan bool
 }
 
 // NewServer returns a new Server.
@@ -28,11 +38,16 @@ func NewServer(port uint, path string) *Server {
 	  httpServer: &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
 	  path:       path,
 	  tables:     make(map[string]*Table),
+	  channel:    make(chan *ServerMessage),
 	}
 
   s.addTableHandlers(r)
 
 	return s
+}
+
+func NewServerMessage(w http.ResponseWriter, req *http.Request, params map[string]interface{}, f func(params map[string]interface{})(interface{}, error)) *ServerMessage {
+  return &ServerMessage{w:w, req:req, params:params, f:f, channel:make(chan bool)}
 }
 
 // Runs the server.
@@ -42,6 +57,7 @@ func (s *Server) ListenAndServe() error {
 		return err
 	}
 	s.listener = listener
+	go s.processMessages()
 	return s.httpServer.Serve(s.listener)
 }
 
@@ -69,7 +85,6 @@ func (s *Server) process(w http.ResponseWriter, req *http.Request, f func(params
 	  decoder := json.NewDecoder(req.Body)
   	err := decoder.Decode(&params)
   	if err != nil && err != io.EOF {
-  	  fmt.Println(err.Error())
       w.WriteHeader(http.StatusBadRequest)
   		return
   	}
@@ -78,26 +93,38 @@ func (s *Server) process(w http.ResponseWriter, req *http.Request, f func(params
     return
   }
   
-  // Execute handler.
-  ret, err := f(params)
-  if err != nil {
-    ret = map[string]interface{}{"message":err.Error()}
-    w.WriteHeader(500)
-  }
+  // Push the message onto a queue to be processed serially.
+  m := NewServerMessage(w, req, params, f)
+  s.channel <- m
+  <- m.channel
+}
 
-  // Encode the return value based on the content type header.
+// Serially processes server messages routed through the server channel.
+func (s *Server) processMessages() {
+  for message := range s.channel {
+    ret, err := message.f(message.params)
+    if err != nil {
+      s.writeResponse(message.w, message.req, map[string]interface{}{"message":err.Error()}, http.StatusInternalServerError)
+    } else {
+      s.writeResponse(message.w, message.req, ret, http.StatusOK)
+    }
+    message.channel <- true
+  }
+}
+
+// Serially processes server messages routed through the server channel.
+func (s *Server) writeResponse(w http.ResponseWriter, req *http.Request, ret interface{}, statusCode int) {
   if ret != nil {
+    contentType := req.Header.Get("Content-Type")
     if contentType == "application/json" {
     	encoder := json.NewEncoder(w)
     	err := encoder.Encode(ret)
     	if err != nil {
-    	  w.WriteHeader(http.StatusInternalServerError)
+	      fmt.Println(err.Error())
     	  return
     	}
     }
   }
-
-  w.WriteHeader(http.StatusOK)
 }
 
 // Generates the path for a table attached to the server.
