@@ -67,7 +67,7 @@ func (p *PropertyFile) NextIdentifiers() (int64, int64) {
 // Encodes a property file.
 func (p *PropertyFile) Encode(writer io.Writer) error {
 	// Convert the lookup into a sorted slice.
-	list := p.GetProperties()
+	list := p.GetAllProperties()
 
 	// Encode the slice.
 	encoder := json.NewEncoder(writer)
@@ -88,7 +88,9 @@ func (p *PropertyFile) Decode(reader io.Reader) error {
 	p.Reset()
 	for _, property := range list {
 		p.properties[property.Id] = property
-		p.propertiesByName[property.Name] = property
+		if property.Name != "" {
+		  p.propertiesByName[property.Name] = property
+		}
 	}
 
 	return nil
@@ -145,8 +147,18 @@ func (p *PropertyFile) Reset() {
 	p.propertiesByName = make(map[string]*Property)
 }
 
-// Retrieves a list of properties sorted by id.
+// Retrieves a list of undeleted properties sorted by id.
 func (p *PropertyFile) GetProperties() []*Property {
+	list := make([]*Property, 0)
+	for _, property := range p.propertiesByName {
+		list = append(list, property)
+	}
+	sort.Sort(PropertyList(list))
+	return list
+}
+
+// Retrieves a list of all properties sorted by id.
+func (p *PropertyFile) GetAllProperties() []*Property {
 	list := make([]*Property, 0)
 	for _, property := range p.properties {
 		list = append(list, property)
@@ -164,3 +176,12 @@ func (p *PropertyFile) GetProperty(id int64) *Property {
 func (p *PropertyFile) GetPropertyByName(name string) *Property {
 	return p.propertiesByName[name]
 }
+
+// Deletes a property.
+func (p *PropertyFile) DeleteProperty(property *Property) {
+  if property != nil && property.Name != "" {
+    delete(p.propertiesByName, property.Name)
+	  property.Name = ""
+  }
+}
+

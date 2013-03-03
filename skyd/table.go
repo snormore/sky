@@ -252,6 +252,15 @@ func (t *Table) GetPropertyByName(name string) (*Property, error) {
 	return t.propertyFile.GetPropertyByName(name), nil
 }
 
+// Deletes a single property on the table.
+func (t *Table) DeleteProperty(property *Property) error {
+	if !t.IsOpen() {
+		return errors.New("Table is not open")
+	}
+	t.propertyFile.DeleteProperty(property)
+	return nil
+}
+
 // Saves the property file on the table.
 func (t *Table) SavePropertyFile() error {
 	if !t.IsOpen() {

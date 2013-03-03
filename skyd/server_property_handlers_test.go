@@ -45,3 +45,16 @@ func TestServerUpdateProperty(t *testing.T) {
     assertResponse(t, resp, 200, `{"id":1,"name":"bat","type":"object","dataType":"string"}`+"\n", "PATCH /tables/:name/properties/:propertyName failed.")
   })
 }
+
+// Ensure that we can delete a property on the server.
+func TestServerDeleteProperty(t *testing.T) {
+  runTestServer(func() {
+    setupTestTable("foo")
+    setupTestProperty("foo", "bar", "object", "string")
+    setupTestProperty("foo", "baz", "action", "integer")
+    resp, _ := sendTestHttpRequest("DELETE", "http://localhost:8585/tables/foo/properties/bar", "application/json", "")
+    assertResponse(t, resp, 200, "", "DELETE /tables/:name/properties/:propertyName failed.")
+    resp, _ = sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties", "application/json", "")
+    assertResponse(t, resp, 200, `[{"id":-1,"name":"baz","type":"action","dataType":"integer"}]`+"\n", "GET /tables/:name/properties after delete failed.")
+  })
+}

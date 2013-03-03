@@ -1,6 +1,3 @@
-# Property Endpoints
-DELETE /tables/:name/properties/:name
-
 # Object/Event Endpoints
 GET    /tables/:name/objects/:oid
 DELETE /tables/:name/objects/:oid
