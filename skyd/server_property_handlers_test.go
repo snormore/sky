@@ -1,7 +1,7 @@
 package skyd
 
 import (
-	"testing"
+  "testing"
 )
 
 // Ensure that we can create a property through the server.

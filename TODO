@@ -1,6 +1,6 @@
-# Object/Event Endpoints
-GET    /tables/:name/objects/:oid
-DELETE /tables/:name/objects/:oid
+# Event Endpoints
+GET    /tables/:name/objects/:oid/events
+DELETE /tables/:name/objects/:oid/events
 GET    /tables/:name/objects/:oid/events/:timestamp
 PUT    /tables/:name/objects/:oid/events/:timestamp
 PATCH  /tables/:name/objects/:oid/events/:timestamp

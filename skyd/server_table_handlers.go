@@ -1,14 +1,14 @@
 package skyd
 
 import (
-	"errors"
-	"github.com/gorilla/mux"
-	"net/http"
+  "errors"
+  "github.com/gorilla/mux"
+  "net/http"
 )
 
 func (s *Server) addTableHandlers(r *mux.Router) {
-	r.HandleFunc("/tables", func(w http.ResponseWriter, req *http.Request) { s.createTableHandler(w, req) }).Methods("POST")
-	r.HandleFunc("/tables/{name}", func(w http.ResponseWriter, req *http.Request) { s.deleteTableHandler(w, req) }).Methods("DELETE")
+  r.HandleFunc("/tables", func(w http.ResponseWriter, req *http.Request) { s.createTableHandler(w, req) }).Methods("POST")
+  r.HandleFunc("/tables/{name}", func(w http.ResponseWriter, req *http.Request) { s.deleteTableHandler(w, req) }).Methods("DELETE")
 }
 
 // POST /tables
@@ -33,14 +33,14 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request) {
       return nil, err
     }
     
-  	return nil, nil
+    return nil, nil
   })
 }
 
 // DELETE /tables/:name
 func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request) {
+  vars := mux.Vars(req)
   s.process(w, req, func(params map[string]interface{})(interface{}, error) {
-    vars := mux.Vars(req)
     tableName := vars["name"]
     
     // Return an error if the table doesn't exist.
@@ -55,6 +55,6 @@ func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request) {
     // Otherwise delete it.
     table.Delete()
     
-  	return nil, nil
+    return nil, nil
   })
 }

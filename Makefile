@@ -11,8 +11,8 @@ BUILDDIR = build
 all: $(BINARIES)
 
 $(BUILDDIR)/%:
-	mkdir -p $(dir $@)
-	cd $* && go build -o $(abspath $@)
+  mkdir -p $(dir $@)
+  cd $* && go build -o $(abspath $@)
 
 $(BINARIES): %: $(BUILDDIR)/%
 
@@ -20,7 +20,7 @@ $(BINARIES): %: $(BUILDDIR)/%
 $(BUILDDIR)/skyd: $(SKYD_SRCS)
 
 clean:
-	rm -fr $(BUILDDIR)
+  rm -fr $(BUILDDIR)
 
 # Targets
 .PHONY: install clean all
@@ -28,6 +28,6 @@ clean:
 .PHONY: $(BINARIES)
 
 install: $(BINARIES)
-	install -m 755 -d ${DESTDIR}${BINDIR}
-	install -m 755 $(BUILDDIR)/skyd ${DESTDIR}${BINDIR}/skyd
-	install -m 755 -d ${DESTDIR}${DATADIR}
+  install -m 755 -d ${DESTDIR}${BINDIR}
+  install -m 755 $(BUILDDIR)/skyd ${DESTDIR}${BINDIR}/skyd
+  install -m 755 -d ${DESTDIR}${DATADIR}
