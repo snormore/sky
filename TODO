@@ -1,5 +1,4 @@
 # Event Endpoints
-DELETE /tables/:name/objects/:oid/events
 GET    /tables/:name/objects/:oid/events/:timestamp
 PATCH  /tables/:name/objects/:oid/events/:timestamp
 DELETE /tables/:name/objects/:oid/events/:timestamp

@@ -6,8 +6,9 @@ import (
   "fmt"
   "github.com/jmhodges/levigo"
   "io"
-  "sort"
   "os"
+  "sort"
+  "time"
 )
 
 // A Servlet is a small wrapper around a single shard of a LevelDB data file.
@@ -81,6 +82,24 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event) error {
   }
 
   return nil
+}
+
+// Retrieves an event for a given object at a single point in time.
+func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (*Event, error) {
+  // Retrieve all events.
+  events, err := s.GetEvents(table, objectId)
+  if err != nil {
+    return nil, err
+  }
+
+  // Find an event at a given point in time.
+  for _, v := range events {
+    if v.Timestamp.Equal(timestamp) {
+      return v, nil
+    }
+  }
+  
+  return nil, nil
 }
 
 // Retrieves a list of events for a given object in a table.

@@ -1,14 +1,17 @@
 package skyd
 
 import (
+  "errors"
   "github.com/gorilla/mux"
   "net/http"
+  "time"
 )
 
 func (s *Server) addEventHandlers(r *mux.Router) {
   r.HandleFunc("/tables/{name}/objects/{objectId}/events", func(w http.ResponseWriter, req *http.Request) { s.getEventsHandler(w, req) }).Methods("GET")
   r.HandleFunc("/tables/{name}/objects/{objectId}/events", func(w http.ResponseWriter, req *http.Request) { s.deleteEventsHandler(w, req) }).Methods("DELETE")
 
+  r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.getEventHandler(w, req) }).Methods("GET")
   r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.replaceEventHandler(w, req) }).Methods("PUT")
 }
 
@@ -45,7 +48,31 @@ func (s *Server) deleteEventsHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 
-// PUT /tables/:name/objects/:objectId/events
+// GET /tables/:name/objects/:objectId/events/:timestamp
+func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request) {
+  vars := mux.Vars(req)
+  s.processWithObject(w, req, vars["name"], vars["objectId"], func(table *Table, servlet *Servlet, params map[string]interface{})(interface{}, error) {
+    // Parse timestamp.
+    timestamp, err := time.Parse(time.RFC3339, vars["timestamp"])
+    if err != nil {
+      return nil, err
+    }
+
+    // Find event.
+    event, err := servlet.GetEvent(table, vars["objectId"], timestamp)
+    if err != nil {
+      return nil, err
+    }
+    if event == nil {
+      return nil, errors.New("Event not found.")
+    }
+
+    // Convert an event to a serializable object.
+    return table.SerializeEvent(event)
+  })
+}
+
+// PUT /tables/:name/objects/:objectId/events/:timestamp
 func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request) {
   vars := mux.Vars(req)
   s.processWithObject(w, req, vars["name"], vars["objectId"], func(table *Table, servlet *Servlet, params map[string]interface{})(interface{}, error) {
@@ -57,3 +84,4 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request) {
     return nil, servlet.PutEvent(table, vars["objectId"], event)
   })
 }
+

@@ -24,6 +24,10 @@ func TestServerPutEvent(t *testing.T) {
     // Check our work.
     resp, _ = sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/objects/xyz/events", "application/json", "")
     assertResponse(t, resp, 200, `[{"action":{"baz":1000},"data":{"bar":"myValue3"},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
+
+    // Grab a single event.
+    resp, _ = sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/objects/xyz/events/2012-01-01T03:00:00Z", "application/json", "")
+    assertResponse(t, resp, 200, `{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}`+"\n", "GET /tables/:name/objects/:objectId/events/:timestamp failed.")
   })
 }
 
