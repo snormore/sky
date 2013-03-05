@@ -200,7 +200,22 @@ func (p *PropertyFile) NormalizeMap(m map[interface{}]interface{}) (map[int64]in
         return nil, fmt.Errorf("Property not found: %v", k)
       }
     } else {
-      return nil, fmt.Errorf("Invalid property key type: %v")
+      return nil, fmt.Errorf("skyd.PropertyFile: Invalid property key type: %v")
+    }
+  }
+  return clone, nil
+}
+
+// Converts a map with property identifier keys to use string keys.
+func (p *PropertyFile) DenormalizeMap(m map[int64]interface{}) (map[interface{}]interface{}, error) {
+  clone := make(map[interface{}]interface{})
+  for k,v := range m {
+    // Look up the property by ID and convert it to the name.
+    property := p.GetProperty(k)
+    if property != nil {
+      clone[property.Name] = v
+    } else {
+      return nil, fmt.Errorf("skyd.PropertyFile: Property not found: %v", k)
     }
   }
   return clone, nil

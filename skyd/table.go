@@ -172,6 +172,11 @@ func (t *Table) NormalizeMap(m map[interface{}]interface{}) (map[int64]interface
   return t.propertyFile.NormalizeMap(m)
 }
 
+// Converts a map with property identifier keys to use string keys.
+func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[interface{}]interface{}, error) {
+  return t.propertyFile.DenormalizeMap(m)
+}
+
 // Encodes an object identifier for this table.
 func (t *Table) EncodeObjectId(objectId string) ([]byte, error) {
   return msgpack.Marshal([]string{t.name,objectId})

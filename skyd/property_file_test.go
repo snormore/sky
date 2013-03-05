@@ -55,12 +55,35 @@ func TestPropertyFileNormalizeMap(t *testing.T) {
     t.Fatalf("Unable to normalize map: %v", err)
   }
   if ret[1] != "bob" {
-    t.Fatalf("ret[1]: Expected %q, got %q", "bob", m[1])
+    t.Fatalf("ret[1]: Expected %q, got %q", "bob", ret[1])
   }
   if ret[2] != 100 {
-    t.Fatalf("ret[2]: Expected %q, got %q", 100, m[2])
+    t.Fatalf("ret[2]: Expected %q, got %q", 100, ret[2])
   }
   if ret[-1] != 12 {
-    t.Fatalf("ret[-1]: Expected %q, got %q", 12, m[-1])
+    t.Fatalf("ret[-1]: Expected %q, got %q", 12, ret[-1])
+  }
+}
+
+// Convert a map of string keys into property id keys.
+func TestPropertyFileDenormalizeMap(t *testing.T) {
+  p := NewPropertyFile("")
+  p.CreateProperty("name", "object", "string")
+  p.CreateProperty("salary", "object", "float")
+  p.CreateProperty("purchaseAmount", "action", "integer")
+
+  m := map[int64]interface{}{1:"bob", 2:100, -1:12}
+  ret, err := p.DenormalizeMap(m)
+  if err != nil {
+    t.Fatalf("Unable to denormalize map: %v", err)
+  }
+  if ret["name"] != "bob" {
+    t.Fatalf("ret[\"name\"]: Expected %q, got %q", "bob", ret["name"])
+  }
+  if ret["salary"] != 100 {
+    t.Fatalf("ret[\"salary\"]: Expected %q, got %q", 100, ret["salary"])
+  }
+  if ret["purchaseAmount"] != 12 {
+    t.Fatalf("ret[\"purchaseAmount\"]: Expected %q, got %q", 12, ret["purchaseAmount"])
   }
 }

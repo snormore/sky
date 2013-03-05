@@ -48,3 +48,4 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request) {
     return nil, servlet.PutEvent(table, vars["objectId"], event)
   })
 }
+
