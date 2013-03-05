@@ -50,15 +50,19 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
   e.Timestamp = UnshiftTime(timestamp)
 
   // Convert action to appropriate map.
-  e.Action, err = e.decodeRawMap(raw[1].(map[interface{}]interface{}))
-  if err != nil {
-    return err
+  if raw[1] != nil {
+    e.Action, err = e.decodeRawMap(raw[1].(map[interface{}]interface{}))
+    if err != nil {
+      return err
+    }
   }
 
   // Convert data to appropriate map.
-  e.Data, err = e.decodeRawMap(raw[2].(map[interface{}]interface{}))
-  if err != nil {
-    return err
+  if raw[2] != nil {
+    e.Data, err = e.decodeRawMap(raw[2].(map[interface{}]interface{}))
+    if err != nil {
+      return err
+    }
   }
 
   return nil

@@ -218,3 +218,30 @@ func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {
   return event, nil
 }
 
+// Serializes a normalized event into a map.
+func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
+  m := make(map[string]interface{})
+  
+  // Format timestamp.
+  m["timestamp"] = event.Timestamp.UTC().Format(time.RFC3339)
+  
+  // Convert data map to use property names.
+  if event.Data != nil {
+    denormalizedData, err := t.DenormalizeMap(event.Data)
+    if err != nil {
+      return nil, err
+    }
+    m["data"] = denormalizedData
+  }
+
+  // Convert action map to use property names.
+  if event.Action != nil {
+    denormalizedAction, err := t.DenormalizeMap(event.Action)
+    if err != nil {
+      return nil, err
+    }
+    m["action"] = denormalizedAction
+  }
+
+  return m, nil
+}
