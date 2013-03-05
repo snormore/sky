@@ -5,7 +5,7 @@ import (
 )
 
 // Encodes an object identifier.
-func EncodeObjectId(objectId interface{}) ([]byte, error) {
-  return msgpack.Marshal(objectId)
+func EncodeObjectId(tableName string, objectId string) ([]byte, error) {
+  return msgpack.Marshal([]string{tableName,objectId})
 }
 

@@ -40,9 +40,9 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request) {
 // DELETE /tables/:name
 func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request) {
   vars := mux.Vars(req)
+  tableName := vars["name"]
+
   s.process(w, req, func(params map[string]interface{})(interface{}, error) {
-    tableName := vars["name"]
-    
     // Return an error if the table doesn't exist.
     table := s.GetTable(tableName)
     if table == nil {

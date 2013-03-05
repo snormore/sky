@@ -12,13 +12,15 @@ import (
 // A Tablet is a small wrapper for the underlying data storage
 // which is contained in LevelDB.
 type Tablet struct {
+  table *Table
   db   *levigo.DB
   Path string
 }
 
 // NewTablet returns a new Tablet that is stored at a given path.
-func NewTablet(path string) *Tablet {
+func NewTablet(table *Table, path string) *Tablet {
   return &Tablet{
+    table: table,
     Path: path,
   }
 }
@@ -43,7 +45,7 @@ func (t *Tablet) Close() {
 }
 
 // Adds an event for a given object to a tablet.
-func (t *Tablet) AddEvent(objectId interface{}, event *Event) error {
+func (t *Tablet) AddEvent(objectId string, event *Event) error {
   // Make sure the tablet is open.
   if t.db == nil {
     return fmt.Errorf("Tablet is not open: %v", t.Path)
@@ -71,14 +73,14 @@ func (t *Tablet) AddEvent(objectId interface{}, event *Event) error {
 }
 
 // Retrieves a list of events for a given object.
-func (t *Tablet) GetEvents(objectId interface{}) ([]*Event, error) {
+func (t *Tablet) GetEvents(objectId string) ([]*Event, error) {
   // Make sure the tablet is open.
   if t.db == nil {
     return nil, fmt.Errorf("Tablet is not open: %v", t.Path)
   }
 
   // Encode object identifier.
-  encodedObjectId, err := EncodeObjectId(objectId)
+  encodedObjectId, err := EncodeObjectId(t.table.name, objectId)
   if err != nil {
     return nil, err
   }
@@ -113,7 +115,7 @@ func (t *Tablet) GetEvents(objectId interface{}) ([]*Event, error) {
 }
 
 // Writes a list of events to the database.
-func (t *Tablet) SetEvents(objectId interface{}, events []*Event) error {
+func (t *Tablet) SetEvents(objectId string, events []*Event) error {
   // Make sure the tablet is open.
   if t.db == nil {
     return fmt.Errorf("Tablet is not open: %v", t.Path)
@@ -123,7 +125,7 @@ func (t *Tablet) SetEvents(objectId interface{}, events []*Event) error {
   sort.Sort(EventList(events))
 
   // Encode object identifier.
-  encodedObjectId, err := EncodeObjectId(objectId)
+  encodedObjectId, err := EncodeObjectId(t.table.name, objectId)
   if err != nil {
     return err
   }

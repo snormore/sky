@@ -11,7 +11,8 @@ func TestOpen(t *testing.T) {
   path, err := ioutil.TempDir("", "")
   defer os.RemoveAll(path)
   
-  tablet := NewTablet(path)
+  table := NewTable("/tmp/foo")
+  tablet := NewTablet(table, path)
   defer tablet.Close()
   err = tablet.Open()
   if err != nil {
@@ -24,7 +25,8 @@ func TestTabletAddEvent(t *testing.T) {
   // Setup blank database.
   path, err := ioutil.TempDir("", "")
   defer os.RemoveAll(path)
-  tablet := NewTablet(path)
+  table := NewTable("/tmp/foo")
+  tablet := NewTablet(table, path)
   defer tablet.Close()
   _ = tablet.Open()
 

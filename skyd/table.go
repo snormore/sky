@@ -105,7 +105,7 @@ func (t *Table) Open() error {
   for _, info := range infos {
     match, _ := regexp.MatchString("^\\d$", info.Name())
     if info.IsDir() && match {
-      tablet := NewTablet(fmt.Sprintf("%s/%s", t.path, info.Name()))
+      tablet := NewTablet(t, fmt.Sprintf("%s/%s", t.path, info.Name()))
       t.tablets = append(t.tablets, tablet)
       err = tablet.Open()
       if err != nil {
@@ -142,7 +142,7 @@ func (t *Table) Exists() bool {
 }
 
 // Adds an event for a given object to the table.
-func (t *Table) AddEvent(objectId interface{}, event *Event) error {
+func (t *Table) AddEvent(objectId string, event *Event) error {
   if !t.IsOpen() {
     return errors.New("Table is not open")
   }
@@ -164,7 +164,7 @@ func (t *Table) AddEvent(objectId interface{}, event *Event) error {
 }
 
 // Retrieves a list of events for a given object.
-func (t *Table) GetEvents(objectId interface{}) ([]*Event, error) {
+func (t *Table) GetEvents(objectId string) ([]*Event, error) {
   if !t.IsOpen() {
     return nil, errors.New("Table is not open")
   }
@@ -186,13 +186,13 @@ func (t *Table) GetEvents(objectId interface{}) ([]*Event, error) {
 }
 
 // Calculates a tablet index based on the object identifier even hash.
-func (t *Table) GetObjectTabletIndex(objectId interface{}) (uint32, error) {
+func (t *Table) GetObjectTabletIndex(objectId string) (uint32, error) {
   if !t.IsOpen() {
     return 0, errors.New("Table is not open")
   }
 
   // Encode object identifier.
-  encodedObjectId, err := EncodeObjectId(objectId)
+  encodedObjectId, err := EncodeObjectId(t.name, objectId)
   if err != nil {
     return 0, err
   }

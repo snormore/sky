@@ -116,6 +116,32 @@ func (s *Server) processWithTable(w http.ResponseWriter, req *http.Request, tabl
   <- m.channel
 }
 
+// Processes a request within a tablet/servlet context.
+/*
+func (s *Server) processWithTablet(w http.ResponseWriter, req *http.Request, tableName string, objectId string, f func(*Table, map[string]interface{})(interface{}, error)) {
+  params, err := decodeParams(w, req)
+  if err != nil {
+    return
+  }
+
+  // Create a wrapper function to open the table.
+  preprocess := func(_ map[string]interface{})(interface{}, error) {
+    table, err := s.OpenTable(tableName)
+    if table == nil || err != nil {
+      return nil, err
+    }
+    
+    // Execute the original function.
+    return f(table, params)
+  }
+
+  // Push the message onto a queue to be processed serially.
+  m := NewServerMessage(w, req, params, preprocess)
+  s.channel <- m
+  <- m.channel
+}
+*/
+
 // Serially processes server messages routed through the server channel.
 func (s *Server) processMessages() {
   for message := range s.channel {
