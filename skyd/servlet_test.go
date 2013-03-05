@@ -20,7 +20,7 @@ func TestOpen(t *testing.T) {
 }
 
 // Ensure that we can add events and read them back.
-func TestServletAddEvent(t *testing.T) {
+func TestServletPutEvent(t *testing.T) {
   // Setup blank database.
   path, err := ioutil.TempDir("", "")
   defer os.RemoveAll(path)
@@ -36,7 +36,7 @@ func TestServletAddEvent(t *testing.T) {
 
   // Add events.
   for _, e := range input {
-    err = servlet.AddEvent(table, "bob", e)
+    err = servlet.PutEvent(table, "bob", e)
     if err != nil {
       t.Fatalf("Unable to add event: %v", err)
     }

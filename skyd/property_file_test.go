@@ -6,7 +6,7 @@ import (
 )
 
 // Encode a property file.
-func TestEncode(t *testing.T) {
+func TestPropertyFileEncode(t *testing.T) {
   p := NewPropertyFile("")
   p.CreateProperty("name", "object", "string")
   p.CreateProperty("salary", "object", "float")
@@ -26,7 +26,7 @@ func TestEncode(t *testing.T) {
 }
 
 // Decode a property file.
-func TestDecode(t *testing.T) {
+func TestPropertyFileDecode(t *testing.T) {
   p := NewPropertyFile("")
 
   // Decode
@@ -41,3 +41,26 @@ func TestDecode(t *testing.T) {
   assertProperty(t, p.properties[2], 2, "salary", "object", "float")
 }
 
+
+// Convert a map of string keys into property id keys.
+func TestPropertyFileNormalizeMap(t *testing.T) {
+  p := NewPropertyFile("")
+  p.CreateProperty("name", "object", "string")
+  p.CreateProperty("salary", "object", "float")
+  p.CreateProperty("purchaseAmount", "action", "integer")
+
+  m := map[interface{}]interface{}{"name":"bob", "salary":100, "purchaseAmount":12}
+  ret, err := p.NormalizeMap(m)
+  if err != nil {
+    t.Fatalf("Unable to normalize map: %v", err)
+  }
+  if ret[1] != "bob" {
+    t.Fatalf("ret[1]: Expected %q, got %q", "bob", m[1])
+  }
+  if ret[2] != 100 {
+    t.Fatalf("ret[2]: Expected %q, got %q", 100, m[2])
+  }
+  if ret[-1] != 12 {
+    t.Fatalf("ret[-1]: Expected %q, got %q", 12, m[-1])
+  }
+}

@@ -167,6 +167,11 @@ func (t *Table) SavePropertyFile() error {
   return t.propertyFile.Save()
 }
 
+// Converts a map with string keys to use property identifier keys.
+func (t *Table) NormalizeMap(m map[interface{}]interface{}) (map[int64]interface{}, error) {
+  return t.propertyFile.NormalizeMap(m)
+}
+
 // Encodes an object identifier for this table.
 func (t *Table) EncodeObjectId(objectId string) ([]byte, error) {
   return msgpack.Marshal([]string{t.name,objectId})

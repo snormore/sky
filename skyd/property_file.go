@@ -185,3 +185,24 @@ func (p *PropertyFile) DeleteProperty(property *Property) {
   }
 }
 
+
+// Converts a map with string keys to use property identifier keys.
+func (p *PropertyFile) NormalizeMap(m map[interface{}]interface{}) (map[int64]interface{}, error) {
+  clone := make(map[int64]interface{})
+  for k,v := range m {
+    // Make sure the key is a string.
+    if k, ok := k.(string); ok {
+      // Look up the property by name and convert it to the ID.
+      property := p.GetPropertyByName(string(k))
+      if property != nil {
+        clone[property.Id] = v
+      } else {
+        return nil, fmt.Errorf("Property not found: %v", k)
+      }
+    } else {
+      return nil, fmt.Errorf("Invalid property key type: %v")
+    }
+  }
+  return clone, nil
+}
+

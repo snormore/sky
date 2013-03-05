@@ -48,7 +48,7 @@ func (s *Servlet) Close() {
 }
 
 // Adds an event for a given object in a table to a servlet.
-func (s *Servlet) AddEvent(table *Table, objectId string, event *Event) error {
+func (s *Servlet) PutEvent(table *Table, objectId string, event *Event) error {
   // Make sure the servlet is open.
   if s.db == nil {
     return fmt.Errorf("Servlet is not open: %v", s.path)
@@ -56,7 +56,7 @@ func (s *Servlet) AddEvent(table *Table, objectId string, event *Event) error {
 
   // Do not allow empty events to be added.
   if event == nil {
-    return errors.New("skyd.AddEvent: Cannot add nil event")
+    return errors.New("skyd.PutEvent: Cannot add nil event")
   }
 
   // Retrieve the events for the object and append.
