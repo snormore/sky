@@ -7,48 +7,51 @@ import (
   "github.com/jmhodges/levigo"
   "io"
   "sort"
+  "os"
 )
 
-// A Tablet is a small wrapper for the underlying data storage
-// which is contained in LevelDB.
-type Tablet struct {
-  table *Table
+// A Servlet is a small wrapper around a single shard of a LevelDB data file.
+type Servlet struct {
+  path string
   db   *levigo.DB
-  Path string
 }
 
-// NewTablet returns a new Tablet that is stored at a given path.
-func NewTablet(table *Table, path string) *Tablet {
-  return &Tablet{
-    table: table,
-    Path: path,
+// NewServlet returns a new Servlet with a data shard stored at a given path.
+func NewServlet(path string) *Servlet {
+  return &Servlet{
+    path: path,
   }
 }
 
 // Opens the underlying LevelDB database.
-func (t *Tablet) Open() error {
-  opts := levigo.NewOptions()
-  opts.SetCreateIfMissing(true)
-  db, err := levigo.Open(t.Path, opts)
+func (s *Servlet) Open() error {
+  err := os.MkdirAll(s.path, 0700)
   if err != nil {
     return err
   }
-  t.db = db
+
+  opts := levigo.NewOptions()
+  opts.SetCreateIfMissing(true)
+  db, err := levigo.Open(s.path, opts)
+  if err != nil {
+    panic(fmt.Sprintf("skyd.Servlet: Unable to open LevelDB database: %v", err))
+  }
+  s.db = db
   return nil
 }
 
 // Closes the underlying LevelDB database.
-func (t *Tablet) Close() {
-  if t.db != nil {
-    t.db.Close()
+func (s *Servlet) Close() {
+  if s.db != nil {
+    s.db.Close()
   }
 }
 
-// Adds an event for a given object to a tablet.
-func (t *Tablet) AddEvent(objectId string, event *Event) error {
-  // Make sure the tablet is open.
-  if t.db == nil {
-    return fmt.Errorf("Tablet is not open: %v", t.Path)
+// Adds an event for a given object in a table to a servlet.
+func (s *Servlet) AddEvent(table *Table, objectId string, event *Event) error {
+  // Make sure the servlet is open.
+  if s.db == nil {
+    return fmt.Errorf("Servlet is not open: %v", s.path)
   }
 
   // Do not allow empty events to be added.
@@ -57,14 +60,14 @@ func (t *Tablet) AddEvent(objectId string, event *Event) error {
   }
 
   // Retrieve the events for the object and append.
-  events, err := t.GetEvents(objectId)
+  events, err := s.GetEvents(table, objectId)
   if err != nil {
     return err
   }
   events = append(events, event)
 
   // Write events back to the database.
-  err = t.SetEvents(objectId, events)
+  err = s.SetEvents(table, objectId, events)
   if err != nil {
     return err
   }
@@ -72,22 +75,22 @@ func (t *Tablet) AddEvent(objectId string, event *Event) error {
   return nil
 }
 
-// Retrieves a list of events for a given object.
-func (t *Tablet) GetEvents(objectId string) ([]*Event, error) {
-  // Make sure the tablet is open.
-  if t.db == nil {
-    return nil, fmt.Errorf("Tablet is not open: %v", t.Path)
+// Retrieves a list of events for a given object in a table.
+func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, error) {
+  // Make sure the servlet is open.
+  if s.db == nil {
+    return nil, fmt.Errorf("Servlet is not open: %v", s.path)
   }
 
   // Encode object identifier.
-  encodedObjectId, err := EncodeObjectId(t.table.name, objectId)
+  encodedObjectId, err := table.EncodeObjectId(objectId)
   if err != nil {
     return nil, err
   }
 
   // Retrieve byte array.
   ro := levigo.NewReadOptions()
-  data, err := t.db.Get(ro, encodedObjectId)
+  data, err := s.db.Get(ro, encodedObjectId)
   ro.Close()
   if err != nil {
     return nil, err
@@ -114,18 +117,18 @@ func (t *Tablet) GetEvents(objectId string) ([]*Event, error) {
   return events, nil
 }
 
-// Writes a list of events to the database.
-func (t *Tablet) SetEvents(objectId string, events []*Event) error {
-  // Make sure the tablet is open.
-  if t.db == nil {
-    return fmt.Errorf("Tablet is not open: %v", t.Path)
+// Writes a list of events for an object in table.
+func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event) error {
+  // Make sure the servlet is open.
+  if s.db == nil {
+    return fmt.Errorf("Servlet is not open: %v", s.path)
   }
 
   // Sort the events.
   sort.Sort(EventList(events))
 
   // Encode object identifier.
-  encodedObjectId, err := EncodeObjectId(t.table.name, objectId)
+  encodedObjectId, err := table.EncodeObjectId(objectId)
   if err != nil {
     return err
   }
@@ -141,7 +144,7 @@ func (t *Tablet) SetEvents(objectId string, events []*Event) error {
 
   // Write bytes to the database.
   wo := levigo.NewWriteOptions()
-  err = t.db.Put(wo, encodedObjectId, buffer.Bytes())
+  err = s.db.Put(wo, encodedObjectId, buffer.Bytes())
   wo.Close()
 
   return nil

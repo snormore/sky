@@ -40,13 +40,13 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
 }
 
 
-func runTestServer(f func()) {
+func runTestServer(f func(s *Server)) {
   path, _ := ioutil.TempDir("", "")
   defer os.RemoveAll(path)
   server := NewServer(8585, path)
-  go server.ListenAndServe()
+  server.ListenAndServe()
   defer server.Shutdown()
-  f()
+  f(server)
 }
 
 func setupTestTable(name string) {

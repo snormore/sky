@@ -6,29 +6,28 @@ import (
   "testing"
 )
 
-// Ensure that we can open and close a tablet.
+// Ensure that we can open and close a servlet.
 func TestOpen(t *testing.T) {
   path, err := ioutil.TempDir("", "")
   defer os.RemoveAll(path)
   
-  table := NewTable("/tmp/foo")
-  tablet := NewTablet(table, path)
-  defer tablet.Close()
-  err = tablet.Open()
+  servlet := NewServlet(path)
+  defer servlet.Close()
+  err = servlet.Open()
   if err != nil {
-    t.Fatalf("Unable to open tablet: %v", err)
+    t.Fatalf("Unable to open servlet: %v", err)
   }
 }
 
 // Ensure that we can add events and read them back.
-func TestTabletAddEvent(t *testing.T) {
+func TestServletAddEvent(t *testing.T) {
   // Setup blank database.
   path, err := ioutil.TempDir("", "")
   defer os.RemoveAll(path)
-  table := NewTable("/tmp/foo")
-  tablet := NewTablet(table, path)
-  defer tablet.Close()
-  _ = tablet.Open()
+  table := NewTable("test", "/tmp/test")
+  servlet := NewServlet(path)
+  defer servlet.Close()
+  _ = servlet.Open()
 
   // Setup source events.
   input := make([]*Event, 2)
@@ -37,7 +36,7 @@ func TestTabletAddEvent(t *testing.T) {
 
   // Add events.
   for _, e := range input {
-    err = tablet.AddEvent("bob", e)
+    err = servlet.AddEvent(table, "bob", e)
     if err != nil {
       t.Fatalf("Unable to add event: %v", err)
     }
@@ -49,7 +48,7 @@ func TestTabletAddEvent(t *testing.T) {
   expected[1] = input[0]
   
   // Read events out.
-  output, err := tablet.GetEvents("bob")
+  output, err := servlet.GetEvents(table, "bob")
   if err != nil {
     t.Fatalf("Unable to retrieve events: %v", err)
   }

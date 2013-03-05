@@ -27,7 +27,7 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request) {
     }
     
     // Otherwise create it.
-    table = NewTable(s.GetTablePath(tableName))
+    table = NewTable(tableName, s.GetTablePath(tableName))
     err = table.Create()
     if err != nil {
       return nil, err
@@ -46,7 +46,7 @@ func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request) {
     // Return an error if the table doesn't exist.
     table := s.GetTable(tableName)
     if table == nil {
-      table = NewTable(s.GetTablePath(tableName))
+      table = NewTable(tableName, s.GetTablePath(tableName))
     }
     if !table.Exists() {
       return nil, errors.New("Table does not exist.")

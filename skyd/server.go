@@ -5,9 +5,14 @@ import (
   "errors"
   "fmt"
   "github.com/gorilla/mux"
+  "hash/fnv"
   "io"
+  "io/ioutil"
   "net"
   "net/http"
+  "os"
+  "regexp"
+  "runtime"
 )
 
 const (
@@ -19,6 +24,7 @@ type Server struct {
   httpServer *http.Server
   path       string
   listener   net.Listener
+  servlets   []*Servlet
   tables     map[string]*Table
   channel    chan *ServerMessage
 }
@@ -55,13 +61,21 @@ func NewServerMessage(w http.ResponseWriter, req *http.Request, params map[strin
 
 // Runs the server.
 func (s *Server) ListenAndServe() error {
+  err := s.open()
+  if err != nil {
+    fmt.Printf("Unable to open server: %v", err)
+    return err
+  }
+
   listener, err := net.Listen("tcp", s.httpServer.Addr)
   if err != nil {
+    s.close()
     return err
   }
   s.listener = listener
   go s.processMessages()
-  return s.httpServer.Serve(s.listener)
+  go s.httpServer.Serve(s.listener)
+  return nil
 }
 
 // Stops the server.
@@ -77,6 +91,114 @@ func (s *Server) Shutdown() error {
 // Checks if the server is listening for new connections.
 func (s *Server) Running() bool {
   return (s.listener != nil)
+}
+
+// Opens the data directory and servlets.
+func (s *Server) open() error {
+  s.close()
+
+  // Setup the file system if it doesn't exist.
+  err := s.createIfNotExists()
+  if err != nil {
+    panic(fmt.Sprintf("skyd.Server: Unable to create server folders: %v", err))
+  }
+  
+  // Create servlets from child directories with numeric names.
+  infos, err := ioutil.ReadDir(s.DataPath())
+  if err != nil {
+    return err
+  }
+  for _, info := range infos {
+    match, _ := regexp.MatchString("^\\d$", info.Name())
+    if info.IsDir() && match {
+      s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%s", s.DataPath(), info.Name())))
+    }
+  }
+  
+  // If none exist then build them based on the number of logical CPUs available.
+  if len(s.servlets) == 0 {
+    for i := 0; i < runtime.NumCPU(); i++ {
+      s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i)))
+    }
+  }
+
+  // Open servlets.
+  for _, servlet := range s.servlets {
+    err = servlet.Open()
+    if err != nil {
+      s.close()
+      return err
+    }
+  }
+
+  return nil
+}
+
+// Closes the data directory and servlets.
+func (s *Server) close() {
+  // Close servlets.
+  if s.servlets != nil {
+    for _, servlet := range s.servlets {
+      servlet.Close()
+    }
+    s.servlets = nil
+  }
+}
+
+// Creates the appropriate directory structure if one does not exist.
+func (s *Server) createIfNotExists() error {
+  // Create root directory.
+  err := os.MkdirAll(s.path, 0700)
+  if err != nil {
+    return err
+  }
+
+  // Create data directory and one directory for each servlet.
+  err = os.MkdirAll(s.DataPath(), 0700)
+  if err != nil {
+    return err
+  }
+
+  // Create tables directory.
+  err = os.MkdirAll(s.TablesPath(), 0700)
+  if err != nil {
+    return err
+  }
+  
+  return nil
+}
+
+// Calculates a tablet index based on the object identifier even hash.
+func (s *Server) GetObjectServletIndex(t *Table, objectId string) (uint32, error) {
+  // Encode object identifier.
+  encodedObjectId, err := t.EncodeObjectId(objectId)
+  if err != nil {
+    return 0, err
+  }
+
+  // Calculate the even bits of the FNV1a hash.
+  h := fnv.New64a()
+  h.Reset()
+  h.Write(encodedObjectId)
+  hashcode := h.Sum64()
+  index := CondenseUint64Even(hashcode) % uint32(len(s.servlets))
+
+  return index, nil
+}
+
+// The root server path.
+func (s *Server) Path() string {
+  return s.path
+}
+
+// The path to the data directory.
+func (s *Server) DataPath() string {
+  return fmt.Sprintf("%v/data", s.path)
+}
+
+// The path to the table metadata directory.
+func (s *Server) TablesPath() string {
+  return fmt.Sprintf("%v/tables", s.path)
 }
 
 // Processes a request and return the appropriate data format.
@@ -116,9 +238,9 @@ func (s *Server) processWithTable(w http.ResponseWriter, req *http.Request, tabl
   <- m.channel
 }
 
-// Processes a request within a tablet/servlet context.
+// Processes a request within a table/servlet context.
 /*
-func (s *Server) processWithTablet(w http.ResponseWriter, req *http.Request, tableName string, objectId string, f func(*Table, map[string]interface{})(interface{}, error)) {
+func (s *Server) processWithObject(w http.ResponseWriter, req *http.Request, tableName string, objectId string, f func(*Table, map[string]interface{})(interface{}, error)) {
   params, err := decodeParams(w, req)
   if err != nil {
     return
@@ -172,7 +294,7 @@ func (s *Server) writeResponse(w http.ResponseWriter, req *http.Request, ret int
 
 // Generates the path for a table attached to the server.
 func (s *Server) GetTablePath(name string) string {
-  return fmt.Sprintf("%v/%v", s.path, name)
+  return fmt.Sprintf("%v/%v", s.TablesPath(), name)
 }
 
 // Retrieves a table that has already been opened.
@@ -189,7 +311,7 @@ func (s *Server) OpenTable(name string) (*Table, error) {
   }
   
   // Otherwise open it and save the reference.
-  table = NewTable(s.GetTablePath(name))
+  table = NewTable(name, s.GetTablePath(name))
   err := table.Open()
   if err != nil {
     table.Close()
