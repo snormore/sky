@@ -6,6 +6,7 @@ import (
   "github.com/ugorji/go-msgpack"
   "os"
   "path/filepath"
+  "time"
 )
 
 // A Table is a collection of objects.
@@ -168,12 +169,12 @@ func (t *Table) SavePropertyFile() error {
 }
 
 // Converts a map with string keys to use property identifier keys.
-func (t *Table) NormalizeMap(m map[interface{}]interface{}) (map[int64]interface{}, error) {
+func (t *Table) NormalizeMap(m map[string]interface{}) (map[int64]interface{}, error) {
   return t.propertyFile.NormalizeMap(m)
 }
 
 // Converts a map with property identifier keys to use string keys.
-func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[interface{}]interface{}, error) {
+func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[string]interface{}, error) {
   return t.propertyFile.DenormalizeMap(m)
 }
 
@@ -181,3 +182,39 @@ func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[interface{}]interfa
 func (t *Table) EncodeObjectId(objectId string) ([]byte, error) {
   return msgpack.Marshal([]string{t.name,objectId})
 }
+
+
+// Deserializes a map into a normalized event.
+func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {
+  event := &Event{}
+  
+  // Parse timestamp.
+  if timestamp, ok := m["timestamp"].(string); ok {
+    ts, err := time.Parse(time.RFC3339, timestamp)
+    if err != nil {
+      return nil, fmt.Errorf("Unable to parse timestamp: %v", timestamp)
+    }
+    event.Timestamp = ts
+  } else {
+    return nil, errors.New("Timestamp required.")
+  }
+  
+  // Convert maps to use property identifiers.
+  if data, ok := m["data"].(map[string]interface{}); ok {
+    normalizedData, err := t.NormalizeMap(data)
+    if err != nil {
+      return nil, err
+    }
+    event.Data = normalizedData
+  }
+  if action, ok := m["action"].(map[string]interface{}); ok {
+    normalizedAction, err := t.NormalizeMap(action)
+    if err != nil {
+      return nil, err
+    }
+    event.Action = normalizedAction
+  }
+  
+  return event, nil
+}
+

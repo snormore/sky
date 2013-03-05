@@ -187,28 +187,23 @@ func (p *PropertyFile) DeleteProperty(property *Property) {
 
 
 // Converts a map with string keys to use property identifier keys.
-func (p *PropertyFile) NormalizeMap(m map[interface{}]interface{}) (map[int64]interface{}, error) {
+func (p *PropertyFile) NormalizeMap(m map[string]interface{}) (map[int64]interface{}, error) {
   clone := make(map[int64]interface{})
   for k,v := range m {
-    // Make sure the key is a string.
-    if k, ok := k.(string); ok {
-      // Look up the property by name and convert it to the ID.
-      property := p.GetPropertyByName(string(k))
-      if property != nil {
-        clone[property.Id] = v
-      } else {
-        return nil, fmt.Errorf("Property not found: %v", k)
-      }
+    // Look up the property by name and convert it to the ID.
+    property := p.GetPropertyByName(string(k))
+    if property != nil {
+      clone[property.Id] = v
     } else {
-      return nil, fmt.Errorf("skyd.PropertyFile: Invalid property key type: %v")
+      return nil, fmt.Errorf("Property not found: %v", k)
     }
   }
   return clone, nil
 }
 
 // Converts a map with property identifier keys to use string keys.
-func (p *PropertyFile) DenormalizeMap(m map[int64]interface{}) (map[interface{}]interface{}, error) {
-  clone := make(map[interface{}]interface{})
+func (p *PropertyFile) DenormalizeMap(m map[int64]interface{}) (map[string]interface{}, error) {
+  clone := make(map[string]interface{})
   for k,v := range m {
     // Look up the property by ID and convert it to the name.
     property := p.GetProperty(k)

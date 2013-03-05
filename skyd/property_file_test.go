@@ -49,7 +49,7 @@ func TestPropertyFileNormalizeMap(t *testing.T) {
   p.CreateProperty("salary", "object", "float")
   p.CreateProperty("purchaseAmount", "action", "integer")
 
-  m := map[interface{}]interface{}{"name":"bob", "salary":100, "purchaseAmount":12}
+  m := map[string]interface{}{"name":"bob", "salary":100, "purchaseAmount":12}
   ret, err := p.NormalizeMap(m)
   if err != nil {
     t.Fatalf("Unable to normalize map: %v", err)
