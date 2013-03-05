@@ -60,10 +60,18 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event) error {
   }
 
   // Retrieve the events for the object and append.
-  events, err := s.GetEvents(table, objectId)
+  tmp, err := s.GetEvents(table, objectId)
   if err != nil {
     return err
   }
+  // Remove any event matching the timestamp.
+  events := make([]*Event, 0)
+  for _, v := range tmp {
+    if !v.Timestamp.Equal(event.Timestamp) {
+      events = append(events, v)
+    }
+  }
+  // Add the event.
   events = append(events, event)
 
   // Write events back to the database.
