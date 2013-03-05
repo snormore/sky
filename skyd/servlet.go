@@ -157,3 +157,24 @@ func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event) erro
 
   return nil
 }
+
+// Deletes all events for a given object in a table.
+func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
+  // Make sure the servlet is open.
+  if s.db == nil {
+    return fmt.Errorf("Servlet is not open: %v", s.path)
+  }
+
+  // Encode object identifier.
+  encodedObjectId, err := table.EncodeObjectId(objectId)
+  if err != nil {
+    return err
+  }
+
+  // Delete object from the database.
+  wo := levigo.NewWriteOptions()
+  err = s.db.Delete(wo, encodedObjectId)
+  wo.Close()
+
+  return nil
+}
