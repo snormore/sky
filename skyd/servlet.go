@@ -49,7 +49,7 @@ func (s *Servlet) Close() {
 }
 
 // Adds an event for a given object in a table to a servlet.
-func (s *Servlet) PutEvent(table *Table, objectId string, event *Event) error {
+func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {
   // Make sure the servlet is open.
   if s.db == nil {
     return fmt.Errorf("Servlet is not open: %v", s.path)
@@ -66,14 +66,24 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event) error {
     return err
   }
   // Remove any event matching the timestamp.
+  found := false
   events := make([]*Event, 0)
   for _, v := range tmp {
-    if !v.Timestamp.Equal(event.Timestamp) {
-      events = append(events, v)
+    // Replace or merge with existing event.
+    if v.Timestamp.Equal(event.Timestamp) {
+      if replace {
+        v = event
+      } else {
+        v.Merge(event)
+      }
+      found = true
     }
+    events = append(events, v)
   }
-  // Add the event.
-  events = append(events, event)
+  // Add the event if it wasn't found.
+  if !found {
+    events = append(events, event)
+  }
 
   // Write events back to the database.
   err = s.SetEvents(table, objectId, events)

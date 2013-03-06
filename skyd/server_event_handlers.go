@@ -13,6 +13,7 @@ func (s *Server) addEventHandlers(r *mux.Router) {
 
   r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.getEventHandler(w, req) }).Methods("GET")
   r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.replaceEventHandler(w, req) }).Methods("PUT")
+  r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.updateEventHandler(w, req) }).Methods("PATCH")
 }
 
 // GET /tables/:name/objects/:objectId/events
@@ -81,7 +82,20 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request) {
     if err != nil {
       return nil, err
     }
-    return nil, servlet.PutEvent(table, vars["objectId"], event)
+    return nil, servlet.PutEvent(table, vars["objectId"], event, true)
+  })
+}
+
+// PATCH /tables/:name/objects/:objectId/events/:timestamp
+func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request) {
+  vars := mux.Vars(req)
+  s.processWithObject(w, req, vars["name"], vars["objectId"], func(table *Table, servlet *Servlet, params map[string]interface{})(interface{}, error) {
+    params["timestamp"] = vars["timestamp"]
+    event, err := table.DeserializeEvent(params)
+    if err != nil {
+      return nil, err
+    }
+    return nil, servlet.PutEvent(table, vars["objectId"], event, false)
   })
 }
 

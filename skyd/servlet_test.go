@@ -36,7 +36,7 @@ func TestServletPutEvent(t *testing.T) {
 
   // Add events.
   for _, e := range input {
-    err = servlet.PutEvent(table, "bob", e)
+    err = servlet.PutEvent(table, "bob", e, true)
     if err != nil {
       t.Fatalf("Unable to add event: %v", err)
     }

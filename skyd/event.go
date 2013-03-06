@@ -118,3 +118,20 @@ func (e *Event) Equal(x *Event) bool {
   }
   return true
 }
+
+// Merges the data of another event into this event.
+func (e *Event) Merge(a *Event) {
+  if e.Action == nil && a.Action != nil {
+    e.Action = make(map[int64]interface{})
+  }
+  for k, v := range a.Action {
+    e.Action[k] = v
+  }
+
+  if e.Data == nil && a.Data != nil {
+    e.Data = make(map[int64]interface{})
+  }
+  for k, v := range a.Data {
+    e.Data[k] = v
+  }
+}
