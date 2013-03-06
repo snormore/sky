@@ -1,6 +1,7 @@
 package skyd
 
 import (
+  "fmt"
   "errors"
   "github.com/gorilla/mux"
   "net/http"
@@ -14,6 +15,7 @@ func (s *Server) addEventHandlers(r *mux.Router) {
   r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.getEventHandler(w, req) }).Methods("GET")
   r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.replaceEventHandler(w, req) }).Methods("PUT")
   r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.updateEventHandler(w, req) }).Methods("PATCH")
+  r.HandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request) { s.deleteEventHandler(w, req) }).Methods("DELETE")
 }
 
 // GET /tables/:name/objects/:objectId/events
@@ -96,6 +98,19 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request) {
       return nil, err
     }
     return nil, servlet.PutEvent(table, vars["objectId"], event, false)
+  })
+}
+
+// DELETE /tables/:name/objects/:objectId/events/:timestamp
+func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request) {
+  vars := mux.Vars(req)
+  s.processWithObject(w, req, vars["name"], vars["objectId"], func(table *Table, servlet *Servlet, params map[string]interface{})(interface{}, error) {
+    timestamp, err := time.Parse(time.RFC3339, vars["timestamp"])
+    if err != nil {
+      return nil, fmt.Errorf("Unable to parse timestamp: %v", timestamp)
+    }
+
+    return nil, servlet.DeleteEvent(table, vars["objectId"], timestamp)
   })
 }
 

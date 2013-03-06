@@ -112,6 +112,35 @@ func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (
   return nil, nil
 }
 
+// Removes an event for a given object in a table to a servlet.
+func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time) error {
+  // Make sure the servlet is open.
+  if s.db == nil {
+    return fmt.Errorf("Servlet is not open: %v", s.path)
+  }
+
+  // Retrieve the events for the object and append.
+  tmp, err := s.GetEvents(table, objectId)
+  if err != nil {
+    return err
+  }
+  // Remove any event matching the timestamp.
+  events := make([]*Event, 0)
+  for _, v := range tmp {
+    if !v.Timestamp.Equal(timestamp) {
+      events = append(events, v)
+    }
+  }
+
+  // Write events back to the database.
+  err = s.SetEvents(table, objectId, events)
+  if err != nil {
+    return err
+  }
+
+  return nil
+}
+
 // Retrieves a list of events for a given object in a table.
 func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, error) {
   // Make sure the servlet is open.
