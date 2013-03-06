@@ -10,3 +10,5 @@
 # Query Endpoints
 POST   /tables/:name/query
 
+
+* Create command line interface to server.
