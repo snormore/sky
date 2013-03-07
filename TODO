@@ -1,10 +1,8 @@
-* Add ending state at the beginning of event list (for optimizing appends).
-* Split off separate servlet channels.
-* New Repository: go-luajit
 * Generate header.
 * Pass in LevelDB iterator to C.
-* Find pure lua msgpack implementation.
 * Move over cursor.c, minipack, 
+* Add ending state at the beginning of event list (for optimizing appends).
+* Split off separate servlet channels.
 
 
 # Query Endpoints
