@@ -7,8 +7,8 @@ typedef struct sky_path_iterator_t sky_path_iterator_t;
 typedef struct {
   int64_t ts;
   uint32_t timestamp;
-  uint16_t action_id;
-  -- TODO!!!
+  {{range .}}{{structdef .}}
+  {{end}}
 } sky_lua_event_t;
 typedef struct sky_cursor_t { sky_lua_event_t *event; int32_t session_event_index; } sky_cursor_t;
 
@@ -53,9 +53,18 @@ ffi.metatype('sky_cursor_t', {
     set_session_idle = function(cursor, seconds) return ffi.C.sky_cursor_set_session_idle(cursor, seconds) end,
   }
 })
---#EVENT_METATYPE#--
+ffi.metatype('sky_lua_event_t', {
+  __index = {
+  {{range .}}{{metatypedef .}}
+  {{end}}
+  }
+})
 
---#INIT_DESCRIPTOR#--
+function sky_init_descriptor(_descriptor)
+  descriptor = ffi.cast('sky_data_descriptor_t*', _descriptor)
+  {{range .}}{{initdescriptor .}}
+  {{end}}
+end
 
 function sky_aggregate(_iterator)
   iterator = ffi.cast('sky_path_iterator_t*', _iterator)

@@ -38,3 +38,25 @@ func TestLuaScriptExtractPropertyReferences(t *testing.T) {
     t.Fatalf("Expected %v, got %v", p.GetPropertyByName("salary"), properties[2])
   }
 }
+
+// Ensure that the lua script can generate a header.
+/*
+func TestLuaScriptGenerateHeader(t *testing.T) {
+  p := NewPropertyFile("")
+  p.CreateProperty("name", "object", "string")
+  p.CreateProperty("salary", "object", "float")
+  p.CreateProperty("purchaseAmount", "action", "integer")
+  p.CreateProperty("isMember", "action", "boolean")
+
+  l := NewLuaScript(p, "function test(event) x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end end")
+  err := l.Init()
+  if err != nil {
+    t.Fatalf("Unable to initialize: %v", err)
+  }
+
+  fmt.Println("--START HEADER--")
+  fmt.Println(l.Header())
+  fmt.Println("--END HEADER--")
+}
+
+*/

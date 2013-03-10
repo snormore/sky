@@ -10,10 +10,12 @@ package skyd
 import "C"
 
 import (
+  "bytes"
   "errors"
   "fmt"
   "regexp"
   "sort"
+  "text/template"
   "unsafe"
 )
 
@@ -30,6 +32,16 @@ func NewLuaScript(propertyFile *PropertyFile, source string) *LuaScript {
     panic("skyd.LuaScript: Property file required.")
   }
   return &LuaScript{propertyFile:propertyFile, source:source}
+}
+
+// Retrieves the source for the script.
+func (l *LuaScript) Source() string {
+  return l.source
+}
+
+// Retrieves the generated header for the script.
+func (l *LuaScript) Header() string {
+  return l.header
 }
 
 // Executes the lua script and returns the data.
@@ -87,22 +99,35 @@ func (l *LuaScript) Init() error {
 func (l *LuaScript) Destroy() {
   if l.state != nil {
     C.lua_close(l.state)
+    l.state = nil
   }
 }
 
 // Generates the header for the script based on a source string.
 func (l *LuaScript) generateHeader() error {
   // Find a list of all references properties.
-  _, err := l.ExtractPropertyReferences()
+  properties, err := l.ExtractPropertyReferences()
   if err != nil {
     return err
   }
   
-  // TODO: Generate the header using a template.
-  header := ""
+  // Parse the header template.
+  t := template.New("header.lua")
+  t.Funcs(template.FuncMap{"structdef": propertyStructDef, "metatypedef": metatypeFunctionDef, "initdescriptor": initDescriptorDef})
+  t, err = t.ParseFiles("tmpl/header.lua")
+  if err != nil {
+    return err
+  }
+  
+  // Generate the template from the property references.
+  var buffer bytes.Buffer
+  err = t.Execute(&buffer, properties)
+  if err != nil {
+    return err
+  }
   
   // Assign header
-  l.header = header
+  l.header = buffer.String()
   
   return nil
 }
@@ -134,3 +159,32 @@ func (l *LuaScript) ExtractPropertyReferences() ([]*Property, error) {
   return properties, nil
 }
 
+
+func propertyStructDef(args ...interface{}) string {
+  if property, ok := args[0].(*Property); ok {
+    switch property.DataType {
+    case StringDataType: return fmt.Sprintf("sky_string_t _%v;", property.Name)
+    case IntegerDataType: return fmt.Sprintf("int32_t _%v;", property.Name)
+    case FloatDataType: return fmt.Sprintf("double _%v;", property.Name)
+    case BooleanDataType: return fmt.Sprintf("bool _%v;", property.Name)
+    }
+  }
+  return ""
+}
+
+func metatypeFunctionDef(args ...interface{}) string {
+  if property, ok := args[0].(*Property); ok {
+    switch property.DataType {
+    case StringDataType: return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", property.Name, property.Name, property.Name)
+    default: return fmt.Sprintf("%v = function(event) return event._%v end,", property.Name, property.Name)
+    }
+  }
+  return ""
+}
+
+func initDescriptorDef(args ...interface{}) string {
+  if property, ok := args[0].(*Property); ok {
+    return fmt.Sprintf("descriptor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), '%s')", property.Id, property.Name, property.DataType)
+  }
+  return ""
+}
