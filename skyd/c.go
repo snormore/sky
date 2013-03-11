@@ -1549,7 +1549,6 @@ void sky_cursor_clear_data(sky_cursor *cursor)
     }
 }
 
-
 */
 import "C"
 

@@ -66,7 +66,7 @@ function sky_init_descriptor(_descriptor)
   {{end}}
 end
 
-function sky_aggregate(_iterator)
+function _map(_iterator)
   iterator = ffi.cast('sky_path_iterator_t*', _iterator)
   data = {}
   while not iterator:eof() do
