@@ -3,7 +3,7 @@ local ffi = require('ffi')
 ffi.cdef([[
 typedef struct sky_string_t { int32_t length; char *data; } sky_string_t;
 typedef struct sky_data_descriptor_t sky_data_descriptor_t;
-typedef struct sky_path_iterator_t sky_path_iterator_t;
+typedef struct sky_object_iterator_t sky_object_iterator_t;
 typedef struct {
   int64_t ts;
   uint32_t timestamp;
@@ -18,9 +18,9 @@ int sky_data_descriptor_set_ts_offset(sky_data_descriptor_t *descriptor, uint32_
 int sky_data_descriptor_set_action_id_offset(sky_data_descriptor_t *descriptor, uint32_t offset);
 int sky_data_descriptor_set_property(sky_data_descriptor_t *descriptor, int8_t property_id, uint32_t offset, int data_type);
 
-bool sky_path_iterator_eof(sky_path_iterator_t *);
-void sky_path_iterator_next(sky_path_iterator_t *);
-sky_cursor_t *sky_lua_path_iterator_get_cursor(sky_path_iterator_t *);
+bool sky_object_iterator_eof(sky_object_iterator_t *);
+void sky_object_iterator_next(sky_object_iterator_t *);
+sky_cursor_t *sky_lua_object_iterator_get_cursor(sky_object_iterator_t *);
 
 bool sky_cursor_eof(sky_cursor_t *);
 bool sky_cursor_eos(sky_cursor_t *);
@@ -37,11 +37,11 @@ ffi.metatype('sky_data_descriptor_t', {
     set_property = function(descriptor, property_id, offset, data_type) return ffi.C.sky_data_descriptor_set_property(descriptor, property_id, offset, data_type) end,
   }
 })
-ffi.metatype('sky_path_iterator_t', {
+ffi.metatype('sky_object_iterator_t', {
   __index = {
-    eof = function(iterator) return ffi.C.sky_path_iterator_eof(iterator) end,
-    cursor = function(iterator) return ffi.C.sky_lua_path_iterator_get_cursor(iterator) end,
-    next = function(iterator) return ffi.C.sky_path_iterator_next(iterator) end,
+    eof = function(iterator) return ffi.C.sky_object_iterator_eof(iterator) end,
+    cursor = function(iterator) return ffi.C.sky_lua_object_iterator_get_cursor(iterator) end,
+    next = function(iterator) return ffi.C.sky_object_iterator_next(iterator) end,
   }
 })
 ffi.metatype('sky_cursor_t', {
@@ -66,8 +66,8 @@ function sky_init_descriptor(_descriptor)
   {{end}}
 end
 
-function _map(_iterator)
-  iterator = ffi.cast('sky_path_iterator_t*', _iterator)
+function sky_aggregate(_iterator)
+  iterator = ffi.cast('sky_object_iterator_t*', _iterator)
   data = {}
   while not iterator:eof() do
     cursor = iterator:cursor()

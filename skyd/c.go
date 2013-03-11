@@ -2,12 +2,14 @@ package skyd
 
 /*
 #cgo CFLAGS:-Wno-pointer-to-int-cast
+#cgo LDFLAGS: -lleveldb
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <leveldb/c.h>
 
 typedef void (*sky_data_property_descriptor_set_func)(void *target, void *value, size_t *sz);
 typedef void (*sky_data_property_descriptor_clear_func)(void *target);
@@ -46,6 +48,12 @@ typedef struct sky_cursor {
     sky_data_descriptor *data_descriptor;
 } sky_cursor;
 
+typedef struct sky_object_iterator {
+    leveldb_iterator_t* leveldb_iterator;
+    bool running;
+    bool eof;
+    sky_cursor cursor;
+} sky_object_iterator;
 
 #define sky_event_flag_t uint8_t
 #define EVENT_FLAG       0x92
@@ -1547,6 +1555,57 @@ void sky_cursor_clear_data(sky_cursor *cursor)
     if(cursor->data != NULL && cursor->data_descriptor != NULL && cursor->data_descriptor->data_sz > 0) {
         memset(cursor->data, 0, cursor->data_descriptor->data_sz);
     }
+}
+
+
+//==============================================================================
+//
+// Objet Iterator
+//
+//==============================================================================
+
+void sky_object_iterator_next(sky_object_iterator *iterator);
+
+void sky_object_iterator_init(sky_object_iterator *iterator, leveldb_t *db)
+{
+    iterator->eof = false;
+
+    // Initialize LevelDB iterator.
+    leveldb_readoptions_t* readoptions = leveldb_readoptions_create();
+    iterator->leveldb_iterator = leveldb_create_iterator(db, readoptions);
+    leveldb_readoptions_destroy(readoptions);
+    leveldb_iter_seek_to_first(iterator->leveldb_iterator);
+
+    // Move cursor to initial object.
+    sky_object_iterator_next(iterator);
+}
+
+
+void sky_object_iterator_next(sky_object_iterator *iterator)
+{
+    // Move to next object.
+    if(leveldb_iter_valid(iterator->leveldb_iterator)) {
+        // Retrieve the object data for this object.
+        size_t data_length;
+        void *data = (void*)leveldb_iter_value(iterator->leveldb_iterator, &data_length);
+        
+        // Set the pointer on the cursor.
+        sky_cursor_set_ptr(&iterator->cursor, data, data_length);
+
+        // Move to the next object.
+        leveldb_iter_next(iterator->leveldb_iterator);
+        if(leveldb_iter_valid(iterator->leveldb_iterator)) {
+            iterator->eof = false;
+        }
+    }
+    else {
+        iterator->eof = true;
+    }
+}
+
+bool sky_object_iterator_eof(sky_object_iterator *iterator)
+{
+    return iterator->eof;
 }
 
 */
