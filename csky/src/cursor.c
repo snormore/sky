@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include "sky/cursor.h"
 #include "sky/mem.h"
+#include "sky/timestamp.h"
 #include "sky/minipack.h"
+#include "sky/dbg.h"
 
 //==============================================================================
 //
@@ -10,15 +12,12 @@
 //
 //==============================================================================
 
-#define badcursordata(MSG) do {\
-    fprintf(stderr, "Cursor pointing at invalid raw event data [" MSG "]: %p", cursor->ptr); \
+#define badcursordata(MSG, PTR) do {\
+    fprintf(stderr, "Cursor pointing at invalid raw event data [" MSG "]: %p->%p\n", cursor->ptr, PTR); \
     memdump(cursor->startptr, (cursor->endptr - cursor->startptr)); \
     cursor->eof = true; \
     return; \
 } while(0)
-
-// The number of bits that seconds are shifted over in a timestamp.
-#define SECONDS_BIT_OFFSET  20
 
 
 //==============================================================================
@@ -26,6 +25,30 @@
 // Cursor
 //
 //==============================================================================
+
+//--------------------------------------
+// Lifecycle
+//--------------------------------------
+
+// Creates a reference to a cursor.
+sky_cursor *sky_cursor_new()
+{
+    sky_cursor *cursor = calloc(sizeof(sky_cursor),1 );
+    return cursor;
+}
+
+// Removes a cursor reference from memory.
+void sky_cursor_free(sky_cursor *cursor)
+{
+    if(cursor) {
+        free(cursor);
+    }
+}
+
+
+//--------------------------------------
+// Data Management
+//--------------------------------------
 
 void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
 {
@@ -70,14 +93,15 @@ void sky_cursor_next_event(sky_cursor *cursor)
         sky_event_flag_t flag = *((sky_event_flag_t*)ptr);
         
         // If flag isn't correct then report and exit.
-        if(flag != EVENT_FLAG) badcursordata("eflag");
+        if(flag != EVENT_FLAG) badcursordata("eflag", ptr);
         ptr += sizeof(sky_event_flag_t);
         
         // Read timestamp.
         size_t sz;
         int64_t ts = minipack_unpack_int(ptr, &sz);
-        if(sz == 0) badcursordata("timestamp");
-        uint32_t timestamp = (ts >> SECONDS_BIT_OFFSET);
+        if(sz == 0) badcursordata("timestamp", ptr);
+        uint32_t timestamp = sky_timestamp_to_seconds(ts);
+        ptr += sz;
 
         // Check for session boundry. This only applies if this is not the
         // first event in the session and a session idle time has been set.
@@ -96,6 +120,12 @@ void sky_cursor_next_event(sky_cursor *cursor)
         if(cursor->in_session) {
             cursor->session_event_index++;
             
+            // Set timestamp.
+            int64_t *data_ts = (int64_t*)(cursor->data + cursor->data_descriptor->timestamp_descriptor.ts_offset);
+            uint32_t *data_timestamp = (uint32_t*)(cursor->data + cursor->data_descriptor->timestamp_descriptor.timestamp_offset);
+            *data_ts = ts;
+            *data_timestamp = timestamp;
+            
             // Clear old action data.
             uint32_t i;
             for(i=0; i<cursor->data_descriptor->action_property_descriptor_count; i++) {
@@ -105,19 +135,21 @@ void sky_cursor_next_event(sky_cursor *cursor)
 
             // Read msgpack map!
             uint32_t count = minipack_unpack_map(ptr, &sz);
-            if(sz == 0) badcursordata("datamap");
+            if(sz == 0) badcursordata("datamap", ptr);
             ptr += sz;
 
             // Loop over key/value pairs.
             for(i=0; i<count; i++) {
                 // Read property id (key).
                 int64_t property_id = minipack_unpack_int(ptr, &sz);
-                if(sz == 0) badcursordata("key");
+                if(sz == 0) badcursordata("key", ptr);
                 ptr += sz;
 
                 // Read property value and set it on the data object.
                 sky_data_descriptor_set_value(cursor->data_descriptor, cursor->data, property_id, ptr, &sz);
-                if(sz == 0) badcursordata("value");
+                if(sz == 0) {
+                  sz = minipack_sizeof_elem_and_data(ptr);
+                }
                 ptr += sz;
             }
 

@@ -1,6 +1,16 @@
 #include "sky/data_descriptor.h"
 #include "sky/minipack.h"
 #include "sky/sky_string.h"
+#include "sky/dbg.h"
+
+//==============================================================================
+//
+// Constants
+//
+//==============================================================================
+
+#define SKY_PROPERTY_DESCRIPTOR_PADDING  32
+
 
 //==============================================================================
 //
@@ -53,6 +63,8 @@ sky_data_descriptor *sky_data_descriptor_new(int64_t min_property_id, int64_t ma
     sky_data_descriptor *descriptor = NULL;
 
     // Add one property to account for the zero descriptor.
+    min_property_id -= SKY_PROPERTY_DESCRIPTOR_PADDING;
+    max_property_id += SKY_PROPERTY_DESCRIPTOR_PADDING;
     int64_t property_count = (max_property_id - min_property_id) + 1;
 
     // Allocate memory for the descriptor and child descriptors in one block.
@@ -172,6 +184,11 @@ void sky_data_descriptor_set_property(sky_data_descriptor *descriptor,
         property_descriptor->clear_func = sky_data_descriptor_clear_double;
     }
     else if(strcmp(data_type, "boolean") == 0) {
+        property_descriptor->set_func = sky_data_descriptor_set_boolean;
+        property_descriptor->clear_func = sky_data_descriptor_clear_boolean;
+    }
+    else {
+        debug("Unknown data type: '%s'", data_type);
         property_descriptor->set_func = sky_data_descriptor_set_boolean;
         property_descriptor->clear_func = sky_data_descriptor_clear_boolean;
     }

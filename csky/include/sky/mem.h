@@ -1,6 +1,7 @@
 #ifndef _sky_mem_h
 #define _sky_mem_h
 
+#include <inttypes.h>
 #include <string.h>
 
 #define memdump(PTR, LENGTH) do {\
@@ -9,7 +10,7 @@
     int i = 0;\
     char *line = (char*)address;\
     unsigned char ch;\
-    fprintf(stderr, "%09X | ", (int)address);\
+    fprintf(stderr, "%"PRIX64" | ", (int64_t)address);\
     while (length-- > 0) {\
         fprintf(stderr, "%02X ", (unsigned char)*address++);\
         if (!(++i % 16) || (length == 0 && i % 16)) {\

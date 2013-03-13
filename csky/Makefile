@@ -2,7 +2,9 @@
 # Variables
 ################################################################################
 
-VERSION=0.3.0
+MAJOR_VERSION=0
+MINOR_VERSION=3
+PATCH_VERSION=0
 
 PREFIX?=/usr/local
 CFLAGS=-g -Wall -Wextra -std=c99 -Iinclude
@@ -27,7 +29,9 @@ endif
 
 default: build
 
-build: ${OBJECTS}
+build: libcsky.a
+
+libcsky.a: ${OBJECTS}
 	rm -f bin/libsky.a
 	ar rcs libcsky.a ${OBJECTS}
 	ranlib libcsky.a
@@ -52,4 +56,4 @@ check: $(TEST_OBJECTS)
 	@sh ./tests/runtests.sh
 
 $(TEST_OBJECTS): %: %.c libcsky.a
-	$(CC) $(CFLAGS) -Isrc -o $@ $<
+	$(CC) $(CFLAGS) -Itests -o $@ $< libcsky.a

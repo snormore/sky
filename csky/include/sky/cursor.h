@@ -42,6 +42,19 @@ typedef struct sky_cursor {
 //
 //==============================================================================
 
+//--------------------------------------
+// Lifecycle
+//--------------------------------------
+
+sky_cursor *sky_cursor_new();
+
+void sky_cursor_free(sky_cursor *cursor);
+
+
+//--------------------------------------
+// Data Management
+//--------------------------------------
+
 void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz);
 
 void sky_cursor_next_event(sky_cursor *cursor);
