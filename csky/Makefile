@@ -46,6 +46,7 @@ clean:
 	rm -rf bin ${OBJECTS} ${TEST_OBJECTS}
 	rm -rf tests/*.dSYM tests/**/*.dSYM
 	rm -rf tests/*.o tests/**/*.o
+	rm -rf libcsky.*
 
 
 ################################################################################

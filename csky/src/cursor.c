@@ -148,6 +148,7 @@ void sky_cursor_next_event(sky_cursor *cursor)
                 // Read property value and set it on the data object.
                 sky_data_descriptor_set_value(cursor->data_descriptor, cursor->data, property_id, ptr, &sz);
                 if(sz == 0) {
+                  debug("[invalid read, skipping]");
                   sz = minipack_sizeof_elem_and_data(ptr);
                 }
                 ptr += sz;

@@ -18,7 +18,6 @@
 //==============================================================================
 
 int DATA0_LENGTH = 128;
-
 char *DATA0 = 
   // 1970-01-01T00:00:00Z, {1:"john doe", 2:1000, 3:100.2, 4:true}
   "\x92" "\xD3\x00\x00\x00\x00\x00\x00\x00\x00" "\x84" "\x01\xA8""john doe" "\x02\xD1\x03\xE8" "\x03\xCB\x40\x59\x0C\xCC\xCC\xCC\xCC\xCD" "\x04\xC3"
@@ -28,6 +27,22 @@ char *DATA0 =
   "\x92" "\xD3\x00\x00\x00\x00\x00\x20\x00\x00" "\x81" "\xFF\xA2""A2"
   // 1970-01-01T00:00:03Z, {1:"frank sinatra", 2:20, 3:-100, 4:false}
   "\x92" "\xD3\x00\x00\x00\x00\x00\x30\x00\x00" "\x84" "\x01\xAD""frank sinatra" "\x02\x14" "\x03\xCB\xC0\x59\x00\x00\x00\x00\x00\x00" "\x04\xC2"
+;
+
+int DATA1_LENGTH = 111;
+char *DATA1 = 
+  // 1970-01-01T00:00:00Z, {-1:"A1", 1:1000}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\x00\x00\x00" "\x82" "\xFF\xA2""A1" "\x01\xD1\x03\xE8"
+  // 1970-01-01T00:00:01Z, {-1:"A2", -2:100}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\x10\x00\x00" "\x82" "\xFF\xA2""A2" "\xFE\x64"
+  // 1970-01-01T00:00:10Z, {-1:"A3", -2:200}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\xA0\x00\x00" "\x82" "\xFF\xA2""A3" "\xFE\xD1\x00\xC8"
+  // 1970-01-01T00:00:20Z, {-1:"A1", -2:300}
+  "\x92" "\xD3\x00\x00\x00\x00\x01\x40\x00\x00" "\x82" "\xFF\xA2""A1" "\xFE\xD1\x01\x2C"
+  // 1970-01-01T00:01:00Z, {-1:"A1", 1:2000}
+  "\x92" "\xD3\x00\x00\x00\x00\x03\xC0\x00\x00" "\x82" "\xFF\xA2""A1" "\x01\xD1\x07\xD0"
+  // 1970-01-01T00:01:00Z, {-1:"A1", 1:2000}
+  "\x92" "\xD3\x00\x00\x00\x00\x03\xF0\x00\x00" "\x82" "\xFF\xA2""A2" "\xFE\xD1\x01\x90"
 ;
 
 
@@ -153,7 +168,7 @@ int test_sky_cursor_sessionize() {
     cursor->data = &obj;
 
     // Initialize data and set a 10 second idle time.
-    sky_cursor_set_ptr(cursor, DATA0, DATA0_LENGTH);
+    sky_cursor_set_ptr(cursor, DATA1, DATA1_LENGTH);
     sky_cursor_set_session_idle(cursor, 10);
     mu_assert_int_equals(cursor->session_event_index, -1);
     ASSERT_OBJ_STATE2(obj, 0, "", 0LL, 0LL);
@@ -221,7 +236,7 @@ int test_sky_cursor_sessionize() {
     mu_assert_bool(cursor->in_session == false);
 
     // Reuse cursor.
-    sky_cursor_set_ptr(cursor, DATA0, DATA0_LENGTH);
+    sky_cursor_set_ptr(cursor, DATA1, DATA1_LENGTH);
     mu_assert_int_equals(cursor->session_event_index, -1);
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 0);
