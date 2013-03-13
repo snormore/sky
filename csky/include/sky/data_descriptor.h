@@ -12,28 +12,8 @@
 //
 //==============================================================================
 
-typedef void (*sky_data_property_descriptor_set_func)(void *target, void *value, size_t *sz);
-typedef void (*sky_data_property_descriptor_clear_func)(void *target);
-
-typedef struct { uint16_t ts_offset; uint16_t timestamp_offset;} sky_data_timestamp_descriptor;
-
-typedef struct {
-    int64_t property_id;
-    uint16_t offset;
-    sky_data_property_descriptor_set_func set_func;
-    sky_data_property_descriptor_clear_func clear_func;
-} sky_data_property_descriptor;
-
 // Defines a collection of descriptors for a struct to serialize data into it.
 typedef struct {
-    sky_data_timestamp_descriptor timestamp_descriptor;
-    sky_data_property_descriptor *property_descriptors;
-    sky_data_property_descriptor *property_zero_descriptor;
-    sky_data_property_descriptor **action_property_descriptors;
-    uint32_t action_property_descriptor_count;
-    uint32_t property_count;
-    uint32_t active_property_count;
-    uint32_t data_sz;
 } sky_data_descriptor;
 
 

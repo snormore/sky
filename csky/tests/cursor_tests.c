@@ -4,7 +4,6 @@
 #include <math.h>
 
 #include <sky/cursor.h>
-#include <sky/data_descriptor.h>
 #include <sky/sky_string.h>
 #include <sky/timestamp.h>
 #include <sky/mem.h>
@@ -16,6 +15,17 @@
 // Fixtures
 //
 //==============================================================================
+
+char INT_DATA[] = "\xD1\x03\xE8";
+
+char DOUBLE_DATA[] = "\xCB\x40\x59\x0C\xCC\xCC\xCC\xCC\xCD";
+
+char BOOLEAN_FALSE_DATA[] = "\xC2";
+
+char BOOLEAN_TRUE_DATA[] = "\xC3";
+
+char STRING_DATA[] = "\xa3\x66\x6f\x6f";
+
 
 int DATA0_LENGTH = 128;
 char *DATA0 = 
@@ -52,8 +62,9 @@ char *DATA1 =
 //
 //==============================================================================
 
-#define ASSERT_OBJ_STATE(OBJ, TS, ACTION, OSTRING, OINT, ODOUBLE, OBOOLEAN, ASTRING, AINT, ADOUBLE, ABOOLEAN) do {\
+#define ASSERT_OBJ_STATE(OBJ, TS, TIMESTAMP, ACTION, OSTRING, OINT, ODOUBLE, OBOOLEAN, ASTRING, AINT, ADOUBLE, ABOOLEAN) do {\
     mu_assert_int64_equals(OBJ.ts, TS); \
+    mu_assert_int_equals(OBJ.timestamp, TIMESTAMP); \
     mu_assert_int_equals(OBJ.action.length, (int)strlen(ACTION)); \
     mu_assert_bool(memcmp(OBJ.action.data, ACTION, strlen(ACTION)) == 0); \
     mu_assert_int_equals(OBJ.object_string.length, (int)strlen(OSTRING)); \
@@ -77,8 +88,6 @@ char *DATA1 =
 } while(0)
 
 typedef struct {
-    uint32_t timestamp;
-    int64_t ts;
     sky_string action;
     sky_string action_string;
     int64_t    action_int;
@@ -88,8 +97,17 @@ typedef struct {
     int64_t    object_int;
     double     object_double;
     bool       object_boolean;
+    uint32_t timestamp;
+    int64_t ts;
 } test_t;
 
+typedef struct {
+    int64_t dummy;
+    int64_t int_value;
+    double double_value;
+    bool boolean_value;
+    sky_string string_value;
+} test2_t;
 
 //==============================================================================
 //
@@ -102,49 +120,45 @@ typedef struct {
 //--------------------------------------
 
 int test_sky_cursor_set_data() {
-    // Setup data object & data descriptor.
+    // Setup data object & cursor.
     test_t obj; memset(&obj, 0, sizeof(obj));
-    sky_data_descriptor *descriptor = sky_data_descriptor_new(-4, 4);
-    descriptor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
-    descriptor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
-    sky_data_descriptor_set_property(descriptor, -5, offsetof(test_t, action_boolean), "boolean");
-    sky_data_descriptor_set_property(descriptor, -4, offsetof(test_t, action_double), "float");
-    sky_data_descriptor_set_property(descriptor, -3, offsetof(test_t, action_int), "integer");
-    sky_data_descriptor_set_property(descriptor, -2, offsetof(test_t, action_string), "string");
-    sky_data_descriptor_set_property(descriptor, -1, offsetof(test_t, action), "string");
-    sky_data_descriptor_set_property(descriptor, 1, offsetof(test_t, object_string), "string");
-    sky_data_descriptor_set_property(descriptor, 2, offsetof(test_t, object_int), "integer");
-    sky_data_descriptor_set_property(descriptor, 3, offsetof(test_t, object_double), "float");
-    sky_data_descriptor_set_property(descriptor, 4, offsetof(test_t, object_boolean), "boolean");
-
-    sky_cursor *cursor = sky_cursor_new();
-    cursor->data_descriptor = descriptor;
+    sky_cursor *cursor = sky_cursor_new(-4, 4);
     cursor->data = &obj;
+    cursor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
+    cursor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
+    sky_cursor_set_property(cursor, -5, offsetof(test_t, action_boolean), sizeof(bool), "boolean");
+    sky_cursor_set_property(cursor, -4, offsetof(test_t, action_double), sizeof(double), "float");
+    sky_cursor_set_property(cursor, -3, offsetof(test_t, action_int), sizeof(int32_t), "integer");
+    sky_cursor_set_property(cursor, -2, offsetof(test_t, action_string), sizeof(sky_string), "string");
+    sky_cursor_set_property(cursor, -1, offsetof(test_t, action), sizeof(sky_string), "string");
+    sky_cursor_set_property(cursor, 1, offsetof(test_t, object_string), sizeof(sky_string), "string");
+    sky_cursor_set_property(cursor, 2, offsetof(test_t, object_int), sizeof(int32_t), "integer");
+    sky_cursor_set_property(cursor, 3, offsetof(test_t, object_double), sizeof(double), "float");
+    sky_cursor_set_property(cursor, 4, offsetof(test_t, object_boolean), sizeof(bool), "boolean");
 
     sky_cursor_set_ptr(cursor, DATA0, DATA0_LENGTH);
-    ASSERT_OBJ_STATE(obj, 0LL, "", "", 0LL, 0, false, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(obj, 0LL, 0, "", "", 0LL, 0, false, "", 0LL, 0, false);
 
     // Event 1 (State-Only)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, 0LL, "", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(obj, 0LL, 0, "", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
     
     // Event 2 (Action + Action Data)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(1000000LL), "A1", "john doe", 1000LL, 100.2, true, "super", 21LL, 100, true);
+    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(1000000LL), 1, "A1", "john doe", 1000LL, 100.2, true, "super", 21LL, 100, true);
     
     // Event 3 (Action-Only)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(2000000LL), "A2", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(2000000LL), 2, "A2", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
 
     // Event 4 (Data-Only)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(3000000LL), "", "frank sinatra", 20LL, -100, false, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(3000000LL), 3, "", "frank sinatra", 20LL, -100, false, "", 0LL, 0, false);
 
     // EOF
     mu_assert_bool(!sky_lua_cursor_next_event(cursor));
 
     sky_cursor_free(cursor);
-    sky_data_descriptor_free(descriptor);
     return 0;
 }
 
@@ -154,18 +168,15 @@ int test_sky_cursor_set_data() {
 //--------------------------------------
 
 int test_sky_cursor_sessionize() {
-    // Setup data object & data descriptor.
+    // Setup data object.
     test_t obj; memset(&obj, 0, sizeof(obj));
-    sky_data_descriptor *descriptor = sky_data_descriptor_new(-1, 1);
-    descriptor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
-    descriptor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
-    sky_data_descriptor_set_property(descriptor, -2, offsetof(test_t, action_int), "integer");
-    sky_data_descriptor_set_property(descriptor, -1, offsetof(test_t, action), "string");
-    sky_data_descriptor_set_property(descriptor, 1, offsetof(test_t, object_int), "integer");
-
-    sky_cursor *cursor = sky_cursor_new();
-    cursor->data_descriptor = descriptor;
+    sky_cursor *cursor = sky_cursor_new(-2, 1);
     cursor->data = &obj;
+    cursor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
+    cursor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
+    sky_cursor_set_property(cursor, -2, offsetof(test_t, action_int), sizeof(int32_t), "integer");
+    sky_cursor_set_property(cursor, -1, offsetof(test_t, action), sizeof(sky_string), "string");
+    sky_cursor_set_property(cursor, 1, offsetof(test_t, object_int), sizeof(int32_t), "integer");
 
     // Initialize data and set a 10 second idle time.
     sky_cursor_set_ptr(cursor, DATA1, DATA1_LENGTH);
@@ -243,7 +254,68 @@ int test_sky_cursor_sessionize() {
     ASSERT_OBJ_STATE2(obj, 0, "A1", 1000LL, 0LL);
     
     sky_cursor_free(cursor);
-    sky_data_descriptor_free(descriptor);
+    return 0;
+}
+
+
+//--------------------------------------
+// Property Management
+//--------------------------------------
+
+int test_sky_cursor_set_integer() {
+    test2_t obj;
+    memset(&obj, 0, sizeof(obj));
+    size_t sz;
+    sky_cursor *cursor = sky_cursor_new(0, 1);
+    sky_cursor_set_property(cursor, 1, offsetof(test2_t, int_value), sizeof(int32_t), "integer");
+    mu_assert_int_equals(cursor->property_zero_descriptor[1].offset, 8);
+    sky_cursor_set_value(cursor, (void*)(&obj), 1, INT_DATA, &sz);
+    mu_assert_long_equals(sz, 3L);
+    mu_assert_int64_equals(obj.int_value, 1000LL);
+    sky_cursor_free(cursor);
+    return 0;
+}
+
+int test_sky_cursor_set_double() {
+    test2_t obj;
+    size_t sz;
+    sky_cursor *cursor = sky_cursor_new(-1, 0);
+    sky_cursor_set_property(cursor, -1, offsetof(test2_t, double_value), sizeof(double), "float");
+    mu_assert_int_equals(cursor->property_zero_descriptor[-1].offset, 16);
+    sky_cursor_set_value(cursor, (void*)(&obj), -1, DOUBLE_DATA, &sz);
+    mu_assert_long_equals(sz, 9L);
+    mu_assert_bool(fabs(obj.double_value - 100.2) < 0.1);
+    sky_cursor_free(cursor);
+    return 0;
+}
+
+int test_sky_cursor_set_boolean() {
+    test2_t obj;
+    size_t sz;
+    sky_cursor *cursor = sky_cursor_new(0, 2);
+    sky_cursor_set_property(cursor, 2, offsetof(test2_t, boolean_value), sizeof(bool), "boolean");
+    mu_assert_int_equals(cursor->property_zero_descriptor[2].offset, 24);
+    sky_cursor_set_value(cursor, (void*)(&obj), 2, BOOLEAN_TRUE_DATA, &sz);
+    mu_assert_long_equals(sz, 1L);
+    mu_assert_bool(obj.boolean_value == true);
+    sky_cursor_set_value(cursor, (void*)(&obj), 2, BOOLEAN_FALSE_DATA, &sz);
+    mu_assert_long_equals(sz, 1L);
+    mu_assert_bool(obj.boolean_value == false);
+    sky_cursor_free(cursor);
+    return 0;
+}
+
+int test_sky_cursor_set_string() {
+    test2_t obj;
+    size_t sz;
+    sky_cursor *cursor = sky_cursor_new(0, 1);
+    sky_cursor_set_property(cursor, 1, offsetof(test2_t, string_value), sizeof(sky_string), "string");
+    mu_assert_int_equals(cursor->property_zero_descriptor[1].offset, 32);
+    sky_cursor_set_value(cursor, (void*)(&obj), 1, STRING_DATA, &sz);
+    mu_assert_long_equals(sz, 4L);
+    mu_assert_int_equals(obj.string_value.length, 3);
+    mu_assert_bool(obj.string_value.data == &STRING_DATA[1]);
+    sky_cursor_free(cursor);
     return 0;
 }
 
@@ -258,6 +330,10 @@ int test_sky_cursor_sessionize() {
 int all_tests() {
     mu_run_test(test_sky_cursor_set_data);
     mu_run_test(test_sky_cursor_sessionize);
+    mu_run_test(test_sky_cursor_set_integer);
+    mu_run_test(test_sky_cursor_set_double);
+    mu_run_test(test_sky_cursor_set_boolean);
+    mu_run_test(test_sky_cursor_set_string);
     return 0;
 }
 
