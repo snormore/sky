@@ -49,6 +49,7 @@ ${SONAME}: ${OBJECTS}
 install:
 	install -d $(DESTDIR)/$(PREFIX)/include/sky
 	install include/sky/* $(DESTDIR)/$(PREFIX)/include/sky
+	install include/sky.h $(DESTDIR)/$(PREFIX)/include/sky.h
 	install -d $(DESTDIR)/$(PREFIX)/lib
 	install libcsky* $(DESTDIR)/$(PREFIX)/lib
 	ln -sf $(DESTDIR)/$(PREFIX)/lib/${SONAME} $(DESTDIR)/$(PREFIX)/lib/${SONAME_VER1}
