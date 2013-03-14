@@ -70,4 +70,4 @@ check: $(TEST_OBJECTS)
 	@sh ./tests/runtests.sh
 
 $(TEST_OBJECTS): %: %.c build
-	$(CC) $(CFLAGS) -Itests -o $@ $< libcsky.a
+	$(CC) $(CFLAGS) -lleveldb -Itests -o $@ $< libcsky.a

@@ -75,7 +75,8 @@ void sky_clear_boolean(void *target);
 //--------------------------------------
 
 // Creates a reference to a cursor.
-sky_cursor *sky_cursor_new(int32_t min_property_id, int32_t max_property_id)
+sky_cursor *sky_cursor_new(int32_t min_property_id,
+                           int32_t max_property_id)
 {
     sky_cursor *cursor = calloc(1, sizeof(sky_cursor));
 
@@ -112,6 +113,9 @@ void sky_cursor_free(sky_cursor *cursor)
         if(cursor->property_descriptors != NULL) free(cursor->property_descriptors);
         cursor->property_zero_descriptor = NULL;
         cursor->property_count = 0;
+
+        if(cursor->data != NULL) free(cursor->data);
+
         free(cursor);
     }
 }
@@ -133,16 +137,18 @@ void sky_cursor_set_value(sky_cursor *cursor, void *target,
 // Descriptor Management
 //--------------------------------------
 
-void sky_cursor_set_data_sz(sky_cursor *descriptor, uint32_t sz) {
-    descriptor->data_sz = sz;
+void sky_cursor_set_data_sz(sky_cursor *cursor, uint32_t sz) {
+    cursor->data_sz = sz;
+    if(cursor->data != NULL) free(cursor->data);
+    cursor->data = calloc(1, sz);
 }
 
-void sky_cursor_set_timestamp_offset(sky_cursor *descriptor, uint32_t offset) {
-    descriptor->timestamp_descriptor.timestamp_offset = offset;
+void sky_cursor_set_timestamp_offset(sky_cursor *cursor, uint32_t offset) {
+    cursor->timestamp_descriptor.timestamp_offset = offset;
 }
 
-void sky_cursor_set_ts_offset(sky_cursor *descriptor, uint32_t offset) {
-    descriptor->timestamp_descriptor.ts_offset = offset;
+void sky_cursor_set_ts_offset(sky_cursor *cursor, uint32_t offset) {
+    cursor->timestamp_descriptor.ts_offset = offset;
 }
 
 // Sets the data type and offset for a given property id.
@@ -174,7 +180,6 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
         property_descriptor->clear_func = sky_clear_boolean;
     }
     else {
-        debug("Unknown data type: '%s'", data_type);
         property_descriptor->set_func = sky_set_boolean;
         property_descriptor->clear_func = sky_clear_boolean;
     }
@@ -187,7 +192,40 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
 
 
 //--------------------------------------
-// Iteration
+// Object Iteration
+//--------------------------------------
+
+void sky_cursor_set_leveldb_iterator(sky_cursor *cursor, leveldb_iterator_t* iterator)
+{
+    // Set iterator and move to initial object.
+    cursor->leveldb_iterator = iterator;
+    sky_cursor_next_object(cursor);
+}
+
+void sky_cursor_next_object(sky_cursor *cursor)
+{
+    // Move to next object.
+    if(sky_cursor_has_next_object(cursor)) {
+        // Retrieve the object data for this object.
+        size_t data_length;
+        void *data = (void*)leveldb_iter_value(cursor->leveldb_iterator, &data_length);
+        
+        // Set the pointer on the cursor.
+        sky_cursor_set_ptr(cursor, data, data_length);
+
+        // Move to the next object.
+        leveldb_iter_next(cursor->leveldb_iterator);
+    }
+}
+
+bool sky_cursor_has_next_object(sky_cursor *cursor)
+{
+    return (cursor->leveldb_iterator != NULL && leveldb_iter_valid(cursor->leveldb_iterator));
+}
+
+
+//--------------------------------------
+// Event Iteration
 //--------------------------------------
 
 void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)

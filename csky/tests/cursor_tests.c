@@ -55,6 +55,20 @@ char *DATA1 =
   "\x92" "\xD3\x00\x00\x00\x00\x03\xF0\x00\x00" "\x82" "\xFF\xA2""A2" "\xFE\xD1\x01\x90"
 ;
 
+int DATA3_LENGTH = 26;
+char *DATA3 = 
+  // 1970-01-01T00:00:00Z, {1:2}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\x00\x00\x00" "\x81" "\x01\x02"
+  // 1970-01-01T00:00:01Z, {1:3}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\x10\x00\x00" "\x81" "\x01\x03"
+;
+
+int DATA4_LENGTH = 13;
+char *DATA4 = 
+  // 1970-01-01T00:00:00Z, {1:2}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\x00\x00\x00" "\x81" "\x01\x04"
+;
+
 
 //==============================================================================
 //
@@ -63,38 +77,38 @@ char *DATA1 =
 //==============================================================================
 
 #define ASSERT_OBJ_STATE(OBJ, TS, TIMESTAMP, ACTION, OSTRING, OINT, ODOUBLE, OBOOLEAN, ASTRING, AINT, ADOUBLE, ABOOLEAN) do {\
-    mu_assert_int64_equals(OBJ.ts, TS); \
-    mu_assert_int_equals(OBJ.timestamp, TIMESTAMP); \
-    mu_assert_int_equals(OBJ.action.length, (int)strlen(ACTION)); \
-    mu_assert_bool(memcmp(OBJ.action.data, ACTION, strlen(ACTION)) == 0); \
-    mu_assert_int_equals(OBJ.object_string.length, (int)strlen(OSTRING)); \
-    mu_assert_bool(memcmp(OBJ.object_string.data, OSTRING, strlen(OSTRING)) == 0); \
-    mu_assert_int64_equals(OBJ.object_int, OINT); \
-    mu_assert_bool(fabs(OBJ.object_double-ODOUBLE) < 0.1); \
-    mu_assert_bool(OBJ.object_boolean == OBOOLEAN); \
-    mu_assert_int_equals(OBJ.action_string.length, (int)strlen(ASTRING)); \
-    mu_assert_bool(memcmp(OBJ.action_string.data, ASTRING, strlen(ASTRING)) == 0); \
-    mu_assert_int64_equals(OBJ.action_int, AINT); \
-    mu_assert_bool(fabs(OBJ.action_double-ADOUBLE) < 0.1); \
-    mu_assert_bool(OBJ.action_boolean == ABOOLEAN); \
+    mu_assert_int64_equals(((test_t*)OBJ)->ts, TS); \
+    mu_assert_int_equals(((test_t*)OBJ)->timestamp, TIMESTAMP); \
+    mu_assert_int_equals(((test_t*)OBJ)->action.length, (int)strlen(ACTION)); \
+    mu_assert_bool(memcmp(((test_t*)OBJ)->action.data, ACTION, strlen(ACTION)) == 0); \
+    mu_assert_int_equals(((test_t*)OBJ)->object_string.length, (int)strlen(OSTRING)); \
+    mu_assert_bool(memcmp(((test_t*)OBJ)->object_string.data, OSTRING, strlen(OSTRING)) == 0); \
+    mu_assert_int64_equals(((test_t*)OBJ)->object_int, OINT); \
+    mu_assert_bool(fabs(((test_t*)OBJ)->object_double-ODOUBLE) < 0.1); \
+    mu_assert_bool(((test_t*)OBJ)->object_boolean == OBOOLEAN); \
+    mu_assert_int_equals(((test_t*)OBJ)->action_string.length, (int)strlen(ASTRING)); \
+    mu_assert_bool(memcmp(((test_t*)OBJ)->action_string.data, ASTRING, strlen(ASTRING)) == 0); \
+    mu_assert_int64_equals(((test_t*)OBJ)->action_int, AINT); \
+    mu_assert_bool(fabs(((test_t*)OBJ)->action_double-ADOUBLE) < 0.1); \
+    mu_assert_bool(((test_t*)OBJ)->action_boolean == ABOOLEAN); \
 } while(0)
 
 #define ASSERT_OBJ_STATE2(OBJ, TIMESTAMP, ACTION, OINT, AINT) do {\
-    mu_assert_int64_equals(OBJ.timestamp, TIMESTAMP); \
-    mu_assert_int_equals(OBJ.action.length, (int)strlen(ACTION)); \
-    mu_assert_bool(memcmp(OBJ.action.data, ACTION, strlen(ACTION)) == 0); \
-    mu_assert_int64_equals(OBJ.object_int, OINT); \
-    mu_assert_int64_equals(OBJ.action_int, AINT); \
+    mu_assert_int64_equals(((test_t*)OBJ)->timestamp, TIMESTAMP); \
+    mu_assert_int_equals(((test_t*)OBJ)->action.length, (int)strlen(ACTION)); \
+    mu_assert_bool(memcmp(((test_t*)OBJ)->action.data, ACTION, strlen(ACTION)) == 0); \
+    mu_assert_int64_equals(((test_t*)OBJ)->object_int, OINT); \
+    mu_assert_int64_equals(((test_t*)OBJ)->action_int, AINT); \
 } while(0)
 
 typedef struct {
     sky_string action;
     sky_string action_string;
-    int64_t    action_int;
+    int32_t    action_int;
     double     action_double;
     bool       action_boolean;
     sky_string object_string;
-    int64_t    object_int;
+    int32_t    object_int;
     double     object_double;
     bool       object_boolean;
     uint32_t timestamp;
@@ -103,10 +117,12 @@ typedef struct {
 
 typedef struct {
     int64_t dummy;
-    int64_t int_value;
+    int32_t int_value;
     double double_value;
     bool boolean_value;
     sky_string string_value;
+    uint32_t timestamp;
+    int64_t ts;
 } test2_t;
 
 //==============================================================================
@@ -121,11 +137,9 @@ typedef struct {
 
 int test_sky_cursor_set_data() {
     // Setup data object & cursor.
-    test_t obj; memset(&obj, 0, sizeof(obj));
     sky_cursor *cursor = sky_cursor_new(-4, 4);
-    cursor->data = &obj;
-    cursor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
-    cursor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
+    sky_cursor_set_timestamp_offset(cursor, offsetof(test_t, timestamp));
+    sky_cursor_set_ts_offset(cursor, offsetof(test_t, ts));
     sky_cursor_set_property(cursor, -5, offsetof(test_t, action_boolean), sizeof(bool), "boolean");
     sky_cursor_set_property(cursor, -4, offsetof(test_t, action_double), sizeof(double), "float");
     sky_cursor_set_property(cursor, -3, offsetof(test_t, action_int), sizeof(int32_t), "integer");
@@ -135,25 +149,26 @@ int test_sky_cursor_set_data() {
     sky_cursor_set_property(cursor, 2, offsetof(test_t, object_int), sizeof(int32_t), "integer");
     sky_cursor_set_property(cursor, 3, offsetof(test_t, object_double), sizeof(double), "float");
     sky_cursor_set_property(cursor, 4, offsetof(test_t, object_boolean), sizeof(bool), "boolean");
+    sky_cursor_set_data_sz(cursor, sizeof(test_t));
 
     sky_cursor_set_ptr(cursor, DATA0, DATA0_LENGTH);
-    ASSERT_OBJ_STATE(obj, 0LL, 0, "", "", 0LL, 0, false, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(cursor->data, 0LL, 0, "", "", 0LL, 0, false, "", 0LL, 0, false);
 
     // Event 1 (State-Only)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, 0LL, 0, "", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(cursor->data, 0LL, 0, "", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
     
     // Event 2 (Action + Action Data)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(1000000LL), 1, "A1", "john doe", 1000LL, 100.2, true, "super", 21LL, 100, true);
+    ASSERT_OBJ_STATE(cursor->data, sky_timestamp_shift(1000000LL), 1, "A1", "john doe", 1000LL, 100.2, true, "super", 21LL, 100, true);
     
     // Event 3 (Action-Only)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(2000000LL), 2, "A2", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(cursor->data, sky_timestamp_shift(2000000LL), 2, "A2", "john doe", 1000LL, 100.2, true, "", 0LL, 0, false);
 
     // Event 4 (Data-Only)
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
-    ASSERT_OBJ_STATE(obj, sky_timestamp_shift(3000000LL), 3, "", "frank sinatra", 20LL, -100, false, "", 0LL, 0, false);
+    ASSERT_OBJ_STATE(cursor->data, sky_timestamp_shift(3000000LL), 3, "", "frank sinatra", 20LL, -100, false, "", 0LL, 0, false);
 
     // EOF
     mu_assert_bool(!sky_lua_cursor_next_event(cursor));
@@ -169,74 +184,73 @@ int test_sky_cursor_set_data() {
 
 int test_sky_cursor_sessionize() {
     // Setup data object.
-    test_t obj; memset(&obj, 0, sizeof(obj));
     sky_cursor *cursor = sky_cursor_new(-2, 1);
-    cursor->data = &obj;
-    cursor->timestamp_descriptor.timestamp_offset = offsetof(test_t, timestamp);
-    cursor->timestamp_descriptor.ts_offset = offsetof(test_t, ts);
+    sky_cursor_set_timestamp_offset(cursor, offsetof(test_t, timestamp));
+    sky_cursor_set_ts_offset(cursor, offsetof(test_t, ts));
     sky_cursor_set_property(cursor, -2, offsetof(test_t, action_int), sizeof(int32_t), "integer");
     sky_cursor_set_property(cursor, -1, offsetof(test_t, action), sizeof(sky_string), "string");
     sky_cursor_set_property(cursor, 1, offsetof(test_t, object_int), sizeof(int32_t), "integer");
+    sky_cursor_set_data_sz(cursor, sizeof(test_t));
 
     // Initialize data and set a 10 second idle time.
     sky_cursor_set_ptr(cursor, DATA1, DATA1_LENGTH);
     sky_cursor_set_session_idle(cursor, 10);
     mu_assert_int_equals(cursor->session_event_index, -1);
-    ASSERT_OBJ_STATE2(obj, 0, "", 0LL, 0LL);
+    ASSERT_OBJ_STATE2(cursor->data, 0, "", 0LL, 0LL);
     
     // Pre-session
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
     mu_assert_int_equals(cursor->session_event_index, -1);
-    ASSERT_OBJ_STATE2(obj, 0, "", 0LL, 0LL);
+    ASSERT_OBJ_STATE2(cursor->data, 0, "", 0LL, 0LL);
 
     // Session 1
     mu_assert_bool(sky_lua_cursor_next_session(cursor));
     mu_assert_int_equals(cursor->session_event_index, -1);
-    ASSERT_OBJ_STATE2(obj, 0, "", 0LL, 0LL);
+    ASSERT_OBJ_STATE2(cursor->data, 0, "", 0LL, 0LL);
 
     // Session 1, Event 1
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 0);
-    ASSERT_OBJ_STATE2(obj, 0, "A1", 1000LL, 0LL);
+    ASSERT_OBJ_STATE2(cursor->data, 0, "A1", 1000LL, 0LL);
     
     // Session 1, Event 2
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 1);
-    ASSERT_OBJ_STATE2(obj, 1, "A2", 1000LL, 100LL);
+    ASSERT_OBJ_STATE2(cursor->data, 1, "A2", 1000LL, 100LL);
     
     // Session 1, Event 3
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 2);
-    ASSERT_OBJ_STATE2(obj, 10, "A3", 1000LL, 200LL);
+    ASSERT_OBJ_STATE2(cursor->data, 10, "A3", 1000LL, 200LL);
     
     // Prevent next session!
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
     mu_assert_int_equals(cursor->session_event_index, 2);
-    ASSERT_OBJ_STATE2(obj, 10, "A3", 1000LL, 200LL);
+    ASSERT_OBJ_STATE2(cursor->data, 10, "A3", 1000LL, 200LL);
     
 
     // Session 2 (Single Event)
     mu_assert_bool(sky_lua_cursor_next_session(cursor));
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 0);
-    ASSERT_OBJ_STATE2(obj, 20, "A1", 1000LL, 300LL);
+    ASSERT_OBJ_STATE2(cursor->data, 20, "A1", 1000LL, 300LL);
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
 
 
     // Session 3 (with same data)
     mu_assert_bool(sky_lua_cursor_next_session(cursor));
     mu_assert_int_equals(cursor->session_event_index, -1);
-    ASSERT_OBJ_STATE2(obj, 20, "A1", 1000LL, 300LL);
+    ASSERT_OBJ_STATE2(cursor->data, 20, "A1", 1000LL, 300LL);
 
     // Session 3, Event 1
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 0);
-    ASSERT_OBJ_STATE2(obj, 60, "A1", 2000LL, 0LL);
+    ASSERT_OBJ_STATE2(cursor->data, 60, "A1", 2000LL, 0LL);
 
     // Session 3, Event 2
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 1);
-    ASSERT_OBJ_STATE2(obj, 63, "A2", 2000LL, 400LL);
+    ASSERT_OBJ_STATE2(cursor->data, 63, "A2", 2000LL, 400LL);
 
     // Prevent next session!
     mu_assert_bool(sky_lua_cursor_next_event(cursor) == false);
@@ -251,9 +265,66 @@ int test_sky_cursor_sessionize() {
     mu_assert_int_equals(cursor->session_event_index, -1);
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int_equals(cursor->session_event_index, 0);
-    ASSERT_OBJ_STATE2(obj, 0, "A1", 1000LL, 0LL);
+    ASSERT_OBJ_STATE2(cursor->data, 0, "A1", 1000LL, 0LL);
     
     sky_cursor_free(cursor);
+    return 0;
+}
+
+
+//--------------------------------------
+// Object Iteration
+//--------------------------------------
+
+int test_sky_cursor_object_iteration() {
+    // Setup database.
+    char* errptr = NULL;
+    leveldb_options_t* options = leveldb_options_create();
+    leveldb_options_set_create_if_missing(options, true);
+    leveldb_t* db = leveldb_open(options, "tmp/object_iteration", &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error: %s", errptr);
+    
+    // Write two objects.
+    leveldb_writeoptions_t *writeoptions = leveldb_writeoptions_create();
+    leveldb_put(db, writeoptions, "dat3", 4, DATA3, DATA3_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (dat3): %s", errptr);
+    leveldb_put(db, writeoptions, "dat4", 4, DATA4, DATA4_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (dat4): %s", errptr);
+
+    // Setup cursor.
+    sky_cursor *cursor = sky_cursor_new(0, 1);
+    sky_cursor_set_ts_offset(cursor, offsetof(test2_t, ts));
+    sky_cursor_set_timestamp_offset(cursor, offsetof(test2_t, timestamp));
+    sky_cursor_set_property(cursor, 1, offsetof(test2_t, int_value), sizeof(int32_t), "integer");
+    sky_cursor_set_data_sz(cursor, sizeof(test2_t));
+
+    // Setup iterator.
+    leveldb_readoptions_t *readoptions = leveldb_readoptions_create();
+    leveldb_iterator_t *leveldb_iterator = leveldb_create_iterator(db, readoptions);
+    leveldb_iter_seek_to_first(leveldb_iterator);
+    sky_cursor_set_leveldb_iterator(cursor, leveldb_iterator);
+    test2_t *obj = (test2_t*)cursor->data;
+
+    // Loop over first object.
+    mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int64_equals(obj->int_value, 2LL);
+    mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int64_equals(obj->int_value, 3LL);
+    mu_assert_bool(!sky_lua_cursor_next_event(cursor));
+
+    // Loop over second object.
+    sky_cursor_next_object(cursor);
+    mu_assert_int64_equals(obj->int_value, 0LL);
+    mu_assert_bool(sky_lua_cursor_next_event(cursor));
+    mu_assert_int64_equals(obj->int_value, 4LL);
+    mu_assert_bool(!sky_lua_cursor_next_event(cursor));
+
+    sky_cursor_free(cursor);
+    leveldb_iter_destroy(leveldb_iterator);
+    leveldb_readoptions_destroy(readoptions);
+    leveldb_writeoptions_destroy(writeoptions);
+    leveldb_options_destroy(options);
+    leveldb_close(db);
     return 0;
 }
 
@@ -263,58 +334,57 @@ int test_sky_cursor_sessionize() {
 //--------------------------------------
 
 int test_sky_cursor_set_integer() {
-    test2_t obj;
-    memset(&obj, 0, sizeof(obj));
     size_t sz;
     sky_cursor *cursor = sky_cursor_new(0, 1);
     sky_cursor_set_property(cursor, 1, offsetof(test2_t, int_value), sizeof(int32_t), "integer");
+    sky_cursor_set_data_sz(cursor, sizeof(test2_t));
     mu_assert_int_equals(cursor->property_zero_descriptor[1].offset, 8);
-    sky_cursor_set_value(cursor, (void*)(&obj), 1, INT_DATA, &sz);
+    sky_cursor_set_value(cursor, cursor->data, 1, INT_DATA, &sz);
     mu_assert_long_equals(sz, 3L);
-    mu_assert_int64_equals(obj.int_value, 1000LL);
+    mu_assert_int64_equals(((test2_t*)cursor->data)->int_value, 1000LL);
     sky_cursor_free(cursor);
     return 0;
 }
 
 int test_sky_cursor_set_double() {
-    test2_t obj;
     size_t sz;
     sky_cursor *cursor = sky_cursor_new(-1, 0);
     sky_cursor_set_property(cursor, -1, offsetof(test2_t, double_value), sizeof(double), "float");
+    sky_cursor_set_data_sz(cursor, sizeof(test2_t));
     mu_assert_int_equals(cursor->property_zero_descriptor[-1].offset, 16);
-    sky_cursor_set_value(cursor, (void*)(&obj), -1, DOUBLE_DATA, &sz);
+    sky_cursor_set_value(cursor, cursor->data, -1, DOUBLE_DATA, &sz);
     mu_assert_long_equals(sz, 9L);
-    mu_assert_bool(fabs(obj.double_value - 100.2) < 0.1);
+    mu_assert_bool(fabs(((test2_t*)cursor->data)->double_value - 100.2) < 0.1);
     sky_cursor_free(cursor);
     return 0;
 }
 
 int test_sky_cursor_set_boolean() {
-    test2_t obj;
     size_t sz;
     sky_cursor *cursor = sky_cursor_new(0, 2);
     sky_cursor_set_property(cursor, 2, offsetof(test2_t, boolean_value), sizeof(bool), "boolean");
+    sky_cursor_set_data_sz(cursor, sizeof(test2_t));
     mu_assert_int_equals(cursor->property_zero_descriptor[2].offset, 24);
-    sky_cursor_set_value(cursor, (void*)(&obj), 2, BOOLEAN_TRUE_DATA, &sz);
+    sky_cursor_set_value(cursor, cursor->data, 2, BOOLEAN_TRUE_DATA, &sz);
     mu_assert_long_equals(sz, 1L);
-    mu_assert_bool(obj.boolean_value == true);
-    sky_cursor_set_value(cursor, (void*)(&obj), 2, BOOLEAN_FALSE_DATA, &sz);
+    mu_assert_bool(((test2_t*)cursor->data)->boolean_value == true);
+    sky_cursor_set_value(cursor, cursor->data, 2, BOOLEAN_FALSE_DATA, &sz);
     mu_assert_long_equals(sz, 1L);
-    mu_assert_bool(obj.boolean_value == false);
+    mu_assert_bool(((test2_t*)cursor->data)->boolean_value == false);
     sky_cursor_free(cursor);
     return 0;
 }
 
 int test_sky_cursor_set_string() {
-    test2_t obj;
     size_t sz;
     sky_cursor *cursor = sky_cursor_new(0, 1);
+    sky_cursor_set_data_sz(cursor, sizeof(test2_t));
     sky_cursor_set_property(cursor, 1, offsetof(test2_t, string_value), sizeof(sky_string), "string");
     mu_assert_int_equals(cursor->property_zero_descriptor[1].offset, 32);
-    sky_cursor_set_value(cursor, (void*)(&obj), 1, STRING_DATA, &sz);
+    sky_cursor_set_value(cursor, cursor->data, 1, STRING_DATA, &sz);
     mu_assert_long_equals(sz, 4L);
-    mu_assert_int_equals(obj.string_value.length, 3);
-    mu_assert_bool(obj.string_value.data == &STRING_DATA[1]);
+    mu_assert_int_equals(((test2_t*)cursor->data)->string_value.length, 3);
+    mu_assert_bool(((test2_t*)cursor->data)->string_value.data == &STRING_DATA[1]);
     sky_cursor_free(cursor);
     return 0;
 }
@@ -330,6 +400,8 @@ int test_sky_cursor_set_string() {
 int all_tests() {
     mu_run_test(test_sky_cursor_set_data);
     mu_run_test(test_sky_cursor_sessionize);
+    mu_run_test(test_sky_cursor_object_iteration);
+    
     mu_run_test(test_sky_cursor_set_integer);
     mu_run_test(test_sky_cursor_set_double);
     mu_run_test(test_sky_cursor_set_boolean);

@@ -13,6 +13,10 @@ do
     # Only execute if result is a file.
     if test -f $test_file
     then
+        # Clear tmp directory.
+        rm -rf tmp
+        mkdir -p tmp
+
         # Log execution to file.
         if $VALGRIND ./$test_file 2>&1 > /tmp/sky-test.log
         then

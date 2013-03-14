@@ -3,6 +3,8 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <leveldb/c.h>
+
 
 //==============================================================================
 //
@@ -51,6 +53,8 @@ typedef struct sky_cursor {
     sky_property_descriptor *property_descriptors;
     sky_property_descriptor *property_zero_descriptor;
     uint32_t property_count;
+
+    leveldb_iterator_t* leveldb_iterator;
 } sky_cursor;
 
 
@@ -91,7 +95,19 @@ void sky_cursor_set_property(sky_cursor *cursor,
   int64_t property_id, uint32_t offset, uint32_t sz, const char *data_type);
 
 //--------------------------------------
-// Iteration
+// Object Iteration
+//--------------------------------------
+
+void sky_cursor_set_leveldb_iterator(sky_cursor *cursor,
+  leveldb_iterator_t* iterator);
+
+void sky_cursor_next_object(sky_cursor *cursor);
+
+bool sky_cursor_has_next_object(sky_cursor *cursor);
+
+
+//--------------------------------------
+// Event Iteration
 //--------------------------------------
 
 void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz);
