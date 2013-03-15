@@ -78,7 +78,7 @@ typedef struct mp_buf {
 
 static mp_buf *mp_buf_new(void) {
     mp_buf *buf = malloc(sizeof(*buf));
-    
+
     buf->b = NULL;
     buf->len = buf->free = 0;
     return buf;
@@ -681,7 +681,7 @@ int mp_unpack(lua_State *L) {
     s = (const unsigned char*) lua_tolstring(L,-1,&len);
     c = mp_cur_new(s,len);
     mp_decode_to_lua_type(L,c);
-    
+
     if (c->err == MP_CUR_ERROR_EOF) {
         mp_cur_free(c);
         lua_pushstring(L,"Missing bytes in input.");
