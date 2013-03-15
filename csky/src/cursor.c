@@ -197,24 +197,25 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
 
 void sky_cursor_set_leveldb_iterator(sky_cursor *cursor, leveldb_iterator_t* iterator)
 {
-    // Set iterator and move to initial object.
     cursor->leveldb_iterator = iterator;
-    sky_cursor_next_object(cursor);
 }
 
-void sky_cursor_next_object(sky_cursor *cursor)
+bool sky_cursor_next_object(sky_cursor *cursor)
 {
     // Move to next object.
     if(sky_cursor_has_next_object(cursor)) {
-        // Retrieve the object data for this object.
+        // Retrieve the data for the next object.
         size_t data_length;
         void *data = (void*)leveldb_iter_value(cursor->leveldb_iterator, &data_length);
         
         // Set the pointer on the cursor.
         sky_cursor_set_ptr(cursor, data, data_length);
-
-        // Move to the next object.
+        
         leveldb_iter_next(cursor->leveldb_iterator);
+        return true;
+    }
+    else {
+        return false;
     }
 }
 

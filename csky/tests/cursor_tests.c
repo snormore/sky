@@ -306,6 +306,7 @@ int test_sky_cursor_object_iteration() {
     test2_t *obj = (test2_t*)cursor->data;
 
     // Loop over first object.
+    mu_assert_bool(sky_cursor_next_object(cursor));
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int64_equals(obj->int_value, 2LL);
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
@@ -313,11 +314,14 @@ int test_sky_cursor_object_iteration() {
     mu_assert_bool(!sky_lua_cursor_next_event(cursor));
 
     // Loop over second object.
-    sky_cursor_next_object(cursor);
+    mu_assert_bool(sky_cursor_next_object(cursor));
     mu_assert_int64_equals(obj->int_value, 0LL);
     mu_assert_bool(sky_lua_cursor_next_event(cursor));
     mu_assert_int64_equals(obj->int_value, 4LL);
     mu_assert_bool(!sky_lua_cursor_next_event(cursor));
+    
+    // End!
+    mu_assert_bool(!sky_cursor_next_object(cursor));
 
     sky_cursor_free(cursor);
     leveldb_iter_destroy(leveldb_iterator);

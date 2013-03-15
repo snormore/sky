@@ -68,7 +68,7 @@ typedef struct sky_cursor {
 // Lifecycle
 //--------------------------------------
 
-sky_cursor *sky_cursor_new();
+sky_cursor *sky_cursor_new(int32_t min_property_id, int32_t max_property_id);
 
 void sky_cursor_free(sky_cursor *cursor);
 
@@ -101,7 +101,7 @@ void sky_cursor_set_property(sky_cursor *cursor,
 void sky_cursor_set_leveldb_iterator(sky_cursor *cursor,
   leveldb_iterator_t* iterator);
 
-void sky_cursor_next_object(sky_cursor *cursor);
+bool sky_cursor_next_object(sky_cursor *cursor);
 
 bool sky_cursor_has_next_object(sky_cursor *cursor);
 
