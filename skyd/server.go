@@ -52,6 +52,7 @@ func NewServer(port uint, path string) *Server {
   s.addTableHandlers(r)
   s.addPropertyHandlers(r)
   s.addEventHandlers(r)
+  s.addQueryHandlers(r)
 
   return s
 }
@@ -118,7 +119,9 @@ func (s *Server) open() error {
   
   // If none exist then build them based on the number of logical CPUs available.
   if len(s.servlets) == 0 {
-    for i := 0; i < runtime.NumCPU(); i++ {
+    cpuCount := runtime.NumCPU()
+    cpuCount = 1
+    for i := 0; i < cpuCount; i++ {
       s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i)))
     }
   }
@@ -289,7 +292,7 @@ func (s *Server) writeResponse(w http.ResponseWriter, req *http.Request, ret int
     contentType := req.Header.Get("Content-Type")
     if contentType == "application/json" {
       encoder := json.NewEncoder(w)
-      err := encoder.Encode(ret)
+      err := encoder.Encode(ConvertToStringKeys(ret))
       if err != nil {
         fmt.Println(err.Error())
         return

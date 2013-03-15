@@ -207,13 +207,6 @@ func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {
     }
     event.Data = normalizedData
   }
-  if action, ok := m["action"].(map[string]interface{}); ok {
-    normalizedAction, err := t.NormalizeMap(action)
-    if err != nil {
-      return nil, err
-    }
-    event.Action = normalizedAction
-  }
   
   return event, nil
 }
@@ -232,15 +225,6 @@ func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
       return nil, err
     }
     m["data"] = denormalizedData
-  }
-
-  // Convert action map to use property names.
-  if event.Action != nil {
-    denormalizedAction, err := t.DenormalizeMap(event.Action)
-    if err != nil {
-      return nil, err
-    }
-    m["action"] = denormalizedAction
   }
 
   return m, nil

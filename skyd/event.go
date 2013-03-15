@@ -7,27 +7,24 @@ import (
   "time"
 )
 
-// An Event is a state change or action that occurs at a particular
-// point in time.
+// An Event is a state change that occurs at a particular point in time.
 type Event struct {
   Timestamp time.Time
-  Action    map[int64]interface{}
   Data      map[int64]interface{}
 }
 
 // NewEvent returns a new Event.
-func NewEvent(timestamp string, action map[int64]interface{}, data map[int64]interface{}) *Event {
+func NewEvent(timestamp string, data map[int64]interface{}) *Event {
   t, _ := time.Parse(time.RFC3339, timestamp)
   return &Event{
     Timestamp: t,
-    Action:    action,
     Data:      data,
   }
 }
 
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(writer io.Writer) error {
-  raw := []interface{}{ShiftTime(e.Timestamp), e.Action, e.Data}
+  raw := []interface{}{ShiftTime(e.Timestamp), e.Data}
   encoder := msgpack.NewEncoder(writer)
   err := encoder.Encode(raw)
   return err
@@ -35,7 +32,7 @@ func (e *Event) EncodeRaw(writer io.Writer) error {
 
 // Decodes an event from MsgPack format.
 func (e *Event) DecodeRaw(reader io.Reader) error {
-  raw := make([]interface{}, 3)
+  raw := make([]interface{}, 2)
   decoder := msgpack.NewDecoder(reader, nil)
   err := decoder.Decode(&raw)
   if err != nil {
@@ -47,19 +44,11 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
   if err != nil {
     return fmt.Errorf("Unable to parse timestamp: '%v'", raw[0])
   }
-  e.Timestamp = UnshiftTime(timestamp)
-
-  // Convert action to appropriate map.
-  if raw[1] != nil {
-    e.Action, err = e.decodeRawMap(raw[1].(map[interface{}]interface{}))
-    if err != nil {
-      return err
-    }
-  }
+  e.Timestamp = UnshiftTime(timestamp).UTC()
 
   // Convert data to appropriate map.
-  if raw[2] != nil {
-    e.Data, err = e.decodeRawMap(raw[2].(map[interface{}]interface{}))
+  if raw[1] != nil {
+    e.Data, err = e.decodeRawMap(raw[1].(map[interface{}]interface{}))
     if err != nil {
       return err
     }
@@ -68,7 +57,7 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
   return nil
 }
 
-// Decodes the action map.
+// Decodes the map.
 func (e *Event) decodeRawMap(raw map[interface{}]interface{}) (map[int64]interface{}, error) {
   m := make(map[int64]interface{})
   for k, v := range raw {
@@ -92,18 +81,6 @@ func (e *Event) Equal(x *Event) bool {
   if !e.Timestamp.Equal(x.Timestamp) {
     return false
   }
-  for k, v := range e.Action {
-    v2 := x.Action[k]
-    if v != v2 {
-      return false
-    }
-  }
-  for k, v := range x.Action {
-    v2 := e.Action[k]
-    if v != v2 {
-      return false
-    }
-  }
   for k, v := range e.Data {
     v2 := x.Data[k]
     if v != v2 {
@@ -121,13 +98,6 @@ func (e *Event) Equal(x *Event) bool {
 
 // Merges the data of another event into this event.
 func (e *Event) Merge(a *Event) {
-  if e.Action == nil && a.Action != nil {
-    e.Action = make(map[int64]interface{})
-  }
-  for k, v := range a.Action {
-    e.Action[k] = v
-  }
-
   if e.Data == nil && a.Data != nil {
     e.Data = make(map[int64]interface{})
   }

@@ -31,8 +31,8 @@ func TestServletPutEvent(t *testing.T) {
 
   // Setup source events.
   input := make([]*Event, 2)
-  input[0] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{1:"foo"}, map[int64]interface{}{})
-  input[1] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{2:"bar"}, map[int64]interface{}{})
+  input[0] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{1:"foo"})
+  input[1] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{2:"bar"})
 
   // Add events.
   for _, e := range input {
