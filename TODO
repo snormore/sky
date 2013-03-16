@@ -1,11 +1,2 @@
-* Pass in LevelDB iterator to C.
-* Move over cursor.c, minipack, 
 * Add ending state at the beginning of event list (for optimizing appends).
-* Split off separate servlet channels.
-
-
-# Query Endpoints
-POST   /tables/:name/query
-
-
 * Create command line interface to server.

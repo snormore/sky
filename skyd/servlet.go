@@ -11,20 +11,45 @@ import (
 	"time"
 )
 
+//------------------------------------------------------------------------------
+//
+// Typedefs
+//
+//------------------------------------------------------------------------------
+
 // A Servlet is a small wrapper around a single shard of a LevelDB data file.
 type Servlet struct {
-	path string
-	db   *levigo.DB
+	path    string
+	db      *levigo.DB
+	channel chan *Message
 }
+
+
+//------------------------------------------------------------------------------
+//
+// Constructors
+//
+//------------------------------------------------------------------------------
 
 // NewServlet returns a new Servlet with a data shard stored at a given path.
 func NewServlet(path string) *Servlet {
 	return &Servlet{
 		path: path,
+		channel: make(chan *Message),
 	}
 }
 
-// Opens the underlying LevelDB database.
+//------------------------------------------------------------------------------
+//
+// Methods
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Lifecycle
+//--------------------------------------
+
+// Opens the underlying LevelDB database and starts the message loop.
 func (s *Servlet) Open() error {
 	err := os.MkdirAll(s.path, 0700)
 	if err != nil {
@@ -38,15 +63,59 @@ func (s *Servlet) Open() error {
 		panic(fmt.Sprintf("skyd.Servlet: Unable to open LevelDB database: %v", err))
 	}
 	s.db = db
+
+	// Start message loop.
+	go s.process()
+
 	return nil
 }
 
 // Closes the underlying LevelDB database.
 func (s *Servlet) Close() {
+	// Wait for the message loop to shutdown.
+	m := NewShutdownMessage()
+	s.channel <- m
+	m.wait()
+
 	if s.db != nil {
 		s.db.Close()
 	}
 }
+
+//--------------------------------------
+// Synchronization
+//--------------------------------------
+
+// Executes a function through a single-threaded servlet context and waits until completion.
+func (s *Servlet) sync(f func() (interface{}, error)) (interface{}, error) {
+	m := s.async(f)
+	return m.wait()
+}
+
+// Executes a function through a single-threaded servlet context and returns immediately.
+func (s *Servlet) async(f func() (interface{}, error)) *Message {
+	m := NewExecuteMessage(f)
+	s.channel <- m
+	return m
+}
+
+//--------------------------------------
+// Message Processing
+//--------------------------------------
+
+// Serially processes messages routed through the servlet channel.
+func (s *Servlet) process() {
+	for message := range s.channel {
+		message.execute()
+		if message.messageType == ShutdownMessageType {
+			return
+		}
+	}
+}
+
+//--------------------------------------
+// Event Management
+//--------------------------------------
 
 // Adds an event for a given object in a table to a servlet.
 func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {

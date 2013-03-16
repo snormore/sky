@@ -5,26 +5,37 @@ import (
 	"net/http"
 )
 
-func (s *Server) addPropertyHandlers(r *mux.Router) {
-	r.HandleFunc("/tables/{name}/properties", func(w http.ResponseWriter, req *http.Request) { s.getPropertiesHandler(w, req) }).Methods("GET")
-	r.HandleFunc("/tables/{name}/properties", func(w http.ResponseWriter, req *http.Request) { s.createPropertyHandler(w, req) }).Methods("POST")
-	r.HandleFunc("/tables/{name}/properties/{propertyName}", func(w http.ResponseWriter, req *http.Request) { s.getPropertyHandler(w, req) }).Methods("GET")
-	r.HandleFunc("/tables/{name}/properties/{propertyName}", func(w http.ResponseWriter, req *http.Request) { s.updatePropertyHandler(w, req) }).Methods("PATCH")
-	r.HandleFunc("/tables/{name}/properties/{propertyName}", func(w http.ResponseWriter, req *http.Request) { s.deletePropertyHandler(w, req) }).Methods("DELETE")
+func (s *Server) addPropertyHandlers() {
+	s.ApiHandleFunc("/tables/{name}/properties", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.getPropertiesHandler(w, req, params)
+	}).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/properties", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.createPropertyHandler(w, req, params)
+	}).Methods("POST")
+
+	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.getPropertyHandler(w, req, params)
+	}).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.updatePropertyHandler(w, req, params)
+	}).Methods("PATCH")
+	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.deletePropertyHandler(w, req, params)
+	}).Methods("DELETE")
 }
 
 // GET /tables/:name/properties
-func (s *Server) getPropertiesHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) getPropertiesHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	s.processWithTable(w, req, vars["name"], func(table *Table, params map[string]interface{}) (interface{}, error) {
+	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		return table.GetProperties()
 	})
 }
 
 // POST /tables/:name/properties
-func (s *Server) createPropertyHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) createPropertyHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	s.processWithTable(w, req, vars["name"], func(table *Table, params map[string]interface{}) (interface{}, error) {
+	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		name, _ := params["name"].(string)
 		typ, _ := params["type"].(string)
 		dataType, _ := params["dataType"].(string)
@@ -33,17 +44,17 @@ func (s *Server) createPropertyHandler(w http.ResponseWriter, req *http.Request)
 }
 
 // GET /tables/:name/properties/:propertyName
-func (s *Server) getPropertyHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) getPropertyHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	s.processWithTable(w, req, vars["name"], func(table *Table, params map[string]interface{}) (interface{}, error) {
+	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		return table.GetPropertyByName(vars["propertyName"])
 	})
 }
 
 // PATCH /tables/:name/properties/:propertyName
-func (s *Server) updatePropertyHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) updatePropertyHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	s.processWithTable(w, req, vars["name"], func(table *Table, params map[string]interface{}) (interface{}, error) {
+	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		// Retrieve property.
 		property, err := table.GetPropertyByName(vars["propertyName"])
 		if err != nil {
@@ -63,9 +74,9 @@ func (s *Server) updatePropertyHandler(w http.ResponseWriter, req *http.Request)
 }
 
 // DELETE /tables/:name/properties/:propertyName
-func (s *Server) deletePropertyHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) deletePropertyHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	s.processWithTable(w, req, vars["name"], func(table *Table, params map[string]interface{}) (interface{}, error) {
+	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		// Retrieve property.
 		property, err := table.GetPropertyByName(vars["propertyName"])
 		if err != nil {

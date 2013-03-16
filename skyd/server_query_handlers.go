@@ -6,14 +6,16 @@ import (
 	"net/http"
 )
 
-func (s *Server) addQueryHandlers(r *mux.Router) {
-	r.HandleFunc("/tables/{name}/query", func(w http.ResponseWriter, req *http.Request) { s.queryHandler(w, req) }).Methods("POST")
+func (s *Server) addQueryHandlers() {
+	s.ApiHandleFunc("/tables/{name}/query", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.queryHandler(w, req, params)
+	}).Methods("POST")
 }
 
 // POST /tables/:name/query
-func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request) {
+func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	s.processWithTable(w, req, vars["name"], func(table *Table, params map[string]interface{}) (interface{}, error) {
+	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		// TODO: Parse query from JSON POST.
 		// TODO: Codegen Lua from query object.
 

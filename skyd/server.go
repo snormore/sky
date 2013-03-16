@@ -15,6 +15,12 @@ import (
 	"runtime"
 )
 
+//------------------------------------------------------------------------------
+//
+// Constants
+//
+//------------------------------------------------------------------------------
+
 const (
 	DefaultPort = 8585
 
@@ -22,59 +28,85 @@ const (
 	ServerMessageTypeShutdown = "shutdown"
 )
 
+//------------------------------------------------------------------------------
+//
+// Typedefs
+//
+//------------------------------------------------------------------------------
+
 // A Server is the front end that controls access to tables.
 type Server struct {
 	httpServer *http.Server
+	router     *mux.Router
 	path       string
 	listener   net.Listener
 	servlets   []*Servlet
 	tables     map[string]*Table
-	channel    chan *ServerMessage
+	channel    chan *Message
 }
 
-// The request, response and handler function used for processing a message.
-type ServerMessage struct {
-	messageType string
-	w           http.ResponseWriter
-	req         *http.Request
-	params      map[string]interface{}
-	f           func(params map[string]interface{}) (interface{}, error)
-	channel     chan interface{}
-}
+//------------------------------------------------------------------------------
+//
+// Constructors
+//
+//------------------------------------------------------------------------------
 
 // NewServer returns a new Server.
 func NewServer(port uint, path string) *Server {
 	r := mux.NewRouter()
 	s := &Server{
 		httpServer: &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
+		router:     r,
 		path:       path,
 		tables:     make(map[string]*Table),
-		channel:    make(chan *ServerMessage),
+		channel:    make(chan *Message),
 	}
 
-	s.addHandlers(r)
-	s.addTableHandlers(r)
-	s.addPropertyHandlers(r)
-	s.addEventHandlers(r)
-	s.addQueryHandlers(r)
+	s.addHandlers()
+	s.addTableHandlers()
+	s.addPropertyHandlers()
+	s.addEventHandlers()
+	s.addQueryHandlers()
 
 	return s
 }
 
-func NewExecuteServerMessage(w http.ResponseWriter, req *http.Request, params map[string]interface{}, f func(params map[string]interface{}) (interface{}, error)) *ServerMessage {
-	return &ServerMessage{
-		messageType: "execute",
-		w:           w,
-		req:         req,
-		params:      params,
-		f:           f,
-		channel:     make(chan interface{}),
-	}
+
+//------------------------------------------------------------------------------
+//
+// Properties
+//
+//------------------------------------------------------------------------------
+
+// The root server path.
+func (s *Server) Path() string {
+	return s.path
 }
 
-func NewShutdownServerMessage() *ServerMessage {
-	return &ServerMessage{messageType: "shutdown", channel: make(chan interface{})}
+// The path to the data directory.
+func (s *Server) DataPath() string {
+	return fmt.Sprintf("%v/data", s.path)
 }
+
+// The path to the table metadata directory.
+func (s *Server) TablesPath() string {
+	return fmt.Sprintf("%v/tables", s.path)
+}
+
+// Generates the path for a table attached to the server.
+func (s *Server) TablePath(name string) string {
+	return fmt.Sprintf("%v/%v", s.TablesPath(), name)
+}
+
+//------------------------------------------------------------------------------
+//
+// Methods
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Lifecycle
+//--------------------------------------
 
 // Runs the server.
 func (s *Server) ListenAndServe() error {
@@ -90,18 +122,21 @@ func (s *Server) ListenAndServe() error {
 		return err
 	}
 	s.listener = listener
-	go s.processMessages()
+	go s.process()
 	go s.httpServer.Serve(s.listener)
 	return nil
 }
 
 // Stops the server.
 func (s *Server) Shutdown() error {
+	// Close servlets.
+	s.close()
+
 	if s.listener != nil {
 		// Wait for the message loop to shutdown.
-		m := NewShutdownServerMessage()
+		m := NewShutdownMessage()
 		s.channel <- m
-		<-m.channel
+		m.wait()
 
 		// Then stop the server.
 		err := s.listener.Close()
@@ -193,6 +228,147 @@ func (s *Server) createIfNotExists() error {
 	return nil
 }
 
+//--------------------------------------
+// Routing
+//--------------------------------------
+
+// Serially processes server messages routed through the server channel.
+func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
+	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
+		var ret interface{}
+		params, err := s.decodeParams(w, req)
+		if err == nil {
+			ret, err = handlerFunction(w, req, params)
+		}
+
+		// If there is an error then replace the return value.
+		if err != nil {
+			ret = map[string]interface{}{"message": err.Error()}
+		}
+
+		// Write header status.
+		if err == nil {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		// Encode the return value appropriately.
+		if ret != nil {
+			contentType := req.Header.Get("Content-Type")
+			if contentType == "application/json" {
+				encoder := json.NewEncoder(w)
+				err := encoder.Encode(ConvertToStringKeys(ret))
+				if err != nil {
+					fmt.Println(err.Error())
+					return
+				}
+			}
+		}
+	}
+	
+	return s.router.HandleFunc(route, wrappedFunction)
+}
+
+
+//--------------------------------------
+// Synchronization
+//--------------------------------------
+
+// Executes a function through a single-threaded server context.
+func (s *Server) sync(f func() (interface{}, error)) (interface{}, error) {
+	m := s.async(f)
+	return m.wait()
+}
+
+// Executes a function through a single-threaded server context.
+func (s *Server) async(f func() (interface{}, error)) *Message {
+	m := NewExecuteMessage(f)
+	s.channel <- m
+	return m
+}
+
+// Executes a function through a single-threaded server context.
+func (s *Server) executeWithTable(tableName string, f func(table *Table) (interface{}, error)) (interface{}, error) {
+	return s.sync(func() (interface{}, error) {
+		// Return an error if the table already exists.
+		table, err := s.OpenTable(tableName)
+		if err != nil {
+			return nil, err
+		}
+		return f(table)
+	})
+}
+
+// Executes a function through a single-threaded servlet context.
+func (s *Server) executeWithObject(tableName string, objectId string, f func(servlet *Servlet, table *Table) (interface{}, error)) (interface{}, error) {
+	var m *Message
+	_, err := s.sync(func() (interface{}, error) {
+		// Return an error if the table already exists.
+		table, err := s.OpenTable(tableName)
+		if err != nil {
+			return nil, err
+		}
+
+		// Determine servlet index.
+		index, err := s.GetObjectServletIndex(table, objectId)
+		if err != nil {
+			return nil, err
+		}
+		servlet := s.servlets[index]
+
+		// Pass off the table to the servlet message loop.
+		m = servlet.async(func() (interface{}, error) {
+			return f(servlet, table)
+		})
+
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	
+	// Make sure we've exited the server loop and we're waiting on the servlet loop.
+	return m.wait()
+}
+
+//--------------------------------------
+// Message Loop
+//--------------------------------------
+
+// Serially processes server messages routed through the server channel.
+func (s *Server) process() {
+	for message := range s.channel {
+		message.execute()
+		if message.messageType == ShutdownMessageType {
+			return
+		}
+	}
+}
+
+// Decodes the body of the message into parameters.
+func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[string]interface{}, error) {
+	// Parses body parameters.
+	params := make(map[string]interface{})
+	contentType := req.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		decoder := json.NewDecoder(req.Body)
+		err := decoder.Decode(&params)
+		if err != nil && err != io.EOF {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, errors.New("Invalid body.")
+		}
+	} else {
+		w.WriteHeader(http.StatusNotAcceptable)
+		return nil, errors.New("Invalid content type.")
+	}
+	return params, nil
+}
+
+//--------------------------------------
+// Servlet Management
+//--------------------------------------
+
 // Calculates a tablet index based on the object identifier even hash.
 func (s *Server) GetObjectServletIndex(t *Table, objectId string) (uint32, error) {
 	// Encode object identifier.
@@ -211,128 +387,9 @@ func (s *Server) GetObjectServletIndex(t *Table, objectId string) (uint32, error
 	return index, nil
 }
 
-// The root server path.
-func (s *Server) Path() string {
-	return s.path
-}
-
-// The path to the data directory.
-func (s *Server) DataPath() string {
-	return fmt.Sprintf("%v/data", s.path)
-}
-
-// The path to the table metadata directory.
-func (s *Server) TablesPath() string {
-	return fmt.Sprintf("%v/tables", s.path)
-}
-
-// Processes a request and return the appropriate data format.
-func (s *Server) process(w http.ResponseWriter, req *http.Request, f func(map[string]interface{}) (interface{}, error)) {
-	params, err := decodeParams(w, req)
-	if err != nil {
-		return
-	}
-
-	// Push the message onto a queue to be processed serially.
-	m := NewExecuteServerMessage(w, req, params, f)
-	s.channel <- m
-	<-m.channel
-}
-
-// Processes a request and automatically opens a given table.
-func (s *Server) processWithTable(w http.ResponseWriter, req *http.Request, tableName string, f func(*Table, map[string]interface{}) (interface{}, error)) {
-	params, err := decodeParams(w, req)
-	if err != nil {
-		return
-	}
-
-	// Create a wrapper function to open the table.
-	preprocess := func(_ map[string]interface{}) (interface{}, error) {
-		table, err := s.OpenTable(tableName)
-		if table == nil || err != nil {
-			return nil, err
-		}
-
-		// Execute the original function.
-		return f(table, params)
-	}
-
-	// Push the message onto a queue to be processed serially.
-	m := NewExecuteServerMessage(w, req, params, preprocess)
-	s.channel <- m
-	<-m.channel
-}
-
-// Processes a request within a table/servlet context.
-func (s *Server) processWithObject(w http.ResponseWriter, req *http.Request, tableName string, objectId string, f func(*Table, *Servlet, map[string]interface{}) (interface{}, error)) {
-	params, err := decodeParams(w, req)
-	if err != nil {
-		return
-	}
-
-	// Create a wrapper function to open the table.
-	preprocess := func(_ map[string]interface{}) (interface{}, error) {
-		table, err := s.OpenTable(tableName)
-		if table == nil || err != nil {
-			return nil, err
-		}
-
-		// Determine servlet index.
-		index, err := s.GetObjectServletIndex(table, objectId)
-		if err != nil {
-			return nil, err
-		}
-		servlet := s.servlets[index]
-
-		// Execute the original function.
-		return f(table, servlet, params)
-	}
-
-	// Push the message onto a queue to be processed serially.
-	m := NewExecuteServerMessage(w, req, params, preprocess)
-	s.channel <- m
-	<-m.channel
-}
-
-// Serially processes server messages routed through the server channel.
-func (s *Server) processMessages() {
-	for message := range s.channel {
-		switch message.messageType {
-		case ServerMessageTypeExecute:
-			ret, err := message.f(message.params)
-			if err != nil {
-				s.writeResponse(message.w, message.req, map[string]interface{}{"message": err.Error()}, http.StatusInternalServerError)
-			} else {
-				s.writeResponse(message.w, message.req, ret, http.StatusOK)
-			}
-			message.channel <- nil
-
-		case ServerMessageTypeShutdown:
-			message.channel <- nil
-			return
-		}
-	}
-}
-
-// Serially processes server messages routed through the server channel.
-func (s *Server) writeResponse(w http.ResponseWriter, req *http.Request, ret interface{}, statusCode int) {
-	if ret != nil {
-		contentType := req.Header.Get("Content-Type")
-		if contentType == "application/json" {
-			encoder := json.NewEncoder(w)
-			err := encoder.Encode(ConvertToStringKeys(ret))
-			if err != nil {
-				fmt.Println(err.Error())
-				return
-			}
-		}
-	}
-}
-
-// Generates the path for a table attached to the server.
-func (s *Server) GetTablePath(name string) string {
-	return fmt.Sprintf("%v/%v", s.TablesPath(), name)
-}
+//--------------------------------------
+// Table Management
+//--------------------------------------
 
 // Retrieves a table that has already been opened.
 func (s *Server) GetTable(name string) *Table {
@@ -348,32 +405,14 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 	}
 
 	// Otherwise open it and save the reference.
-	table = NewTable(name, s.GetTablePath(name))
+	table = NewTable(name, s.TablePath(name))
 	err := table.Open()
 	if err != nil {
 		table.Close()
 		return nil, err
 	}
 	s.tables[name] = table
-
+	
 	return table, nil
 }
 
-// Decodes the body of the message into parameters.
-func decodeParams(w http.ResponseWriter, req *http.Request) (map[string]interface{}, error) {
-	// Parses body parameters.
-	params := make(map[string]interface{})
-	contentType := req.Header.Get("Content-Type")
-	if contentType == "application/json" {
-		decoder := json.NewDecoder(req.Body)
-		err := decoder.Decode(&params)
-		if err != nil && err != io.EOF {
-			w.WriteHeader(http.StatusBadRequest)
-			return nil, errors.New("Invalid body.")
-		}
-	} else {
-		w.WriteHeader(http.StatusNotAcceptable)
-		return nil, errors.New("Invalid content type.")
-	}
-	return params, nil
-}
