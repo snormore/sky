@@ -4,9 +4,9 @@ package skyd
 #cgo LDFLAGS: -lcsky -lluajit-5.1.2
 #include <stdlib.h>
 #include <sky/cursor.h>
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#include <luajit-2.0/lua.h>
+#include <luajit-2.0/lualib.h>
+#include <luajit-2.0/lauxlib.h>
 
 int mp_pack(lua_State *L);
 int mp_unpack(lua_State *L);
