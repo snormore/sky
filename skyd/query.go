@@ -1,20 +1,8 @@
 package skyd
 
 import (
-	"fmt"
 	"encoding/json"
 	"io"
-)
-
-//------------------------------------------------------------------------------
-//
-// Constants
-//
-//------------------------------------------------------------------------------
-
-const (
-	QueryStepTypeCondition = "condition"
-	QueryStepTypeSelection = "selection"
 )
 
 //------------------------------------------------------------------------------
@@ -26,13 +14,7 @@ const (
 // A Query is a structured way of aggregating data in the database.
 type Query struct {
 	table *Table
-	Steps []QueryStep
-}
-
-type QueryStep interface {
-	Serialize() map[string]interface{}
-	Deserialize(map[string]interface{}) error
-	Codegen() (string, error)
+	Steps QueryStepList
 }
 
 //------------------------------------------------------------------------------
@@ -45,7 +27,7 @@ type QueryStep interface {
 func NewQuery(table *Table) *Query {
 	return &Query{
 		table: table,
-		Steps: make([]QueryStep, 0),
+		Steps: make(QueryStepList, 0),
 	}
 }
 
@@ -72,32 +54,18 @@ func (q *Query) Table() *Table {
 
 // Encodes a query into an untyped map.
 func (q *Query) Serialize() map[string]interface{} {
-	obj := map[string]interface{}{"steps": []interface{}{}}
-	steps := make([]interface{}, 0)
-	for _, step := range q.Steps {
-		steps = append(steps, step.Serialize())
+	obj := map[string]interface{}{
+		"steps": q.Steps.Serialize(),
 	}
-	obj["steps"] = steps
 	return obj
 }
 
 // Decodes a query from an untyped map.
 func (q *Query) Deserialize(obj map[string]interface{}) error {
-	q.Steps = make([]QueryStep, 0)
-	if steps, ok := obj["steps"].([]map[string]interface{}); ok {
-		for _, s := range steps  {
-			var step QueryStep
-			switch s["type"] {
-			case QueryStepTypeCondition:
-				step = NewQueryCondition(q)
-			case QueryStepTypeSelection:
-				step = NewQuerySelection(q)
-			default:
-				return fmt.Errorf("Invalid query step type: %v", s["type"])
-			}
-			step.Deserialize(s)
-			q.Steps = append(q.Steps, step)
-		}
+	var err error
+	q.Steps, err = DeserializeQueryStepList(obj["steps"], q)
+	if err != nil {
+		return err
 	}
 	return nil
 }

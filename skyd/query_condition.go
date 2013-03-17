@@ -28,6 +28,7 @@ type QueryCondition struct {
 	query       *Query
 	Within      int
 	WithinUnits string
+	Steps       QueryStepList
 }
 
 //------------------------------------------------------------------------------

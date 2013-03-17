@@ -17,6 +17,7 @@ type QuerySelection struct {
 	Expression string
 	Alias      string
 	Dimensions []string
+	Steps      QueryStepList
 }
 
 //------------------------------------------------------------------------------
@@ -55,12 +56,13 @@ func (s *QuerySelection) Query() *Query {
 
 // Encodes a query selection into an untyped map.
 func (c *QuerySelection) Serialize() map[string]interface{} {
-	return map[string]interface{}{
+	obj := map[string]interface{}{
 		"type":        QueryStepTypeSelection,
 		"expression":  c.Expression,
 		"alias":       c.Alias,
 		"dimensions":  c.Dimensions,
 	}
+	return obj
 }
 
 // Decodes a query selection from an untyped map.
