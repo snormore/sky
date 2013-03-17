@@ -77,6 +77,10 @@ func (s *Servlet) Close() {
 	s.channel <- m
 	m.wait()
 
+	// Cleanup channel.
+	close(s.channel)
+	s.channel = nil
+
 	if s.db != nil {
 		s.db.Close()
 	}
@@ -305,3 +309,5 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 
 	return nil
 }
+
+

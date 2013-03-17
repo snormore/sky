@@ -9,6 +9,7 @@ package skyd
 #include <lauxlib.h>
 
 int mp_pack(lua_State *L);
+int mp_unpack(lua_State *L);
 */
 import "C"
 
@@ -59,7 +60,18 @@ func NewExecutionEngine(propertyFile *PropertyFile, source string) (*ExecutionEn
 		return nil, err
 	}
 
-	return &ExecutionEngine{propertyFile: propertyFile, source: source, propertyRefs: propertyRefs}, nil
+	// Create the engine.
+	e := &ExecutionEngine{propertyFile: propertyFile, source: source, propertyRefs: propertyRefs}
+	
+	// Initialize the engine.
+	err = e.init()
+	if err != nil {
+  		fmt.Printf("%s\n\n", e.FullAnnotatedSource())
+		e.Destroy()
+		return nil, err
+	}
+	
+	return e, nil
 }
 
 //------------------------------------------------------------------------------
@@ -118,7 +130,7 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) {
 //--------------------------------------
 
 // Initializes the Lua context and compiles the source code.
-func (e *ExecutionEngine) Init() error {
+func (e *ExecutionEngine) init() error {
 	if e.state != nil {
 		return nil
 	}
@@ -159,6 +171,7 @@ func (e *ExecutionEngine) Init() error {
 	// Setup cursor.
 	err = e.initCursor()
 	if err != nil {
+		e.Destroy()
 		return err
 	}
 
@@ -177,6 +190,7 @@ func (e *ExecutionEngine) initCursor() error {
 
 	C.lua_getfield(e.state, -10002, functionName)
 	C.lua_pushlightuserdata(e.state, unsafe.Pointer(e.cursor))
+	//fmt.Printf("%s\n\n", e.FullAnnotatedSource())
 	rc := C.lua_pcall(e.state, 1, 0, 0)
 	if rc != 0 {
 		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
@@ -211,10 +225,59 @@ func (e *ExecutionEngine) Aggregate() (interface{}, error) {
 	rc := C.lua_pcall(e.state, 1, 1, 0)
 	if rc != 0 {
 		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		return nil, fmt.Errorf("Unable to aggregate: %s", luaErrString)
+		return nil, fmt.Errorf("skyd.ExecutionEngine: Unable to aggregate: %s", luaErrString)
 	}
 
 	return e.decodeResult()
+}
+
+// Executes an merge over the iterator.
+func (e *ExecutionEngine) Merge(results interface{}, data interface{}) (interface{}, error) {
+	functionName := C.CString("sky_merge")
+	defer C.free(unsafe.Pointer(functionName))
+
+	C.lua_getfield(e.state, -10002, functionName)
+	err := e.encodeArgument(results)
+	if err != nil {
+		return results, err
+	}
+	err = e.encodeArgument(data)
+	if err != nil {
+		return results, err
+	}
+	rc := C.lua_pcall(e.state, 2, 1, 0)
+	if rc != 0 {
+		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
+		return results, fmt.Errorf("skyd.ExecutionEngine: Unable to merge: %s", luaErrString)
+	}
+
+	return e.decodeResult()
+}
+
+// Encodes a Go object into Msgpack and adds it to the function arguments.
+func (e *ExecutionEngine) encodeArgument(value interface{}) error {
+	// Encode Go object into msgpack.
+	buffer := new(bytes.Buffer)
+	encoder := msgpack.NewEncoder(buffer)
+	err := encoder.Encode(value)
+	if err != nil {
+		return err
+	}
+
+	// Push the msgpack data onto the Lua stack.
+	data := buffer.String()
+	cdata := C.CString(data)
+	defer C.free(unsafe.Pointer(cdata))
+	C.lua_pushlstring(e.state, cdata, (C.size_t)(len(data)));
+
+	// Convert the argument from msgpack into Lua.
+	rc := C.mp_unpack(e.state)
+	if rc != 1 {
+		return errors.New("skyd.ExecutionEngine: Unable to msgpack encode Lua argument")
+	}
+	C.lua_remove(e.state, -2)
+
+	return nil
 }
 
 // Decodes the result from a function into a Go object.
@@ -315,7 +378,7 @@ func metatypeFunctionDef(args ...interface{}) string {
 
 func initDescriptorDef(args ...interface{}) string {
 	if property, ok := args[0].(*Property); ok {
-		return fmt.Sprintf("descriptor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof(%s), '%s')", property.Id, property.Name, getPropertyCType(property), property.DataType)
+		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", property.Id, property.Name, getPropertyCType(property), property.DataType)
 	}
 	return ""
 }

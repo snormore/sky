@@ -2,9 +2,7 @@ package skyd
 
 import (
 	"fmt"
-	"net/http"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -26,7 +24,7 @@ func TestServerCreateTable(t *testing.T) {
 func TestServerDeleteTable(t *testing.T) {
 	runTestServer(func(s *Server) {
 		// Create table.
-		resp, err := http.Post("http://localhost:8585/tables", "application/json", strings.NewReader(`{"name":"foo"}`))
+		resp, err := sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", `{"name":"foo"}`)
 		if err != nil {
 			t.Fatalf("Unable to create table: %v", err)
 		}
@@ -36,13 +34,7 @@ func TestServerDeleteTable(t *testing.T) {
 		}
 
 		// Delete table.
-		client := &http.Client{}
-		req, _ := http.NewRequest("DELETE", "http://localhost:8585/tables/foo", nil)
-		req.Header.Add("Content-Type", "application/json")
-		resp, err = client.Do(req)
-		if err != nil {
-			t.Fatalf("Unable to delete table: %v", err)
-		}
+		resp, _ = sendTestHttpRequest("DELETE", "http://localhost:8585/tables/foo", "application/json", ``)
 		assertResponse(t, resp, 200, "", "DELETE /tables/:name failed.")
 		if _, err := os.Stat(fmt.Sprintf("%v/tables/foo", s.Path())); !os.IsNotExist(err) {
 			t.Fatalf("DELETE /tables/:name did not delete table.")

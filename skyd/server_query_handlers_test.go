@@ -13,9 +13,13 @@ func TestServerQuery(t *testing.T) {
 
 		// Send events.
 		resp, _ := sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/0/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"val1"}}`)
+		resp.Body.Close()
 		resp, _ = sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/1/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"val2"}}`)
+		resp.Body.Close()
 		resp, _ = sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/2/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"val3"}}`)
+		resp.Body.Close()
 		resp, _ = sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/3/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"val4"}}`)
+		resp.Body.Close()
 
 		// Run query.
 		resp, _ = sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", ``)

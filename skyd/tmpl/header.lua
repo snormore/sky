@@ -13,7 +13,7 @@ typedef struct sky_cursor_t { sky_lua_event_t *event; int32_t session_event_inde
 int sky_cursor_set_data_sz(sky_cursor_t *cursor, uint32_t sz);
 int sky_cursor_set_timestamp_offset(sky_cursor_t *cursor, uint32_t offset);
 int sky_cursor_set_ts_offset(sky_cursor_t *cursor, uint32_t offset);
-int sky_cursor_set_property(sky_cursor_t *cursor, int8_t property_id, uint32_t offset, int data_type);
+int sky_cursor_set_property(sky_cursor_t *cursor, int64_t property_id, uint32_t offset, uint32_t sz, const char *data_type);
 
 bool sky_cursor_has_next_object(sky_cursor_t *);
 bool sky_cursor_next_object(sky_cursor_t *);
@@ -29,7 +29,7 @@ ffi.metatype('sky_cursor_t', {
     set_timestamp_offset = function(cursor, offset) return ffi.C.sky_cursor_set_timestamp_offset(cursor, offset) end,
     set_ts_offset = function(cursor, offset) return ffi.C.sky_cursor_set_ts_offset(cursor, offset) end,
     set_action_id_offset = function(cursor, offset) return ffi.C.sky_cursor_set_action_id_offset(cursor, offset) end,
-    set_property = function(cursor, property_id, offset, data_type) return ffi.C.sky_cursor_set_property(cursor, property_id, offset, data_type) end,
+    set_property = function(cursor, property_id, offset, sz, data_type) return ffi.C.sky_cursor_set_property(cursor, property_id, offset, sz, data_type) end,
 
     hasNextObject = function(cursor) return ffi.C.sky_cursor_has_next_object(cursor) end,
     nextObject = function(cursor) return ffi.C.sky_cursor_next_object(cursor) end,

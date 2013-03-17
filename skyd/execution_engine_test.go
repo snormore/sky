@@ -8,7 +8,6 @@ import (
 func TestExecutionEngineInit(t *testing.T) {
 	p := NewPropertyFile("")
 	l, _ := NewExecutionEngine(p, "function test() print('hello') end\n")
-	l.Init()
 	l.Destroy()
 }
 
@@ -20,7 +19,7 @@ func TestExecutionEngineExtractPropertyReferences(t *testing.T) {
 	p.CreateProperty("purchaseAmount", "action", "integer")
 	p.CreateProperty("isMember", "action", "boolean")
 
-	l, err := NewExecutionEngine(p, "x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end")
+	l, err := NewExecutionEngine(p, "function f(event) x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end end")
 	if err != nil {
 		t.Fatalf("Unable to create execution engine: %v", err)
 	}

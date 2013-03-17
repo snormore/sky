@@ -49,9 +49,11 @@ func runTestServer(f func(s *Server)) {
 }
 
 func setupTestTable(name string) {
-	_, _ = sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
+	resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
+	resp.Body.Close()
 }
 
 func setupTestProperty(tableName string, name string, typ string, dataType string) {
-	_, _ = sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "type":"%v", "dataType":"%v"}`, name, typ, dataType))
+	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "type":"%v", "dataType":"%v"}`, name, typ, dataType))
+	resp.Body.Close()
 }

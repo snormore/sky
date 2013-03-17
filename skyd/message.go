@@ -65,6 +65,10 @@ func (m *Message) execute() {
 // Waits for the message to complete.
 func (m *Message) wait() (interface{}, error) {
 	ret := <-m.channel
+
+	close(m.channel)
+	m.channel = nil
+
 	if err, ok := ret.(error); ok {
 		return nil, err
 	}

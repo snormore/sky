@@ -18,7 +18,8 @@ func TestServerPing(t *testing.T) {
 func BenchmarkPing(b *testing.B) {
 	runTestServer(func(s *Server) {
 		for i := 0; i < b.N; i++ {
-			_, _ = sendTestHttpRequest("GET", "http://localhost:8585/ping", "application/json", "")
+			resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/ping", "application/json", "")
+			resp.Body.Close()
 		}
 	})
 }
@@ -26,7 +27,8 @@ func BenchmarkPing(b *testing.B) {
 func BenchmarkRawPing(b *testing.B) {
 	runTestServer(func(s *Server) {
 		for i := 0; i < b.N; i++ {
-			_, _ = sendTestHttpRequest("GET", "http://localhost:8585/rawping", "application/json", "")
+			resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/rawping", "application/json", "")
+			resp.Body.Close()
 		}
 	})
 }

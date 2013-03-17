@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/jmhodges/levigo"
 	"hash/fnv"
 	"io"
 	"io/ioutil"
@@ -137,6 +138,10 @@ func (s *Server) Shutdown() error {
 		m := NewShutdownMessage()
 		s.channel <- m
 		m.wait()
+
+		// Cleanup channel.
+		close(s.channel)
+		s.channel = nil
 
 		// Then stop the server.
 		err := s.listener.Close()
@@ -414,5 +419,96 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 	s.tables[name] = table
 	
 	return table, nil
+}
+
+
+//--------------------------------------
+// Query
+//--------------------------------------
+
+// Runs a query against a table.
+func (s *Server) RunQuery(tableName string, source string) (interface{}, error) {
+	var engine *ExecutionEngine
+	
+	// Create a channel to receive aggregate responses.
+	rchannel := make(chan *Message, len(s.servlets))
+	
+	// Retrieve table and setup servlets within the server context.
+	_, err := s.sync(func() (interface{}, error) {
+		// Return an error if the table already exists.
+		table, err := s.OpenTable(tableName)
+		if err != nil {
+			return nil, err
+		}
+
+		// Create an engine for merging results.
+		engine, err = NewExecutionEngine(table.propertyFile, source)
+		if err != nil {
+			return nil, err
+		}
+		// fmt.Println(engine.FullAnnotatedSource())
+
+		// Execute across each server context.
+		for _, servlet := range s.servlets {
+
+			// Execute servlets asynchronously and retrieve responses outside
+			// of the server context.
+			rchannel <- servlet.async(func() (interface{}, error) {
+				// Create an engine for each servlet.
+				e, err := NewExecutionEngine(table.propertyFile, source)
+				if err != nil {
+					return nil, err
+				}
+				defer e.Destroy()
+
+				// Initialize iterator.
+				ro := levigo.NewReadOptions()
+				defer ro.Close()
+				iterator := servlet.db.NewIterator(ro)
+				iterator.SeekToFirst()
+				e.SetIterator(iterator)
+
+				// Run aggregation for the servlet.
+				return e.Aggregate()
+			})
+		}
+
+		return nil, nil
+	})
+	if engine != nil {
+		defer engine.Destroy()
+	}
+	if err != nil {
+		return nil, err
+	}
+	
+	// Wait for each servlet to complete and then merge the results.
+	var servletError error
+	var result interface{}
+	result = make(map[interface{}]interface{})
+	for {
+		var m *Message
+		select {
+			case m = <-rchannel:
+			default: m = nil
+		}
+		if m == nil {
+			break
+		}
+		ret, err := m.wait()
+		if err != nil {
+			fmt.Printf("skyd.Server: Aggregate error: %v", err)
+			servletError = err
+		}
+		if ret != nil {
+			result, err = engine.Merge(result, ret)
+			if err != nil {
+				fmt.Printf("skyd.Server: Merge error: %v", err)
+				servletError = err
+			}
+		}
+	}
+	err = servletError
+	return result, err
 }
 
