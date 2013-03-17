@@ -49,7 +49,7 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 			}
 			output = append(output, e)
 		}
-		
+
 		return output, nil
 	})
 }

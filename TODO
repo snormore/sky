@@ -1,2 +1,5 @@
+* Query generation
+* Factors
+
 * Add ending state at the beginning of event list (for optimizing appends).
 * Create command line interface to server.

@@ -62,15 +62,15 @@ func NewExecutionEngine(propertyFile *PropertyFile, source string) (*ExecutionEn
 
 	// Create the engine.
 	e := &ExecutionEngine{propertyFile: propertyFile, source: source, propertyRefs: propertyRefs}
-	
+
 	// Initialize the engine.
 	err = e.init()
 	if err != nil {
-  		fmt.Printf("%s\n\n", e.FullAnnotatedSource())
+		fmt.Printf("%s\n\n", e.FullAnnotatedSource())
 		e.Destroy()
 		return nil, err
 	}
-	
+
 	return e, nil
 }
 
@@ -268,7 +268,7 @@ func (e *ExecutionEngine) encodeArgument(value interface{}) error {
 	data := buffer.String()
 	cdata := C.CString(data)
 	defer C.free(unsafe.Pointer(cdata))
-	C.lua_pushlstring(e.state, cdata, (C.size_t)(len(data)));
+	C.lua_pushlstring(e.state, cdata, (C.size_t)(len(data)))
 
 	// Convert the argument from msgpack into Lua.
 	rc := C.mp_unpack(e.state)

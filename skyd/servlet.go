@@ -24,7 +24,6 @@ type Servlet struct {
 	channel chan *Message
 }
 
-
 //------------------------------------------------------------------------------
 //
 // Constructors
@@ -34,7 +33,7 @@ type Servlet struct {
 // NewServlet returns a new Servlet with a data shard stored at a given path.
 func NewServlet(path string) *Servlet {
 	return &Servlet{
-		path: path,
+		path:    path,
 		channel: make(chan *Message),
 	}
 }
@@ -309,5 +308,3 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 
 	return nil
 }
-
-

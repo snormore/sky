@@ -25,7 +25,7 @@ func TestCreate(t *testing.T) {
 
 // Ensure that we can create properties on a table.
 func TestTableCreateProperty(t *testing.T) {
-	table := createTable(t)
+	table := createTempTable(t)
 	table.Open()
 	defer table.Close()
 
@@ -40,16 +40,3 @@ func TestTableCreateProperty(t *testing.T) {
 	}
 }
 
-// Creates a table.
-func createTable(t *testing.T) *Table {
-	path, err := ioutil.TempDir("", "")
-	os.RemoveAll(path)
-
-	table := NewTable("test", path)
-	err = table.Create()
-	if err != nil {
-		t.Fatalf("Unable to create table: %v", err)
-	}
-
-	return table
-}

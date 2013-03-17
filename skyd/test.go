@@ -48,6 +48,19 @@ func runTestServer(f func(s *Server)) {
 	f(server)
 }
 
+func createTempTable(t *testing.T) *Table {
+	path, err := ioutil.TempDir("", "")
+	os.RemoveAll(path)
+
+	table := NewTable("test", path)
+	err = table.Create()
+	if err != nil {
+		t.Fatalf("Unable to create table: %v", err)
+	}
+
+	return table
+}
+
 func setupTestTable(name string) {
 	resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
 	resp.Body.Close()

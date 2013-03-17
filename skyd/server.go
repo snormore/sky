@@ -72,7 +72,6 @@ func NewServer(port uint, path string) *Server {
 	return s
 }
 
-
 //------------------------------------------------------------------------------
 //
 // Properties
@@ -271,10 +270,9 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 			}
 		}
 	}
-	
+
 	return s.router.HandleFunc(route, wrappedFunction)
 }
-
 
 //--------------------------------------
 // Synchronization
@@ -332,7 +330,7 @@ func (s *Server) executeWithObject(tableName string, objectId string, f func(ser
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Make sure we've exited the server loop and we're waiting on the servlet loop.
 	return m.wait()
 }
@@ -417,10 +415,9 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 		return nil, err
 	}
 	s.tables[name] = table
-	
+
 	return table, nil
 }
-
 
 //--------------------------------------
 // Query
@@ -429,10 +426,10 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 // Runs a query against a table.
 func (s *Server) RunQuery(tableName string, source string) (interface{}, error) {
 	var engine *ExecutionEngine
-	
+
 	// Create a channel to receive aggregate responses.
 	rchannel := make(chan *Message, len(s.servlets))
-	
+
 	// Retrieve table and setup servlets within the server context.
 	_, err := s.sync(func() (interface{}, error) {
 		// Return an error if the table already exists.
@@ -481,7 +478,7 @@ func (s *Server) RunQuery(tableName string, source string) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Wait for each servlet to complete and then merge the results.
 	var servletError error
 	var result interface{}
@@ -489,8 +486,9 @@ func (s *Server) RunQuery(tableName string, source string) (interface{}, error) 
 	for {
 		var m *Message
 		select {
-			case m = <-rchannel:
-			default: m = nil
+		case m = <-rchannel:
+		default:
+			m = nil
 		}
 		if m == nil {
 			break
@@ -511,4 +509,3 @@ func (s *Server) RunQuery(tableName string, source string) (interface{}, error) 
 	err = servletError
 	return result, err
 }
-
