@@ -73,6 +73,7 @@ func (c *QueryCondition) Serialize() map[string]interface{} {
 		"type":        QueryStepTypeCondition,
 		"within":      c.Within,
 		"withinUnits": c.WithinUnits,
+		"steps":       c.Steps.Serialize(),
 	}
 }
 
@@ -102,6 +103,13 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 		}
 	} else {
 		c.WithinUnits = "steps"
+	}
+
+	// Deserialize steps.
+	var err error
+	c.Steps, err = DeserializeQueryStepList(obj["steps"], c.query)
+	if err != nil {
+		return err
 	}
 
 	return nil

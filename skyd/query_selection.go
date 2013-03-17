@@ -55,18 +55,19 @@ func (s *QuerySelection) Query() *Query {
 //--------------------------------------
 
 // Encodes a query selection into an untyped map.
-func (c *QuerySelection) Serialize() map[string]interface{} {
+func (s *QuerySelection) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"type":        QueryStepTypeSelection,
-		"expression":  c.Expression,
-		"alias":       c.Alias,
-		"dimensions":  c.Dimensions,
+		"expression":  s.Expression,
+		"alias":       s.Alias,
+		"dimensions":  s.Dimensions,
+		"steps":       s.Steps.Serialize(),
 	}
 	return obj
 }
 
 // Decodes a query selection from an untyped map.
-func (c *QuerySelection) Deserialize(obj map[string]interface{}) error {
+func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	if obj == nil {
 		return errors.New("skyd.QuerySelection: Unable to deserialize nil.")
 	}
@@ -76,23 +77,30 @@ func (c *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	
 	// Deserialize "expression".
 	if expression, ok := obj["expression"].(string); ok && len(expression) > 0 {
-		c.Expression = expression
+		s.Expression = expression
 	} else {
 		return fmt.Errorf("skyd.QuerySelection: Invalid expression: %v", obj["expression"])
 	}
 
 	// Deserialize "alias".
 	if alias, ok := obj["alias"].(string); ok && len(alias) > 0 {
-		c.Alias = alias
+		s.Alias = alias
 	} else {
 		return fmt.Errorf("skyd.QuerySelection: Invalid alias: %v", obj["alias"])
 	}
 
 	// Deserialize "dimensions".
 	if dimensions, ok := obj["dimensions"].([]string); ok {
-		c.Dimensions = dimensions
+		s.Dimensions = dimensions
 	} else {
 		return fmt.Errorf("skyd.QuerySelection: Invalid dimensions: %v", obj["dimensions"])
+	}
+
+	// Deserialize steps.
+	var err error
+	s.Steps, err = DeserializeQueryStepList(obj["steps"], s.query)
+	if err != nil {
+		return err
 	}
 
 	return nil
