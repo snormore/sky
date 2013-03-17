@@ -90,8 +90,15 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	}
 
 	// Deserialize "dimensions".
-	if dimensions, ok := obj["dimensions"].([]string); ok {
-		s.Dimensions = dimensions
+	if dimensions, ok := obj["dimensions"].([]interface{}); ok {
+		s.Dimensions = []string{}
+		for _, dimension := range dimensions {
+			if str, ok := dimension.(string); ok {
+				s.Dimensions = append(s.Dimensions, str)
+			} else {
+				return fmt.Errorf("skyd.QuerySelection: Invalid dimension: %v", dimension)
+			}
+		}
 	} else {
 		return fmt.Errorf("skyd.QuerySelection: Invalid dimensions: %v", obj["dimensions"])
 	}

@@ -51,19 +51,21 @@ func (l QueryStepList) Serialize() []interface{} {
 // Decodes a query step list from an untyped slice.
 func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) {
 	l := make(QueryStepList, 0)
-	if steps, ok := obj.([]map[string]interface{}); ok {
-		for _, s := range steps  {
-			var step QueryStep
-			switch s["type"] {
-			case QueryStepTypeCondition:
-				step = NewQueryCondition(q)
-			case QueryStepTypeSelection:
-				step = NewQuerySelection(q)
-			default:
-				return nil, fmt.Errorf("Invalid query step type: %v", s["type"])
+	if steps, ok := obj.([]interface{}); ok {
+		for _, _s := range steps  {
+			if s, ok := _s.(map[string]interface{}); ok {
+				var step QueryStep
+				switch s["type"] {
+				case QueryStepTypeCondition:
+					step = NewQueryCondition(q)
+				case QueryStepTypeSelection:
+					step = NewQuerySelection(q)
+				default:
+					return nil, fmt.Errorf("Invalid query step type: %v", s["type"])
+				}
+				step.Deserialize(s)
+				l = append(l, step)
 			}
-			step.Deserialize(s)
-			l = append(l, step)
 		}
 	}
 	return l, nil

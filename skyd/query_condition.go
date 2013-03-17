@@ -87,10 +87,10 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 	}
 	
 	// Deserialize "within".
-	if within, ok := obj["within"].(int); ok {
-		c.Within = within
+	if within, ok := obj["within"].(float64); ok {
+		c.Within = int(within)
 	} else {
-		c.Within = 0
+		return fmt.Errorf("Invalid 'within': %v", obj["within"])
 	}
 
 	// Deserialize "within units".
@@ -102,7 +102,7 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 			return fmt.Errorf("Invalid 'within units': %v", withinUnits)
 		}
 	} else {
-		c.WithinUnits = "steps"
+		return fmt.Errorf("Invalid 'within units': %v", obj["within"])
 	}
 
 	// Deserialize steps.
