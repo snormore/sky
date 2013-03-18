@@ -65,10 +65,17 @@ func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) 
 				default:
 					return nil, fmt.Errorf("Invalid query step type: %v", s["type"])
 				}
-				step.Deserialize(s)
+				err := step.Deserialize(s)
+				if err != nil {
+					return nil, err
+				}
 				l = append(l, step)
+			} else {
+				return nil, fmt.Errorf("Invalid step: %v", obj)
 			}
 		}
+	} else {
+		return nil, fmt.Errorf("Invalid steps: %v", obj)
 	}
 	return l, nil
 }

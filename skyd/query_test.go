@@ -11,7 +11,7 @@ func TestQueryEncodeDecode(t *testing.T) {
 	table.Open()
 	defer table.Close()
 
-	json := `{"sessionIdleTime":0,"steps":[{"steps":[{"alias":"myValue","dimensions":[],"expression":"sum(x)","steps":[],"type":"selection"}],"type":"condition","within":2,"withinUnits":"steps"},{"alias":"count","dimensions":["foo","bar"],"expression":"count()","steps":[],"type":"selection"}]}` + "\n"
+	json := `{"sessionIdleTime":0,"steps":[{"expression":"baz == 'hello'","steps":[{"alias":"myValue","dimensions":[],"expression":"sum(x)","steps":[],"type":"selection"}],"type":"condition","within":2,"withinUnits":"steps"},{"alias":"count","dimensions":["foo","bar"],"expression":"count()","steps":[],"type":"selection"}]}` + "\n"
 
 	// Decode
 	q := NewQuery(table)
@@ -38,7 +38,9 @@ func TestQueryCodegen(t *testing.T) {
 	q := NewQuery(table)
 	err := q.Decode(bytes.NewBufferString(`{
 		"steps":[
-			{"type":"selection","alias":"foo","dimensions":[],"expression":"count()","steps":[]}
+			{"type":"condition","expression":"bar == 'baz'","within":0,"withinUnits":"steps","steps":[
+				{"type":"selection","alias":"foo","dimensions":[],"expression":"count()","steps":[]}
+			]}
 		]
 	}`))
 	if err != nil {

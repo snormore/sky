@@ -1,8 +1,10 @@
 package skyd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"regexp"
 )
 
 //------------------------------------------------------------------------------
@@ -27,6 +29,7 @@ const (
 type QueryCondition struct {
 	query       *Query
 	functionName string
+	Expression  string
 	Within      int
 	WithinUnits string
 	Steps       QueryStepList
@@ -84,6 +87,7 @@ func (c *QueryCondition) MergeFunctionName() string {
 func (c *QueryCondition) Serialize() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        QueryStepTypeCondition,
+		"expression":  c.Expression,
 		"within":      c.Within,
 		"withinUnits": c.WithinUnits,
 		"steps":       c.Steps.Serialize(),
@@ -97,6 +101,13 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 	}
 	if obj["type"] != QueryStepTypeCondition {
 		return fmt.Errorf("skyd.QueryCondition: Invalid step type: %v", obj["type"])
+	}
+
+	// Deserialize "expression".
+	if expression, ok := obj["expression"].(string); ok {
+		c.Expression = expression
+	} else {
+		return fmt.Errorf("Invalid 'expression': %v", obj["expression"])
 	}
 
 	// Deserialize "within".
@@ -134,5 +145,45 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 
 // Generates Lua code for the query.
 func (c *QueryCondition) Codegen() (string, error) {
-	return "", nil
+	buffer := new(bytes.Buffer)
+
+	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName())
+	fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
+	if c.WithinUnits == QueryConditionUnitSteps {
+		fmt.Fprintf(buffer, "  remaining = %d", c.Within)
+	}
+	fmt.Fprintf(buffer, "  repeat\n")
+	if c.WithinUnits == QueryConditionUnitSteps {
+		fmt.Fprintf(buffer, "    if remaining <= 0 then return false end\n")
+	}
+	fmt.Fprintf(buffer, "    if %s then\n", c.CodegenExpression())
+
+	// Call each step function.
+	fmt.Println(len(c.Steps))
+	for _, step := range c.Steps {
+		fmt.Fprintf(buffer, "        %s(cursor, data)\n", step.FunctionName())
+	}
+
+	fmt.Fprintf(buffer, "      return true\n")
+	fmt.Fprintf(buffer, "    end\n")
+	if c.WithinUnits == QueryConditionUnitSteps {
+		fmt.Fprintf(buffer, "    remaining = remaining - 1\n")
+	}
+	fmt.Fprintf(buffer, "  until not cursor:next()\n")
+	fmt.Fprintf(buffer, "  return false\n")
+
+	// End function definition.
+	fmt.Fprintln(buffer, "end")
+	
+	return buffer.String(), nil
+}
+
+// Generates Lua code for the expression.
+func (c *QueryCondition) CodegenExpression() string {
+	r, _ := regexp.Compile(`^ *(\w+) *(==) *("[^"]*"|'[^']*'|\d+|true|false) *$`)
+	m := r.FindStringSubmatch(c.Expression)
+	if m == nil {
+		return "false"
+	}
+	return fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], m[3])
 }
