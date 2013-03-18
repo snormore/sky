@@ -22,6 +22,8 @@ const (
 //------------------------------------------------------------------------------
 
 type QueryStep interface {
+	FunctionName() string
+	MergeFunctionName() string
 	Serialize() map[string]interface{}
 	Deserialize(map[string]interface{}) error
 	Codegen() (string, error)
@@ -52,7 +54,7 @@ func (l QueryStepList) Serialize() []interface{} {
 func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) {
 	l := make(QueryStepList, 0)
 	if steps, ok := obj.([]interface{}); ok {
-		for _, _s := range steps  {
+		for _, _s := range steps {
 			if s, ok := _s.(map[string]interface{}); ok {
 				var step QueryStep
 				switch s["type"] {

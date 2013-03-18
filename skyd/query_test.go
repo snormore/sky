@@ -11,7 +11,7 @@ func TestQueryEncodeDecode(t *testing.T) {
 	table.Open()
 	defer table.Close()
 
-	json := `{"steps":[{"steps":[{"alias":"myValue","dimensions":[],"expression":"sum(x)","steps":[],"type":"selection"}],"type":"condition","within":2,"withinUnits":"steps"},{"alias":"count","dimensions":["foo","bar"],"expression":"count()","steps":[],"type":"selection"}]}`+"\n"
+	json := `{"sessionIdleTime":0,"steps":[{"steps":[{"alias":"myValue","dimensions":[],"expression":"sum(x)","steps":[],"type":"selection"}],"type":"condition","within":2,"withinUnits":"steps"},{"alias":"count","dimensions":["foo","bar"],"expression":"count()","steps":[],"type":"selection"}]}` + "\n"
 
 	// Decode
 	q := NewQuery(table)
@@ -20,12 +20,38 @@ func TestQueryEncodeDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Query decoding error: %v", err)
 	}
-	t.Logf("STEPS: %v", len(q.Steps))
-	
+
 	// Encode
 	buffer = new(bytes.Buffer)
 	q.Encode(buffer)
 	if buffer.String() != json {
 		t.Fatalf("Query encoding error:\nexp: %s\ngot: %s", json, buffer.String())
+	}
+}
+
+// Ensure that we can codegen queries.
+func TestQueryCodegen(t *testing.T) {
+	table := createTempTable(t)
+	table.Open()
+	defer table.Close()
+
+	q := NewQuery(table)
+	err := q.Decode(bytes.NewBufferString(`{
+		"steps":[
+			{"type":"selection","alias":"foo","dimensions":[],"expression":"count()","steps":[]}
+		]
+	}`))
+	if err != nil {
+		t.Fatalf("Query decoding error: %v", err)
+	}
+
+	// Codegen
+	code, err := q.Codegen()
+	if err != nil {
+		t.Fatalf("Query codegen error: %v", err)
+	}
+	exp := `_`
+	if code != exp {
+		t.Fatalf("Query codegen:\nexp: %s\ngot: %s", code, exp)
 	}
 }

@@ -26,6 +26,7 @@ const (
 // A condition step made within a query.
 type QueryCondition struct {
 	query       *Query
+	functionName string
 	Within      int
 	WithinUnits string
 	Steps       QueryStepList
@@ -39,8 +40,10 @@ type QueryCondition struct {
 
 // Creates a new condition.
 func NewQueryCondition(query *Query) *QueryCondition {
+	id := query.NextIdentifier()
 	return &QueryCondition{
 		query:       query,
+		functionName: fmt.Sprintf("f%d", id),
 		Within:      0,
 		WithinUnits: QueryConditionUnitSteps,
 	}
@@ -55,6 +58,16 @@ func NewQueryCondition(query *Query) *QueryCondition {
 // Retrieves the query this condition is associated with.
 func (c *QueryCondition) Query() *Query {
 	return c.query
+}
+
+// Retrieves the function name used during codegen.
+func (c *QueryCondition) FunctionName() string {
+	return c.functionName
+}
+
+// Retrieves the merge function name used during codegen.
+func (c *QueryCondition) MergeFunctionName() string {
+	return ""
 }
 
 //------------------------------------------------------------------------------
@@ -85,7 +98,7 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 	if obj["type"] != QueryStepTypeCondition {
 		return fmt.Errorf("skyd.QueryCondition: Invalid step type: %v", obj["type"])
 	}
-	
+
 	// Deserialize "within".
 	if within, ok := obj["within"].(float64); ok {
 		c.Within = int(within)

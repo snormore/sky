@@ -14,6 +14,8 @@ import (
 // A selection step aggregates data in a query.
 type QuerySelection struct {
 	query      *Query
+	functionName string
+	mergeFunctionName string
 	Expression string
 	Alias      string
 	Dimensions []string
@@ -28,8 +30,11 @@ type QuerySelection struct {
 
 // Creates a new selection.
 func NewQuerySelection(query *Query) *QuerySelection {
+	id := query.NextIdentifier()
 	return &QuerySelection{
 		query: query,
+		functionName: fmt.Sprintf("f%d", id),
+		mergeFunctionName: fmt.Sprintf("m%d", id),
 	}
 }
 
@@ -42,6 +47,16 @@ func NewQuerySelection(query *Query) *QuerySelection {
 // Retrieves the query this selection is associated with.
 func (s *QuerySelection) Query() *Query {
 	return s.query
+}
+
+// Retrieves the function name used during codegen.
+func (s *QuerySelection) FunctionName() string {
+	return s.functionName
+}
+
+// Retrieves the merge function name used during codegen.
+func (s *QuerySelection) MergeFunctionName() string {
+	return s.mergeFunctionName
 }
 
 //------------------------------------------------------------------------------
@@ -57,11 +72,11 @@ func (s *QuerySelection) Query() *Query {
 // Encodes a query selection into an untyped map.
 func (s *QuerySelection) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
-		"type":        QueryStepTypeSelection,
-		"expression":  s.Expression,
-		"alias":       s.Alias,
-		"dimensions":  s.Dimensions,
-		"steps":       s.Steps.Serialize(),
+		"type":       QueryStepTypeSelection,
+		"expression": s.Expression,
+		"alias":      s.Alias,
+		"dimensions": s.Dimensions,
+		"steps":      s.Steps.Serialize(),
 	}
 	return obj
 }
@@ -74,7 +89,7 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	if obj["type"] != QueryStepTypeSelection {
 		return fmt.Errorf("skyd.QuerySelection: Invalid step type: %v", obj["type"])
 	}
-	
+
 	// Deserialize "expression".
 	if expression, ok := obj["expression"].(string); ok && len(expression) > 0 {
 		s.Expression = expression

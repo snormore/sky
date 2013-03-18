@@ -39,4 +39,3 @@ func TestTableCreateProperty(t *testing.T) {
 		t.Fatalf("Invalid properties file:\n%v", string(content))
 	}
 }
-
