@@ -46,7 +46,7 @@ libcsky.a: ${OBJECTS}
 ${SONAME}: ${OBJECTS}
 	$(CXX) ${LDFLAGS} ${OBJECTS} -o ${SONAME}
 
-install:
+install: build
 	install -d $(DESTDIR)/$(PREFIX)/include/sky
 	install include/sky/* $(DESTDIR)/$(PREFIX)/include/sky
 	install include/sky.h $(DESTDIR)/$(PREFIX)/include/sky.h
