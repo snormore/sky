@@ -444,13 +444,13 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Generate the query source code.
 		source, err := query.Codegen()
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Create an engine for merging results.
 		engine, err = NewExecutionEngine(table.propertyFile, source)
 		if err != nil {

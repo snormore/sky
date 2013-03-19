@@ -121,7 +121,7 @@ func (l QueryStepList) CodegenMergeInvoke() string {
 		if step.MergeFunctionName() != "" {
 			fmt.Fprintf(buffer, "  %s(results, data)\n", step.MergeFunctionName())
 		}
-		
+
 		// Recursively generate child step invocations.
 		code := step.GetSteps().CodegenMergeInvoke()
 		if code != "" {
@@ -130,4 +130,3 @@ func (l QueryStepList) CodegenMergeInvoke() string {
 	}
 	return buffer.String()
 }
-

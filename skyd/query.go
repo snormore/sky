@@ -141,12 +141,12 @@ func (q *Query) CodegenAggregateFunction() string {
 
 	// Generate the function definition.
 	fmt.Fprintln(buffer, "function aggregate(cursor, data)")
-	
+
 	// Set the session idle if one is available.
 	if q.SessionIdleTime > 0 {
 		fmt.Fprintf(buffer, "  cursor:set_session_idle(%d)\n", q.SessionIdleTime)
 	}
-	
+
 	// Begin cursor loop.
 	fmt.Fprintln(buffer, "  while cursor:next_session() do")
 	fmt.Fprintln(buffer, "    while cursor:next() do")
@@ -155,7 +155,7 @@ func (q *Query) CodegenAggregateFunction() string {
 	for _, step := range q.Steps {
 		fmt.Fprintf(buffer, "      %s(cursor, data)\n", step.FunctionName())
 	}
-	
+
 	// End cursor loop.
 	fmt.Fprintln(buffer, "    end")
 	fmt.Fprintln(buffer, "  end")
@@ -172,10 +172,10 @@ func (q *Query) CodegenMergeFunction() string {
 
 	// Generate the function definition.
 	fmt.Fprintln(buffer, "function merge(results, data)")
-	
+
 	// Call each step function if it has a merge function.
 	fmt.Fprintf(buffer, q.Steps.CodegenMergeInvoke())
-	
+
 	// End function.
 	fmt.Fprintln(buffer, "end\n")
 

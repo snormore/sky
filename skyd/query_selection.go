@@ -15,13 +15,13 @@ import (
 
 // A selection step aggregates data in a query.
 type QuerySelection struct {
-	query      *Query
-	functionName string
+	query             *Query
+	functionName      string
 	mergeFunctionName string
-	Expression string
-	Alias      string
-	Dimensions []string
-	Steps      QueryStepList
+	Expression        string
+	Alias             string
+	Dimensions        []string
+	Steps             QueryStepList
 }
 
 //------------------------------------------------------------------------------
@@ -34,8 +34,8 @@ type QuerySelection struct {
 func NewQuerySelection(query *Query) *QuerySelection {
 	id := query.NextIdentifier()
 	return &QuerySelection{
-		query: query,
-		functionName: fmt.Sprintf("a%d", id),
+		query:             query,
+		functionName:      fmt.Sprintf("a%d", id),
 		mergeFunctionName: fmt.Sprintf("m%d", id),
 	}
 }
@@ -160,17 +160,17 @@ func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
 		fmt.Fprintf(buffer, "  if data.%s[dimension] == nil then data.%s[dimension] = {} end\n", dimension, dimension)
 		fmt.Fprintf(buffer, "  data = data.%s[dimension]\n\n", dimension)
 	}
-	
+
 	// Select value.
 	exp, err := s.CodegenExpression()
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintln(buffer, "  " + exp)
+	fmt.Fprintln(buffer, "  "+exp)
 
 	// End function definition.
 	fmt.Fprintln(buffer, "end")
-	
+
 	return buffer.String(), nil
 }
 
@@ -191,12 +191,12 @@ func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 		return "", err
 	}
 	buffer.WriteString(code + "\n")
-	
+
 	// Generate main function.
 	fmt.Fprintf(buffer, "function %s(result, data)\n", s.MergeFunctionName())
 	fmt.Fprintf(buffer, "  %sn0(result, data)\n", s.MergeFunctionName())
 	fmt.Fprintf(buffer, "end\n")
-	
+
 	return buffer.String(), nil
 }
 
@@ -206,7 +206,7 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 
 	// Generate next nested function first.
 	if index < len(s.Dimensions) {
-		code, err := s.CodegenInnerMergeFunction(index+1)
+		code, err := s.CodegenInnerMergeFunction(index + 1)
 		if err != nil {
 			return "", err
 		}
@@ -222,7 +222,7 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 		fmt.Fprintf(buffer, "    if result.%s == nil then result.%s = {} end\n", dimension, dimension)
 		fmt.Fprintf(buffer, "    for k,v in pairs(data.%s) do\n", dimension)
 		fmt.Fprintf(buffer, "      if result.%s[k] == nil then result.%s[k] = {} end\n", dimension, dimension)
-		fmt.Fprintf(buffer, "      %sn%d(result.%s[k], v)\n", s.MergeFunctionName(), (index+1), dimension)
+		fmt.Fprintf(buffer, "      %sn%d(result.%s[k], v)\n", s.MergeFunctionName(), (index + 1), dimension)
 		fmt.Fprintf(buffer, "    end\n")
 		fmt.Fprintf(buffer, "  end\n")
 	} else {
@@ -231,10 +231,10 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintln(buffer, "  " + exp)
+		fmt.Fprintln(buffer, "  "+exp)
 	}
 	fmt.Fprintf(buffer, "end\n")
-	
+
 	return buffer.String(), nil
 }
 
@@ -242,13 +242,16 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 func (s *QuerySelection) CodegenExpression() (string, error) {
 	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
 	if m := r.FindStringSubmatch(s.Expression); m != nil {
-		if(len(m[1]) > 0) { // sum()/min()/max()
+		if len(m[1]) > 0 { // sum()/min()/max()
 			switch m[1] {
-				case "sum": return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", s.Alias, s.Alias, m[2]), nil
-				case "min": return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
-				case "max": return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
+			case "sum":
+				return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", s.Alias, s.Alias, m[2]), nil
+			case "min":
+				return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
+			case "max":
+				return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
 			}
-		} else if(len(m[3]) > 0) { // assignment
+		} else if len(m[3]) > 0 { // assignment
 			return fmt.Sprintf("data.%s = cursor.event:%s()", s.Alias, m[3]), nil
 		} else { // count()
 			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", s.Alias, s.Alias), nil
@@ -262,13 +265,16 @@ func (s *QuerySelection) CodegenExpression() (string, error) {
 func (s *QuerySelection) CodegenMergeExpression() (string, error) {
 	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
 	if m := r.FindStringSubmatch(s.Expression); m != nil {
-		if(len(m[1]) > 0) { // sum()/min()/max()
+		if len(m[1]) > 0 { // sum()/min()/max()
 			switch m[1] {
-				case "sum": return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil
-				case "min": return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
-				case "max": return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
+			case "sum":
+				return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil
+			case "min":
+				return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
+			case "max":
+				return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
 			}
-		} else if(len(m[3]) > 0) { // assignment
+		} else if len(m[3]) > 0 { // assignment
 			return fmt.Sprintf("result.%s = data.%s", s.Alias, s.Alias), nil
 		} else { // count()
 			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil

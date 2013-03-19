@@ -28,4 +28,3 @@ func TestQueryEncodeDecode(t *testing.T) {
 		t.Fatalf("Query encoding error:\nexp: %s\ngot: %s", json, buffer.String())
 	}
 }
-

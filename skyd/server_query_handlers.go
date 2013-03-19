@@ -40,16 +40,16 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Generate the query source code.
 		source, err = query.Codegen()
 		fmt.Println(source)
 		return source, err
 	})
-	
+
 	if err == nil {
-		return map[string]interface{}{"source":source}, nil
+		return map[string]interface{}{"source": source}, nil
 	}
-	
+
 	return nil, err
 }

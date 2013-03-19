@@ -27,12 +27,12 @@ const (
 
 // A condition step made within a query.
 type QueryCondition struct {
-	query       *Query
+	query        *Query
 	functionName string
-	Expression  string
-	Within      int
-	WithinUnits string
-	Steps       QueryStepList
+	Expression   string
+	Within       int
+	WithinUnits  string
+	Steps        QueryStepList
 }
 
 //------------------------------------------------------------------------------
@@ -45,10 +45,10 @@ type QueryCondition struct {
 func NewQueryCondition(query *Query) *QueryCondition {
 	id := query.NextIdentifier()
 	return &QueryCondition{
-		query:       query,
+		query:        query,
 		functionName: fmt.Sprintf("a%d", id),
-		Within:      0,
-		WithinUnits: QueryConditionUnitSteps,
+		Within:       0,
+		WithinUnits:  QueryConditionUnitSteps,
 	}
 }
 
@@ -187,7 +187,7 @@ func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 
 	// End function definition.
 	fmt.Fprintln(buffer, "end")
-	
+
 	return buffer.String(), nil
 }
 
