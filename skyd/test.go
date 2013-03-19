@@ -70,3 +70,13 @@ func setupTestProperty(tableName string, name string, typ string, dataType strin
 	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "type":"%v", "dataType":"%v"}`, name, typ, dataType))
 	resp.Body.Close()
 }
+
+func setupTestData(t *testing.T, tableName string, items [][]string) {
+	for i, item := range items {
+		resp, _ := sendTestHttpRequest("PUT", fmt.Sprintf("http://localhost:8585/tables/%s/objects/%s/events/%s", tableName, item[0], item[1]), "application/json", item[2])
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Fatalf("setupTestData[%d]: Expected 200, got %v.", i, resp.StatusCode)
+		}
+	}
+}

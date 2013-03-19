@@ -312,7 +312,12 @@ void sky_cursor_next_event(sky_cursor *cursor)
 
             // Read msgpack map!
             uint32_t count = minipack_unpack_map(ptr, &sz);
-            if(sz == 0) badcursordata("datamap", ptr);
+            if(sz == 0) {
+              minipack_unpack_nil(ptr, &sz);
+              if(sz == 0) {
+                badcursordata("datamap", ptr);
+              }
+            }
             ptr += sz;
 
             // Loop over key/value pairs.

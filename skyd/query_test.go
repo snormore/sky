@@ -29,31 +29,3 @@ func TestQueryEncodeDecode(t *testing.T) {
 	}
 }
 
-// Ensure that we can codegen queries.
-func TestQueryCodegen(t *testing.T) {
-	table := createTempTable(t)
-	table.Open()
-	defer table.Close()
-
-	q := NewQuery(table)
-	err := q.Decode(bytes.NewBufferString(`{
-		"steps":[
-			{"type":"condition","expression":"bar == 'baz'","within":0,"withinUnits":"steps","steps":[
-				{"type":"selection","alias":"foo","dimensions":["xxx","yyy"],"expression":"count()","steps":[]}
-			]}
-		]
-	}`))
-	if err != nil {
-		t.Fatalf("Query decoding error: %v", err)
-	}
-
-	// Codegen
-	code, err := q.Codegen()
-	if err != nil {
-		t.Fatalf("Query codegen error: %v", err)
-	}
-	exp := `_`
-	if code != exp {
-		t.Fatalf("Query codegen:\nexp:\n%s\ngot:\n%s", code, exp)
-	}
-}

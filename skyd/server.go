@@ -424,7 +424,7 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 //--------------------------------------
 
 // Runs a query against a table.
-func (s *Server) RunQuery(tableName string, source string) (interface{}, error) {
+func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interface{}, error) {
 	var engine *ExecutionEngine
 
 	// Create a channel to receive aggregate responses.
@@ -438,6 +438,19 @@ func (s *Server) RunQuery(tableName string, source string) (interface{}, error) 
 			return nil, err
 		}
 
+		// Deserialize the query.
+		query := NewQuery(table)
+		err = query.Deserialize(json)
+		if err != nil {
+			return nil, err
+		}
+		
+		// Generate the query source code.
+		source, err := query.Codegen()
+		if err != nil {
+			return nil, err
+		}
+		
 		// Create an engine for merging results.
 		engine, err = NewExecutionEngine(table.propertyFile, source)
 		if err != nil {
