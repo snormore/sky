@@ -39,7 +39,7 @@ func TestQueryCodegen(t *testing.T) {
 	err := q.Decode(bytes.NewBufferString(`{
 		"steps":[
 			{"type":"condition","expression":"bar == 'baz'","within":0,"withinUnits":"steps","steps":[
-				{"type":"selection","alias":"foo","dimensions":[],"expression":"count()","steps":[]}
+				{"type":"selection","alias":"foo","dimensions":["xxx","yyy"],"expression":"count()","steps":[]}
 			]}
 		]
 	}`))
@@ -54,6 +54,6 @@ func TestQueryCodegen(t *testing.T) {
 	}
 	exp := `_`
 	if code != exp {
-		t.Fatalf("Query codegen:\nexp: %s\ngot: %s", code, exp)
+		t.Fatalf("Query codegen:\nexp:\n%s\ngot:\n%s", code, exp)
 	}
 }

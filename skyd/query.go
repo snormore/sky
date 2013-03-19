@@ -115,68 +115,71 @@ func (q *Query) Decode(reader io.Reader) error {
 // Generates Lua code for the query.
 func (q *Query) Codegen() (string, error) {
 	buffer := new(bytes.Buffer)
-	err := q.codegenSteps(buffer)
+
+	// Generate aggregation functions.
+	str, err := q.Steps.CodegenAggregateFunctions()
 	if err != nil {
 		return "", err
 	}
-	q.codegenAggregateFunction(buffer)
-	q.codegenMergeFunction(buffer)
+	buffer.WriteString(str)
+	buffer.WriteString(q.CodegenAggregateFunction())
+
+	// Generate merge functions.
+	str, err = q.Steps.CodegenMergeFunctions()
+	if err != nil {
+		return "", err
+	}
+	buffer.WriteString(str)
+	buffer.WriteString(q.CodegenMergeFunction())
+
 	return buffer.String(), nil
 }
 
-// Recursively generates code for all steps.
-func (q *Query) codegenSteps(writer io.Writer) error {
-	for _, step := range q.Steps {
-		code, err := step.Codegen()
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(writer, code)
-	}
-	return nil
-}
-
 // Generates the 'aggregate()' function.
-func (q *Query) codegenAggregateFunction(writer io.Writer) {
+func (q *Query) CodegenAggregateFunction() string {
+	buffer := new(bytes.Buffer)
+
 	// Generate the function definition.
-	fmt.Fprintln(writer, "function aggregate(cursor, data)")
+	fmt.Fprintln(buffer, "function aggregate(cursor, data)")
 	
 	// Set the session idle if one is available.
 	if q.SessionIdleTime > 0 {
-		fmt.Fprintf(writer, "  cursor:set_session_idle(%d)\n", q.SessionIdleTime)
+		fmt.Fprintf(buffer, "  cursor:set_session_idle(%d)\n", q.SessionIdleTime)
 	}
 	
 	// Begin cursor loop.
-	fmt.Fprintln(writer, "  while cursor:next_session() do")
-	fmt.Fprintln(writer, "    while cursor:next() do")
+	fmt.Fprintln(buffer, "  while cursor:next_session() do")
+	fmt.Fprintln(buffer, "    while cursor:next() do")
 
 	// Call each step function.
 	for _, step := range q.Steps {
-		fmt.Fprintf(writer, "      %s(cursor, data)\n", step.FunctionName())
+		fmt.Fprintf(buffer, "      %s(cursor, data)\n", step.FunctionName())
 	}
 	
 	// End cursor loop.
-	fmt.Fprintln(writer, "    end")
-	fmt.Fprintln(writer, "  end")
+	fmt.Fprintln(buffer, "    end")
+	fmt.Fprintln(buffer, "  end")
 
 	// End function.
-	fmt.Fprintln(writer, "end\n")
+	fmt.Fprintln(buffer, "end\n")
+
+	return buffer.String()
 }
 
 // Generates the 'merge()' function.
-func (q *Query) codegenMergeFunction(writer io.Writer) {
+func (q *Query) CodegenMergeFunction() string {
+	buffer := new(bytes.Buffer)
+
 	// Generate the function definition.
-	fmt.Fprintln(writer, "function merge(results, data)")
+	fmt.Fprintln(buffer, "function merge(results, data)")
 	
 	// Call each step function if it has a merge function.
-	for _, step := range q.Steps {
-		if step.MergeFunctionName() != "" {
-			fmt.Fprintf(writer, "  %s(results, data)\n", step.MergeFunctionName())
-		}
-	}
+	fmt.Fprintf(buffer, q.Steps.CodegenMergeInvoke())
 	
 	// End function.
-	fmt.Fprintln(writer, "end\n")
+	fmt.Fprintln(buffer, "end\n")
+
+	return buffer.String()
 }
 
 // Returns an autoincrementing numeric identifier.

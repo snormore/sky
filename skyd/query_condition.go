@@ -46,7 +46,7 @@ func NewQueryCondition(query *Query) *QueryCondition {
 	id := query.NextIdentifier()
 	return &QueryCondition{
 		query:       query,
-		functionName: fmt.Sprintf("f%d", id),
+		functionName: fmt.Sprintf("a%d", id),
 		Within:      0,
 		WithinUnits: QueryConditionUnitSteps,
 	}
@@ -71,6 +71,11 @@ func (c *QueryCondition) FunctionName() string {
 // Retrieves the merge function name used during codegen.
 func (c *QueryCondition) MergeFunctionName() string {
 	return ""
+}
+
+// Retrieves the child steps.
+func (c *QueryCondition) GetSteps() QueryStepList {
+	return c.Steps
 }
 
 //------------------------------------------------------------------------------
@@ -144,16 +149,24 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 //--------------------------------------
 
 // Generates Lua code for the query.
-func (c *QueryCondition) Codegen() (string, error) {
+func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
+	// Generate child step functions.
+	str, err := c.Steps.CodegenAggregateFunctions()
+	if err != nil {
+		return "", err
+	}
+	buffer.WriteString(str)
+
+	// Generate main function.
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName())
-	fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
-	if c.WithinUnits == QueryConditionUnitSteps {
-		fmt.Fprintf(buffer, "  remaining = %d", c.Within)
+	if c.Within > 0 {
+		fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
 	}
 	fmt.Fprintf(buffer, "  repeat\n")
 	if c.WithinUnits == QueryConditionUnitSteps {
+		fmt.Fprintf(buffer, "  remaining = %d\n", c.Within)
 		fmt.Fprintf(buffer, "    if remaining <= 0 then return false end\n")
 	}
 	fmt.Fprintf(buffer, "    if %s then\n", c.CodegenExpression())
@@ -175,6 +188,20 @@ func (c *QueryCondition) Codegen() (string, error) {
 	// End function definition.
 	fmt.Fprintln(buffer, "end")
 	
+	return buffer.String(), nil
+}
+
+// Generates Lua code for the query.
+func (c *QueryCondition) CodegenMergeFunction() (string, error) {
+	buffer := new(bytes.Buffer)
+
+	// Generate child step functions.
+	str, err := c.Steps.CodegenMergeFunctions()
+	if err != nil {
+		return "", err
+	}
+	buffer.WriteString(str)
+
 	return buffer.String(), nil
 }
 

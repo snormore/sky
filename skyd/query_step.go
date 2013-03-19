@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -24,9 +25,11 @@ const (
 type QueryStep interface {
 	FunctionName() string
 	MergeFunctionName() string
+	GetSteps() QueryStepList
 	Serialize() map[string]interface{}
 	Deserialize(map[string]interface{}) error
-	Codegen() (string, error)
+	CodegenAggregateFunction() (string, error)
+	CodegenMergeFunction() (string, error)
 }
 
 type QueryStepList []QueryStep
@@ -79,3 +82,52 @@ func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) 
 	}
 	return l, nil
 }
+
+//--------------------------------------
+// Code Generation
+//--------------------------------------
+
+// Generates aggregate code for all steps.
+func (l QueryStepList) CodegenAggregateFunctions() (string, error) {
+	buffer := new(bytes.Buffer)
+	for _, step := range l {
+		code, err := step.CodegenAggregateFunction()
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintln(buffer, code)
+	}
+	return buffer.String(), nil
+}
+
+// Generates merge code for all steps.
+func (l QueryStepList) CodegenMergeFunctions() (string, error) {
+	buffer := new(bytes.Buffer)
+	for _, step := range l {
+		code, err := step.CodegenMergeFunction()
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintln(buffer, code)
+	}
+	return buffer.String(), nil
+}
+
+// Generates merge invocations.
+func (l QueryStepList) CodegenMergeInvoke() string {
+	buffer := new(bytes.Buffer)
+	for _, step := range l {
+		// Generate this step's invocation if available.
+		if step.MergeFunctionName() != "" {
+			fmt.Fprintf(buffer, "  %s(results, data)\n", step.MergeFunctionName())
+		}
+		
+		// Recursively generate child step invocations.
+		code := step.GetSteps().CodegenMergeInvoke()
+		if code != "" {
+			fmt.Fprintf(buffer, code)
+		}
+	}
+	return buffer.String()
+}
+

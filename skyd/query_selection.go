@@ -1,8 +1,10 @@
 package skyd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"regexp"
 )
 
 //------------------------------------------------------------------------------
@@ -33,7 +35,7 @@ func NewQuerySelection(query *Query) *QuerySelection {
 	id := query.NextIdentifier()
 	return &QuerySelection{
 		query: query,
-		functionName: fmt.Sprintf("f%d", id),
+		functionName: fmt.Sprintf("a%d", id),
 		mergeFunctionName: fmt.Sprintf("m%d", id),
 	}
 }
@@ -57,6 +59,11 @@ func (s *QuerySelection) FunctionName() string {
 // Retrieves the merge function name used during codegen.
 func (s *QuerySelection) MergeFunctionName() string {
 	return s.mergeFunctionName
+}
+
+// Retrieves the child steps.
+func (s *QuerySelection) GetSteps() QueryStepList {
+	return s.Steps
 }
 
 //------------------------------------------------------------------------------
@@ -132,7 +139,141 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 // Code Generation
 //--------------------------------------
 
-// Generates Lua code for the query.
-func (s *QuerySelection) Codegen() (string, error) {
-	return "", nil
+// Generates Lua code for the selection aggregation.
+func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
+	buffer := new(bytes.Buffer)
+
+	// Generate child steps.
+	str, err := s.Steps.CodegenAggregateFunctions()
+	if err != nil {
+		return "", err
+	}
+	buffer.WriteString(str + "\n")
+
+	// Generate main function.
+	fmt.Fprintf(buffer, "function %s(cursor, data)\n", s.FunctionName())
+
+	// Group by dimension.
+	for _, dimension := range s.Dimensions {
+		fmt.Fprintf(buffer, "  dimension = cursor.event:%s()\n", dimension)
+		fmt.Fprintf(buffer, "  if data.%s == nil then data.%s = {} end\n", dimension, dimension)
+		fmt.Fprintf(buffer, "  if data.%s[dimension] == nil then data.%s[dimension] = {} end\n", dimension, dimension)
+		fmt.Fprintf(buffer, "  data = data.%s[dimension]\n\n", dimension)
+	}
+	
+	// Select value.
+	exp, err := s.CodegenExpression()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintln(buffer, "  " + exp)
+
+	// End function definition.
+	fmt.Fprintln(buffer, "end")
+	
+	return buffer.String(), nil
+}
+
+// Generates Lua code for the selection merge.
+func (s *QuerySelection) CodegenMergeFunction() (string, error) {
+	buffer := new(bytes.Buffer)
+
+	// Generate child steps.
+	str, err := s.Steps.CodegenMergeFunctions()
+	if err != nil {
+		return "", err
+	}
+	buffer.WriteString(str + "\n")
+
+	// Generate nested functions first.
+	code, err := s.CodegenInnerMergeFunction(0)
+	if err != nil {
+		return "", err
+	}
+	buffer.WriteString(code + "\n")
+	
+	// Generate main function.
+	fmt.Fprintf(buffer, "function %s(result, data)\n", s.MergeFunctionName())
+	fmt.Fprintf(buffer, "  %sn0(result, data)\n", s.MergeFunctionName())
+	fmt.Fprintf(buffer, "end\n")
+	
+	return buffer.String(), nil
+}
+
+// Generates Lua code for the inner merge.
+func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
+	buffer := new(bytes.Buffer)
+
+	// Generate next nested function first.
+	if index < len(s.Dimensions) {
+		code, err := s.CodegenInnerMergeFunction(index+1)
+		if err != nil {
+			return "", err
+		}
+		buffer.WriteString(code + "\n")
+	}
+
+	// Generate a rollup if our index points at a dimension. Otherwise generate
+	// the leaf merge.
+	fmt.Fprintf(buffer, "function %sn%d(result, data)\n", s.MergeFunctionName(), index)
+	if index < len(s.Dimensions) {
+		dimension := s.Dimensions[index]
+		fmt.Fprintf(buffer, "  if data ~= nil and data.%s ~= nil then\n", dimension)
+		fmt.Fprintf(buffer, "    if result.%s == nil then result.%s = {} end\n", dimension, dimension)
+		fmt.Fprintf(buffer, "    for k,v in pairs(data.%s) do\n", dimension)
+		fmt.Fprintf(buffer, "      if result.%s[k] == nil then result.%s[k] = {} end\n", dimension, dimension)
+		fmt.Fprintf(buffer, "      %sn%d(result.%s[k], v)\n", s.MergeFunctionName(), (index+1), dimension)
+		fmt.Fprintf(buffer, "    end\n")
+		fmt.Fprintf(buffer, "  end\n")
+	} else {
+		// Merge value.
+		exp, err := s.CodegenMergeExpression()
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintln(buffer, "  " + exp)
+	}
+	fmt.Fprintf(buffer, "end\n")
+	
+	return buffer.String(), nil
+}
+
+// Generates Lua code for the expression.
+func (s *QuerySelection) CodegenExpression() (string, error) {
+	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
+	if m := r.FindStringSubmatch(s.Expression); m != nil {
+		if(len(m[1]) > 0) { // sum()/min()/max()
+			switch m[1] {
+				case "sum": return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", s.Alias, s.Alias, m[2]), nil
+				case "min": return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
+				case "max": return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
+			}
+		} else if(len(m[3]) > 0) { // assignment
+			return fmt.Sprintf("data.%s = cursor.event:%s()", s.Alias, m[3]), nil
+		} else { // count()
+			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", s.Alias, s.Alias), nil
+		}
+	}
+
+	return "", fmt.Errorf("skyd.QuerySelection: Invalid expression: %q", s.Expression)
+}
+
+// Generates Lua code for the merge expression.
+func (s *QuerySelection) CodegenMergeExpression() (string, error) {
+	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
+	if m := r.FindStringSubmatch(s.Expression); m != nil {
+		if(len(m[1]) > 0) { // sum()/min()/max()
+			switch m[1] {
+				case "sum": return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil
+				case "min": return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
+				case "max": return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
+			}
+		} else if(len(m[3]) > 0) { // assignment
+			return fmt.Sprintf("result.%s = data.%s", s.Alias, s.Alias), nil
+		} else { // count()
+			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil
+		}
+	}
+
+	return "", fmt.Errorf("skyd.QuerySelection: Invalid merge expression: %q", s.Expression)
 }
