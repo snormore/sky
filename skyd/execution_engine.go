@@ -99,9 +99,9 @@ func (e *ExecutionEngine) FullSource() string {
 func (e *ExecutionEngine) FullAnnotatedSource() string {
 	lineNumber := 1
 	r, _ := regexp.Compile(`\n`)
-	return "0001 " + r.ReplaceAllStringFunc(e.fullSource, func(str string) string {
+	return "00001 " + r.ReplaceAllStringFunc(e.fullSource, func(str string) string {
 		lineNumber += 1
-		return fmt.Sprintf("%s%04d ", str, lineNumber)
+		return fmt.Sprintf("%s%05d ", str, lineNumber)
 	})
 }
 
@@ -225,6 +225,7 @@ func (e *ExecutionEngine) Aggregate() (interface{}, error) {
 	rc := C.lua_pcall(e.state, 1, 1, 0)
 	if rc != 0 {
 		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
+		fmt.Println(e.FullAnnotatedSource())
 		return nil, fmt.Errorf("skyd.ExecutionEngine: Unable to aggregate: %s", luaErrString)
 	}
 
@@ -248,6 +249,7 @@ func (e *ExecutionEngine) Merge(results interface{}, data interface{}) (interfac
 	rc := C.lua_pcall(e.state, 2, 1, 0)
 	if rc != 0 {
 		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
+		fmt.Println(e.FullAnnotatedSource())
 		return results, fmt.Errorf("skyd.ExecutionEngine: Unable to merge: %s", luaErrString)
 	}
 
