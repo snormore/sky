@@ -9,7 +9,7 @@ func ConvertToStringKeys(value interface{}) interface{} {
 	if m, ok := value.(map[interface{}]interface{}); ok {
 		ret := make(map[string]interface{})
 		for k, v := range m {
-			ret[fmt.Sprintf("%v", k)] = v
+			ret[fmt.Sprintf("%v", k)] = ConvertToStringKeys(v)
 		}
 		return ret
 	}

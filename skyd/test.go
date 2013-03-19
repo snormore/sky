@@ -80,3 +80,10 @@ func setupTestData(t *testing.T, tableName string, items [][]string) {
 		}
 	}
 }
+
+func _codegen(t *testing.T, tableName string, query string) {
+	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%s/query/codegen", tableName), "application/json", query)
+	defer resp.Body.Close()
+	//body, _ := ioutil.ReadAll(resp.Body)
+	//fmt.Println(string(body))
+}

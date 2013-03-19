@@ -264,7 +264,7 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 				encoder := json.NewEncoder(w)
 				err := encoder.Encode(ConvertToStringKeys(ret))
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Printf("skyd.Server: Encoding error: %v\n", err.Error())
 					return
 				}
 			}
