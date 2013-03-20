@@ -8,10 +8,10 @@ import (
 // Encode a property file.
 func TestPropertyFileEncode(t *testing.T) {
 	p := NewPropertyFile("")
-	p.CreateProperty("name", "object", "string")
-	p.CreateProperty("salary", "object", "float")
-	p.CreateProperty("purchaseAmount", "action", "integer")
-	p.CreateProperty("isMember", "action", "boolean")
+	p.CreateProperty("name", false, "string")
+	p.CreateProperty("salary", false, "float")
+	p.CreateProperty("purchaseAmount", true, "integer")
+	p.CreateProperty("isMember", true, "boolean")
 
 	// Encode
 	buffer := new(bytes.Buffer)
@@ -19,9 +19,9 @@ func TestPropertyFileEncode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to encode property file: %v", err)
 	}
-	expected := "[{\"id\":-2,\"name\":\"isMember\",\"type\":\"action\",\"dataType\":\"boolean\"},{\"id\":-1,\"name\":\"purchaseAmount\",\"type\":\"action\",\"dataType\":\"integer\"},{\"id\":1,\"name\":\"name\",\"type\":\"object\",\"dataType\":\"string\"},{\"id\":2,\"name\":\"salary\",\"type\":\"object\",\"dataType\":\"float\"}]\n"
+	expected := `[{"id":-2,"name":"isMember","transient":true,"dataType":"boolean"},{"id":-1,"name":"purchaseAmount","transient":true,"dataType":"integer"},{"id":1,"name":"name","transient":false,"dataType":"string"},{"id":2,"name":"salary","transient":false,"dataType":"float"}]`+"\n"
 	if buffer.String() != expected {
-		t.Fatalf("Invalid property file encoding:\n%v", buffer.String())
+		t.Fatalf("Invalid property file encoding:\nexp: %v\ngot: %v", expected, buffer.String())
 	}
 }
 
@@ -30,23 +30,23 @@ func TestPropertyFileDecode(t *testing.T) {
 	p := NewPropertyFile("")
 
 	// Decode
-	buffer := bytes.NewBufferString("[{\"id\":-1,\"name\":\"purchaseAmount\",\"type\":\"action\",\"dataType\":\"integer\"},{\"id\":1,\"name\":\"name\",\"type\":\"object\",\"dataType\":\"string\"},{\"id\":2,\"name\":\"salary\",\"type\":\"object\",\"dataType\":\"float\"}, {\"id\":-2,\"name\":\"isMember\",\"type\":\"action\",\"dataType\":\"boolean\"}]\n")
+	buffer := bytes.NewBufferString("[{\"id\":-1,\"name\":\"purchaseAmount\",\"transient\":true,\"dataType\":\"integer\"},{\"id\":1,\"name\":\"name\",\"transient\":false,\"dataType\":\"string\"},{\"id\":2,\"name\":\"salary\",\"transient\":false,\"dataType\":\"float\"}, {\"id\":-2,\"name\":\"isMember\",\"transient\":true,\"dataType\":\"boolean\"}]\n")
 	err := p.Decode(buffer)
 	if err != nil {
 		t.Fatalf("Unable to decode property file: %v", err)
 	}
-	assertProperty(t, p.properties[-2], -2, "isMember", "action", "boolean")
-	assertProperty(t, p.properties[-1], -1, "purchaseAmount", "action", "integer")
-	assertProperty(t, p.properties[1], 1, "name", "object", "string")
-	assertProperty(t, p.properties[2], 2, "salary", "object", "float")
+	assertProperty(t, p.properties[-2], -2, "isMember", true, "boolean")
+	assertProperty(t, p.properties[-1], -1, "purchaseAmount", true, "integer")
+	assertProperty(t, p.properties[1], 1, "name", false, "string")
+	assertProperty(t, p.properties[2], 2, "salary", false, "float")
 }
 
 // Convert a map of string keys into property id keys.
 func TestPropertyFileNormalizeMap(t *testing.T) {
 	p := NewPropertyFile("")
-	p.CreateProperty("name", "object", "string")
-	p.CreateProperty("salary", "object", "float")
-	p.CreateProperty("purchaseAmount", "action", "integer")
+	p.CreateProperty("name", false, "string")
+	p.CreateProperty("salary", false, "float")
+	p.CreateProperty("purchaseAmount", true, "integer")
 
 	m := map[string]interface{}{"name": "bob", "salary": 100, "purchaseAmount": 12}
 	ret, err := p.NormalizeMap(m)
@@ -67,9 +67,9 @@ func TestPropertyFileNormalizeMap(t *testing.T) {
 // Convert a map of string keys into property id keys.
 func TestPropertyFileDenormalizeMap(t *testing.T) {
 	p := NewPropertyFile("")
-	p.CreateProperty("name", "object", "string")
-	p.CreateProperty("salary", "object", "float")
-	p.CreateProperty("purchaseAmount", "action", "integer")
+	p.CreateProperty("name", false, "string")
+	p.CreateProperty("salary", false, "float")
+	p.CreateProperty("purchaseAmount", true, "integer")
 
 	m := map[int64]interface{}{1: "bob", 2: 100, -1: 12}
 	ret, err := p.DenormalizeMap(m)

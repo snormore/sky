@@ -37,9 +37,9 @@ func (s *Server) createPropertyHandler(w http.ResponseWriter, req *http.Request,
 	vars := mux.Vars(req)
 	return s.executeWithTable(vars["name"], func(table *Table) (interface{}, error) {
 		name, _ := params["name"].(string)
-		typ, _ := params["type"].(string)
+		transient, _ := params["transient"].(bool)
 		dataType, _ := params["dataType"].(string)
-		return table.CreateProperty(name, typ, dataType)
+		return table.CreateProperty(name, transient, dataType)
 	})
 }
 

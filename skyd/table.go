@@ -107,13 +107,13 @@ func (t *Table) Exists() bool {
 }
 
 // Adds a property to the table.
-func (t *Table) CreateProperty(name string, typ string, dataType string) (*Property, error) {
+func (t *Table) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
 
 	// Create property on property file.
-	property, err := t.propertyFile.CreateProperty(name, typ, dataType)
+	property, err := t.propertyFile.CreateProperty(name, transient, dataType)
 	if err != nil {
 		return nil, err
 	}

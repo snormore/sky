@@ -8,8 +8,8 @@ import (
 func TestServerUpdateEvents(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "bar", "object", "string")
-		setupTestProperty("foo", "baz", "action", "integer")
+		setupTestProperty("foo", "bar", false, "string")
+		setupTestProperty("foo", "baz", true, "integer")
 
 		// Send two new events.
 		resp, _ := sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/xyz/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"myValue", "baz":12}}`)
@@ -39,7 +39,7 @@ func TestServerUpdateEvents(t *testing.T) {
 func TestServerDeleteEvent(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "bar", "object", "string")
+		setupTestProperty("foo", "bar", false, "string")
 
 		// Send two new events.
 		resp, _ := sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/xyz/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"myValue"}}`)
@@ -61,7 +61,7 @@ func TestServerDeleteEvent(t *testing.T) {
 func TestServerDeleteEvents(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "bar", "object", "string")
+		setupTestProperty("foo", "bar", false, "string")
 
 		// Send two new events.
 		resp, _ := sendTestHttpRequest("PUT", "http://localhost:8585/tables/foo/objects/xyz/events/2012-01-01T02:00:00Z", "application/json", `{"data":{"bar":"myValue"}}`)

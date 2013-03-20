@@ -26,22 +26,22 @@ func NewPropertyFile(path string) *PropertyFile {
 }
 
 // Adds a new property to the property file and generate an identifier for it.
-func (p *PropertyFile) CreateProperty(name string, typ string, dataType string) (*Property, error) {
+func (p *PropertyFile) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
 	// Don't allow duplicate names.
 	if p.propertiesByName[name] != nil {
 		return nil, fmt.Errorf("Property already exists: %v", name)
 	}
 
-	property, err := NewProperty(0, name, typ, dataType)
+	property, err := NewProperty(0, name, transient, dataType)
 	if err != nil {
 		return nil, err
 	}
 
 	// Find the next object/action identifier.
-	if property.Type == ObjectType {
-		property.Id, _ = p.NextIdentifiers()
-	} else {
+	if property.Transient {
 		_, property.Id = p.NextIdentifiers()
+	} else {
+		property.Id, _ = p.NextIdentifiers()
 	}
 
 	// Add to the list.
@@ -53,15 +53,15 @@ func (p *PropertyFile) CreateProperty(name string, typ string, dataType string) 
 
 // Finds the next available action and object property identifiers.
 func (p *PropertyFile) NextIdentifiers() (int64, int64) {
-	var nextObjectId, nextActionId int64 = 1, -1
+	var nextPermanentId, nextTransientId int64 = 1, -1
 	for _, property := range p.properties {
-		if property.Type == ObjectType && property.Id >= nextObjectId {
-			nextObjectId = property.Id + 1
-		} else if property.Type == ActionType && property.Id <= nextActionId {
-			nextActionId = property.Id - 1
+		if property.Transient && property.Id <= nextTransientId {
+			nextTransientId = property.Id - 1
+		} else if !property.Transient && property.Id >= nextPermanentId {
+			nextPermanentId = property.Id + 1
 		}
 	}
-	return nextObjectId, nextActionId
+	return nextPermanentId, nextTransientId
 }
 
 // Encodes a property file.

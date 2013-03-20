@@ -9,15 +9,15 @@ import (
 	"testing"
 )
 
-func assertProperty(t *testing.T, property *Property, id int64, name string, typ string, dataType string) {
+func assertProperty(t *testing.T, property *Property, id int64, name string, transient bool, dataType string) {
 	if property.Id != id {
 		t.Fatalf("Unexpected property id. Expected %v, got %v", id, property.Id)
 	}
 	if property.Name != name {
 		t.Fatalf("Unexpected property name. Expected %v, got %v", name, property.Name)
 	}
-	if property.Type != typ {
-		t.Fatalf("Unexpected property type. Expected %v, got %v", typ, property.Type)
+	if property.Transient != transient {
+		t.Fatalf("Unexpected property transiency. Expected %v, got %v", transient, property.Transient)
 	}
 	if property.DataType != dataType {
 		t.Fatalf("Unexpected property data type. Expected %v, got %v", dataType, property.DataType)
@@ -66,8 +66,8 @@ func setupTestTable(name string) {
 	resp.Body.Close()
 }
 
-func setupTestProperty(tableName string, name string, typ string, dataType string) {
-	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "type":"%v", "dataType":"%v"}`, name, typ, dataType))
+func setupTestProperty(tableName string, name string, transient bool, dataType string) {
+	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "transient":%v, "dataType":"%v"}`, name, transient, dataType))
 	resp.Body.Close()
 }
 

@@ -29,13 +29,13 @@ func TestTableCreateProperty(t *testing.T) {
 	table.Open()
 	defer table.Close()
 
-	property, err := table.CreateProperty("name", "object", "string")
+	property, err := table.CreateProperty("name", false, "string")
 	if property == nil || err != nil {
 		t.Fatalf("Unable to add property to table: %v", err)
 	}
 
 	content, _ := ioutil.ReadFile(fmt.Sprintf("%v/properties", table.Path()))
-	if string(content) != "[{\"id\":1,\"name\":\"name\",\"type\":\"object\",\"dataType\":\"string\"}]\n" {
+	if string(content) != "[{\"id\":1,\"name\":\"name\",\"transient\":false,\"dataType\":\"string\"}]\n" {
 		t.Fatalf("Invalid properties file:\n%v", string(content))
 	}
 }

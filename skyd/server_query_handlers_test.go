@@ -8,7 +8,7 @@ import (
 func TestServerSimpleCountQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "fruit", "action", "string")
+		setupTestProperty("foo", "fruit", true, "string")
 		setupTestData(t, "foo", [][]string{
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 			[]string{"1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
@@ -32,7 +32,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 func TestServerOneDimensionCountQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "fruit", "action", "string")
+		setupTestProperty("foo", "fruit", true, "string")
 		setupTestData(t, "foo", [][]string{
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 			[]string{"1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
@@ -57,9 +57,9 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 func TestServerMultiDimensionalQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "gender", "object", "string")
-		setupTestProperty("foo", "state", "object", "string")
-		setupTestProperty("foo", "price", "action", "float")
+		setupTestProperty("foo", "gender", false, "string")
+		setupTestProperty("foo", "state", false, "string")
+		setupTestProperty("foo", "price", true, "float")
 		setupTestData(t, "foo", [][]string{
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"NY", "price":100}}`},
 			[]string{"0", "2012-01-01T00:00:01Z", `{"data":{"price":200}}`},
@@ -89,7 +89,7 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 func TestServerFunnelAnalysisQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "action", "object", "string")
+		setupTestProperty("foo", "action", false, "string")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..2] occurs twice for this object.
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
@@ -129,7 +129,7 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "action", "object", "string")
+		setupTestProperty("foo", "action", false, "string")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..1] occurs once for this object. The second one is broken across sessions.
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},

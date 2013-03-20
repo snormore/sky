@@ -14,10 +14,10 @@ func TestExecutionEngineInit(t *testing.T) {
 // Ensure that the lua script can extract event property references.
 func TestExecutionEngineExtractPropertyReferences(t *testing.T) {
 	p := NewPropertyFile("")
-	p.CreateProperty("name", "object", "string")
-	p.CreateProperty("salary", "object", "float")
-	p.CreateProperty("purchaseAmount", "action", "integer")
-	p.CreateProperty("isMember", "action", "boolean")
+	p.CreateProperty("name", false, "string")
+	p.CreateProperty("salary", false, "float")
+	p.CreateProperty("purchaseAmount", true, "integer")
+	p.CreateProperty("isMember", true, "boolean")
 
 	l, err := NewExecutionEngine(p, "function f(event) x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end end")
 	if err != nil {
@@ -41,10 +41,10 @@ func TestExecutionEngineExtractPropertyReferences(t *testing.T) {
 /*
 func TestExecutionEngineGenerateHeader(t *testing.T) {
   p := NewPropertyFile("")
-  p.CreateProperty("name", "object", "string")
-  p.CreateProperty("salary", "object", "float")
-  p.CreateProperty("purchaseAmount", "action", "integer")
-  p.CreateProperty("isMember", "action", "boolean")
+  p.CreateProperty("name", false, "string")
+  p.CreateProperty("salary", false, "float")
+  p.CreateProperty("purchaseAmount", true, "integer")
+  p.CreateProperty("isMember", true, "boolean")
 
   l := NewExecutionEngine(p, "function test(event) x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end end")
   err := l.Init()

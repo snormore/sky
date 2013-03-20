@@ -8,17 +8,12 @@ import (
 type Property struct {
 	Id       int64  `json:"id"`
 	Name     string `json:"name"`
-	Type     string `json:"type"`
+	Transient     bool `json:"transient"`
 	DataType string `json:"dataType"`
 }
 
 // NewProperty returns a new Property.
-func NewProperty(id int64, name string, typ string, dataType string) (*Property, error) {
-	// Validate property type.
-	if typ != ObjectType && typ != ActionType {
-		return nil, fmt.Errorf("Invalid property type: %v", typ)
-	}
-
+func NewProperty(id int64, name string, transient bool, dataType string) (*Property, error) {
 	// Validate data type.
 	switch dataType {
 	case StringDataType, IntegerDataType, FloatDataType, BooleanDataType:
@@ -29,7 +24,7 @@ func NewProperty(id int64, name string, typ string, dataType string) (*Property,
 	return &Property{
 		Id:       id,
 		Name:     name,
-		Type:     typ,
+		Transient:     transient,
 		DataType: dataType,
 	}, nil
 }
