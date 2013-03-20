@@ -77,7 +77,7 @@ func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) 
 				return nil, fmt.Errorf("Invalid step: %v", obj)
 			}
 		}
-	} else {
+	} else if obj != nil {
 		return nil, fmt.Errorf("Invalid steps: %v", obj)
 	}
 	return l, nil

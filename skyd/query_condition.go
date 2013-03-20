@@ -27,12 +27,13 @@ const (
 
 // A condition step made within a query.
 type QueryCondition struct {
-	query        *Query
-	functionName string
-	Expression   string
-	Within       int
-	WithinUnits  string
-	Steps        QueryStepList
+	query            *Query
+	functionName     string
+	Expression       string
+	WithinRangeStart int
+	WithinRangeEnd   int
+	WithinUnits      string
+	Steps            QueryStepList
 }
 
 //------------------------------------------------------------------------------
@@ -45,10 +46,11 @@ type QueryCondition struct {
 func NewQueryCondition(query *Query) *QueryCondition {
 	id := query.NextIdentifier()
 	return &QueryCondition{
-		query:        query,
-		functionName: fmt.Sprintf("a%d", id),
-		Within:       0,
-		WithinUnits:  QueryConditionUnitSteps,
+		query:            query,
+		functionName:     fmt.Sprintf("a%d", id),
+		WithinRangeStart: 0,
+		WithinRangeEnd:   0,
+		WithinUnits:      QueryConditionUnitSteps,
 	}
 }
 
@@ -93,7 +95,7 @@ func (c *QueryCondition) Serialize() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        QueryStepTypeCondition,
 		"expression":  c.Expression,
-		"within":      c.Within,
+		"within":      []int{c.WithinRangeStart, c.WithinRangeEnd},
 		"withinUnits": c.WithinUnits,
 		"steps":       c.Steps.Serialize(),
 	}
@@ -112,14 +114,32 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 	if expression, ok := obj["expression"].(string); ok {
 		c.Expression = expression
 	} else {
-		return fmt.Errorf("Invalid 'expression': %v", obj["expression"])
+		if obj["expression"] == nil {
+			c.Expression = "true"
+		} else {
+			return fmt.Errorf("Invalid 'expression': %v", obj["expression"])
+		}
 	}
 
-	// Deserialize "within".
-	if within, ok := obj["within"].(float64); ok {
-		c.Within = int(within)
+	// Deserialize "within" range.
+	if withinRange, ok := obj["within"].([]interface{}); ok && len(withinRange) == 2 {
+		if withinRangeStart, ok := withinRange[0].(float64); ok {
+			c.WithinRangeStart = int(withinRangeStart)
+		} else {
+			return fmt.Errorf("skyd.QueryCondition: Invalid 'within' range start: %v", withinRange[0])
+		}
+		if withinRangeEnd, ok := withinRange[1].(float64); ok {
+			c.WithinRangeEnd = int(withinRangeEnd)
+		} else {
+			return fmt.Errorf("skyd.QueryCondition: Invalid 'within' range end: %v", withinRange[1])
+		}
 	} else {
-		return fmt.Errorf("Invalid 'within': %v", obj["within"])
+		if obj["within"] == nil {
+			c.WithinRangeStart = 0
+			c.WithinRangeEnd = 0
+		} else {
+			return fmt.Errorf("Invalid 'within' range: %v", obj["within"])
+		}
 	}
 
 	// Deserialize "within units".
@@ -131,7 +151,11 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 			return fmt.Errorf("Invalid 'within units': %v", withinUnits)
 		}
 	} else {
-		return fmt.Errorf("Invalid 'within units': %v", obj["within"])
+		if obj["withinUnits"] == nil {
+			c.WithinUnits = QueryConditionUnitSteps
+		} else {
+			return fmt.Errorf("Invalid 'within units': %v", obj["withinUnits"])
+		}
 	}
 
 	// Deserialize steps.
@@ -152,6 +176,11 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
+	// Validate.
+	if c.WithinRangeStart > c.WithinRangeEnd {
+		return "", fmt.Errorf("skyd.QueryCondition: Invalid 'within' range: %d..%d", c.WithinRangeStart, c.WithinRangeEnd)
+	}
+
 	// Generate child step functions.
 	str, err := c.Steps.CodegenAggregateFunctions()
 	if err != nil {
@@ -161,26 +190,29 @@ func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 
 	// Generate main function.
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName())
-	if c.Within > 0 {
+	if c.WithinRangeStart > 0 {
 		fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
+	}
+	if c.WithinUnits == QueryConditionUnitSteps {
+		fmt.Fprintf(buffer, "  index = 0\n")
 	}
 	fmt.Fprintf(buffer, "  repeat\n")
 	if c.WithinUnits == QueryConditionUnitSteps {
-		fmt.Fprintf(buffer, "  remaining = %d\n", c.Within)
-		fmt.Fprintf(buffer, "    if remaining <= 0 then return false end\n")
+		fmt.Fprintf(buffer, "    if index >= %d and index <= %d then\n", c.WithinRangeStart, c.WithinRangeEnd)
 	}
-	fmt.Fprintf(buffer, "    if %s then\n", c.CodegenExpression())
+	fmt.Fprintf(buffer, "      if %s then\n", c.CodegenExpression())
 
 	// Call each step function.
-	fmt.Println(len(c.Steps))
 	for _, step := range c.Steps {
 		fmt.Fprintf(buffer, "        %s(cursor, data)\n", step.FunctionName())
 	}
 
-	fmt.Fprintf(buffer, "      return true\n")
+	fmt.Fprintf(buffer, "        return true\n")
+	fmt.Fprintf(buffer, "      end\n")
 	fmt.Fprintf(buffer, "    end\n")
 	if c.WithinUnits == QueryConditionUnitSteps {
-		fmt.Fprintf(buffer, "    remaining = remaining - 1\n")
+		fmt.Fprintf(buffer, "    if index >= %d then break end\n", c.WithinRangeEnd)
+		fmt.Fprintf(buffer, "    index = index + 1\n")
 	}
 	fmt.Fprintf(buffer, "  until not cursor:next()\n")
 	fmt.Fprintf(buffer, "  return false\n")
@@ -207,6 +239,12 @@ func (c *QueryCondition) CodegenMergeFunction() (string, error) {
 
 // Generates Lua code for the expression.
 func (c *QueryCondition) CodegenExpression() string {
+	// Do not transform simple booleans.
+	if c.Expression == "true" || c.Expression == "false" {
+		return c.Expression
+	}
+	
+	// Full expressions should be prepended with cursor's event reference.
 	r, _ := regexp.Compile(`^ *(\w+) *(==) *("[^"]*"|'[^']*'|\d+|true|false) *$`)
 	m := r.FindStringSubmatch(c.Expression)
 	if m == nil {

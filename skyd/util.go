@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"fmt"
+	"os"
 )
 
 // Converts untyped map to a map[string]interface{} if passed a map.
@@ -15,4 +16,9 @@ func ConvertToStringKeys(value interface{}) interface{} {
 	}
 
 	return value
+}
+
+// Writes to standard error.
+func warn(msg string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, msg+"\n", v...)
 }
