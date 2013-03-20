@@ -124,3 +124,33 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":3}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
+
+// Ensure that we can perform a sessionized funnel analysis.
+func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", "object", "string")
+		setupTestData(t, "foo", [][]string{
+			// A0[0..0]..A1[1..1] occurs once for this object. The second one is broken across sessions.
+			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"0", "2012-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
+			[]string{"0", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"0", "2012-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
+		})
+
+		// Run query.
+		query := `{
+			"sessionIdleTime":7200,
+			"steps":[
+				{"type":"condition","expression":"action == 'A0'","steps":[
+					{"type":"condition","expression":"action == 'A1'","within":[1,1],"steps":[
+						{"type":"selection","alias":"count","dimensions":["action"],"expression":"count()"}
+					]}
+				]}
+			]
+		}`
+		//_codegen(t, "foo", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", query)
+		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
