@@ -243,7 +243,7 @@ func (c *QueryCondition) CodegenExpression() string {
 	if c.Expression == "true" || c.Expression == "false" {
 		return c.Expression
 	}
-	
+
 	// Full expressions should be prepended with cursor's event reference.
 	r, _ := regexp.Compile(`^ *(\w+) *(==) *("[^"]*"|'[^']*'|\d+|true|false) *$`)
 	m := r.FindStringSubmatch(c.Expression)

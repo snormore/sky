@@ -19,7 +19,7 @@ func TestPropertyFileEncode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to encode property file: %v", err)
 	}
-	expected := `[{"id":-2,"name":"isMember","transient":true,"dataType":"boolean"},{"id":-1,"name":"purchaseAmount","transient":true,"dataType":"integer"},{"id":1,"name":"name","transient":false,"dataType":"string"},{"id":2,"name":"salary","transient":false,"dataType":"float"}]`+"\n"
+	expected := `[{"id":-2,"name":"isMember","transient":true,"dataType":"boolean"},{"id":-1,"name":"purchaseAmount","transient":true,"dataType":"integer"},{"id":1,"name":"name","transient":false,"dataType":"string"},{"id":2,"name":"salary","transient":false,"dataType":"float"}]` + "\n"
 	if buffer.String() != expected {
 		t.Fatalf("Invalid property file encoding:\nexp: %v\ngot: %v", expected, buffer.String())
 	}

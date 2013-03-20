@@ -3,18 +3,32 @@ package skyd
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"sort"
 )
 
+//------------------------------------------------------------------------------
+//
+// Typedefs
+//
+//------------------------------------------------------------------------------
+
 // A PropertyFile manages the serialization of Property objects for a table.
 type PropertyFile struct {
+	opened bool
 	path             string
 	properties       map[int64]*Property
 	propertiesByName map[string]*Property
 }
+
+//------------------------------------------------------------------------------
+//
+// Constructors
+//
+//------------------------------------------------------------------------------
 
 // NewProperty returns a new PropertyFile.
 func NewPropertyFile(path string) *PropertyFile {
@@ -24,6 +38,36 @@ func NewPropertyFile(path string) *PropertyFile {
 	p.Reset()
 	return p
 }
+
+//------------------------------------------------------------------------------
+//
+// Accessors
+//
+//------------------------------------------------------------------------------
+
+// The path to the property file on disk.
+func (p *PropertyFile) Path() string {
+	return p.path
+}
+
+// The path to the factors database.
+func (p *PropertyFile) DbPath() string {
+	if p.path != "" {
+		return fmt.Sprintf("%v.factors", p.path)
+	}
+	return ""
+}
+
+
+//------------------------------------------------------------------------------
+//
+// Methods
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Property Management
+//--------------------------------------
 
 // Adds a new property to the property file and generate an identifier for it.
 func (p *PropertyFile) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
@@ -49,102 +93,6 @@ func (p *PropertyFile) CreateProperty(name string, transient bool, dataType stri
 	p.propertiesByName[property.Name] = property
 
 	return property, nil
-}
-
-// Finds the next available action and object property identifiers.
-func (p *PropertyFile) NextIdentifiers() (int64, int64) {
-	var nextPermanentId, nextTransientId int64 = 1, -1
-	for _, property := range p.properties {
-		if property.Transient && property.Id <= nextTransientId {
-			nextTransientId = property.Id - 1
-		} else if !property.Transient && property.Id >= nextPermanentId {
-			nextPermanentId = property.Id + 1
-		}
-	}
-	return nextPermanentId, nextTransientId
-}
-
-// Encodes a property file.
-func (p *PropertyFile) Encode(writer io.Writer) error {
-	// Convert the lookup into a sorted slice.
-	list := p.GetAllProperties()
-
-	// Encode the slice.
-	encoder := json.NewEncoder(writer)
-	err := encoder.Encode(list)
-	return err
-}
-
-// Decodes a property file.
-func (p *PropertyFile) Decode(reader io.Reader) error {
-	list := make([]*Property, 0)
-	decoder := json.NewDecoder(reader)
-	err := decoder.Decode(&list)
-	if err != nil {
-		return err
-	}
-
-	// Create lookups for the properties.
-	p.Reset()
-	for _, property := range list {
-		p.properties[property.Id] = property
-		if property.Name != "" {
-			p.propertiesByName[property.Name] = property
-		}
-	}
-
-	return nil
-}
-
-// Saves the property file to disk.
-func (p *PropertyFile) Save() error {
-	// Open the file for writing.
-	file, err := os.Create(p.path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Then decode it.
-	w := bufio.NewWriter(file)
-	err = p.Encode(w)
-	if err != nil {
-		return err
-	}
-	if err = w.Flush(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Loads the property file from disk.
-func (p *PropertyFile) Load() error {
-	// Ignore if there is no file.
-	if _, err := os.Stat(p.path); os.IsNotExist(err) {
-		return nil
-	}
-
-	// Otherwise open it.
-	file, err := os.Open(p.path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Then decode it.
-	err = p.Decode(bufio.NewReader(file))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Clears out the property file.
-func (p *PropertyFile) Reset() {
-	p.properties = make(map[int64]*Property)
-	p.propertiesByName = make(map[string]*Property)
 }
 
 // Retrieves a list of undeleted properties sorted by id.
@@ -185,6 +133,124 @@ func (p *PropertyFile) DeleteProperty(property *Property) {
 	}
 }
 
+// Clears out the property file.
+func (p *PropertyFile) Reset() {
+	p.properties = make(map[int64]*Property)
+	p.propertiesByName = make(map[string]*Property)
+}
+
+//--------------------------------------
+// Encoding
+//--------------------------------------
+
+// Encodes a property file.
+func (p *PropertyFile) Encode(writer io.Writer) error {
+	// Convert the lookup into a sorted slice.
+	list := p.GetAllProperties()
+
+	// Encode the slice.
+	encoder := json.NewEncoder(writer)
+	err := encoder.Encode(list)
+	return err
+}
+
+// Decodes a property file.
+func (p *PropertyFile) Decode(reader io.Reader) error {
+	list := make([]*Property, 0)
+	decoder := json.NewDecoder(reader)
+	err := decoder.Decode(&list)
+	if err != nil {
+		return err
+	}
+
+	// Create lookups for the properties.
+	p.Reset()
+	for _, property := range list {
+		p.properties[property.Id] = property
+		if property.Name != "" {
+			p.propertiesByName[property.Name] = property
+		}
+	}
+
+	return nil
+}
+
+//--------------------------------------
+// State
+//--------------------------------------
+
+// Opens the property file.
+func (p *PropertyFile) Open() error {
+	if p.IsOpen() {
+		return errors.New("skyd.PropertyFile: Property file is already open.")
+	}
+
+	// Ignore if there is no file.
+	if _, err := os.Stat(p.path); os.IsNotExist(err) {
+		return nil
+	}
+
+	// Otherwise open it.
+	file, err := os.Open(p.path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Then decode it.
+	err = p.Decode(bufio.NewReader(file))
+	if err != nil {
+		return err
+	}
+
+	p.opened = true
+	
+	return nil
+}
+
+// Closes the property file.
+func (p *PropertyFile) Close() {
+	p.Reset()
+	p.opened = false
+}
+
+// Returns whether the property file is currently open.
+func (p *PropertyFile) IsOpen() bool {
+	return p.opened
+}
+
+
+//--------------------------------------
+// Persistence
+//--------------------------------------
+
+// Saves the property file to disk.
+func (p *PropertyFile) Save() error {
+	// Open the file for writing.
+	file, err := os.Create(p.path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Then decode it.
+	w := bufio.NewWriter(file)
+	err = p.Encode(w)
+	if err != nil {
+		return err
+	}
+	if err = w.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
+//--------------------------------------
+// Normalization
+//--------------------------------------
+
 // Converts a map with string keys to use property identifier keys.
 func (p *PropertyFile) NormalizeMap(m map[string]interface{}) (map[int64]interface{}, error) {
 	clone := make(map[int64]interface{})
@@ -213,4 +279,34 @@ func (p *PropertyFile) DenormalizeMap(m map[int64]interface{}) (map[string]inter
 		}
 	}
 	return clone, nil
+}
+
+//--------------------------------------
+// Factorization
+//--------------------------------------
+
+// Converts the value for a given property to its internal representation.
+// This only changes the value for 'factor' data types.
+func (p *PropertyFile) Factorize(property *Property, value interface{}) (interface{}, error) {
+	if property.DataType == FactorDataType {
+		
+	}
+	return value, nil
+}
+
+//--------------------------------------
+// Utilities
+//--------------------------------------
+
+// Finds the next available action and object property identifiers.
+func (p *PropertyFile) NextIdentifiers() (int64, int64) {
+	var nextPermanentId, nextTransientId int64 = 1, -1
+	for _, property := range p.properties {
+		if property.Transient && property.Id <= nextTransientId {
+			nextTransientId = property.Id - 1
+		} else if !property.Transient && property.Id >= nextPermanentId {
+			nextPermanentId = property.Id + 1
+		}
+	}
+	return nextPermanentId, nextTransientId
 }

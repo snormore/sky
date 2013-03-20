@@ -79,7 +79,7 @@ func (t *Table) Open() error {
 
 	// Load property file.
 	t.propertyFile = NewPropertyFile(fmt.Sprintf("%v/%v", t.path, "properties"))
-	err := t.propertyFile.Load()
+	err := t.propertyFile.Open()
 	if err != nil {
 		t.Close()
 		return err
@@ -90,6 +90,9 @@ func (t *Table) Open() error {
 
 // Closes the table.
 func (t *Table) Close() {
+	if t.propertyFile != nil {
+		t.propertyFile.Close()
+	}
 	t.propertyFile = nil
 }
 
