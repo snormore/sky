@@ -35,7 +35,7 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 		}
 
 		// Deserialize the query.
-		query := NewQuery(table)
+		query := NewQuery(table, s.factors)
 		err = query.Deserialize(params)
 		if err != nil {
 			return nil, err

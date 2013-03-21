@@ -283,3 +283,62 @@ func (s *QuerySelection) CodegenMergeExpression() (string, error) {
 
 	return "", fmt.Errorf("skyd.QuerySelection: Invalid merge expression: %q", s.Expression)
 }
+
+//--------------------------------------
+// Factorization
+//--------------------------------------
+
+// Converts factorized fields back to their original strings.
+func (s *QuerySelection) Defactorize(data interface{}) (error) {
+	err := s.defactorize(data, 0)
+	if err != nil {
+		return err
+	}
+
+	// Defactorize child steps.
+	err = s.Steps.Defactorize(data)
+
+	return err
+}
+
+// Recursively defactorizes dimensions.
+func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
+	if index >= len(s.Dimensions) {
+		return nil
+	}
+	// Ignore any values that are nil or not maps.
+	m, ok := data.(map[interface{}]interface{})
+	if !ok || data == nil {
+		return nil
+	}
+	
+	// Retrieve property.
+	dimension := s.Dimensions[index]
+	property := s.query.table.propertyFile.GetPropertyByName(dimension)
+	if property == nil {
+		return fmt.Errorf("skyd.QuerySelection: Property not found: %s", dimension)
+	}
+	
+	// Defactorize.
+	if _m, ok := m[dimension].(map[interface{}]interface{}); ok {
+		for k, v := range _m {
+			if property.DataType == FactorDataType {
+				sequence, err := castUint64(k)
+				if err != nil {
+					return err
+				}
+				stringValue, err := s.query.factors.Defactorize(s.query.table.Name(), dimension, sequence)
+				if err != nil {
+					return err
+				}
+				delete(_m, k)
+				_m[stringValue] = v
+			}
+
+			// Defactorize next dimension.
+			s.defactorize(v, index+1)
+		}
+	}
+	
+	return nil
+}

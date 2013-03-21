@@ -58,7 +58,7 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "gender", false, "string")
-		setupTestProperty("foo", "state", false, "string")
+		setupTestProperty("foo", "state", false, "factor")
 		setupTestProperty("foo", "price", true, "float")
 		setupTestData(t, "foo", [][]string{
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"NY", "price":100}}`},

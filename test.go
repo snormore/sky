@@ -28,7 +28,7 @@ func assertResponse(t *testing.T, resp *http.Response, statusCode int, content s
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != 200 || content != string(body) {
-		t.Fatalf("%v: Expected [%v] %q, got [%v] %q.", message, statusCode, content, resp.StatusCode, string(body))
+		t.Fatalf("%v:\nexp:[%v] %s\ngot:[%v] %s.", message, statusCode, content, resp.StatusCode, string(body))
 	}
 }
 

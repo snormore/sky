@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 )
 
 //------------------------------------------------------------------------------
@@ -200,7 +201,13 @@ func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 	if c.WithinUnits == QueryConditionUnitSteps {
 		fmt.Fprintf(buffer, "    if index >= %d and index <= %d then\n", c.WithinRangeStart, c.WithinRangeEnd)
 	}
-	fmt.Fprintf(buffer, "      if %s then\n", c.CodegenExpression())
+
+	// Generate conditional expression.
+	expressionCode, err := c.CodegenExpression()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(buffer, "      if %s then\n", expressionCode)
 
 	// Call each step function.
 	for _, step := range c.Steps {
@@ -238,17 +245,72 @@ func (c *QueryCondition) CodegenMergeFunction() (string, error) {
 }
 
 // Generates Lua code for the expression.
-func (c *QueryCondition) CodegenExpression() string {
+func (c *QueryCondition) CodegenExpression() (string, error) {
 	// Do not transform simple booleans.
 	if c.Expression == "true" || c.Expression == "false" {
-		return c.Expression
+		return c.Expression, nil
 	}
 
 	// Full expressions should be prepended with cursor's event reference.
-	r, _ := regexp.Compile(`^ *(\w+) *(==) *("[^"]*"|'[^']*'|\d+|true|false) *$`)
-	m := r.FindStringSubmatch(c.Expression)
+	r, _ := regexp.Compile(`^ *(\w+) *(==) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
+	m := r.FindSubmatch([]byte(c.Expression))
 	if m == nil {
-		return "false"
+		return "", fmt.Errorf("skyd.QueryCondition: Invalid expression: %v", c.Expression)
 	}
-	return fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], m[3])
+
+	// Find the property.
+	property := c.query.table.propertyFile.GetPropertyByName(string(m[1]))
+	if property == nil {
+		return "", fmt.Errorf("skyd.QueryCondition: Property not found: %v", string(m[1]))
+	}
+
+	// Validate the expression value.
+	var value string
+	switch property.DataType {
+	case FactorDataType, StringDataType:
+		// Validate string value.
+		var stringValue string
+		if m[3] != nil {
+			stringValue = string(m[3])
+		} else if m[4] != nil {
+			stringValue = string(m[4])
+		} else {
+			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a string literal for string and factor properties: %v", c.Expression)
+		}
+
+		// Convert factors.
+		if property.DataType == FactorDataType {
+			sequence, err := c.query.factors.Factorize(c.query.table.Name(), property.Name, stringValue, false)
+			if err != nil {
+				return "", err
+			} else {
+				value = strconv.FormatUint(sequence, 10)
+			}
+		} else {
+			value = fmt.Sprintf(`"%s"`, stringValue)
+		}
+
+	case IntegerDataType, FloatDataType:
+		if m[5] == nil {
+			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a numeric literal for integer and float properties: %v", c.Expression)
+		}
+		value = string(m[5])
+
+	case BooleanDataType:
+		if m[6] == nil {
+			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a boolean literal for boolean properties: %v", c.Expression)
+		}
+		value = string(m[6])
+	}
+
+	return fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], value), nil
+}
+
+//--------------------------------------
+// Factorization
+//--------------------------------------
+
+// Converts factorized fields back to their original strings.
+func (c *QueryCondition) Defactorize(data interface{}) (error) {
+	return c.Steps.Defactorize(data)
 }

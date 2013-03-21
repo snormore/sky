@@ -9,12 +9,24 @@ import (
 	"time"
 )
 
+//------------------------------------------------------------------------------
+//
+// Typedefs
+//
+//------------------------------------------------------------------------------
+
 // A Table is a collection of objects.
 type Table struct {
 	name         string
 	path         string
 	propertyFile *PropertyFile
 }
+
+//------------------------------------------------------------------------------
+//
+// Constructor
+//
+//------------------------------------------------------------------------------
 
 // NewTable returns a new Table that is stored at a given path.
 func NewTable(name string, path string) *Table {
@@ -29,6 +41,12 @@ func NewTable(name string, path string) *Table {
 	}
 }
 
+//------------------------------------------------------------------------------
+//
+// Accessors
+//
+//------------------------------------------------------------------------------
+
 // Retrieves the path on the table.
 func (t *Table) Path() string {
 	return t.path
@@ -38,6 +56,16 @@ func (t *Table) Path() string {
 func (t *Table) Name() string {
 	return t.name
 }
+
+//------------------------------------------------------------------------------
+//
+// Methods
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Lifecycle
+//--------------------------------------
 
 // Creates a table directory structure.
 func (t *Table) Create() error {
@@ -108,6 +136,10 @@ func (t *Table) Exists() bool {
 	}
 	return true
 }
+
+//--------------------------------------
+// Property Management
+//--------------------------------------
 
 // Adds a property to the table.
 func (t *Table) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
@@ -181,6 +213,10 @@ func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[string]interface{},
 	return t.propertyFile.DenormalizeMap(m)
 }
 
+//--------------------------------------
+// Event Encoding
+//--------------------------------------
+
 // Encodes an object identifier for this table.
 func (t *Table) EncodeObjectId(objectId string) ([]byte, error) {
 	return msgpack.Marshal([]string{t.name, objectId})
@@ -230,4 +266,54 @@ func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
 	}
 
 	return m, nil
+}
+
+//--------------------------------------
+// Factorization
+//--------------------------------------
+
+// Factorizes the values in an event.
+func (t *Table) FactorizeEvent(event *Event, factors *Factors, createIfMissing bool) (error) {
+	if event == nil {
+		return nil
+	}
+
+	propertyFile := t.propertyFile
+	for k,v := range event.Data {
+		property := propertyFile.GetProperty(k)
+		if property.DataType == FactorDataType {
+			if stringValue, ok := v.(string); ok {
+				sequence, err := factors.Factorize(t.name, property.Name, stringValue, createIfMissing)
+				if err != nil {
+					return err
+				}
+				event.Data[k] = sequence
+			}
+		}
+	}
+	
+	return nil
+}
+
+// Defactorizes the values in an event.
+func (t *Table) DefactorizeEvent(event *Event, factors *Factors) (error) {
+	if event == nil {
+		return nil
+	}
+
+	propertyFile := t.propertyFile
+	for k,v := range event.Data {
+		property := propertyFile.GetProperty(k)
+		if property.DataType == FactorDataType {
+			if sequence, ok := v.(uint64); ok {
+				stringValue, err := factors.Defactorize(t.name, property.Name, sequence)
+				if err != nil {
+					return err
+				}
+				event.Data[k] = stringValue
+			}
+		}
+	}
+	
+	return nil
 }

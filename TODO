@@ -1,9 +1,8 @@
-* Factors
+* Integrate factors.
+  * Event insert
+  * query condition
+  * query selection
 * CLI
 * Benchmark
 * Add ending state at the beginning of event list (for optimizing appends).
-
-* Bookmark support?
-
-
-* Serialize factorization.
+* Bookmark support

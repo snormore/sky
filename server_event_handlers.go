@@ -47,6 +47,10 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 			if err != nil {
 				return nil, err
 			}
+			err = table.DefactorizeEvent(event, s.factors)
+			if err != nil {
+				return nil, err
+			}
 			output = append(output, e)
 		}
 
@@ -82,7 +86,15 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 		}
 
 		// Convert an event to a serializable object.
-		return table.SerializeEvent(event)
+		e, err := table.SerializeEvent(event)
+		if err != nil {
+			return nil, err
+		}
+		err = table.DefactorizeEvent(event, s.factors)
+		if err != nil {
+			return nil, err
+		}
+		return e, nil
 	})
 }
 
@@ -92,6 +104,10 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, p
 	return s.executeWithObject(vars["name"], vars["objectId"], func(servlet *Servlet, table *Table) (interface{}, error) {
 		params["timestamp"] = vars["timestamp"]
 		event, err := table.DeserializeEvent(params)
+		if err != nil {
+			return nil, err
+		}
+		err = table.FactorizeEvent(event, s.factors, true)
 		if err != nil {
 			return nil, err
 		}
@@ -105,6 +121,10 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 	return s.executeWithObject(vars["name"], vars["objectId"], func(servlet *Servlet, table *Table) (interface{}, error) {
 		params["timestamp"] = vars["timestamp"]
 		event, err := table.DeserializeEvent(params)
+		if err != nil {
+			return nil, err
+		}
+		err = table.FactorizeEvent(event, s.factors, true)
 		if err != nil {
 			return nil, err
 		}

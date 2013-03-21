@@ -30,6 +30,7 @@ type QueryStep interface {
 	Deserialize(map[string]interface{}) error
 	CodegenAggregateFunction() (string, error)
 	CodegenMergeFunction() (string, error)
+	Defactorize(data interface{}) (error)
 }
 
 type QueryStepList []QueryStep
@@ -130,3 +131,19 @@ func (l QueryStepList) CodegenMergeInvoke() string {
 	}
 	return buffer.String()
 }
+
+//--------------------------------------
+// Factorization
+//--------------------------------------
+
+// Defactorizes results generated from the aggregate function.
+func (l QueryStepList) Defactorize(data interface{}) (error) {
+	for _, step := range l {
+		err := step.Defactorize(data)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+

@@ -33,6 +33,7 @@ import (
 
 // An ExecutionEngine is used to iterate over a series of objects.
 type ExecutionEngine struct {
+	tableName    string
 	iterator     *levigo.Iterator
 	cursor       *C.sky_cursor
 	state        *C.lua_State
@@ -49,9 +50,13 @@ type ExecutionEngine struct {
 //
 //------------------------------------------------------------------------------
 
-func NewExecutionEngine(propertyFile *PropertyFile, source string) (*ExecutionEngine, error) {
+func NewExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
+	if table == nil {
+		return nil, errors.New("skyd.ExecutionEngine: Table required")
+	}
+	propertyFile := table.propertyFile
 	if propertyFile == nil {
-		panic("skyd.ExecutionEngine: Property file required.")
+		return nil, errors.New("skyd.ExecutionEngine: Property file required")
 	}
 
 	// Find a list of all references properties.
@@ -61,7 +66,12 @@ func NewExecutionEngine(propertyFile *PropertyFile, source string) (*ExecutionEn
 	}
 
 	// Create the engine.
-	e := &ExecutionEngine{propertyFile: propertyFile, source: source, propertyRefs: propertyRefs}
+	e := &ExecutionEngine{
+		tableName:    table.Name(),
+		propertyFile: propertyFile,
+		source:       source,
+		propertyRefs: propertyRefs,
+	}
 
 	// Initialize the engine.
 	err = e.init()
@@ -389,7 +399,7 @@ func getPropertyCType(property *Property) string {
 	switch property.DataType {
 	case StringDataType:
 		return "sky_string_t"
-	case IntegerDataType:
+	case FactorDataType, IntegerDataType:
 		return "int32_t"
 	case FloatDataType:
 		return "double"

@@ -167,7 +167,7 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
         property_descriptor->set_func = sky_set_string;
         property_descriptor->clear_func = sky_clear_string;
     }
-    else if(strcmp(data_type, "integer") == 0) {
+    else if(strcmp(data_type, "factor") == 0 || strcmp(data_type, "integer") == 0) {
         property_descriptor->set_func = sky_set_int;
         property_descriptor->clear_func = sky_clear_int;
     }

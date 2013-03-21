@@ -43,6 +43,7 @@ type Server struct {
 	listener   net.Listener
 	servlets   []*Servlet
 	tables     map[string]*Table
+	factors    *Factors
 	channel    chan *Message
 }
 
@@ -96,6 +97,11 @@ func (s *Server) TablesPath() string {
 // Generates the path for a table attached to the server.
 func (s *Server) TablePath(name string) string {
 	return fmt.Sprintf("%v/%v", s.TablesPath(), name)
+}
+
+// The path to the factors database.
+func (s *Server) FactorsPath() string {
+	return fmt.Sprintf("%v/factors", s.path)
 }
 
 //------------------------------------------------------------------------------
@@ -165,6 +171,14 @@ func (s *Server) open() error {
 		panic(fmt.Sprintf("skyd.Server: Unable to create server folders: %v", err))
 	}
 
+	// Open factors database.
+	s.factors = NewFactors(s.FactorsPath())
+	err = s.factors.Open()
+	if err != nil {
+		s.close()
+		return err
+	}
+
 	// Create servlets from child directories with numeric names.
 	infos, err := ioutil.ReadDir(s.DataPath())
 	if err != nil {
@@ -173,7 +187,7 @@ func (s *Server) open() error {
 	for _, info := range infos {
 		match, _ := regexp.MatchString("^\\d$", info.Name())
 		if info.IsDir() && match {
-			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%s", s.DataPath(), info.Name())))
+			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%s", s.DataPath(), info.Name()), s.factors))
 		}
 	}
 
@@ -182,7 +196,7 @@ func (s *Server) open() error {
 		cpuCount := runtime.NumCPU()
 		cpuCount = 1
 		for i := 0; i < cpuCount; i++ {
-			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i)))
+			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.factors))
 		}
 	}
 
@@ -206,6 +220,12 @@ func (s *Server) close() {
 			servlet.Close()
 		}
 		s.servlets = nil
+	}
+
+	// Close factors database.
+	if s.factors != nil {
+		s.factors.Close()
+		s.factors = nil
 	}
 }
 
@@ -431,6 +451,7 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 	rchannel := make(chan *Message, len(s.servlets))
 
 	// Retrieve table and setup servlets within the server context.
+	var query *Query
 	_, err := s.sync(func() (interface{}, error) {
 		// Return an error if the table already exists.
 		table, err := s.OpenTable(tableName)
@@ -439,7 +460,7 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		}
 
 		// Deserialize the query.
-		query := NewQuery(table)
+		query = NewQuery(table, s.factors)
 		err = query.Deserialize(json)
 		if err != nil {
 			return nil, err
@@ -452,7 +473,7 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		}
 
 		// Create an engine for merging results.
-		engine, err = NewExecutionEngine(table.propertyFile, source)
+		engine, err = NewExecutionEngine(table, source)
 		if err != nil {
 			return nil, err
 		}
@@ -465,7 +486,7 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 			// of the server context.
 			rchannel <- servlet.async(func() (interface{}, error) {
 				// Create an engine for each servlet.
-				e, err := NewExecutionEngine(table.propertyFile, source)
+				e, err := NewExecutionEngine(table, source)
 				if err != nil {
 					return nil, err
 				}
@@ -511,6 +532,14 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 			fmt.Printf("skyd.Server: Aggregate error: %v", err)
 			servletError = err
 		}
+		
+		// Defactorize aggregate results.
+		err = query.Defactorize(ret)
+		if err != nil {
+			return nil, err
+		}
+		
+		// Merge results.
 		if ret != nil {
 			result, err = engine.Merge(result, ret)
 			if err != nil {

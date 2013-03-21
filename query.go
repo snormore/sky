@@ -16,6 +16,7 @@ import (
 // A Query is a structured way of aggregating data in the database.
 type Query struct {
 	table           *Table
+	factors         *Factors
 	sequence        int
 	Steps           QueryStepList
 	SessionIdleTime int
@@ -28,10 +29,11 @@ type Query struct {
 //------------------------------------------------------------------------------
 
 // NewQuery returns a new query.
-func NewQuery(table *Table) *Query {
+func NewQuery(table *Table, factors *Factors) *Query {
 	return &Query{
-		table: table,
-		Steps: make(QueryStepList, 0),
+		table:   table,
+		factors: factors,
+		Steps:   make(QueryStepList, 0),
 	}
 }
 
@@ -44,6 +46,11 @@ func NewQuery(table *Table) *Query {
 // Retrieves the table this query is associated with.
 func (q *Query) Table() *Table {
 	return q.table
+}
+
+// Retrieves the factors this query is associated with.
+func (q *Query) Factors() *Factors {
+	return q.factors
 }
 
 //------------------------------------------------------------------------------
@@ -186,4 +193,14 @@ func (q *Query) CodegenMergeFunction() string {
 func (q *Query) NextIdentifier() int {
 	q.sequence += 1
 	return q.sequence
+}
+
+//--------------------------------------
+// Factorization
+//--------------------------------------
+
+// Converts factorized results from the aggregate function results to use
+// the appropriate strings.
+func (q *Query) Defactorize(data interface{}) error {
+	return q.Steps.Defactorize(data)
 }

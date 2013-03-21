@@ -21,6 +21,7 @@ import (
 type Servlet struct {
 	path    string
 	db      *levigo.DB
+	factors *Factors
 	channel chan *Message
 }
 
@@ -31,9 +32,10 @@ type Servlet struct {
 //------------------------------------------------------------------------------
 
 // NewServlet returns a new Servlet with a data shard stored at a given path.
-func NewServlet(path string) *Servlet {
+func NewServlet(path string, factors *Factors) *Servlet {
 	return &Servlet{
 		path:    path,
+		factors:    factors,
 		channel: make(chan *Message),
 	}
 }

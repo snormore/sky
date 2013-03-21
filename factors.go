@@ -248,3 +248,4 @@ func (f *Factors) inc(namespace string, id string) (uint64, error) {
 	}
 	return sequence, nil
 }
+

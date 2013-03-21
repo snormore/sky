@@ -11,7 +11,7 @@ func TestOpen(t *testing.T) {
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 
-	servlet := NewServlet(path)
+	servlet := NewServlet(path, nil)
 	defer servlet.Close()
 	err = servlet.Open()
 	if err != nil {
@@ -25,7 +25,7 @@ func TestServletPutEvent(t *testing.T) {
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 	table := NewTable("test", "/tmp/test")
-	servlet := NewServlet(path)
+	servlet := NewServlet(path, nil)
 	defer servlet.Close()
 	_ = servlet.Open()
 
