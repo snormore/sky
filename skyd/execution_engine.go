@@ -1,7 +1,7 @@
 package skyd
 
 /*
-#cgo LDFLAGS: -lcsky -lluajit-5.1.2
+#cgo LDFLAGS: -lcsky -lluajit-5.1
 #include <stdlib.h>
 #include <sky/cursor.h>
 #include <luajit-2.0/lua.h>
