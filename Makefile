@@ -42,7 +42,7 @@ luajit:
 	${MAKE} -C deps/LuaJIT-2.0.1 install PREFIX=${PREFIX}
 
 csky:
-	${MAKE} -C csky clean install PREFIX=${PREFIX}
+	${MAKE} -C deps/csky clean install PREFIX=${PREFIX}
 
 deps: leveldb luajit csky
 
@@ -61,9 +61,7 @@ $(BUILDDIR)/skyd: $(SKYD_SRCS)
 clean:
 	rm -fr $(BUILDDIR)
 
-# Targets
-.PHONY: install clean all csky
-# Programs
+.PHONY: install clean all csky leveldb luajit
 .PHONY: $(BINARIES)
 
 install: $(BINARIES)
