@@ -307,7 +307,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
 		return nil
 	}
 	// Ignore any values that are nil or not maps.
-	m, ok := data.(map[interface{}]interface{})
+	inner, ok := data.(map[interface{}]interface{})
 	if !ok || data == nil {
 		return nil
 	}
@@ -320,8 +320,9 @@ func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
 	}
 	
 	// Defactorize.
-	if _m, ok := m[dimension].(map[interface{}]interface{}); ok {
-		for k, v := range _m {
+	if outer, ok := inner[dimension].(map[interface{}]interface{}); ok {
+		copy := map[interface{}]interface{}{}
+		for k, v := range outer {
 			if property.DataType == FactorDataType {
 				sequence, err := castUint64(k)
 				if err != nil {
@@ -331,13 +332,15 @@ func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
 				if err != nil {
 					return err
 				}
-				delete(_m, k)
-				_m[stringValue] = v
+				copy[stringValue] = v
+			} else {
+				copy[k] = v
 			}
 
 			// Defactorize next dimension.
 			s.defactorize(v, index+1)
 		}
+		inner[dimension] = copy
 	}
 	
 	return nil

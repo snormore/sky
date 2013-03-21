@@ -17,6 +17,12 @@ func TestServerSimpleCountQuery(t *testing.T) {
 			[]string{"3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 		})
 
+		setupTestTable("bar")
+		setupTestProperty("bar", "fruit", true, "string")
+		setupTestData(t, "foo", [][]string{
+			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
+		})
+
 		// Run query.
 		query := `{
 			"steps":[
@@ -89,7 +95,7 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 func TestServerFunnelAnalysisQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "action", false, "string")
+		setupTestProperty("foo", "action", false, "factor")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..2] occurs twice for this object.
 			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},

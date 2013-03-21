@@ -1,8 +1,5 @@
-* Integrate factors.
-  * Event insert
-  * query condition
-  * query selection
 * CLI
+* Restrict query to table.
 * Benchmark
 * Add ending state at the beginning of event list (for optimizing appends).
 * Bookmark support
