@@ -106,7 +106,7 @@ func (f *Factors) key(namespace string, id string, value string) string {
 
 // The reverse key for a given namespace/id/value.
 func (f *Factors) revkey(namespace string, id string, value uint64) string {
-	return fmt.Sprintf("%s>%s:%s", namespace, id, value)
+	return fmt.Sprintf("%s>%s:%d", namespace, id, value)
 }
 
 // The sequence key for a given namespace/id.
@@ -119,7 +119,7 @@ func (f *Factors) seqkey(namespace string, id string) string {
 // Factorization
 //--------------------------------------
 
-// Converts the unfactorized value for a given id in a given namespace to its internal representation.
+// Converts the defactorized value for a given id in a given namespace to its internal representation.
 func (f *Factors) Factorize(namespace string, id string, value string) (uint64, error) {
 	// Blank is always zero.
 	if value == "" {
@@ -157,7 +157,7 @@ func (f *Factors) Factorize(namespace string, id string, value string) (uint64, 
 }
 
 // Converts the factorized value for a given id in a given namespace to its internal representation.
-func (f *Factors) Unfactorize(namespace string, id string, value uint64) (string, error) {
+func (f *Factors) Defactorize(namespace string, id string, value uint64) (string, error) {
 	// Blank is always zero.
 	if value == 0 {
 		return "", nil
@@ -183,7 +183,7 @@ func (f *Factors) inc(namespace string, id string) (uint64, error) {
 
 	// Initialize key if it doesn't exist. Otherwise increment it.
 	if data == nil {
-		err := f.db.Put(f.wo, []byte(f.seqkey(namespace, id)), []byte("0"))
+		err := f.db.Put(f.wo, []byte(f.seqkey(namespace, id)), []byte("1"))
 		if err != nil {
 			return 0, err
 		}

@@ -21,11 +21,21 @@ func TestFactorization(t *testing.T) {
 	}
 	
 	num, err := factors.Factorize("foo", "bar", "/index.html")
-	if err != nil {
-		t.Fatalf("Unable to factorize: %v", err)
+	if err != nil || num != 1 {
+		t.Fatalf("Wrong factorization: exp: %v, got: %v (%v)", 1, num, err)
 	}
-	if num != 1 {
-		t.Fatalf("Wrong factorization: exp: %v, got: %v", 1, num)
+	num, err = factors.Factorize("foo", "bar", "/about.html")
+	if err != nil || num != 2 {
+		t.Fatalf("Wrong factorization: exp: %v, got: %v (%v)", 2, num, err)
+	}
+
+	str, err := factors.Defactorize("foo", "bar", 1)
+	if err != nil || str != "/index.html" {
+		t.Fatalf("Wrong defactorization: exp: %v, got: %v (%v)", "/index.html", str, err)
+	}
+	str, err = factors.Defactorize("foo", "bar", 2)
+	if err != nil || str != "/about.html" {
+		t.Fatalf("Wrong defactorization: exp: %v, got: %v (%v)", "/about.html", str, err)
 	}
 }
 
