@@ -18,7 +18,7 @@ import (
 
 // A PropertyFile manages the serialization of Property objects for a table.
 type PropertyFile struct {
-	opened bool
+	opened           bool
 	path             string
 	properties       map[int64]*Property
 	propertiesByName map[string]*Property
@@ -57,7 +57,6 @@ func (p *PropertyFile) DbPath() string {
 	}
 	return ""
 }
-
 
 //------------------------------------------------------------------------------
 //
@@ -204,7 +203,7 @@ func (p *PropertyFile) Open() error {
 	}
 
 	p.opened = true
-	
+
 	return nil
 }
 
@@ -218,7 +217,6 @@ func (p *PropertyFile) Close() {
 func (p *PropertyFile) IsOpen() bool {
 	return p.opened
 }
-
 
 //--------------------------------------
 // Persistence
@@ -245,7 +243,6 @@ func (p *PropertyFile) Save() error {
 
 	return nil
 }
-
 
 //--------------------------------------
 // Normalization
@@ -289,7 +286,7 @@ func (p *PropertyFile) DenormalizeMap(m map[int64]interface{}) (map[string]inter
 // This only changes the value for 'factor' data types.
 func (p *PropertyFile) Factorize(property *Property, value interface{}) (interface{}, error) {
 	if property.DataType == FactorDataType {
-		
+
 	}
 	return value, nil
 }

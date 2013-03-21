@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jmhodges/levigo"
 	"strconv"
+	"sync"
 )
 
 //------------------------------------------------------------------------------
@@ -15,10 +16,33 @@ import (
 
 // A Factors object manages the factorization and defactorization of values.
 type Factors struct {
-	db        *levigo.DB
-	ro        *levigo.ReadOptions
-	wo        *levigo.WriteOptions
-	path             string
+	db    *levigo.DB
+	ro    *levigo.ReadOptions
+	wo    *levigo.WriteOptions
+	path  string
+	mutex sync.Mutex
+}
+
+//------------------------------------------------------------------------------
+//
+// Errors
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Factor Not Found
+//--------------------------------------
+
+func NewFactorNotFound(text string) error {
+	return &FactorNotFound{text}
+}
+
+type FactorNotFound struct {
+	s string
+}
+
+func (e *FactorNotFound) Error() string {
+	return e.s
 }
 
 //------------------------------------------------------------------------------
@@ -68,11 +92,11 @@ func (f *Factors) Open() error {
 		return fmt.Errorf("skyd.Factors: Unable to open database: %v", err)
 	}
 	f.db = db
-	
+
 	// Setup read and write options.
 	f.ro = levigo.NewReadOptions()
 	f.wo = levigo.NewWriteOptions()
-	
+
 	return nil
 }
 
@@ -94,7 +118,6 @@ func (f *Factors) IsOpen() bool {
 	return f.db != nil
 }
 
-
 //--------------------------------------
 // Keys
 //--------------------------------------
@@ -114,13 +137,12 @@ func (f *Factors) seqkey(namespace string, id string) string {
 	return fmt.Sprintf("%s>%s!", namespace, id)
 }
 
-
 //--------------------------------------
 // Factorization
 //--------------------------------------
 
 // Converts the defactorized value for a given id in a given namespace to its internal representation.
-func (f *Factors) Factorize(namespace string, id string, value string) (uint64, error) {
+func (f *Factors) Factorize(namespace string, id string, value string, createIfMissing bool) (uint64, error) {
 	// Blank is always zero.
 	if value == "" {
 		return 0, nil
@@ -129,18 +151,40 @@ func (f *Factors) Factorize(namespace string, id string, value string) (uint64, 
 	// Otherwise find it in the LevelDB database.
 	data, err := f.db.Get(f.ro, []byte(f.key(namespace, id, value)))
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
-	
-	// If key does not exist then parse and return it. Otherwise create a new key.
+	// If key does exist then parse and return it.
 	if data != nil {
 		return strconv.ParseUint(string(data), 10, 64)
 	}
-	
+
+	// Create a new factor if requested.
+	if createIfMissing {
+		return f.add(namespace, id, value)
+	}
+
+	err = NewFactorNotFound(fmt.Sprintf("skyd.Factors: Factor not found: %v", f.key(namespace, id, value)))
+	return 0, err
+}
+
+// Adds a new factor to the database if it doesn't exist.
+func (f *Factors) add(namespace string, id string, value string) (uint64, error) {
+	// Lock while adding a new value.
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	// Retry factorize within the context of the lock.
+	sequence, err := f.Factorize(namespace, id, value, false)
+	if err == nil {
+		return sequence, nil
+	} else if _, ok := err.(*FactorNotFound); !ok {
+		return 0, err
+	}
+
 	// Retrieve next id in sequence.
-	sequence, err := f.inc(namespace, id)
+	sequence, err = f.inc(namespace, id)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	// Save lookup and reverse lookup.
@@ -195,7 +239,7 @@ func (f *Factors) inc(namespace string, id string) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("skyd.Factors: Unable to parse sequence: %v", data)
 	}
-	
+
 	// Increment and save the new value.
 	sequence += 1
 	err = f.db.Put(f.wo, []byte(f.seqkey(namespace, id)), []byte(strconv.FormatUint(sequence, 10)))

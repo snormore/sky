@@ -19,12 +19,12 @@ func TestFactorization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to create factors: %v", err)
 	}
-	
-	num, err := factors.Factorize("foo", "bar", "/index.html")
+
+	num, err := factors.Factorize("foo", "bar", "/index.html", true)
 	if err != nil || num != 1 {
 		t.Fatalf("Wrong factorization: exp: %v, got: %v (%v)", 1, num, err)
 	}
-	num, err = factors.Factorize("foo", "bar", "/about.html")
+	num, err = factors.Factorize("foo", "bar", "/about.html", true)
 	if err != nil || num != 2 {
 		t.Fatalf("Wrong factorization: exp: %v, got: %v (%v)", 2, num, err)
 	}
@@ -38,4 +38,3 @@ func TestFactorization(t *testing.T) {
 		t.Fatalf("Wrong defactorization: exp: %v, got: %v (%v)", "/about.html", str, err)
 	}
 }
-
