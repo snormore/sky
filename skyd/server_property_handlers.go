@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"errors"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -60,6 +61,9 @@ func (s *Server) updatePropertyHandler(w http.ResponseWriter, req *http.Request,
 		if err != nil {
 			return nil, err
 		}
+		if property == nil {
+			return nil, errors.New("Property does not exist.")
+		}
 
 		// Update property and save property file.
 		name, _ := params["name"].(string)
@@ -81,6 +85,9 @@ func (s *Server) deletePropertyHandler(w http.ResponseWriter, req *http.Request,
 		property, err := table.GetPropertyByName(vars["propertyName"])
 		if err != nil {
 			return nil, err
+		}
+		if property == nil {
+			return nil, errors.New("Property does not exist.")
 		}
 
 		// Delete property and save property file.

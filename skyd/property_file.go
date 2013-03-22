@@ -72,7 +72,7 @@ func (p *PropertyFile) DbPath() string {
 func (p *PropertyFile) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
 	// Don't allow duplicate names.
 	if p.propertiesByName[name] != nil {
-		return nil, fmt.Errorf("Property already exists: %v", name)
+		return nil, errors.New("Property already exists.")
 	}
 
 	property, err := NewProperty(0, name, transient, dataType)
@@ -127,8 +127,8 @@ func (p *PropertyFile) GetPropertyByName(name string) *Property {
 // Deletes a property.
 func (p *PropertyFile) DeleteProperty(property *Property) {
 	if property != nil && property.Name != "" {
+		delete(p.properties, property.Id)
 		delete(p.propertiesByName, property.Name)
-		property.Name = ""
 	}
 }
 

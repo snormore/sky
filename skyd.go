@@ -1,7 +1,9 @@
-package skyd
+package main
 
 import (
+	"./skyd"
 	"flag"
+	"runtime"
 )
 
 //------------------------------------------------------------------------------
@@ -46,9 +48,12 @@ func main() {
 	// Parse the command line arguments.
 	flag.Parse()
 	
+	// Hardcore parallelism right here.
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	
 	// Start the server up!
 	c := make(chan bool)
-	server := NewServer(port, dataDir)
+	server := skyd.NewServer(port, dataDir)
 	server.ListenAndServe(c)
 	<- c
 }

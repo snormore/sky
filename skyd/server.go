@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -39,6 +40,7 @@ const (
 type Server struct {
 	httpServer      *http.Server
 	router          *mux.Router
+	logger          *log.Logger
 	path            string
 	listener        net.Listener
 	servlets        []*Servlet
@@ -60,6 +62,7 @@ func NewServer(port uint, path string) *Server {
 	s := &Server{
 		httpServer: &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
 		router:     r,
+		logger:     log.New(os.Stdout, "", log.LstdFlags),
 		path:       path,
 		tables:     make(map[string]*Table),
 		channel:    make(chan *Message),
@@ -133,6 +136,9 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 	s.listener = listener
 	go s.process()
 	go s.httpServer.Serve(s.listener)
+
+	s.logger.Printf("Sky is now listening on http://localhost%s\n", s.httpServer.Addr)
+
 	return nil
 }
 
@@ -202,7 +208,6 @@ func (s *Server) open() error {
 	// If none exist then build them based on the number of logical CPUs available.
 	if len(s.servlets) == 0 {
 		cpuCount := runtime.NumCPU()
-		cpuCount = 1
 		for i := 0; i < cpuCount; i++ {
 			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.factors))
 		}
@@ -287,14 +292,11 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 
 		// Encode the return value appropriately.
 		if ret != nil {
-			contentType := req.Header.Get("Content-Type")
-			if contentType == "application/json" {
-				encoder := json.NewEncoder(w)
-				err := encoder.Encode(ConvertToStringKeys(ret))
-				if err != nil {
-					fmt.Printf("skyd.Server: Encoding error: %v\n", err.Error())
-					return
-				}
+			encoder := json.NewEncoder(w)
+			err := encoder.Encode(ConvertToStringKeys(ret))
+			if err != nil {
+				fmt.Printf("skyd.Server: Encoding error: %v\n", err.Error())
+				return
 			}
 		}
 	}
@@ -381,17 +383,11 @@ func (s *Server) process() {
 func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[string]interface{}, error) {
 	// Parses body parameters.
 	params := make(map[string]interface{})
-	contentType := req.Header.Get("Content-Type")
-	if contentType == "application/json" {
-		decoder := json.NewDecoder(req.Body)
-		err := decoder.Decode(&params)
-		if err != nil && err != io.EOF {
-			w.WriteHeader(http.StatusBadRequest)
-			return nil, errors.New("Invalid body.")
-		}
-	} else {
-		w.WriteHeader(http.StatusNotAcceptable)
-		return nil, errors.New("Invalid content type.")
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&params)
+	if err != nil && err != io.EOF {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, errors.New("Invalid body.")
 	}
 	return params, nil
 }
