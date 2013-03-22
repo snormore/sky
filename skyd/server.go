@@ -141,7 +141,6 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 
 	err := s.open()
 	if err != nil {
-		fmt.Printf("Unable to open server: %v", err)
 		return err
 	}
 
@@ -199,7 +198,7 @@ func (s *Server) open() error {
 	// Setup the file system if it doesn't exist.
 	err := s.createIfNotExists()
 	if err != nil {
-		panic(fmt.Sprintf("skyd.Server: Unable to create server folders: %v", err))
+		return fmt.Errorf("skyd.Server: Unable to create server folders: %v", err)
 	}
 
 	// Open factors database.

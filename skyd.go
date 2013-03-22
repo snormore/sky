@@ -3,6 +3,7 @@ package main
 import (
 	"./skyd"
 	"flag"
+	"fmt"
 	"runtime"
 )
 
@@ -54,6 +55,10 @@ func main() {
 	// Start the server up!
 	c := make(chan bool)
 	server := skyd.NewServer(port, dataDir)
-	server.ListenAndServe(c)
+	err := server.ListenAndServe(c)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		return
+	}
 	<- c
 }
