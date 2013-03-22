@@ -116,7 +116,7 @@ func (e *ExecutionEngine) FullAnnotatedSource() string {
 }
 
 // Sets the iterator to use.
-func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) {
+func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 	// Close the old iterator.
 	if e.iterator != nil {
 		e.iterator.Close()
@@ -125,8 +125,23 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) {
 	// Attach the new iterator.
 	e.iterator = iterator
 	if e.iterator != nil {
+		// The table prefix should match the encoded object id syntax but without
+		// the last item.
+		prefix, err := msgpack.Marshal([]interface{}{e.tableName, nil})
+		if err != nil {
+			return err
+		}
+		prefix = prefix[0:len(prefix)-1]
+
+		// Set the prefix & seek.
+		C.sky_cursor_set_key_prefix(e.cursor, (unsafe.Pointer(&prefix[0])), C.uint32_t(len(prefix)))
+		e.iterator.Seek(prefix)
+
+		// Assign the iterator to the cursor.
 		C.sky_cursor_set_leveldb_iterator(e.cursor, e.iterator.Iter)
 	}
+	
+	return nil
 }
 
 //------------------------------------------------------------------------------

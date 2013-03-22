@@ -221,7 +221,26 @@ bool sky_cursor_next_object(sky_cursor *cursor)
 
 bool sky_cursor_has_next_object(sky_cursor *cursor)
 {
-    return (cursor->leveldb_iterator != NULL && leveldb_iter_valid(cursor->leveldb_iterator));
+    if(cursor->leveldb_iterator != NULL && leveldb_iter_valid(cursor->leveldb_iterator)) {
+        // If there's no prefix then the key is valid.
+        if(cursor->key_prefix_sz == 0) {
+            return true;
+        }
+
+        // Otherwise check that the key has the given the prefix.
+        size_t key_sz;
+        void *key = (void*)leveldb_iter_key(cursor->leveldb_iterator, &key_sz);
+
+        return (cursor->key_prefix_sz <= key_sz && memcmp(cursor->key_prefix, key, cursor->key_prefix_sz) == 0);
+    }
+    
+    return false;
+}
+
+void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz)
+{
+    cursor->key_prefix = prefix;
+    cursor->key_prefix_sz = sz;
 }
 
 

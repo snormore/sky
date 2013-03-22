@@ -481,7 +481,6 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 
 		// Execute across each server context.
 		for _, servlet := range s.servlets {
-
 			// Execute servlets asynchronously and retrieve responses outside
 			// of the server context.
 			rchannel <- servlet.async(func() (interface{}, error) {
@@ -496,8 +495,12 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 				ro := levigo.NewReadOptions()
 				defer ro.Close()
 				iterator := servlet.db.NewIterator(ro)
-				iterator.SeekToFirst()
-				e.SetIterator(iterator)
+				err = e.SetIterator(iterator)
+				if err != nil {
+					return nil, err
+				}
+
+				// TODO: Set prefix on cursor. (msgpack array size 1 + raw table name)
 
 				// Run aggregation for the servlet.
 				return e.Aggregate()

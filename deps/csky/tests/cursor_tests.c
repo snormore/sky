@@ -69,6 +69,12 @@ char *DATA4 =
   "\x92" "\xD3\x00\x00\x00\x00\x00\x00\x00\x00" "\x81" "\x01\x04"
 ;
 
+int DATA5_LENGTH = 13;
+char *DATA5 = 
+  // 1970-01-01T00:00:10Z, {1:20}
+  "\x92" "\xD3\x00\x00\x00\x00\x00\xA0\x00\x00" "\x81" "\x01\x14"
+;
+
 
 //==============================================================================
 //
@@ -286,13 +292,18 @@ int test_sky_cursor_object_iteration() {
     
     // Write two objects.
     leveldb_writeoptions_t *writeoptions = leveldb_writeoptions_create();
+    leveldb_put(db, writeoptions, "aa", 2, DATA5, DATA5_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (xx): %s", errptr);
     leveldb_put(db, writeoptions, "dat3", 4, DATA3, DATA3_LENGTH, &errptr);
     mu_assert_with_msg(errptr == NULL, "leveldb.put error (dat3): %s", errptr);
     leveldb_put(db, writeoptions, "dat4", 4, DATA4, DATA4_LENGTH, &errptr);
     mu_assert_with_msg(errptr == NULL, "leveldb.put error (dat4): %s", errptr);
+    leveldb_put(db, writeoptions, "xx", 2, DATA5, DATA5_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (xx): %s", errptr);
 
     // Setup cursor.
     sky_cursor *cursor = sky_cursor_new(0, 1);
+    sky_cursor_set_key_prefix(cursor, "dat", 3);
     sky_cursor_set_ts_offset(cursor, offsetof(test2_t, ts));
     sky_cursor_set_timestamp_offset(cursor, offsetof(test2_t, timestamp));
     sky_cursor_set_property(cursor, 1, offsetof(test2_t, int_value), sizeof(int32_t), "integer");
@@ -301,7 +312,7 @@ int test_sky_cursor_object_iteration() {
     // Setup iterator.
     leveldb_readoptions_t *readoptions = leveldb_readoptions_create();
     leveldb_iterator_t *leveldb_iterator = leveldb_create_iterator(db, readoptions);
-    leveldb_iter_seek_to_first(leveldb_iterator);
+    leveldb_iter_seek(leveldb_iterator, "dat", 3);
     sky_cursor_set_leveldb_iterator(cursor, leveldb_iterator);
     test2_t *obj = (test2_t*)cursor->data;
 
