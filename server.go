@@ -37,14 +37,15 @@ const (
 
 // A Server is the front end that controls access to tables.
 type Server struct {
-	httpServer *http.Server
-	router     *mux.Router
-	path       string
-	listener   net.Listener
-	servlets   []*Servlet
-	tables     map[string]*Table
-	factors    *Factors
-	channel    chan *Message
+	httpServer      *http.Server
+	router          *mux.Router
+	path            string
+	listener        net.Listener
+	servlets        []*Servlet
+	tables          map[string]*Table
+	factors         *Factors
+	channel         chan *Message
+	shutdownChannel chan bool
 }
 
 //------------------------------------------------------------------------------
@@ -115,7 +116,9 @@ func (s *Server) FactorsPath() string {
 //--------------------------------------
 
 // Runs the server.
-func (s *Server) ListenAndServe() error {
+func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
+	s.shutdownChannel = shutdownChannel
+
 	err := s.open()
 	if err != nil {
 		fmt.Printf("Unable to open server: %v", err)
@@ -153,6 +156,11 @@ func (s *Server) Shutdown() error {
 		s.listener = nil
 		return err
 	}
+
+	if s.shutdownChannel != nil {
+		s.shutdownChannel <- true
+	}
+
 	return nil
 }
 
@@ -535,13 +543,13 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 			fmt.Printf("skyd.Server: Aggregate error: %v", err)
 			servletError = err
 		}
-		
+
 		// Defactorize aggregate results.
 		err = query.Defactorize(ret)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Merge results.
 		if ret != nil {
 			result, err = engine.Merge(result, ret)

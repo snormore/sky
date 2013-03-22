@@ -131,7 +131,7 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 		if err != nil {
 			return err
 		}
-		prefix = prefix[0:len(prefix)-1]
+		prefix = prefix[0 : len(prefix)-1]
 
 		// Set the prefix & seek.
 		C.sky_cursor_set_key_prefix(e.cursor, (unsafe.Pointer(&prefix[0])), C.uint32_t(len(prefix)))
@@ -140,7 +140,7 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 		// Assign the iterator to the cursor.
 		C.sky_cursor_set_leveldb_iterator(e.cursor, e.iterator.Iter)
 	}
-	
+
 	return nil
 }
 

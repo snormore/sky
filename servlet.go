@@ -35,7 +35,7 @@ type Servlet struct {
 func NewServlet(path string, factors *Factors) *Servlet {
 	return &Servlet{
 		path:    path,
-		factors:    factors,
+		factors: factors,
 		channel: make(chan *Message),
 	}
 }

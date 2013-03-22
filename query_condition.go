@@ -311,6 +311,6 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 //--------------------------------------
 
 // Converts factorized fields back to their original strings.
-func (c *QueryCondition) Defactorize(data interface{}) (error) {
+func (c *QueryCondition) Defactorize(data interface{}) error {
 	return c.Steps.Defactorize(data)
 }

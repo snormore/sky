@@ -289,7 +289,7 @@ func (s *QuerySelection) CodegenMergeExpression() (string, error) {
 //--------------------------------------
 
 // Converts factorized fields back to their original strings.
-func (s *QuerySelection) Defactorize(data interface{}) (error) {
+func (s *QuerySelection) Defactorize(data interface{}) error {
 	err := s.defactorize(data, 0)
 	if err != nil {
 		return err
@@ -302,7 +302,7 @@ func (s *QuerySelection) Defactorize(data interface{}) (error) {
 }
 
 // Recursively defactorizes dimensions.
-func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
+func (s *QuerySelection) defactorize(data interface{}, index int) error {
 	if index >= len(s.Dimensions) {
 		return nil
 	}
@@ -311,14 +311,14 @@ func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
 	if !ok || data == nil {
 		return nil
 	}
-	
+
 	// Retrieve property.
 	dimension := s.Dimensions[index]
 	property := s.query.table.propertyFile.GetPropertyByName(dimension)
 	if property == nil {
 		return fmt.Errorf("skyd.QuerySelection: Property not found: %s", dimension)
 	}
-	
+
 	// Defactorize.
 	if outer, ok := inner[dimension].(map[interface{}]interface{}); ok {
 		copy := map[interface{}]interface{}{}
@@ -342,6 +342,6 @@ func (s *QuerySelection) defactorize(data interface{}, index int) (error) {
 		}
 		inner[dimension] = copy
 	}
-	
+
 	return nil
 }

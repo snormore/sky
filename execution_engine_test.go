@@ -32,4 +32,3 @@ func TestExecutionEngineExtractPropertyReferences(t *testing.T) {
 		t.Fatalf("Expected %v, got %v", p, l.propertyRefs[2])
 	}
 }
-

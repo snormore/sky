@@ -43,7 +43,7 @@ func runTestServer(f func(s *Server)) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 	server := NewServer(8585, path)
-	server.ListenAndServe()
+	server.ListenAndServe(nil)
 	defer server.Shutdown()
 	f(server)
 }

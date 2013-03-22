@@ -273,13 +273,13 @@ func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
 //--------------------------------------
 
 // Factorizes the values in an event.
-func (t *Table) FactorizeEvent(event *Event, factors *Factors, createIfMissing bool) (error) {
+func (t *Table) FactorizeEvent(event *Event, factors *Factors, createIfMissing bool) error {
 	if event == nil {
 		return nil
 	}
 
 	propertyFile := t.propertyFile
-	for k,v := range event.Data {
+	for k, v := range event.Data {
 		property := propertyFile.GetProperty(k)
 		if property.DataType == FactorDataType {
 			if stringValue, ok := v.(string); ok {
@@ -291,18 +291,18 @@ func (t *Table) FactorizeEvent(event *Event, factors *Factors, createIfMissing b
 			}
 		}
 	}
-	
+
 	return nil
 }
 
 // Defactorizes the values in an event.
-func (t *Table) DefactorizeEvent(event *Event, factors *Factors) (error) {
+func (t *Table) DefactorizeEvent(event *Event, factors *Factors) error {
 	if event == nil {
 		return nil
 	}
 
 	propertyFile := t.propertyFile
-	for k,v := range event.Data {
+	for k, v := range event.Data {
 		property := propertyFile.GetProperty(k)
 		if property.DataType == FactorDataType {
 			if sequence, ok := v.(uint64); ok {
@@ -314,6 +314,6 @@ func (t *Table) DefactorizeEvent(event *Event, factors *Factors) (error) {
 			}
 		}
 	}
-	
+
 	return nil
 }
