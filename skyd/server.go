@@ -313,7 +313,7 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 			}
 			return
 		}
-		
+
 		// If there is an error then replace the return value.
 		if err != nil {
 			ret = map[string]interface{}{"message": err.Error()}

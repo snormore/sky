@@ -116,7 +116,6 @@ $ curl -X POST http://localhost:8585/tables/users/query -d '{
   "steps": [
     {"type":"selection","alias":"count","expression":"count()"}
   ]
-}
-'
+}'
 ```
 
