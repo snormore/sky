@@ -148,7 +148,6 @@ func (q *Query) CodegenAggregateFunction() string {
 
 	// Generate the function definition.
 	fmt.Fprintln(buffer, "function aggregate(cursor, data)")
-	fmt.Fprintln(buffer, " print('lua.aggregate()')")
 
 	// Set the session idle if one is available.
 	if q.SessionIdleTime > 0 {
@@ -157,9 +156,7 @@ func (q *Query) CodegenAggregateFunction() string {
 
 	// Begin cursor loop.
 	fmt.Fprintln(buffer, "  while cursor:next_session() do")
-	fmt.Fprintln(buffer, " print('lua.in_session')")
 	fmt.Fprintln(buffer, "    while cursor:next() do")
-	fmt.Fprintln(buffer, " print('lua.event')")
 
 	// Call each step function.
 	for _, step := range q.Steps {

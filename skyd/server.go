@@ -486,6 +486,7 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 // Runs a query against a table.
 func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interface{}, error) {
 	var engine *ExecutionEngine
+	engines := make([]*ExecutionEngine, 0)
 
 	// Create a channel to receive aggregate responses.
 	rchannel := make(chan *Message, len(s.servlets))
@@ -517,34 +518,25 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		if err != nil {
 			return nil, err
 		}
-		// fmt.Println(engine.FullAnnotatedSource())
+		//fmt.Println(engine.FullAnnotatedSource())
 
-		// Execute across each server context.
+		// Initialize one execution engine for each servlet.
 		for _, servlet := range s.servlets {
-			// Execute servlets asynchronously and retrieve responses outside
-			// of the server context.
-			rchannel <- servlet.async(func() (interface{}, error) {
-				// Create an engine for each servlet.
-				e, err := NewExecutionEngine(table, source)
-				if err != nil {
-					return nil, err
-				}
-				defer e.Destroy()
+			// Create an engine for each servlet.
+			e, err := NewExecutionEngine(table, source)
+			if err != nil {
+				return nil, err
+			}
 
-				// Initialize iterator.
-				ro := levigo.NewReadOptions()
-				defer ro.Close()
-				iterator := servlet.db.NewIterator(ro)
-				err = e.SetIterator(iterator)
-				if err != nil {
-					return nil, err
-				}
-
-				// TODO: Set prefix on cursor. (msgpack array size 1 + raw table name)
-
-				// Run aggregation for the servlet.
-				return e.Aggregate()
-			})
+			// Initialize iterator.
+			ro := levigo.NewReadOptions()
+			iterator := servlet.db.NewIterator(ro)
+			err = e.SetIterator(iterator)
+			if err != nil {
+				return nil, err
+			}
+			
+			engines = append(engines, e)
 		}
 
 		return nil, nil
@@ -554,6 +546,15 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	// Execute servlets asynchronously and retrieve responses outside
+	// of the server context.
+	for index, servlet := range s.servlets {
+		e := engines[index]
+		rchannel <- servlet.async(func() (interface{}, error) {
+			return e.Aggregate()
+		})
 	}
 
 	// Wait for each servlet to complete and then merge the results.
