@@ -195,52 +195,10 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
 // Object Iteration
 //--------------------------------------
 
-void sky_cursor_set_leveldb_iterator(sky_cursor *cursor, leveldb_iterator_t* iterator)
-{
-    cursor->leveldb_iterator = iterator;
-}
-
+// Moves the cursor to point to the next object.
 bool sky_cursor_next_object(sky_cursor *cursor)
 {
-    // Move to next object.
-    if(sky_cursor_has_next_object(cursor)) {
-        // Retrieve the data for the next object.
-        size_t data_length;
-        void *data = (void*)leveldb_iter_value(cursor->leveldb_iterator, &data_length);
-        
-        // Set the pointer on the cursor.
-        sky_cursor_set_ptr(cursor, data, data_length);
-        
-        leveldb_iter_next(cursor->leveldb_iterator);
-        return true;
-    }
-    else {
-        return false;
-    }
-}
-
-bool sky_cursor_has_next_object(sky_cursor *cursor)
-{
-    if(cursor->leveldb_iterator != NULL && leveldb_iter_valid(cursor->leveldb_iterator)) {
-        // If there's no prefix then the key is valid.
-        if(cursor->key_prefix_sz == 0) {
-            return true;
-        }
-
-        // Otherwise check that the key has the given the prefix.
-        size_t key_sz;
-        void *key = (void*)leveldb_iter_key(cursor->leveldb_iterator, &key_sz);
-
-        return (cursor->key_prefix_sz <= key_sz && memcmp(cursor->key_prefix, key, cursor->key_prefix_sz) == 0);
-    }
-    
-    return false;
-}
-
-void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz)
-{
-    cursor->key_prefix = prefix;
-    cursor->key_prefix_sz = sz;
+    return cursor->next_object_func(cursor);
 }
 
 

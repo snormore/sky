@@ -3,7 +3,6 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
-#include <leveldb/c.h>
 
 
 //==============================================================================
@@ -22,6 +21,10 @@
 //
 //==============================================================================
 
+typedef struct sky_cursor sky_cursor;
+
+typedef bool (*sky_cursor_next_object_func)(sky_cursor *cursor);
+
 typedef void (*sky_property_descriptor_set_func)(void *target, void *value, size_t *sz);
 typedef void (*sky_property_descriptor_clear_func)(void *target);
 
@@ -34,7 +37,7 @@ typedef struct {
     sky_property_descriptor_clear_func clear_func;
 } sky_property_descriptor;
 
-typedef struct sky_cursor {
+struct sky_cursor {
     void *data;
     uint32_t data_sz;
     uint32_t action_data_sz;
@@ -54,10 +57,9 @@ typedef struct sky_cursor {
     sky_property_descriptor *property_zero_descriptor;
     uint32_t property_count;
 
-    void *key_prefix;
-    uint32_t key_prefix_sz;
-    leveldb_iterator_t* leveldb_iterator;
-} sky_cursor;
+    void *context;
+    sky_cursor_next_object_func next_object_func;
+};
 
 
 //==============================================================================
@@ -100,14 +102,7 @@ void sky_cursor_set_property(sky_cursor *cursor,
 // Object Iteration
 //--------------------------------------
 
-void sky_cursor_set_leveldb_iterator(sky_cursor *cursor,
-  leveldb_iterator_t* iterator);
-
 bool sky_cursor_next_object(sky_cursor *cursor);
-
-bool sky_cursor_has_next_object(sky_cursor *cursor);
-
-void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz);
 
 
 //--------------------------------------

@@ -8,7 +8,7 @@ RELVER=0
 
 PREFIX?=/usr/local
 CFLAGS=-g -Wall -Wextra -std=c99 -Iinclude -fPIC -Wno-pointer-to-int-cast
-LDFLAGS=-lleveldb
+LDFLAGS=
 
 SOURCES=$(wildcard src/*.c)
 OBJECTS=$(patsubst %.c,%.o,${SOURCES})
@@ -71,4 +71,4 @@ check: $(TEST_OBJECTS)
 	@sh ./tests/runtests.sh
 
 $(TEST_OBJECTS): %: %.c build
-	$(CC) $(CFLAGS) -Itests -o $@ $< libcsky.a -lleveldb
+	$(CC) $(CFLAGS) -Itests -o $@ $< libcsky.a
