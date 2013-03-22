@@ -70,3 +70,53 @@ $ curl -X PATCH http://localhost:8585/tables/users/properties/username -d '{"nam
 # Delete the 'username2' property on the 'users' table.
 $ curl -X DELETE http://localhost:8585/tables/users/properties/username2
 ```
+
+### Event API
+
+```sh
+# List all events for the 'john' object on the 'users' table.
+$ curl http://localhost:8585/tables/users/objects/john/events
+```
+
+```sh
+# Delete all events for the 'john' object on the 'users' table.
+$ curl -X DELETE http://localhost:8585/tables/users/objects/john/events
+```
+
+```sh
+# Retrieve the event for the 'john' object on the 'users' table that
+# occurred at midnight on January 20st, 2012 UTC.
+$ curl http://localhost:8585/tables/users/objects/john/events/2012-01-20T00:00:00Z
+```
+
+```sh
+# Replace the event for the 'john' object in the 'users' table that
+# occurred at midnight on January 20st, 2012 UTC.
+$ curl -X PUT http://localhost:8585/tables/users/objects/john/events/2012-01-20T00:00:00Z -d '{"data":{"username":"johnny1000"}}'
+```
+
+```sh
+# Merge the event for the 'john' object in the 'users' table that
+# occurred at midnight on January 20st, 2012 UTC.
+$ curl -X PATCH http://localhost:8585/tables/users/objects/john/events/2012-01-20T00:00:00Z -d '{"data":{"age":12}}'
+```
+
+```sh
+# Delete the event for the 'john' object in the 'users' table that
+# occurred at midnight on January 20st, 2012 UTC.
+$ curl -X DELETE http://localhost:8585/tables/users/objects/john/events/2012-01-20T00:00:00Z
+```
+
+
+### Query API
+
+```sh
+# Count the total number of events.
+$ curl -X POST http://localhost:8585/tables/users/query -d '{
+  "steps": [
+    {"type":"selection","alias":"count","expression":"count()"}
+  ]
+}
+'
+```
+

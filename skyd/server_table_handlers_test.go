@@ -9,7 +9,7 @@ import (
 // Ensure that we can create a new table through the server.
 func TestServerCreateTable(t *testing.T) {
 	runTestServer(func(s *Server) {
-		resp, err := sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", `{"name":"foo"}`)
+		resp, err := sendTestHttpRequest("POST", "http://localhost:8586/tables", "application/json", `{"name":"foo"}`)
 		if err != nil {
 			t.Fatalf("Unable to create table: %v", err)
 		}
@@ -24,7 +24,7 @@ func TestServerCreateTable(t *testing.T) {
 func TestServerDeleteTable(t *testing.T) {
 	runTestServer(func(s *Server) {
 		// Create table.
-		resp, err := sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", `{"name":"foo"}`)
+		resp, err := sendTestHttpRequest("POST", "http://localhost:8586/tables", "application/json", `{"name":"foo"}`)
 		if err != nil {
 			t.Fatalf("Unable to create table: %v", err)
 		}
@@ -34,7 +34,7 @@ func TestServerDeleteTable(t *testing.T) {
 		}
 
 		// Delete table.
-		resp, _ = sendTestHttpRequest("DELETE", "http://localhost:8585/tables/foo", "application/json", ``)
+		resp, _ = sendTestHttpRequest("DELETE", "http://localhost:8586/tables/foo", "application/json", ``)
 		assertResponse(t, resp, 200, "", "DELETE /tables/:name failed.")
 		if _, err := os.Stat(fmt.Sprintf("%v/tables/foo", s.Path())); !os.IsNotExist(err) {
 			t.Fatalf("DELETE /tables/:name did not delete table.")

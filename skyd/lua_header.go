@@ -1,3 +1,6 @@
+package skyd
+
+const LuaHeader = `
 -- SKY GENERATED CODE BEGIN --
 local ffi = require('ffi')
 ffi.cdef([[
@@ -73,4 +76,4 @@ function sky_merge(results, data)
   return results
 end
 -- SKY GENERATED CODE END --
-
+`

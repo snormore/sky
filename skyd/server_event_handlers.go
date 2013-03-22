@@ -1,7 +1,6 @@
 package skyd
 
 import (
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -81,8 +80,9 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 		if err != nil {
 			return nil, err
 		}
+		// Return an empty event if there isn't one.
 		if event == nil {
-			return nil, errors.New("Event not found.")
+			event = NewEvent(vars["timestamp"], map[int64]interface{}{})
 		}
 
 		// Convert an event to a serializable object.

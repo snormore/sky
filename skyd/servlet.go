@@ -139,6 +139,7 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 	if err != nil {
 		return err
 	}
+
 	// Remove any event matching the timestamp.
 	found := false
 	events := make([]*Event, 0)

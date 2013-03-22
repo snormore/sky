@@ -24,8 +24,6 @@ import (
 //------------------------------------------------------------------------------
 
 const (
-	DefaultPort = 8585
-
 	ServerMessageTypeExecute  = "execute"
 	ServerMessageTypeShutdown = "shutdown"
 )
@@ -48,6 +46,25 @@ type Server struct {
 	factors         *Factors
 	channel         chan *Message
 	shutdownChannel chan bool
+}
+
+//------------------------------------------------------------------------------
+//
+// Errors
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Alternate Content Type
+//--------------------------------------
+
+// Hackish way to return plain text for query codegen. Might fix later but
+// it's rarely used.
+type TextPlainContentTypeError struct {
+}
+
+func (e *TextPlainContentTypeError) Error() string {
+	return ""
 }
 
 //------------------------------------------------------------------------------
@@ -266,6 +283,15 @@ func (s *Server) createIfNotExists() error {
 }
 
 //--------------------------------------
+// Logging
+//--------------------------------------
+
+// Silences the log.
+func (s *Server) Silence() {
+	s.logger = log.New(ioutil.Discard, "", log.LstdFlags)
+}
+
+//--------------------------------------
 // Routing
 //--------------------------------------
 
@@ -278,12 +304,23 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 			ret, err = handlerFunction(w, req, params)
 		}
 
+		// If we're returning plain text then just dump out what's returned.
+		if _, ok := err.(*TextPlainContentTypeError); ok {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			if str, ok := ret.(string); ok {
+				w.Write([]byte(str))
+			}
+			return
+		}
+		
 		// If there is an error then replace the return value.
 		if err != nil {
 			ret = map[string]interface{}{"message": err.Error()}
 		}
 
 		// Write header status.
+		w.Header().Set("Content-Type", "application/json")
 		if err == nil {
 			w.WriteHeader(http.StatusOK)
 		} else {
@@ -386,8 +423,7 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&params)
 	if err != nil && err != io.EOF {
-		w.WriteHeader(http.StatusBadRequest)
-		return nil, errors.New("Invalid body.")
+		return nil, errors.New("Malformed json request.")
 	}
 	return params, nil
 }

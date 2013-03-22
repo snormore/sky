@@ -7,7 +7,7 @@ import (
 // Ensure that we can ping the server.
 func TestServerPing(t *testing.T) {
 	runTestServer(func(s *Server) {
-		resp, err := sendTestHttpRequest("GET", "http://localhost:8585/ping", "application/json", "")
+		resp, err := sendTestHttpRequest("GET", "http://localhost:8586/ping", "application/json", "")
 		if err != nil {
 			t.Fatalf("Unable to ping: %v", err)
 		}
@@ -18,7 +18,7 @@ func TestServerPing(t *testing.T) {
 func BenchmarkPing(b *testing.B) {
 	runTestServer(func(s *Server) {
 		for i := 0; i < b.N; i++ {
-			resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/ping", "application/json", "")
+			resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/ping", "application/json", "")
 			resp.Body.Close()
 		}
 	})
@@ -27,7 +27,7 @@ func BenchmarkPing(b *testing.B) {
 func BenchmarkRawPing(b *testing.B) {
 	runTestServer(func(s *Server) {
 		for i := 0; i < b.N; i++ {
-			resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/rawping", "application/json", "")
+			resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/rawping", "application/json", "")
 			resp.Body.Close()
 		}
 	})

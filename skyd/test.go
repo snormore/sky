@@ -42,7 +42,8 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
 func runTestServer(f func(s *Server)) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
-	server := NewServer(8585, path)
+	server := NewServer(8586, path)
+	server.Silence()
 	server.ListenAndServe(nil)
 	defer server.Shutdown()
 	f(server)
@@ -62,18 +63,18 @@ func createTempTable(t *testing.T) *Table {
 }
 
 func setupTestTable(name string) {
-	resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
+	resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables", "application/json", fmt.Sprintf(`{"name":"%v"}`, name))
 	resp.Body.Close()
 }
 
 func setupTestProperty(tableName string, name string, transient bool, dataType string) {
-	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "transient":%v, "dataType":"%v"}`, name, transient, dataType))
+	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8586/tables/%v/properties", tableName), "application/json", fmt.Sprintf(`{"name":"%v", "transient":%v, "dataType":"%v"}`, name, transient, dataType))
 	resp.Body.Close()
 }
 
 func setupTestData(t *testing.T, tableName string, items [][]string) {
 	for i, item := range items {
-		resp, _ := sendTestHttpRequest("PUT", fmt.Sprintf("http://localhost:8585/tables/%s/objects/%s/events/%s", tableName, item[0], item[1]), "application/json", item[2])
+		resp, _ := sendTestHttpRequest("PUT", fmt.Sprintf("http://localhost:8586/tables/%s/objects/%s/events/%s", tableName, item[0], item[1]), "application/json", item[2])
 		resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Fatalf("setupTestData[%d]: Expected 200, got %v.", i, resp.StatusCode)
@@ -82,7 +83,7 @@ func setupTestData(t *testing.T, tableName string, items [][]string) {
 }
 
 func _codegen(t *testing.T, tableName string, query string) {
-	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8585/tables/%s/query/codegen", tableName), "application/json", query)
+	resp, _ := sendTestHttpRequest("POST", fmt.Sprintf("http://localhost:8586/tables/%s/query/codegen", tableName), "application/json", query)
 	defer resp.Body.Close()
 	//body, _ := ioutil.ReadAll(resp.Body)
 	//fmt.Println(string(body))

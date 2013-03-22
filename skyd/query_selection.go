@@ -122,7 +122,11 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 			}
 		}
 	} else {
-		return fmt.Errorf("skyd.QuerySelection: Invalid dimensions: %v", obj["dimensions"])
+		if obj["dimension"] == nil {
+			s.Dimensions = []string{}
+		} else {
+			return fmt.Errorf("skyd.QuerySelection: Invalid dimensions: %v", obj["dimensions"])
+		}
 	}
 
 	// Deserialize steps.

@@ -339,7 +339,7 @@ func (e *ExecutionEngine) generateHeader() error {
 	// Parse the header template.
 	t := template.New("header.lua")
 	t.Funcs(template.FuncMap{"structdef": propertyStructDef, "metatypedef": metatypeFunctionDef, "initdescriptor": initDescriptorDef})
-	_, err := t.ParseFiles("tmpl/header.lua")
+	_, err := t.Parse(LuaHeader)
 	if err != nil {
 		return err
 	}

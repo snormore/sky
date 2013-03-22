@@ -1,7 +1,6 @@
 package skyd
 
 import (
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -43,13 +42,12 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 
 		// Generate the query source code.
 		source, err = query.Codegen()
-		fmt.Println(source)
+		//fmt.Println(source)
 		return source, err
 	})
-
-	if err == nil {
-		return map[string]interface{}{"source": source}, nil
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, err
+	return source, &TextPlainContentTypeError{}
 }

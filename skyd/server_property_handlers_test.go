@@ -8,7 +8,7 @@ import (
 func TestServerCreateProperty(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/properties", "application/json", `{"name":"bar", "transient":false, "dataType":"string"}`)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/properties", "application/json", `{"name":"bar", "transient":false, "dataType":"string"}`)
 		assertResponse(t, resp, 200, `{"id":1,"name":"bar","transient":false,"dataType":"string"}`+"\n", "POST /tables/:name/properties failed.")
 	})
 }
@@ -19,7 +19,7 @@ func TestServerGetProperties(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "bar", false, "string")
 		setupTestProperty("foo", "baz", true, "integer")
-		resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties", "application/json", "")
+		resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/properties", "application/json", "")
 		assertResponse(t, resp, 200, `[{"id":-1,"name":"baz","transient":true,"dataType":"integer"},{"id":1,"name":"bar","transient":false,"dataType":"string"}]`+"\n", "GET /tables/:name/properties failed.")
 	})
 }
@@ -30,7 +30,7 @@ func TestServerGetProperty(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "bar", false, "string")
 		setupTestProperty("foo", "baz", true, "integer")
-		resp, _ := sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties/bar", "application/json", "")
+		resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/properties/bar", "application/json", "")
 		assertResponse(t, resp, 200, `{"id":1,"name":"bar","transient":false,"dataType":"string"}`+"\n", "GET /tables/:name/properties/:propertyName failed.")
 	})
 }
@@ -41,7 +41,7 @@ func TestServerUpdateProperty(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "bar", false, "string")
 		setupTestProperty("foo", "baz", true, "integer")
-		resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8585/tables/foo/properties/bar", "application/json", `{"name":"bat"}`)
+		resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8586/tables/foo/properties/bar", "application/json", `{"name":"bat"}`)
 		assertResponse(t, resp, 200, `{"id":1,"name":"bat","transient":false,"dataType":"string"}`+"\n", "PATCH /tables/:name/properties/:propertyName failed.")
 	})
 }
@@ -52,9 +52,9 @@ func TestServerDeleteProperty(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "bar", false, "string")
 		setupTestProperty("foo", "baz", true, "integer")
-		resp, _ := sendTestHttpRequest("DELETE", "http://localhost:8585/tables/foo/properties/bar", "application/json", "")
+		resp, _ := sendTestHttpRequest("DELETE", "http://localhost:8586/tables/foo/properties/bar", "application/json", "")
 		assertResponse(t, resp, 200, "", "DELETE /tables/:name/properties/:propertyName failed.")
-		resp, _ = sendTestHttpRequest("GET", "http://localhost:8585/tables/foo/properties", "application/json", "")
+		resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/properties", "application/json", "")
 		assertResponse(t, resp, 200, `[{"id":-1,"name":"baz","transient":true,"dataType":"integer"}]`+"\n", "GET /tables/:name/properties after delete failed.")
 	})
 }

@@ -29,9 +29,9 @@ func TestServerSimpleCountQuery(t *testing.T) {
 				{"type":"selection","alias":"count","dimensions":[],"expression":"count()","steps":[]}
 			]
 		}`
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"count":5}`+"\n", "POST /tables/:name/query failed.")
-		resp, _ = sendTestHttpRequest("POST", "http://localhost:8585/tables/bar/query", "application/json", query)
+		resp, _ = sendTestHttpRequest("POST", "http://localhost:8586/tables/bar/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"count":1}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
@@ -56,7 +56,7 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 			]
 		}`
 		//_codegen(t, "foo", query)
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"fruit":{"":{"count":1},"apple":{"count":2},"grape":{"count":1},"orange":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
@@ -88,7 +88,7 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 				{"type":"selection","alias":"maxPrice","dimensions":["gender","state"],"expression":"max(price)","steps":[]}
 			]
 		}`
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"gender":{"f":{"state":{"NY":{"count":1,"maxPrice":30,"minPrice":30,"sum":30}}},"m":{"state":{"CA":{"count":3,"maxPrice":20,"minPrice":0,"sum":30},"NY":{"count":2,"maxPrice":200,"minPrice":100,"sum":300}}}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
@@ -128,7 +128,7 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 			]
 		}`
 		//_codegen(t, "foo", query)
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":3}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
@@ -158,7 +158,7 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 			]
 		}`
 		//_codegen(t, "foo", query)
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8585/tables/foo/query", "application/json", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }

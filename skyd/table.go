@@ -263,6 +263,8 @@ func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
 			return nil, err
 		}
 		m["data"] = denormalizedData
+	} else {
+		m["data"] = map[string]interface{}{}
 	}
 
 	return m, nil
