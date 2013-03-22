@@ -19,3 +19,5 @@ bin/cachegrind.out
 deps/**/**
 Vagrantfile
 .vagrant
+sky
+sky-go

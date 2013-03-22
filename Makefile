@@ -23,21 +23,28 @@ $(BUILDDIR)/%:
 
 $(BINARIES): %: $(BUILDDIR)/%
 
+UNAME=$(shell uname)
+ifeq ($(UNAME), Darwin)
+SOSUFFIX=dylib
+endif
+ifeq ($(UNAME), Linux)
+SOSUFFIX=so
+endif
 
 ################################################################################
 # Dependencies
 ################################################################################
 
 leveldb:
-	#${MAKE} clean -C deps/leveldb-1.9.0
-	#${MAKE} -C deps/leveldb-1.9.0
+	${MAKE} clean -C deps/leveldb-1.9.0
+	${MAKE} -C deps/leveldb-1.9.0
 	install -m 755 -d ${DESTDIR}${INCLUDEDIR}/leveldb
 	install -m 755 deps/leveldb-1.9.0/include/leveldb/* ${DESTDIR}${INCLUDEDIR}/leveldb
 	install -m 755 -d ${DESTDIR}${LIBDIR}
 	install -m 755 deps/leveldb-1.9.0/libleveldb.a ${DESTDIR}${LIBDIR}
-	install -m 755 deps/leveldb-1.9.0/libleveldb.so.1.9 ${DESTDIR}${LIBDIR}
-	ln -sf ${DESTDIR}${LIBDIR}/libleveldb.so.1.9 ${DESTDIR}${LIBDIR}/libleveldb.so.1
-	ln -sf ${DESTDIR}${LIBDIR}/libleveldb.so.1.9 ${DESTDIR}${LIBDIR}/libleveldb.so
+	install -m 755 deps/leveldb-1.9.0/libleveldb.${SOSUFFIX}.1.9 ${DESTDIR}${LIBDIR}
+	ln -sf ${DESTDIR}${LIBDIR}/libleveldb.${SOSUFFIX}.1.9 ${DESTDIR}${LIBDIR}/libleveldb.${SOSUFFIX}.1
+	ln -sf ${DESTDIR}${LIBDIR}/libleveldb.${SOSUFFIX}.1.9 ${DESTDIR}${LIBDIR}/libleveldb.${SOSUFFIX}
 
 luajit:
 	${MAKE} -C deps/LuaJIT-2.0.1 clean PREFIX=${PREFIX}
