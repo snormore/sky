@@ -19,6 +19,21 @@ These are properties that exist only for the exact moment in which they occur.
 Sky stores all this data efficiently for querying so you can aggregate these events at blazingly fast speeds.
 For instance, on a typical commodity server you can run a funnel analysis at the rate of ~10MM events/core/second.
 
+## Getting Started
+
+To build Sky from source, you'll need to install LevelDB, LuaJIT & csky:
+
+```sh
+$ sudo make deps
+```
+
+Then to run the Sky server, simply run `skyd`:
+
+```sh
+$ go run skyd.go
+```
+
+
 ## API
 
 ### Overview

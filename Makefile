@@ -44,7 +44,11 @@ luajit:
 csky:
 	${MAKE} -C deps/csky clean install PREFIX=${PREFIX}
 
-deps: leveldb luajit csky
+data:
+	mkdir -p /var/lib/sky
+	chmod 777 /var/lib/sky
+
+deps: leveldb luajit csky data
 
 
 ################################################################################
@@ -61,7 +65,7 @@ $(BUILDDIR)/skyd: $(SKYD_SRCS)
 clean:
 	rm -fr $(BUILDDIR)
 
-.PHONY: install clean all csky leveldb luajit
+.PHONY: install clean all csky leveldb luajit data
 .PHONY: $(BINARIES)
 
 install: $(BINARIES)
