@@ -36,24 +36,25 @@ endif
 
 default: build
 
-build: libcsky.a ${SONAME}
+build: libcsky.a ${SONAME_VER2}
 
 libcsky.a: ${OBJECTS}
 	rm -f bin/libsky.a
 	ar rcs libcsky.a ${OBJECTS}
 	ranlib libcsky.a
 
-${SONAME}: ${OBJECTS}
-	$(CXX) ${LDFLAGS} ${OBJECTS} -o ${SONAME}
+${SONAME_VER2}: ${OBJECTS}
+	$(CXX) ${LDFLAGS} ${OBJECTS} -o ${SONAME_VER2}
 
 install: build
 	install -d $(DESTDIR)/$(PREFIX)/include/sky
 	install include/sky/* $(DESTDIR)/$(PREFIX)/include/sky
 	install include/sky.h $(DESTDIR)/$(PREFIX)/include/sky.h
 	install -d $(DESTDIR)/$(PREFIX)/lib
-	install libcsky* $(DESTDIR)/$(PREFIX)/lib
-	ln -sf $(DESTDIR)/$(PREFIX)/lib/${SONAME} $(DESTDIR)/$(PREFIX)/lib/${SONAME_VER1}
-	ln -sf $(DESTDIR)/$(PREFIX)/lib/${SONAME} $(DESTDIR)/$(PREFIX)/lib/${SONAME_VER2}
+	install libcsky.a $(DESTDIR)/$(PREFIX)/lib
+	install ${SONAME_VER2} $(DESTDIR)/$(PREFIX)/lib
+	ln -sf $(DESTDIR)/$(PREFIX)/lib/${SONAME_VER2} $(DESTDIR)/$(PREFIX)/lib/${SONAME}
+	ln -sf $(DESTDIR)/$(PREFIX)/lib/${SONAME_VER2} $(DESTDIR)/$(PREFIX)/lib/${SONAME_VER1}
 
 
 clean: 
