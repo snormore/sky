@@ -593,5 +593,11 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		}
 	}
 	err = servletError
+	
+	// Clean up engines.
+	for _, e := range engines {
+		e.Destroy()
+	}
+	
 	return result, err
 }
