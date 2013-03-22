@@ -119,3 +119,10 @@ $ curl -X POST http://localhost:8585/tables/users/query -d '{
 }'
 ```
 
+### Miscellaneous API
+
+```sh
+# Ping the server to see if it's functional.
+$ curl http://localhost:8585/ping
+```
+
