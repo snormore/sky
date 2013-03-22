@@ -1,3 +1,4 @@
+* Refactor LevelDB references out of csky and simply make it callback to the execution engine for object iteration.
 * Benchmark
 * Add ending state at the beginning of event list (for optimizing appends).
 * Bookmark support

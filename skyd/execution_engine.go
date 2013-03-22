@@ -1,7 +1,7 @@
 package skyd
 
 /*
-#cgo LDFLAGS: -lcsky -lluajit-5.1
+#cgo LDFLAGS: -lcsky -lluajit-5.1 -lleveldb
 #include <stdlib.h>
 #include <sky/cursor.h>
 #include <luajit-2.0/lua.h>
@@ -10,6 +10,17 @@ package skyd
 
 int mp_pack(lua_State *L);
 int mp_unpack(lua_State *L);
+
+int executionEngine_nextObject(void *cursor);
+
+int executionEngine_c_next_object(void *cursor) {
+	return (bool)executionEngine_nextObject(cursor);
+}
+
+void executionEngine_setNextObjectFunc(void *cursor) {
+	((sky_cursor*)cursor)->next_object_func = executionEngine_c_next_object;
+}
+
 */
 import "C"
 
@@ -36,12 +47,16 @@ type ExecutionEngine struct {
 	tableName    string
 	iterator     *levigo.Iterator
 	cursor       *C.sky_cursor
+	prefix       []byte
 	state        *C.lua_State
 	header       string
 	source       string
 	fullSource   string
 	propertyFile *PropertyFile
 	propertyRefs []*Property
+
+	cprefix      unsafe.Pointer
+	cprefix_sz   C.size_t
 }
 
 //------------------------------------------------------------------------------
@@ -131,14 +146,10 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 		if err != nil {
 			return err
 		}
-		prefix = prefix[0 : len(prefix)-1]
+		e.prefix = prefix[0 : len(prefix)-1]
 
 		// Set the prefix & seek.
-		C.sky_cursor_set_key_prefix(e.cursor, (unsafe.Pointer(&prefix[0])), C.uint32_t(len(prefix)))
-		e.iterator.Seek(prefix)
-
-		// Assign the iterator to the cursor.
-		C.sky_cursor_set_leveldb_iterator(e.cursor, e.iterator.Iter)
+		e.iterator.Seek(e.prefix)
 	}
 
 	return nil
@@ -208,6 +219,8 @@ func (e *ExecutionEngine) initCursor() error {
 	// Create the cursor.
 	minPropertyId, maxPropertyId := e.propertyFile.NextIdentifiers()
 	e.cursor = C.sky_cursor_new((C.int32_t)(minPropertyId), (C.int32_t)(maxPropertyId))
+	e.cursor.context = unsafe.Pointer(e)
+	C.executionEngine_setNextObjectFunc(unsafe.Pointer(e.cursor))
 
 	// Initialize the cursor from within Lua.
 	functionName := C.CString("sky_init_cursor")

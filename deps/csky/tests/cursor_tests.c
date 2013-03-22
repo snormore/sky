@@ -282,10 +282,11 @@ int test_sky_cursor_sessionize() {
 // Object Iteration
 //--------------------------------------
 
-bool next_obj(sky_cursor *cursor) {
+int next_obj(void *_cursor) {
   size_t sz;
   void *ptr = NULL;
   
+  sky_cursor *cursor = (sky_cursor*)_cursor;
   if(cursor->context == NULL) {
       ptr = DATA3; sz = DATA3_LENGTH;
   } else if(cursor->context == DATA3) {
@@ -295,10 +296,10 @@ bool next_obj(sky_cursor *cursor) {
   if(ptr != NULL) {
       cursor->context = ptr;
       sky_cursor_set_ptr(cursor, ptr, sz);
-      return true;
+      return 1;
   }
   else {
-      return false;
+      return 0;
   }
 }
 

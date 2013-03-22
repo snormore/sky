@@ -1,6 +1,7 @@
 #ifndef _sky_cursor_h
 #define _sky_cursor_h
 
+#include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -23,7 +24,7 @@
 
 typedef struct sky_cursor sky_cursor;
 
-typedef bool (*sky_cursor_next_object_func)(sky_cursor *cursor);
+typedef int (*sky_cursor_next_object_func)(void *cursor);
 
 typedef void (*sky_property_descriptor_set_func)(void *target, void *value, size_t *sz);
 typedef void (*sky_property_descriptor_clear_func)(void *target);

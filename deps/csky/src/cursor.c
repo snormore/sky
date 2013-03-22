@@ -198,7 +198,7 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
 // Moves the cursor to point to the next object.
 bool sky_cursor_next_object(sky_cursor *cursor)
 {
-    return cursor->next_object_func(cursor);
+    return (bool)cursor->next_object_func(cursor);
 }
 
 
