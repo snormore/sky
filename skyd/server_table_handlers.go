@@ -36,8 +36,8 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, pa
 		if err != nil {
 			return nil, err
 		}
-
-		return nil, nil
+		
+		return table, nil
 	})
 }
 
@@ -47,16 +47,6 @@ func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request, pa
 	tableName := vars["name"]
 
 	return s.sync(func() (interface{}, error) {
-		// Return an error if the table doesn't exist.
-		table := s.GetTable(tableName)
-		if table == nil {
-			table = NewTable(tableName, s.TablePath(tableName))
-		}
-		if !table.Exists() {
-			return nil, errors.New("Table does not exist.")
-		}
-
-		// Otherwise delete it.
-		return nil, table.Delete()
+		return nil, s.DeleteTable(tableName)
 	})
 }

@@ -10,17 +10,17 @@ func TestServerSimpleCountQuery(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "fruit", true, "string")
 		setupTestData(t, "foo", [][]string{
-			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
-			[]string{"1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
-			[]string{"1", "2012-01-01T00:00:01Z", `{}`},
-			[]string{"2", "2012-01-01T00:00:00Z", `{"data":{"fruit":"orange"}}`},
-			[]string{"3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
+			[]string{"a0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
+			[]string{"a1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
+			[]string{"a1", "2012-01-01T00:00:01Z", `{}`},
+			[]string{"a2", "2012-01-01T00:00:00Z", `{"data":{"fruit":"orange"}}`},
+			[]string{"a3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 		})
 
 		setupTestTable("bar")
 		setupTestProperty("bar", "fruit", true, "string")
 		setupTestData(t, "bar", [][]string{
-			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
+			[]string{"a0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
 		})
 
 		// Run query.
@@ -42,11 +42,11 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "fruit", true, "string")
 		setupTestData(t, "foo", [][]string{
-			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
-			[]string{"1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
-			[]string{"1", "2012-01-01T00:00:01Z", `{}`},
-			[]string{"2", "2012-01-01T00:00:00Z", `{"data":{"fruit":"orange"}}`},
-			[]string{"3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
+			[]string{"b0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
+			[]string{"b1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
+			[]string{"b1", "2012-01-01T00:00:01Z", `{}`},
+			[]string{"b2", "2012-01-01T00:00:00Z", `{"data":{"fruit":"orange"}}`},
+			[]string{"b3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 		})
 
 		// Run query.
@@ -69,14 +69,14 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		setupTestProperty("foo", "state", false, "factor")
 		setupTestProperty("foo", "price", true, "float")
 		setupTestData(t, "foo", [][]string{
-			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"NY", "price":100}}`},
-			[]string{"0", "2012-01-01T00:00:01Z", `{"data":{"price":200}}`},
-			[]string{"0", "2012-01-01T00:00:02Z", `{"data":{"state":"CA","price":10}}`},
+			[]string{"c0", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"NY", "price":100}}`},
+			[]string{"c0", "2012-01-01T00:00:01Z", `{"data":{"price":200}}`},
+			[]string{"c0", "2012-01-01T00:00:02Z", `{"data":{"state":"CA","price":10}}`},
 
-			[]string{"1", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"CA", "price":20}}`},
-			[]string{"1", "2012-01-01T00:00:01Z", `{"data":{}}`},
+			[]string{"c1", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"CA", "price":20}}`},
+			[]string{"c1", "2012-01-01T00:00:01Z", `{"data":{}}`},
 
-			[]string{"2", "2012-01-01T00:00:00Z", `{"data":{"gender":"f", "state":"NY", "price":30}}`},
+			[]string{"c2", "2012-01-01T00:00:00Z", `{"data":{"gender":"f", "state":"NY", "price":30}}`},
 		})
 
 		// Run query.
@@ -100,21 +100,21 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 		setupTestProperty("foo", "action", false, "factor")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..2] occurs twice for this object.
-			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"0", "2012-01-01T00:00:01Z", `{"data":{"action":"A1"}}`},
-			[]string{"0", "2012-01-01T00:00:02Z", `{"data":{"action":"A2"}}`},
-			[]string{"0", "2012-01-01T12:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"0", "2012-01-01T13:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"0", "2012-01-01T14:00:00Z", `{"data":{"action":"A1"}}`},
+			[]string{"d0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"d0", "2012-01-01T00:00:01Z", `{"data":{"action":"A1"}}`},
+			[]string{"d0", "2012-01-01T00:00:02Z", `{"data":{"action":"A2"}}`},
+			[]string{"d0", "2012-01-01T12:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"d0", "2012-01-01T13:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"d0", "2012-01-01T14:00:00Z", `{"data":{"action":"A1"}}`},
 
 			// A0[0..0]..A1[1..2] occurs once for this object. (Second time matches A1[1..3]).
-			[]string{"1", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"1", "2012-01-01T00:00:01Z", `{"data":{"action":"A0"}}`},
-			[]string{"1", "2012-01-01T00:00:02Z", `{"data":{"action":"A1"}}`},
-			[]string{"1", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"1", "2012-01-02T00:00:01Z", `{"data":{"action":"A0"}}`},
-			[]string{"1", "2012-01-02T00:00:02Z", `{"data":{"action":"A0"}}`},
-			[]string{"1", "2012-01-02T00:00:03Z", `{"data":{"action":"A1"}}`},
+			[]string{"e1", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"e1", "2012-01-01T00:00:01Z", `{"data":{"action":"A0"}}`},
+			[]string{"e1", "2012-01-01T00:00:02Z", `{"data":{"action":"A1"}}`},
+			[]string{"e1", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"e1", "2012-01-02T00:00:01Z", `{"data":{"action":"A0"}}`},
+			[]string{"e1", "2012-01-02T00:00:02Z", `{"data":{"action":"A0"}}`},
+			[]string{"e1", "2012-01-02T00:00:03Z", `{"data":{"action":"A1"}}`},
 		})
 
 		// Run query.
@@ -140,10 +140,10 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 		setupTestProperty("foo", "action", false, "string")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..1] occurs once for this object. The second one is broken across sessions.
-			[]string{"0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"0", "2012-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
-			[]string{"0", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"0", "2012-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
+			[]string{"f0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"f0", "2012-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
+			[]string{"f0", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"f0", "2012-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
 		})
 
 		// Run query.

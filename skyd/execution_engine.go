@@ -80,9 +80,16 @@ func NewExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
 		return nil, err
 	}
 
+	// Determine table prefix.
+	prefix, err := TablePrefix(table.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the engine.
 	e := &ExecutionEngine{
-		tableName:    table.Name(),
+		tableName:    table.Name,
+		prefix:       prefix,
 		propertyFile: propertyFile,
 		source:       source,
 		propertyRefs: propertyRefs,
@@ -140,15 +147,6 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 	// Attach the new iterator.
 	e.iterator = iterator
 	if e.iterator != nil {
-		// The table prefix should match the encoded object id syntax but without
-		// the last item.
-		prefix, err := msgpack.Marshal([]interface{}{e.tableName, nil})
-		if err != nil {
-			return err
-		}
-		e.prefix = prefix[0 : len(prefix)-1]
-
-		// Set the prefix & seek.
 		e.iterator.Seek(e.prefix)
 	}
 

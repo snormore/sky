@@ -17,7 +17,7 @@ import (
 
 // A Table is a collection of objects.
 type Table struct {
-	name         string
+	Name         string `json:"name"`
 	path         string
 	propertyFile *PropertyFile
 }
@@ -36,7 +36,7 @@ func NewTable(name string, path string) *Table {
 	}
 
 	return &Table{
-		name: name,
+		Name: name,
 		path: path,
 	}
 }
@@ -52,11 +52,6 @@ func (t *Table) Path() string {
 	return t.path
 }
 
-// Retrieves the name of the table.
-func (t *Table) Name() string {
-	return t.name
-}
-
 //------------------------------------------------------------------------------
 //
 // Methods
@@ -70,7 +65,7 @@ func (t *Table) Name() string {
 // Creates a table directory structure.
 func (t *Table) Create() error {
 	if t.Exists() {
-		return fmt.Errorf("Table already exist: %v", t.name)
+		return fmt.Errorf("Table already exist: %v", t.Name)
 	}
 
 	// Create root directory.
@@ -85,7 +80,7 @@ func (t *Table) Create() error {
 // Deletes a table.
 func (t *Table) Delete() error {
 	if !t.Exists() {
-		return fmt.Errorf("Table does not exist: %v", t.name)
+		return fmt.Errorf("Table does not exist: %v", t.Name)
 	}
 
 	// Close everything if it's open.
@@ -135,6 +130,16 @@ func (t *Table) Exists() bool {
 		return false
 	}
 	return true
+}
+
+// Generates a prefix key used for iterating over the table's data.
+func TablePrefix(tableName string) ([]byte, error) {
+	// The table prefix should match the encoded object id syntax but without the last item.
+	prefix, err := msgpack.Marshal([]interface{}{tableName, nil})
+	if err != nil {
+		return nil, err
+	}
+	return prefix[0 : len(prefix)-1], nil
 }
 
 //--------------------------------------
@@ -219,7 +224,7 @@ func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[string]interface{},
 
 // Encodes an object identifier for this table.
 func (t *Table) EncodeObjectId(objectId string) ([]byte, error) {
-	return msgpack.Marshal([]string{t.name, objectId})
+	return msgpack.Marshal([]string{t.Name, objectId})
 }
 
 // Deserializes a map into a normalized event.
@@ -285,7 +290,7 @@ func (t *Table) FactorizeEvent(event *Event, factors *Factors, createIfMissing b
 		property := propertyFile.GetProperty(k)
 		if property.DataType == FactorDataType {
 			if stringValue, ok := v.(string); ok {
-				sequence, err := factors.Factorize(t.name, property.Name, stringValue, createIfMissing)
+				sequence, err := factors.Factorize(t.Name, property.Name, stringValue, createIfMissing)
 				if err != nil {
 					return err
 				}
@@ -308,7 +313,7 @@ func (t *Table) DefactorizeEvent(event *Event, factors *Factors) error {
 		property := propertyFile.GetProperty(k)
 		if property.DataType == FactorDataType {
 			if sequence, ok := v.(uint64); ok {
-				stringValue, err := factors.Defactorize(t.name, property.Name, sequence)
+				stringValue, err := factors.Defactorize(t.Name, property.Name, sequence)
 				if err != nil {
 					return err
 				}

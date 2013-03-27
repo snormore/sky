@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -320,11 +321,16 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 
 		// Write header status.
 		w.Header().Set("Content-Type", "application/json")
+		var status int
 		if err == nil {
-			w.WriteHeader(http.StatusOK)
+			status = http.StatusOK
 		} else {
-			w.WriteHeader(http.StatusInternalServerError)
+			status = http.StatusInternalServerError
 		}
+		w.WriteHeader(status)
+
+		// Write to access log.
+		s.logger.Printf("%s \"%s %s %s\" %d", req.RemoteAddr, req.Method, req.RequestURI, req.Proto, status)
 
 		// Encode the return value appropriately.
 		if ret != nil {
@@ -477,6 +483,59 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 
 	return table, nil
 }
+
+// Deletes a table.
+func (s *Server) DeleteTable(name string) (error) {
+	// Return an error if the table doesn't exist.
+	table := s.GetTable(name)
+	if table == nil {
+		table = NewTable(name, s.TablePath(name))
+	}
+	if !table.Exists() {
+		return fmt.Errorf("Table does not exist: %s", name)
+	}
+
+	// Determine table prefix.
+	prefix, err := TablePrefix(table.Name)
+	if err != nil {
+		return err
+	}
+	
+	// Delete data from each servlet.
+	for _, servlet := range s.servlets {
+		_, err = servlet.sync(func() (interface{}, error) {
+			// Delete the data from disk.
+			ro := levigo.NewReadOptions()
+			defer ro.Close()
+			wo := levigo.NewWriteOptions()
+			defer wo.Close()
+			iterator := servlet.db.NewIterator(ro)
+			defer iterator.Close()
+
+			iterator.Seek(prefix)
+			for iterator = iterator; iterator.Valid(); iterator.Next() {
+				key := iterator.Key()
+				if bytes.HasPrefix(key, prefix) {
+					err := servlet.db.Delete(wo, key)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					break
+				}
+			}
+			return nil, nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Remove the table from the lookup and remove it's schema.
+	delete(s.tables, name)
+	return table.Delete()
+}
+
 
 //--------------------------------------
 // Query

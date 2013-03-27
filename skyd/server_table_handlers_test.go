@@ -13,7 +13,7 @@ func TestServerCreateTable(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unable to create table: %v", err)
 		}
-		assertResponse(t, resp, 200, "", "POST /tables failed.")
+		assertResponse(t, resp, 200, `{"name":"foo"}`+"\n", "POST /tables failed.")
 		if _, err := os.Stat(fmt.Sprintf("%v/tables/foo", s.Path())); os.IsNotExist(err) {
 			t.Fatalf("POST /tables did not create table.")
 		}
@@ -28,7 +28,7 @@ func TestServerDeleteTable(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unable to create table: %v", err)
 		}
-		assertResponse(t, resp, 200, "", "POST /tables failed.")
+		assertResponse(t, resp, 200, `{"name":"foo"}`+"\n", "POST /tables failed.")
 		if _, err := os.Stat(fmt.Sprintf("%v/tables/foo", s.Path())); os.IsNotExist(err) {
 			t.Fatalf("POST /tables did not create table.")
 		}

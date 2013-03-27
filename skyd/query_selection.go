@@ -332,7 +332,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 				if err != nil {
 					return err
 				}
-				stringValue, err := s.query.factors.Defactorize(s.query.table.Name(), dimension, sequence)
+				stringValue, err := s.query.factors.Defactorize(s.query.table.Name, dimension, sequence)
 				if err != nil {
 					return err
 				}

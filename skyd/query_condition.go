@@ -280,7 +280,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 
 		// Convert factors.
 		if property.DataType == FactorDataType {
-			sequence, err := c.query.factors.Factorize(c.query.table.Name(), property.Name, stringValue, false)
+			sequence, err := c.query.factors.Factorize(c.query.table.Name, property.Name, stringValue, false)
 			if err != nil {
 				return "", err
 			} else {
