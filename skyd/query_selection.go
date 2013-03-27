@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 )
 
 //------------------------------------------------------------------------------
@@ -18,10 +17,8 @@ type QuerySelection struct {
 	query             *Query
 	functionName      string
 	mergeFunctionName string
-	Expression        string
-	Alias             string
 	Dimensions        []string
-	Steps             QueryStepList
+	Fields            []*QuerySelectionField
 }
 
 //------------------------------------------------------------------------------
@@ -63,8 +60,9 @@ func (s *QuerySelection) MergeFunctionName() string {
 
 // Retrieves the child steps.
 func (s *QuerySelection) GetSteps() QueryStepList {
-	return s.Steps
+	return []QueryStep{}
 }
+
 
 //------------------------------------------------------------------------------
 //
@@ -78,12 +76,15 @@ func (s *QuerySelection) GetSteps() QueryStepList {
 
 // Encodes a query selection into an untyped map.
 func (s *QuerySelection) Serialize() map[string]interface{} {
+	fields := []interface{}{}
+	for _, field := range s.Fields {
+		fields = append(fields, field.Serialize())
+	}
+	
 	obj := map[string]interface{}{
 		"type":       QueryStepTypeSelection,
-		"expression": s.Expression,
-		"alias":      s.Alias,
 		"dimensions": s.Dimensions,
-		"steps":      s.Steps.Serialize(),
+		"fields": fields,
 	}
 	return obj
 }
@@ -95,20 +96,6 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	}
 	if obj["type"] != QueryStepTypeSelection {
 		return fmt.Errorf("skyd.QuerySelection: Invalid step type: %v", obj["type"])
-	}
-
-	// Deserialize "expression".
-	if expression, ok := obj["expression"].(string); ok && len(expression) > 0 {
-		s.Expression = expression
-	} else {
-		return fmt.Errorf("skyd.QuerySelection: Invalid expression: %v", obj["expression"])
-	}
-
-	// Deserialize "alias".
-	if alias, ok := obj["alias"].(string); ok && len(alias) > 0 {
-		s.Alias = alias
-	} else {
-		return fmt.Errorf("skyd.QuerySelection: Invalid alias: %v", obj["alias"])
 	}
 
 	// Deserialize "dimensions".
@@ -129,11 +116,24 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 		}
 	}
 
-	// Deserialize steps.
-	var err error
-	s.Steps, err = DeserializeQueryStepList(obj["steps"], s.query)
-	if err != nil {
-		return err
+	// Deserialize "fields".
+	if fields, ok := obj["fields"].([]interface{}); ok {
+		s.Fields = []*QuerySelectionField{}
+		for _, field := range fields {
+			if fieldMap, ok := field.(map[string]interface{}); ok {
+				f := NewQuerySelectionField()
+				f.Deserialize(fieldMap)
+				s.Fields = append(s.Fields, f)
+			} else {
+				return fmt.Errorf("skyd.QuerySelection: Invalid field: %v", field)
+			}
+		}
+	} else {
+		if obj["field"] == nil {
+			s.Fields = []*QuerySelectionField{}
+		} else {
+			return fmt.Errorf("skyd.QuerySelection: Invalid fields: %v", obj["fields"])
+		}
 	}
 
 	return nil
@@ -147,13 +147,6 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
-	// Generate child steps.
-	str, err := s.Steps.CodegenAggregateFunctions()
-	if err != nil {
-		return "", err
-	}
-	buffer.WriteString(str + "\n")
-
 	// Generate main function.
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", s.FunctionName())
 
@@ -165,12 +158,14 @@ func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
 		fmt.Fprintf(buffer, "  data = data.%s[dimension]\n\n", dimension)
 	}
 
-	// Select value.
-	exp, err := s.CodegenExpression()
-	if err != nil {
-		return "", err
+	// Select fields.
+	for _, field := range s.Fields {
+		exp, err := field.CodegenExpression()
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintln(buffer, "  "+exp)
 	}
-	fmt.Fprintln(buffer, "  "+exp)
 
 	// End function definition.
 	fmt.Fprintln(buffer, "end")
@@ -181,13 +176,6 @@ func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
 // Generates Lua code for the selection merge.
 func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 	buffer := new(bytes.Buffer)
-
-	// Generate child steps.
-	str, err := s.Steps.CodegenMergeFunctions()
-	if err != nil {
-		return "", err
-	}
-	buffer.WriteString(str + "\n")
 
 	// Generate nested functions first.
 	code, err := s.CodegenInnerMergeFunction(0)
@@ -230,63 +218,20 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 		fmt.Fprintf(buffer, "    end\n")
 		fmt.Fprintf(buffer, "  end\n")
 	} else {
-		// Merge value.
-		exp, err := s.CodegenMergeExpression()
-		if err != nil {
-			return "", err
+		// Merge fields.
+		for _, field := range s.Fields {
+			exp, err := field.CodegenMergeExpression()
+			if err != nil {
+				return "", err
+			}
+			fmt.Fprintln(buffer, "  "+exp)
 		}
-		fmt.Fprintln(buffer, "  "+exp)
 	}
 	fmt.Fprintf(buffer, "end\n")
 
 	return buffer.String(), nil
 }
 
-// Generates Lua code for the expression.
-func (s *QuerySelection) CodegenExpression() (string, error) {
-	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
-	if m := r.FindStringSubmatch(s.Expression); m != nil {
-		if len(m[1]) > 0 { // sum()/min()/max()
-			switch m[1] {
-			case "sum":
-				return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", s.Alias, s.Alias, m[2]), nil
-			case "min":
-				return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
-			case "max":
-				return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", s.Alias, s.Alias, m[2], s.Alias, m[2]), nil
-			}
-		} else if len(m[3]) > 0 { // assignment
-			return fmt.Sprintf("data.%s = cursor.event:%s()", s.Alias, m[3]), nil
-		} else { // count()
-			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", s.Alias, s.Alias), nil
-		}
-	}
-
-	return "", fmt.Errorf("skyd.QuerySelection: Invalid expression: %q", s.Expression)
-}
-
-// Generates Lua code for the merge expression.
-func (s *QuerySelection) CodegenMergeExpression() (string, error) {
-	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
-	if m := r.FindStringSubmatch(s.Expression); m != nil {
-		if len(m[1]) > 0 { // sum()/min()/max()
-			switch m[1] {
-			case "sum":
-				return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil
-			case "min":
-				return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
-			case "max":
-				return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", s.Alias, s.Alias, s.Alias, s.Alias, s.Alias), nil
-			}
-		} else if len(m[3]) > 0 { // assignment
-			return fmt.Sprintf("result.%s = data.%s", s.Alias, s.Alias), nil
-		} else { // count()
-			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", s.Alias, s.Alias, s.Alias), nil
-		}
-	}
-
-	return "", fmt.Errorf("skyd.QuerySelection: Invalid merge expression: %q", s.Expression)
-}
 
 //--------------------------------------
 // Factorization
@@ -298,9 +243,6 @@ func (s *QuerySelection) Defactorize(data interface{}) error {
 	if err != nil {
 		return err
 	}
-
-	// Defactorize child steps.
-	err = s.Steps.Defactorize(data)
 
 	return err
 }

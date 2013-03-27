@@ -26,7 +26,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"steps":[
-				{"type":"selection","alias":"count","dimensions":[],"expression":"count()","steps":[]}
+				{"type":"selection","dimensions":[],"fields":[{"name":"count","expression":"count()"}]}
 			]
 		}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
@@ -52,7 +52,7 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"steps":[
-				{"type":"selection","alias":"count","dimensions":["fruit"],"expression":"count()","steps":[]}
+				{"type":"selection","dimensions":["fruit"],"fields":[{"name":"count","expression":"count()"}]}
 			]
 		}`
 		//_codegen(t, "foo", query)
@@ -82,10 +82,12 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"steps":[
-				{"type":"selection","alias":"count","dimensions":["gender","state"],"expression":"count()","steps":[]},
-				{"type":"selection","alias":"sum","dimensions":["gender","state"],"expression":"sum(price)","steps":[]},
-				{"type":"selection","alias":"minPrice","dimensions":["gender","state"],"expression":"min(price)","steps":[]},
-				{"type":"selection","alias":"maxPrice","dimensions":["gender","state"],"expression":"max(price)","steps":[]}
+				{"type":"selection","dimensions":["gender","state"],"fields":[
+					{"name":"count","expression":"count()"},
+					{"name":"sum","expression":"sum(price)"},
+					{"name":"minPrice","expression":"min(price)"}
+				]},
+				{"type":"selection","dimensions":["gender","state"],"fields":[{"name":"maxPrice","expression":"max(price)"}]}
 			]
 		}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
@@ -122,7 +124,7 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 			"steps":[
 				{"type":"condition","expression":"action == 'A0'","steps":[
 					{"type":"condition","expression":"action == 'A1'","within":[1,2],"steps":[
-						{"type":"selection","alias":"count","dimensions":["action"],"expression":"count()"}
+						{"type":"selection","dimensions":["action"],"fields":[{"name":"count","expression":"count()"}]}
 					]}
 				]}
 			]
@@ -152,7 +154,7 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 			"steps":[
 				{"type":"condition","expression":"action == 'A0'","steps":[
 					{"type":"condition","expression":"action == 'A1'","within":[1,1],"steps":[
-						{"type":"selection","alias":"count","dimensions":["action"],"expression":"count()"}
+						{"type":"selection","dimensions":["action"],"fields":[{"name":"count","expression":"count()"}]}
 					]}
 				]}
 			]

@@ -1,9 +1,8 @@
-* Add 'fields' to condition.
-* sky.rb
-* sky.go
 * Benchmark
 * Add ending state at the beginning of event list (for optimizing appends).
 * Bookmark support
 
 * GET /tables
 * GET /tables/{name}
+
+* sky.go

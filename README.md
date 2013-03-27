@@ -130,7 +130,7 @@ $ curl -X DELETE http://localhost:8585/tables/users/objects/john/events/2012-01-
 # Count the total number of events.
 $ curl -X POST http://localhost:8585/tables/users/query -d '{
   "steps": [
-    {"type":"selection","alias":"count","expression":"count()"}
+    {"type":"selection","fields":[{"name":"count","expression":"count()"}]}
   ]
 }'
 ```
