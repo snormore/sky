@@ -46,6 +46,16 @@ The examples below use cURL but there are also client libraries available for di
 ### Table API
 
 ```sh
+# List all tables in the database.
+$ curl -X GET http://localhost:8585/tables
+```
+
+```sh
+# Retrieve a single table named 'users' from the database.
+$ curl -X GET http://localhost:8585/tables/users
+```
+
+```sh
 # Creates an empty table named 'users'.
 $ curl -X POST http://localhost:8585/tables -d '{"name":"users"}'
 ```

@@ -23,6 +23,20 @@ func TestServerGetTables(t *testing.T) {
 	})
 }
 
+// Ensure that we can retrieve a single table on the server.
+func TestServerGetTable(t *testing.T) {
+	runTestServer(func(s *Server) {
+		// Make and open one table.
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables", "application/json", `{"name":"foo"}`)
+		resp.Body.Close()
+		resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo", "application/json", ``)
+		if err != nil {
+			t.Fatalf("Unable to get table: %v", err)
+		}
+		assertResponse(t, resp, 200, `{"name":"foo"}`+"\n", "GET /table failed.")
+	})
+}
+
 // Ensure that we can create a new table through the server.
 func TestServerCreateTable(t *testing.T) {
 	runTestServer(func(s *Server) {
