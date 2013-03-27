@@ -464,6 +464,25 @@ func (s *Server) GetTable(name string) *Table {
 	return s.tables[name]
 }
 
+// Retrieves a list of all tables in the database but does not open them.
+// Do not use these table references for anything but informational purposes!
+func (s *Server) GetAllTables() ([]*Table, error) {
+	// Create a table object for each directory in the tables path.
+	infos, err := ioutil.ReadDir(s.TablesPath())
+	if err != nil {
+		return nil, err
+	}
+	
+	tables := []*Table{}
+	for _, info := range infos {
+		if info.IsDir() {
+			tables = append(tables, NewTable(info.Name(), s.TablePath(info.Name())))
+		}
+	}
+
+	return tables, nil
+}
+
 // Opens a table and returns a reference to it.
 func (s *Server) OpenTable(name string) (*Table, error) {
 	// If table already exists then use it.
