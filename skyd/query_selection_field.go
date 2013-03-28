@@ -13,8 +13,8 @@ import (
 //------------------------------------------------------------------------------
 
 type QuerySelectionField struct {
-	Name        string
-	Expression        string
+	Name       string
+	Expression string
 }
 
 //------------------------------------------------------------------------------
@@ -42,7 +42,7 @@ func NewQuerySelectionField() *QuerySelectionField {
 func (f *QuerySelectionField) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"name":       f.Name,
-		"expression":       f.Expression,
+		"expression": f.Expression,
 	}
 	return obj
 }
@@ -66,7 +66,6 @@ func (f *QuerySelectionField) Deserialize(obj map[string]interface{}) error {
 	} else {
 		return fmt.Errorf("skyd.QuerySelectionField: Invalid name: %v", obj["name"])
 	}
-
 
 	return nil
 }

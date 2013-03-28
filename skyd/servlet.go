@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jmhodges/levigo"
+	"github.com/ugorji/go-msgpack"
 	"io"
+	"io/ioutil"
 	"os"
 	"sort"
 	"time"
@@ -134,22 +136,28 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 		return errors.New("skyd.PutEvent: Cannot add nil event")
 	}
 
-	// Retrieve the events for the object and append.
-	tmp, err := s.GetEvents(table, objectId)
+	// Check the current state and perform an optimized append if possible.
+	state, data, err := s.GetState(table, objectId)
+	if state == nil || state.Timestamp.Before(event.Timestamp) {
+		return s.appendEvent(table, objectId, event, state, data)
+	}
+
+	// Retrieve the events and state for the object.
+	tmp, state, err := s.GetEvents(table, objectId)
 	if err != nil {
 		return err
 	}
 
 	// Remove any event matching the timestamp.
 	found := false
-	state := &Event{Timestamp:event.Timestamp, Data:map[int64]interface{}{}}
+	state = &Event{Timestamp: event.Timestamp, Data: map[int64]interface{}{}}
 	events := make([]*Event, 0)
 	for _, v := range tmp {
 		// Replace or merge with existing event.
 		if v.Timestamp.Equal(event.Timestamp) {
 			// Dedupe all permanent state.
 			event.Dedupe(state)
-			
+
 			// Replace or merge.
 			if replace {
 				v = event
@@ -167,10 +175,11 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 	if !found {
 		event.Dedupe(state)
 		events = append(events, event)
+		state.MergePermanent(event)
 	}
 
 	// Write events back to the database.
-	err = s.SetEvents(table, objectId, events)
+	err = s.SetEvents(table, objectId, events, state)
 	if err != nil {
 		return err
 	}
@@ -178,10 +187,30 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 	return nil
 }
 
+// Appends an event for a given object in a table to a servlet. This should not
+// be called directly but only through PutEvent().
+func (s *Servlet) appendEvent(table *Table, objectId string, event *Event, state *Event, data []byte) error {
+	if state == nil {
+		state = &Event{Data:map[int64]interface{}{}}
+	}
+	state.Timestamp = event.Timestamp
+	event.Dedupe(state)
+	state.MergePermanent(event)
+	
+	// Append new event.
+	buffer := bytes.NewBuffer(data)
+	if err := event.EncodeRaw(buffer); err != nil {
+		return err
+	}
+	
+	// Write everything to the database.
+	return s.SetRawEvents(table, objectId, buffer.Bytes(), state)
+}
+
 // Retrieves an event for a given object at a single point in time.
 func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (*Event, error) {
 	// Retrieve all events.
-	events, err := s.GetEvents(table, objectId)
+	events, _, err := s.GetEvents(table, objectId)
 	if err != nil {
 		return nil, err
 	}
@@ -204,20 +233,22 @@ func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time
 	}
 
 	// Retrieve the events for the object and append.
-	tmp, err := s.GetEvents(table, objectId)
+	tmp, _, err := s.GetEvents(table, objectId)
 	if err != nil {
 		return err
 	}
 	// Remove any event matching the timestamp.
+	state := &Event{Data: map[int64]interface{}{}}
 	events := make([]*Event, 0)
 	for _, v := range tmp {
 		if !v.Timestamp.Equal(timestamp) {
 			events = append(events, v)
+			state.MergePermanent(v)
 		}
 	}
 
 	// Write events back to the database.
-	err = s.SetEvents(table, objectId, events)
+	err = s.SetEvents(table, objectId, events, state)
 	if err != nil {
 		return err
 	}
@@ -225,17 +256,17 @@ func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time
 	return nil
 }
 
-// Retrieves a list of events for a given object in a table.
-func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, error) {
+// Retrieves the state and the remaining serialized event stream for an object.
+func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error) {
 	// Make sure the servlet is open.
 	if s.db == nil {
-		return nil, fmt.Errorf("Servlet is not open: %v", s.path)
+		return nil, nil, fmt.Errorf("Servlet is not open: %v", s.path)
 	}
 
 	// Encode object identifier.
 	encodedObjectId, err := table.EncodeObjectId(objectId)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Retrieve byte array.
@@ -243,39 +274,97 @@ func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, error) {
 	data, err := s.db.Get(ro, encodedObjectId)
 	ro.Close()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Decode the events into a slice.
-	events := make([]*Event, 0, 10)
+	if data != nil {
+		reader := bytes.NewReader(data)
+
+		// The first item should be the current state wrapped in a raw value.
+		var raw interface{}
+		decoder := msgpack.NewDecoder(reader, nil)
+		if err := decoder.Decode(&raw); err != nil {
+			return nil, nil, err
+		}
+		if b, ok := raw.(string); ok {
+			state := &Event{}
+			if err = state.DecodeRaw(bytes.NewReader([]byte(b))); err == nil {
+				eventData, _ := ioutil.ReadAll(reader)
+				return state, eventData, nil
+			} else {
+				return nil, nil, err
+			}
+		} else {
+			return nil, nil, fmt.Errorf("skyd.Servlet: Invalid state: %v", raw)
+		}
+	}
+	
+	return nil, []byte{}, nil
+}
+
+// Retrieves a list of events and the current state for a given object in a table.
+func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, *Event, error) {
+	state, data, err := s.GetState(table, objectId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	events := make([]*Event, 0)
 	if data != nil {
 		reader := bytes.NewReader(data)
 		for {
-			// Otherwise decode the event and append it to our list.
+			// Decode the event and append it to our list.
 			event := &Event{}
 			err = event.DecodeRaw(reader)
 			if err == io.EOF {
 				break
 			}
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			events = append(events, event)
 		}
 	}
 
-	return events, nil
+	return events, state, nil
 }
 
 // Writes a list of events for an object in table.
-func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event) error {
+func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event, state *Event) error {
+	// Sort the events.
+	sort.Sort(EventList(events))
+
+	// Ensure state is correct before proceeding.
+	if len(events) > 0 {
+		if state != nil {
+			state.Timestamp = events[len(events)-1].Timestamp
+		} else {
+			return errors.New("skyd.Servlet: Missing state.")
+		}
+	} else {
+		state = nil
+	}
+
+	// Encode the events.
+	buffer := new(bytes.Buffer)
+	for _, event := range events {
+		err := event.EncodeRaw(buffer)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Set the raw bytes.
+	return s.SetRawEvents(table, objectId, buffer.Bytes(), state)
+}
+
+// Writes a list of events for an object in table.
+func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state *Event) error {
 	// Make sure the servlet is open.
 	if s.db == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
 	}
-
-	// Sort the events.
-	sort.Sort(EventList(events))
 
 	// Encode object identifier.
 	encodedObjectId, err := table.EncodeObjectId(objectId)
@@ -283,21 +372,29 @@ func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event) erro
 		return err
 	}
 
-	// Encode the events.
+	// Encode the state at the beginning.
 	buffer := new(bytes.Buffer)
-	for _, event := range events {
-		err = event.EncodeRaw(buffer)
-		if err != nil {
+	var b []byte
+	if state != nil {
+		if b, err = state.MarshalRaw(); err != nil {
 			return err
 		}
+	} else {
+		b = []byte{}
 	}
+	b2, err := msgpack.Marshal(b)
+	if err != nil {
+		return err
+	}
+	buffer.Write(b2)
+
+	// Encode the rest of the data.
+	buffer.Write(data)
 
 	// Write bytes to the database.
 	wo := levigo.NewWriteOptions()
-	err = s.db.Put(wo, encodedObjectId, buffer.Bytes())
-	wo.Close()
-
-	return nil
+	defer wo.Close()
+	return s.db.Put(wo, encodedObjectId, buffer.Bytes())
 }
 
 // Deletes all events for a given object in a table.

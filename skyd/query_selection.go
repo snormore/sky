@@ -63,7 +63,6 @@ func (s *QuerySelection) GetSteps() QueryStepList {
 	return []QueryStep{}
 }
 
-
 //------------------------------------------------------------------------------
 //
 // Methods
@@ -80,11 +79,11 @@ func (s *QuerySelection) Serialize() map[string]interface{} {
 	for _, field := range s.Fields {
 		fields = append(fields, field.Serialize())
 	}
-	
+
 	obj := map[string]interface{}{
 		"type":       QueryStepTypeSelection,
 		"dimensions": s.Dimensions,
-		"fields": fields,
+		"fields":     fields,
 	}
 	return obj
 }
@@ -231,7 +230,6 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 
 	return buffer.String(), nil
 }
-
 
 //--------------------------------------
 // Factorization

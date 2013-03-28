@@ -57,7 +57,7 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, pa
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return table, nil
 	})
 }

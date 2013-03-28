@@ -35,6 +35,6 @@ func executionEngine_nextObject(cursor unsafe.Pointer) C.int {
 
 	// Move to the next object.
 	e.iterator.Next()
-	
+
 	return 1
 }

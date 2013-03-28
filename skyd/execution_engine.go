@@ -55,8 +55,8 @@ type ExecutionEngine struct {
 	propertyFile *PropertyFile
 	propertyRefs []*Property
 
-	cprefix      unsafe.Pointer
-	cprefix_sz   C.size_t
+	cprefix    unsafe.Pointer
+	cprefix_sz C.size_t
 }
 
 //------------------------------------------------------------------------------

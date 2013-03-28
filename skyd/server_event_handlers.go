@@ -34,7 +34,7 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 	vars := mux.Vars(req)
 	return s.executeWithObject(vars["name"], vars["objectId"], func(servlet *Servlet, table *Table) (interface{}, error) {
 		// Retrieve raw events.
-		events, err := servlet.GetEvents(table, vars["objectId"])
+		events, _, err := servlet.GetEvents(table, vars["objectId"])
 		if err != nil {
 			return nil, err
 		}

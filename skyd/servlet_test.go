@@ -31,9 +31,9 @@ func TestServletPutEvent(t *testing.T) {
 
 	// Setup source events.
 	input := make([]*Event, 3)
-	input[0] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3:"baz"})
-	input[1] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3:"baz"})
-	input[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3:"baz"})
+	input[0] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3: "baz"})
+	input[1] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3: "baz"})
+	input[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3: "baz"})
 
 	// Add events.
 	for _, e := range input {
@@ -48,11 +48,15 @@ func TestServletPutEvent(t *testing.T) {
 	expected[0] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar"})
 	expected[1] = input[0]
 	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20})
+	expectedState := NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1:"foo", 2:"bar", 3:"baz"})
 
 	// Read events out.
-	output, err := servlet.GetEvents(table, "bob")
+	output, state, err := servlet.GetEvents(table, "bob")
 	if err != nil {
 		t.Fatalf("Unable to retrieve events: %v", err)
+	}
+	if !expectedState.Equal(state) {
+		t.Fatalf("Incorrect state.\nexp: %v\ngot: %v", expectedState, state)
 	}
 	if len(output) != len(expected) {
 		t.Fatalf("Expected %v events, received %v", len(expected), len(output))

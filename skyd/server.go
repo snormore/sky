@@ -472,7 +472,7 @@ func (s *Server) GetAllTables() ([]*Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	tables := []*Table{}
 	for _, info := range infos {
 		if info.IsDir() {
@@ -504,7 +504,7 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 }
 
 // Deletes a table.
-func (s *Server) DeleteTable(name string) (error) {
+func (s *Server) DeleteTable(name string) error {
 	// Return an error if the table doesn't exist.
 	table := s.GetTable(name)
 	if table == nil {
@@ -519,7 +519,7 @@ func (s *Server) DeleteTable(name string) (error) {
 	if err != nil {
 		return err
 	}
-	
+
 	// Delete data from each servlet.
 	for _, servlet := range s.servlets {
 		_, err = servlet.sync(func() (interface{}, error) {
@@ -554,7 +554,6 @@ func (s *Server) DeleteTable(name string) (error) {
 	delete(s.tables, name)
 	return table.Delete()
 }
-
 
 //--------------------------------------
 // Query
@@ -612,7 +611,7 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 			if err != nil {
 				return nil, err
 			}
-			
+
 			engines = append(engines, e)
 		}
 
@@ -670,11 +669,11 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		}
 	}
 	err = servletError
-	
+
 	// Clean up engines.
 	for _, e := range engines {
 		e.Destroy()
 	}
-	
+
 	return result, err
 }

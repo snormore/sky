@@ -221,6 +221,12 @@ void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     
     // Clear the data object if set.
     memset(cursor->data, 0, cursor->data_sz);
+    
+    // The first item is the current state so skip it.
+    if(cursor->startptr != NULL && minipack_is_raw(cursor->startptr)) {
+        cursor->startptr += minipack_sizeof_elem_and_data(cursor->startptr);
+        cursor->nextptr = cursor->startptr;
+    }
 }
 
 void sky_cursor_next_event(sky_cursor *cursor)

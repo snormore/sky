@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/ugorji/go-msgpack"
 	"io"
@@ -56,6 +57,15 @@ func (e *Event) EncodeRaw(writer io.Writer) error {
 	return err
 }
 
+// Encodes an event to MsgPack format and returns the byte array.
+func (e *Event) MarshalRaw() ([]byte, error) {
+	buffer := new(bytes.Buffer)
+	if err := e.EncodeRaw(buffer); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
 // Decodes an event from MsgPack format.
 func (e *Event) DecodeRaw(reader io.Reader) error {
 	raw := make([]interface{}, 2)
@@ -94,6 +104,10 @@ func (e *Event) decodeRawMap(raw map[interface{}]interface{}) (map[int64]interfa
 		}
 	}
 	return m, nil
+}
+
+func (e *Event) UnmarshalRaw(data []byte) error {
+	return e.DecodeRaw(bytes.NewBuffer(data))
 }
 
 //--------------------------------------
