@@ -270,15 +270,15 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 		copy := map[interface{}]interface{}{}
 		for k, v := range outer {
 			if property.DataType == FactorDataType {
-				sequence, err := castUint64(k)
-				if err != nil {
-					return err
+				if sequence, ok := normalize(k).(int64); ok {
+					stringValue, err := s.query.factors.Defactorize(s.query.table.Name, dimension, uint64(sequence))
+					if err != nil {
+						return err
+					}
+					copy[stringValue] = v
+				} else {
+					return fmt.Errorf("Invalid factor sequence: %v", k)
 				}
-				stringValue, err := s.query.factors.Defactorize(s.query.table.Name, dimension, sequence)
-				if err != nil {
-					return err
-				}
-				copy[stringValue] = v
 			} else {
 				copy[k] = v
 			}

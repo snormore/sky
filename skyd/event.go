@@ -7,20 +7,46 @@ import (
 	"time"
 )
 
+//------------------------------------------------------------------------------
+//
+// Typedefs
+//
+//------------------------------------------------------------------------------
+
 // An Event is a state change that occurs at a particular point in time.
 type Event struct {
 	Timestamp time.Time
 	Data      map[int64]interface{}
 }
 
+//------------------------------------------------------------------------------
+//
+// Constructor
+//
+//------------------------------------------------------------------------------
+
 // NewEvent returns a new Event.
 func NewEvent(timestamp string, data map[int64]interface{}) *Event {
+	if data == nil {
+		data = make(map[int64]interface{})
+	}
+
 	t, _ := time.Parse(time.RFC3339, timestamp)
 	return &Event{
 		Timestamp: t,
 		Data:      data,
 	}
 }
+
+//------------------------------------------------------------------------------
+//
+// Methods
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Encoding
+//--------------------------------------
 
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(writer io.Writer) error {
@@ -40,11 +66,11 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
 	}
 
 	// Convert the timestamp to int64.
-	timestamp, err := castInt64(raw[0])
-	if err != nil {
+	if timestamp, ok := normalize(raw[0]).(int64); ok {
+		e.Timestamp = UnshiftTime(timestamp).UTC()
+	} else {
 		return fmt.Errorf("Unable to parse timestamp: '%v'", raw[0])
 	}
-	e.Timestamp = UnshiftTime(timestamp).UTC()
 
 	// Convert data to appropriate map.
 	if raw[1] != nil {
@@ -61,20 +87,18 @@ func (e *Event) DecodeRaw(reader io.Reader) error {
 func (e *Event) decodeRawMap(raw map[interface{}]interface{}) (map[int64]interface{}, error) {
 	m := make(map[int64]interface{})
 	for k, v := range raw {
-		kInt64, err := castInt64(k)
-		if err != nil {
-			return nil, err
-		}
-
-		vInt64, err := castInt64(v)
-		if err == nil {
-			m[kInt64] = vInt64
+		if ki, ok := normalize(k).(int64); ok {
+			m[ki] = normalize(v)
 		} else {
-			m[kInt64] = v
+			return nil, fmt.Errorf("Invalid property key: %v", k)
 		}
 	}
 	return m, nil
 }
+
+//--------------------------------------
+// Comparator
+//--------------------------------------
 
 // Compares two events for equality.
 func (e *Event) Equal(x *Event) bool {
@@ -82,19 +106,21 @@ func (e *Event) Equal(x *Event) bool {
 		return false
 	}
 	for k, v := range e.Data {
-		v2 := x.Data[k]
-		if v != v2 {
+		if normalize(v) != normalize(x.Data[k]) {
 			return false
 		}
 	}
 	for k, v := range x.Data {
-		v2 := e.Data[k]
-		if v != v2 {
+		if normalize(v) != normalize(e.Data[k]) {
 			return false
 		}
 	}
 	return true
 }
+
+//--------------------------------------
+// Merging / Deduplication
+//--------------------------------------
 
 // Merges the data of another event into this event.
 func (e *Event) Merge(a *Event) {
@@ -103,5 +129,23 @@ func (e *Event) Merge(a *Event) {
 	}
 	for k, v := range a.Data {
 		e.Data[k] = v
+	}
+}
+
+// Merges the persistent data of another event into this event.
+func (e *Event) MergePermanent(a *Event) {
+	for k, v := range a.Data {
+		if k > 0 {
+			e.Data[k] = v
+		}
+	}
+}
+
+// Removes data in the event that is present in another event.
+func (e *Event) Dedupe(a *Event) {
+	for k, v := range a.Data {
+		if normalize(e.Data[k]) == normalize(v) {
+			delete(e.Data, k)
+		}
 	}
 }

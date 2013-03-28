@@ -1,5 +1,3 @@
 * Benchmark
 * Add ending state at the beginning of event list (for optimizing appends).
 * Bookmark support
-
-* Go client

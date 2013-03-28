@@ -142,10 +142,15 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 
 	// Remove any event matching the timestamp.
 	found := false
+	state := &Event{Timestamp:event.Timestamp, Data:map[int64]interface{}{}}
 	events := make([]*Event, 0)
 	for _, v := range tmp {
 		// Replace or merge with existing event.
 		if v.Timestamp.Equal(event.Timestamp) {
+			// Dedupe all permanent state.
+			event.Dedupe(state)
+			
+			// Replace or merge.
 			if replace {
 				v = event
 			} else {
@@ -154,9 +159,13 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 			found = true
 		}
 		events = append(events, v)
+
+		// Keep track of permanent state.
+		state.MergePermanent(v)
 	}
 	// Add the event if it wasn't found.
 	if !found {
+		event.Dedupe(state)
 		events = append(events, event)
 	}
 
