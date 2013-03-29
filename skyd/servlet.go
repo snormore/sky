@@ -284,7 +284,7 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 		// The first item should be the current state wrapped in a raw value.
 		var raw interface{}
 		decoder := msgpack.NewDecoder(reader, nil)
-		if err := decoder.Decode(&raw); err != nil {
+		if err := decoder.Decode(&raw); err != nil && err != io.EOF {
 			return nil, nil, err
 		}
 		if b, ok := raw.(string); ok {
@@ -292,7 +292,7 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 			if err = state.DecodeRaw(bytes.NewReader([]byte(b))); err == nil {
 				eventData, _ := ioutil.ReadAll(reader)
 				return state, eventData, nil
-			} else {
+			} else if err != io.EOF {
 				return nil, nil, err
 			}
 		} else {
@@ -318,6 +318,7 @@ func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, *Event, er
 			event := &Event{}
 			err = event.DecodeRaw(reader)
 			if err == io.EOF {
+				err = nil
 				break
 			}
 			if err != nil {

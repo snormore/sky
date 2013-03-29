@@ -69,8 +69,7 @@ func (e *Event) MarshalRaw() ([]byte, error) {
 // Decodes an event from MsgPack format.
 func (e *Event) DecodeRaw(reader io.Reader) error {
 	raw := make([]interface{}, 2)
-	decoder := msgpack.NewDecoder(reader, nil)
-	err := decoder.Decode(&raw)
+	err := msgpack.NewDecoder(reader, nil).Decode(&raw)
 	if err != nil {
 		return err
 	}
