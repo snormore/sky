@@ -320,6 +320,9 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 
 		// Write to access log.
 		s.logger.Printf("%s \"%s %s %s\" %d", req.RemoteAddr, req.Method, req.RequestURI, req.Proto, status)
+		if status != http.StatusOK {
+			s.logger.Printf("ERROR %v", err)
+		}
 
 		// Encode the return value appropriately.
 		if ret != nil {
@@ -455,8 +458,8 @@ func (s *Server) DeleteTable(name string) error {
 
 	// Delete data from each servlet.
 	for _, servlet := range s.servlets {
-		servlet.mutex.Lock()
-		defer servlet.mutex.Unlock()
+		servlet.Lock()
+		defer servlet.Unlock()
 		
 		// Delete the data from disk.
 		ro := levigo.NewReadOptions()

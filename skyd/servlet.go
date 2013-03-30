@@ -78,13 +78,27 @@ func (s *Servlet) Close() {
 }
 
 //--------------------------------------
+// Lock Management
+//--------------------------------------
+
+// Locks the entire servlet.
+func (s *Servlet) Lock() {
+	s.mutex.Lock()
+}
+
+// Unlocks the entire servlet.
+func (s *Servlet) Unlock() {
+	s.mutex.Unlock()
+}
+
+//--------------------------------------
 // Event Management
 //--------------------------------------
 
 // Adds an event for a given object in a table to a servlet.
 func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	
 	// Make sure the servlet is open.
 	if s.db == nil {
@@ -187,8 +201,8 @@ func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (
 
 // Removes an event for a given object in a table to a servlet.
 func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	// Make sure the servlet is open.
 	if s.db == nil {

@@ -70,7 +70,7 @@ func main() {
 	// Initialize
 	server := skyd.NewServer(port, dataDir)
 	writePidFile()
-	setupSignalHandlers(server)
+	//setupSignalHandlers(server)
 	
 	// Start the server up!
 	c := make(chan bool)
@@ -97,8 +97,8 @@ func setupSignalHandlers(server *skyd.Server) {
 	    for _ = range c {
 			fmt.Fprintln(os.Stderr, "Shutting down...")
 			server.Shutdown()
-			fmt.Fprintln(os.Stderr, "Shutdown complete.")
 			deletePidFile();
+			fmt.Fprintln(os.Stderr, "Shutdown complete.")
 			os.Exit(1)
 	    }
 	}()
