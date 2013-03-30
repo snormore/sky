@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -24,7 +25,7 @@ type Servlet struct {
 	path    string
 	db      *levigo.DB
 	factors *Factors
-	channel chan *Message
+	mutex sync.Mutex
 }
 
 //------------------------------------------------------------------------------
@@ -38,7 +39,6 @@ func NewServlet(path string, factors *Factors) *Servlet {
 	return &Servlet{
 		path:    path,
 		factors: factors,
-		channel: make(chan *Message),
 	}
 }
 
@@ -67,56 +67,13 @@ func (s *Servlet) Open() error {
 	}
 	s.db = db
 
-	// Start message loop.
-	go s.process()
-
 	return nil
 }
 
 // Closes the underlying LevelDB database.
 func (s *Servlet) Close() {
-	// Wait for the message loop to shutdown.
-	m := NewShutdownMessage()
-	s.channel <- m
-	m.wait()
-
-	// Cleanup channel.
-	close(s.channel)
-	s.channel = nil
-
 	if s.db != nil {
 		s.db.Close()
-	}
-}
-
-//--------------------------------------
-// Synchronization
-//--------------------------------------
-
-// Executes a function through a single-threaded servlet context and waits until completion.
-func (s *Servlet) sync(f func() (interface{}, error)) (interface{}, error) {
-	m := s.async(f)
-	return m.wait()
-}
-
-// Executes a function through a single-threaded servlet context and returns immediately.
-func (s *Servlet) async(f func() (interface{}, error)) *Message {
-	m := NewExecuteMessage(f)
-	s.channel <- m
-	return m
-}
-
-//--------------------------------------
-// Message Processing
-//--------------------------------------
-
-// Serially processes messages routed through the servlet channel.
-func (s *Servlet) process() {
-	for message := range s.channel {
-		message.execute()
-		if message.messageType == ShutdownMessageType {
-			return
-		}
 	}
 }
 
@@ -126,6 +83,9 @@ func (s *Servlet) process() {
 
 // Adds an event for a given object in a table to a servlet.
 func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	
 	// Make sure the servlet is open.
 	if s.db == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
@@ -227,6 +187,9 @@ func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (
 
 // Removes an event for a given object in a table to a servlet.
 func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	// Make sure the servlet is open.
 	if s.db == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)

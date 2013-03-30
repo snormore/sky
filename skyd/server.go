@@ -21,17 +21,6 @@ import (
 
 //------------------------------------------------------------------------------
 //
-// Constants
-//
-//------------------------------------------------------------------------------
-
-const (
-	ServerMessageTypeExecute  = "execute"
-	ServerMessageTypeShutdown = "shutdown"
-)
-
-//------------------------------------------------------------------------------
-//
 // Typedefs
 //
 //------------------------------------------------------------------------------
@@ -46,7 +35,6 @@ type Server struct {
 	servlets        []*Servlet
 	tables          map[string]*Table
 	factors         *Factors
-	channel         chan *Message
 	shutdownChannel chan bool
 }
 
@@ -84,7 +72,6 @@ func NewServer(port uint, path string) *Server {
 		logger:     log.New(os.Stdout, "", log.LstdFlags),
 		path:       path,
 		tables:     make(map[string]*Table),
-		channel:    make(chan *Message),
 	}
 
 	s.router.HandleFunc("/debug/pprof", pprof.Index)
@@ -157,7 +144,6 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 		return err
 	}
 	s.listener = listener
-	go s.process()
 	go s.httpServer.Serve(s.listener)
 
 	s.logger.Printf("Sky is now listening on http://localhost%s\n", s.httpServer.Addr)
@@ -167,16 +153,11 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 
 // Stops the server.
 func (s *Server) Shutdown() error {
+	// Close servlets.
+	s.close()
+
+	// Close socket.
 	if s.listener != nil {
-		// Wait for the message loop to shutdown.
-		m := NewShutdownMessage()
-		s.channel <- m
-		m.wait()
-
-		// Cleanup channel.
-		close(s.channel)
-		s.channel = nil
-
 		// Then stop the server.
 		err := s.listener.Close()
 		s.listener = nil
@@ -185,9 +166,7 @@ func (s *Server) Shutdown() error {
 		}
 	}
 
-	// Close servlets.
-	s.close()
-
+	// Notify that the server is shutdown.
 	if s.shutdownChannel != nil {
 		s.shutdownChannel <- true
 	}
@@ -303,9 +282,11 @@ func (s *Server) Silence() {
 // Routing
 //--------------------------------------
 
-// Serially processes server messages routed through the server channel.
+// Parses incoming JSON objects and converts outgoing responses to JSON.
 func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
 	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
+		// warn("%s \"%s %s %s\"", req.RemoteAddr, req.Method, req.RequestURI, req.Proto)
+
 		var ret interface{}
 		params, err := s.decodeParams(w, req)
 		if err == nil {
@@ -354,75 +335,6 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 	return s.router.HandleFunc(route, wrappedFunction)
 }
 
-//--------------------------------------
-// Synchronization
-//--------------------------------------
-
-// Executes a function through a single-threaded server context.
-func (s *Server) sync(f func() (interface{}, error)) (interface{}, error) {
-	m := s.async(f)
-	return m.wait()
-}
-
-// Executes a function through a single-threaded server context.
-func (s *Server) async(f func() (interface{}, error)) *Message {
-	m := NewExecuteMessage(f)
-	s.channel <- m
-	return m
-}
-
-// Executes a function through a single-threaded server context.
-func (s *Server) executeWithTable(tableName string, f func(table *Table) (interface{}, error)) (interface{}, error) {
-	return s.sync(func() (interface{}, error) {
-		// Return an error if the table already exists.
-		table, err := s.OpenTable(tableName)
-		if err != nil {
-			return nil, err
-		}
-		return f(table)
-	})
-}
-
-// Executes a function through a single-threaded servlet context.
-func (s *Server) executeWithObject(tableName string, objectId string, f func(servlet *Servlet, table *Table) (interface{}, error)) (interface{}, error) {
-	var m *Message
-
-	// Return an error if the table already exists.
-	table, err := s.OpenTable(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Determine servlet index.
-	index, err := s.GetObjectServletIndex(table, objectId)
-	if err != nil {
-		return nil, err
-	}
-	servlet := s.servlets[index]
-
-	// Pass off the table to the servlet message loop.
-	m = servlet.async(func() (interface{}, error) {
-		return f(servlet, table)
-	})
-
-	// Make sure we've exited the server loop and we're waiting on the servlet loop.
-	return m.wait()
-}
-
-//--------------------------------------
-// Message Loop
-//--------------------------------------
-
-// Serially processes server messages routed through the server channel.
-func (s *Server) process() {
-	for message := range s.channel {
-		message.execute()
-		if message.messageType == ShutdownMessageType {
-			return
-		}
-	}
-}
-
 // Decodes the body of the message into parameters.
 func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[string]interface{}, error) {
 	// Parses body parameters.
@@ -435,9 +347,28 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 	return params, nil
 }
 
+
 //--------------------------------------
 // Servlet Management
 //--------------------------------------
+
+// Executes a function through a single-threaded servlet context.
+func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *Servlet, error) {
+	// Return an error if the table already exists.
+	table, err := s.OpenTable(tableName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Determine servlet index.
+	index, err := s.GetObjectServletIndex(table, objectId)
+	if err != nil {
+		return nil, nil, err
+	}
+	servlet := s.servlets[index]
+	
+	return table, servlet, nil
+}
 
 // Calculates a tablet index based on the object identifier even hash.
 func (s *Server) GetObjectServletIndex(t *Table, objectId string) (uint32, error) {
@@ -524,31 +455,28 @@ func (s *Server) DeleteTable(name string) error {
 
 	// Delete data from each servlet.
 	for _, servlet := range s.servlets {
-		_, err = servlet.sync(func() (interface{}, error) {
-			// Delete the data from disk.
-			ro := levigo.NewReadOptions()
-			defer ro.Close()
-			wo := levigo.NewWriteOptions()
-			defer wo.Close()
-			iterator := servlet.db.NewIterator(ro)
-			defer iterator.Close()
+		servlet.mutex.Lock()
+		defer servlet.mutex.Unlock()
+		
+		// Delete the data from disk.
+		ro := levigo.NewReadOptions()
+		defer ro.Close()
+		wo := levigo.NewWriteOptions()
+		defer wo.Close()
+		iterator := servlet.db.NewIterator(ro)
+		defer iterator.Close()
 
-			iterator.Seek(prefix)
-			for iterator = iterator; iterator.Valid(); iterator.Next() {
-				key := iterator.Key()
-				if bytes.HasPrefix(key, prefix) {
-					err := servlet.db.Delete(wo, key)
-					if err != nil {
-						return nil, err
-					}
-				} else {
-					break
+		iterator.Seek(prefix)
+		for iterator = iterator; iterator.Valid(); iterator.Next() {
+			key := iterator.Key()
+			if bytes.HasPrefix(key, prefix) {
+				err := servlet.db.Delete(wo, key)
+				if err != nil {
+					return err
 				}
+			} else {
+				break
 			}
-			return nil, nil
-		})
-		if err != nil {
-			return err
 		}
 	}
 
@@ -567,112 +495,97 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 	engines := make([]*ExecutionEngine, 0)
 
 	// Create a channel to receive aggregate responses.
-	rchannel := make(chan *Message, len(s.servlets))
+	rchannel := make(chan interface{}, len(s.servlets))
 
-	// Retrieve table and setup servlets within the server context.
-	var query *Query
-	_, err := s.sync(func() (interface{}, error) {
-		// Return an error if the table already exists.
-		table, err := s.OpenTable(tableName)
-		if err != nil {
-			return nil, err
-		}
-
-		// Deserialize the query.
-		query = NewQuery(table, s.factors)
-		err = query.Deserialize(json)
-		if err != nil {
-			return nil, err
-		}
-
-		// Generate the query source code.
-		source, err := query.Codegen()
-		if err != nil {
-			return nil, err
-		}
-
-		// Create an engine for merging results.
-		engine, err = NewExecutionEngine(table, source)
-		if err != nil {
-			return nil, err
-		}
-		//fmt.Println(engine.FullAnnotatedSource())
-
-		// Initialize one execution engine for each servlet.
-		for _, servlet := range s.servlets {
-			// Create an engine for each servlet.
-			e, err := NewExecutionEngine(table, source)
-			if err != nil {
-				return nil, err
-			}
-
-			// Initialize iterator.
-			ro := levigo.NewReadOptions()
-			iterator := servlet.db.NewIterator(ro)
-			err = e.SetIterator(iterator)
-			if err != nil {
-				return nil, err
-			}
-
-			engines = append(engines, e)
-		}
-
-		return nil, nil
-	})
-	if engine != nil {
-		defer engine.Destroy()
-	}
+	// Return an error if the table already exists.
+	table, err := s.OpenTable(tableName)
 	if err != nil {
 		return nil, err
 	}
 
+	// Deserialize the query.
+	query := NewQuery(table, s.factors)
+	err = query.Deserialize(json)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate the query source code.
+	source, err := query.Codegen()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create an engine for merging results.
+	engine, err = NewExecutionEngine(table, source)
+	if err != nil {
+		return nil, err
+	}
+	defer engine.Destroy()
+	//fmt.Println(engine.FullAnnotatedSource())
+
+	// Initialize one execution engine for each servlet.
+	for _, servlet := range s.servlets {
+		// Create an engine for each servlet.
+		e, err := NewExecutionEngine(table, source)
+		if err != nil {
+			return nil, err
+		}
+
+		// Initialize iterator.
+		ro := levigo.NewReadOptions()
+		iterator := servlet.db.NewIterator(ro)
+		err = e.SetIterator(iterator)
+		if err != nil {
+			return nil, err
+		}
+
+		engines = append(engines, e)
+	}
+
 	// Execute servlets asynchronously and retrieve responses outside
 	// of the server context.
-	for index, servlet := range s.servlets {
+	for index, _ := range s.servlets {
 		e := engines[index]
-		rchannel <- servlet.async(func() (interface{}, error) {
-			return e.Aggregate()
-		})
+		go func() {
+			if result, err := e.Aggregate(); err != nil {
+				rchannel <- result
+			} else {
+				rchannel <- err
+			}
+		}()
 	}
 
 	// Wait for each servlet to complete and then merge the results.
 	var servletError error
 	var result interface{}
 	result = make(map[interface{}]interface{})
-	for {
-		var m *Message
-		select {
-		case m = <-rchannel:
-		default:
-			m = nil
-		}
-		if m == nil {
-			break
-		}
-		ret, err := m.wait()
-		if err != nil {
+	for i:=0; i<len(s.servlets); i++ {
+		ret := <-rchannel
+		if err, ok := ret.(error); ok {
 			fmt.Printf("skyd.Server: Aggregate error: %v", err)
 			servletError = err
-		}
-
-		// Defactorize aggregate results.
-		err = query.Defactorize(ret)
-		if err != nil {
-			return nil, err
-		}
-
-		// Merge results.
-		if ret != nil {
-			result, err = engine.Merge(result, ret)
+		} else {
+			// Defactorize aggregate results.
+			err = query.Defactorize(ret)
 			if err != nil {
-				fmt.Printf("skyd.Server: Merge error: %v", err)
-				servletError = err
+				return nil, err
+			}
+
+			// Merge results.
+			if ret != nil {
+				result, err = engine.Merge(result, ret)
+				if err != nil {
+					fmt.Printf("skyd.Server: Merge error: %v", err)
+					servletError = err
+				}
 			}
 		}
 	}
 	err = servletError
 
 	// Clean up engines.
+	// TODO: Defer clean up earlier on in case of failure.
 	for _, e := range engines {
 		e.Destroy()
 	}

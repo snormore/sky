@@ -26,28 +26,22 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 
 	// Retrieve table and codegen query.
 	var source string
-	_, err := s.sync(func() (interface{}, error) {
-		// Return an error if the table already exists.
-		table, err := s.OpenTable(vars["name"])
-		if err != nil {
-			return nil, err
-		}
-
-		// Deserialize the query.
-		query := NewQuery(table, s.factors)
-		err = query.Deserialize(params)
-		if err != nil {
-			return nil, err
-		}
-
-		// Generate the query source code.
-		source, err = query.Codegen()
-		//fmt.Println(source)
-		return source, err
-	})
+	// Return an error if the table already exists.
+	table, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
+
+	// Deserialize the query.
+	query := NewQuery(table, s.factors)
+	err = query.Deserialize(params)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate the query source code.
+	source, err = query.Codegen()
+	//fmt.Println(source)
 
 	return source, &TextPlainContentTypeError{}
 }
