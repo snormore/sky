@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"regexp"
 	"runtime"
@@ -86,12 +87,17 @@ func NewServer(port uint, path string) *Server {
 		channel:    make(chan *Message),
 	}
 
+	s.router.HandleFunc("/debug/pprof", pprof.Index)
+	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	s.router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+
 	s.addHandlers()
 	s.addTableHandlers()
 	s.addPropertyHandlers()
 	s.addEventHandlers()
 	s.addQueryHandlers()
-
+	
 	return s
 }
 
@@ -161,9 +167,6 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 
 // Stops the server.
 func (s *Server) Shutdown() error {
-	// Close servlets.
-	s.close()
-
 	if s.listener != nil {
 		// Wait for the message loop to shutdown.
 		m := NewShutdownMessage()
@@ -177,8 +180,13 @@ func (s *Server) Shutdown() error {
 		// Then stop the server.
 		err := s.listener.Close()
 		s.listener = nil
-		return err
+		if err != nil {
+			return err
+		}
 	}
+
+	// Close servlets.
+	s.close()
 
 	if s.shutdownChannel != nil {
 		s.shutdownChannel <- true
@@ -378,30 +386,24 @@ func (s *Server) executeWithTable(tableName string, f func(table *Table) (interf
 // Executes a function through a single-threaded servlet context.
 func (s *Server) executeWithObject(tableName string, objectId string, f func(servlet *Servlet, table *Table) (interface{}, error)) (interface{}, error) {
 	var m *Message
-	_, err := s.sync(func() (interface{}, error) {
-		// Return an error if the table already exists.
-		table, err := s.OpenTable(tableName)
-		if err != nil {
-			return nil, err
-		}
 
-		// Determine servlet index.
-		index, err := s.GetObjectServletIndex(table, objectId)
-		if err != nil {
-			return nil, err
-		}
-		servlet := s.servlets[index]
-
-		// Pass off the table to the servlet message loop.
-		m = servlet.async(func() (interface{}, error) {
-			return f(servlet, table)
-		})
-
-		return nil, nil
-	})
+	// Return an error if the table already exists.
+	table, err := s.OpenTable(tableName)
 	if err != nil {
 		return nil, err
 	}
+
+	// Determine servlet index.
+	index, err := s.GetObjectServletIndex(table, objectId)
+	if err != nil {
+		return nil, err
+	}
+	servlet := s.servlets[index]
+
+	// Pass off the table to the servlet message loop.
+	m = servlet.async(func() (interface{}, error) {
+		return f(servlet, table)
+	})
 
 	// Make sure we've exited the server loop and we're waiting on the servlet loop.
 	return m.wait()

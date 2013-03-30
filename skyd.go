@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"os/signal"
+	"runtime"
 )
 
 //------------------------------------------------------------------------------
@@ -97,7 +97,9 @@ func setupSignalHandlers(server *skyd.Server) {
 	    for _ = range c {
 			fmt.Fprintln(os.Stderr, "Shutting down...")
 			server.Shutdown()
+			fmt.Fprintln(os.Stderr, "Shutdown complete.")
 			deletePidFile();
+			os.Exit(1)
 	    }
 	}()
 }
