@@ -552,9 +552,9 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 		e := engines[index]
 		go func() {
 			if result, err := e.Aggregate(); err != nil {
-				rchannel <- result
-			} else {
 				rchannel <- err
+			} else {
+				rchannel <- result
 			}
 		}()
 	}
