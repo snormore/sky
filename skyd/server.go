@@ -84,7 +84,7 @@ func NewServer(port uint, path string) *Server {
 	s.addPropertyHandlers()
 	s.addEventHandlers()
 	s.addQueryHandlers()
-	
+
 	return s
 }
 
@@ -350,7 +350,6 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 	return params, nil
 }
 
-
 //--------------------------------------
 // Servlet Management
 //--------------------------------------
@@ -369,7 +368,7 @@ func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *S
 		return nil, nil, err
 	}
 	servlet := s.servlets[index]
-	
+
 	return table, servlet, nil
 }
 
@@ -460,7 +459,7 @@ func (s *Server) DeleteTable(name string) error {
 	for _, servlet := range s.servlets {
 		servlet.Lock()
 		defer servlet.Unlock()
-		
+
 		// Delete the data from disk.
 		ro := levigo.NewReadOptions()
 		defer ro.Close()
@@ -563,7 +562,7 @@ func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interf
 	var servletError error
 	var result interface{}
 	result = make(map[interface{}]interface{})
-	for i:=0; i<len(s.servlets); i++ {
+	for i := 0; i < len(s.servlets); i++ {
 		ret := <-rchannel
 		if err, ok := ret.(error); ok {
 			fmt.Printf("skyd.Server: Aggregate error: %v", err)

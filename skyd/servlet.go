@@ -25,7 +25,7 @@ type Servlet struct {
 	path    string
 	db      *levigo.DB
 	factors *Factors
-	mutex sync.Mutex
+	mutex   sync.Mutex
 }
 
 //------------------------------------------------------------------------------
@@ -99,7 +99,7 @@ func (s *Servlet) Unlock() {
 func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {
 	s.Lock()
 	defer s.Unlock()
-	
+
 	// Make sure the servlet is open.
 	if s.db == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
@@ -165,18 +165,18 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 // be called directly but only through PutEvent().
 func (s *Servlet) appendEvent(table *Table, objectId string, event *Event, state *Event, data []byte) error {
 	if state == nil {
-		state = &Event{Data:map[int64]interface{}{}}
+		state = &Event{Data: map[int64]interface{}{}}
 	}
 	state.Timestamp = event.Timestamp
 	event.Dedupe(state)
 	state.MergePermanent(event)
-	
+
 	// Append new event.
 	buffer := bytes.NewBuffer(data)
 	if err := event.EncodeRaw(buffer); err != nil {
 		return err
 	}
-	
+
 	// Write everything to the database.
 	return s.SetRawEvents(table, objectId, buffer.Bytes(), state)
 }
@@ -276,7 +276,7 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 			return nil, nil, fmt.Errorf("skyd.Servlet: Invalid state: %v", raw)
 		}
 	}
-	
+
 	return nil, []byte{}, nil
 }
 

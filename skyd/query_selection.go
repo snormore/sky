@@ -17,6 +17,7 @@ type QuerySelection struct {
 	query             *Query
 	functionName      string
 	mergeFunctionName string
+	Name              string
 	Dimensions        []string
 	Fields            []*QuerySelectionField
 }
@@ -82,6 +83,7 @@ func (s *QuerySelection) Serialize() map[string]interface{} {
 
 	obj := map[string]interface{}{
 		"type":       QueryStepTypeSelection,
+		"name":       s.Name,
 		"dimensions": s.Dimensions,
 		"fields":     fields,
 	}
@@ -95,6 +97,15 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	}
 	if obj["type"] != QueryStepTypeSelection {
 		return fmt.Errorf("skyd.QuerySelection: Invalid step type: %v", obj["type"])
+	}
+
+	// Deserialize "name".
+	if name, ok := obj["name"].(string); ok {
+		s.Name = name
+	} else if obj["name"] == nil {
+		s.Name = ""
+	} else {
+		return fmt.Errorf("skyd.QuerySelection: Invalid name: %v", obj["name"])
 	}
 
 	// Deserialize "dimensions".
@@ -149,6 +160,12 @@ func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
 	// Generate main function.
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", s.FunctionName())
 
+	// Add selection name.
+	if s.Name != "" {
+		fmt.Fprintf(buffer, "  if data[\"%s\"] == nil then data[\"%s\"] = {} end\n", s.Name, s.Name)
+		fmt.Fprintf(buffer, "  data = data[\"%s\"]\n\n", s.Name)
+	}
+
 	// Group by dimension.
 	for _, dimension := range s.Dimensions {
 		fmt.Fprintf(buffer, "  dimension = cursor.event:%s()\n", dimension)
@@ -185,7 +202,12 @@ func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 
 	// Generate main function.
 	fmt.Fprintf(buffer, "function %s(result, data)\n", s.MergeFunctionName())
-	fmt.Fprintf(buffer, "  %sn0(result, data)\n", s.MergeFunctionName())
+	if s.Name != "" {
+		fmt.Fprintf(buffer, "  if result[\"%s\"] == nil then result[\"%s\"] = {} end\n", s.Name, s.Name)
+		fmt.Fprintf(buffer, "  %sn0(result[\"%s\"], data[\"%s\"])\n", s.MergeFunctionName(), s.Name, s.Name)
+	} else {
+		fmt.Fprintf(buffer, "  %sn0(result, data)\n", s.MergeFunctionName())
+	}
 	fmt.Fprintf(buffer, "end\n")
 
 	return buffer.String(), nil
@@ -237,12 +259,21 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 
 // Converts factorized fields back to their original strings.
 func (s *QuerySelection) Defactorize(data interface{}) error {
-	err := s.defactorize(data, 0)
-	if err != nil {
-		return err
+	if m, ok := data.(map[interface{}]interface{}); ok {
+		// If this is a named selection then drill in first.
+		if s.Name != "" {
+			if m2, ok := m[s.Name].(map[interface{}]interface{}); ok {
+				m = m2
+			} else {
+				return nil
+			}
+		}
+
+		// Recursively defactorize dimensions and then fields.
+		return s.defactorize(m, 0)
 	}
 
-	return err
+	return nil
 }
 
 // Recursively defactorizes dimensions.

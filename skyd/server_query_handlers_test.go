@@ -82,16 +82,19 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"steps":[
-				{"type":"selection","dimensions":["gender","state"],"fields":[
+				{"type":"selection","name":"s1","dimensions":["gender","state"],"fields":[
 					{"name":"count","expression":"count()"},
-					{"name":"sum","expression":"sum(price)"},
-					{"name":"minPrice","expression":"min(price)"}
+					{"name":"sum","expression":"sum(price)"}
 				]},
-				{"type":"selection","dimensions":["gender","state"],"fields":[{"name":"maxPrice","expression":"max(price)"}]}
+				{"type":"selection","dimensions":["gender","state"],"fields":[
+					{"name":"minimum","expression":"min(price)"},
+					{"name":"maximum","expression":"max(price)"}
+				]}
 			]
 		}`
+		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"gender":{"f":{"state":{"NY":{"count":1,"maxPrice":30,"minPrice":30,"sum":30}}},"m":{"state":{"CA":{"count":3,"maxPrice":20,"minPrice":0,"sum":30},"NY":{"count":2,"maxPrice":200,"minPrice":100,"sum":300}}}}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
 
@@ -129,7 +132,6 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 				]}
 			]
 		}`
-		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":3}}}`+"\n", "POST /tables/:name/query failed.")
 	})

@@ -48,7 +48,7 @@ func TestServletPutEvent(t *testing.T) {
 	expected[0] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar"})
 	expected[1] = input[0]
 	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20})
-	expectedState := NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1:"foo", 2:"bar", 3:"baz"})
+	expectedState := NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1: "foo", 2: "bar", 3: "baz"})
 
 	// Read events out.
 	output, state, err := servlet.GetEvents(table, "bob")
