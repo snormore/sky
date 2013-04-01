@@ -145,6 +145,11 @@ $ curl -X POST http://localhost:8585/tables/users/query -d '{
 }'
 ```
 
+```sh
+# Retrieve stats on the 'users' table.
+$ curl -X GET http://localhost:8585/tables/users/stats
+```
+
 ### Miscellaneous API
 
 ```sh

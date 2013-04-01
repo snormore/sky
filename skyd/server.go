@@ -494,25 +494,12 @@ func (s *Server) DeleteTable(name string) error {
 //--------------------------------------
 
 // Runs a query against a table.
-func (s *Server) RunQuery(tableName string, json map[string]interface{}) (interface{}, error) {
+func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	var engine *ExecutionEngine
 	engines := make([]*ExecutionEngine, 0)
 
 	// Create a channel to receive aggregate responses.
 	rchannel := make(chan interface{}, len(s.servlets))
-
-	// Return an error if the table already exists.
-	table, err := s.OpenTable(tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Deserialize the query.
-	query := NewQuery(table, s.factors)
-	err = query.Deserialize(json)
-	if err != nil {
-		return nil, err
-	}
 
 	// Generate the query source code.
 	source, err := query.Codegen()

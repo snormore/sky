@@ -24,8 +24,8 @@ type QuerySelectionField struct {
 //------------------------------------------------------------------------------
 
 // Creates a new selection field.
-func NewQuerySelectionField() *QuerySelectionField {
-	return &QuerySelectionField{}
+func NewQuerySelectionField(name string, expression string) *QuerySelectionField {
+	return &QuerySelectionField{Name:name, Expression:expression}
 }
 
 //------------------------------------------------------------------------------

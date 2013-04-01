@@ -131,7 +131,7 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 		s.Fields = []*QuerySelectionField{}
 		for _, field := range fields {
 			if fieldMap, ok := field.(map[string]interface{}); ok {
-				f := NewQuerySelectionField()
+				f := NewQuerySelectionField("", "")
 				f.Deserialize(fieldMap)
 				s.Fields = append(s.Fields, f)
 			} else {
