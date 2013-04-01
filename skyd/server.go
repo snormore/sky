@@ -17,6 +17,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"time"
 )
 
 //------------------------------------------------------------------------------
@@ -286,6 +287,7 @@ func (s *Server) Silence() {
 func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
 	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
 		// warn("%s \"%s %s %s\"", req.RemoteAddr, req.Method, req.RequestURI, req.Proto)
+		t0 := time.Now()
 
 		var ret interface{}
 		params, err := s.decodeParams(w, req)
@@ -319,7 +321,7 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 		w.WriteHeader(status)
 
 		// Write to access log.
-		s.logger.Printf("%s \"%s %s %s\" %d", req.RemoteAddr, req.Method, req.RequestURI, req.Proto, status)
+		s.logger.Printf("%s \"%s %s %s\" %d %0.3f", req.RemoteAddr, req.Method, req.RequestURI, req.Proto, status, time.Since(t0).Seconds())
 		if status != http.StatusOK {
 			s.logger.Printf("ERROR %v", err)
 		}
