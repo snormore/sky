@@ -77,12 +77,11 @@ func main() {
 	err := server.ListenAndServe(c)
 	if err != nil {
 		fmt.Printf("%v\n", err)
+		cleanup(server)
 		return
 	}
 	<- c
-
-	// Remove PID file.
-	deletePidFile()
+	cleanup(server)
 }
 
 //--------------------------------------
@@ -96,8 +95,7 @@ func setupSignalHandlers(server *skyd.Server) {
 	go func(){
 	    for _ = range c {
 			fmt.Fprintln(os.Stderr, "Shutting down...")
-			server.Shutdown()
-			deletePidFile();
+			cleanup(server)
 			fmt.Fprintln(os.Stderr, "Shutdown complete.")
 			os.Exit(1)
 	    }
@@ -105,8 +103,16 @@ func setupSignalHandlers(server *skyd.Server) {
 }
 
 //--------------------------------------
-// PID
+// Utility
 //--------------------------------------
+
+// Shuts down the server socket and closes the database.
+func cleanup(server *skyd.Server) {
+	if server != nil {
+		server.Shutdown()
+	}
+	deletePidFile()
+}
 
 // Writes a file to /var/run that contains the current process id.
 func writePidFile() {
