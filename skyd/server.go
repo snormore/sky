@@ -147,7 +147,7 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 	s.listener = listener
 	go s.httpServer.Serve(s.listener)
 
-	s.logger.Printf("Sky is now listening on http://localhost%s\n", s.httpServer.Addr)
+	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", Version, s.httpServer.Addr)
 
 	return nil
 }
