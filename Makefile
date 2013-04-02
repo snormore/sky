@@ -6,22 +6,11 @@ VERSION=0.3.0
 PREFIX=/usr/local
 DESTDIR=
 BINDIR=${PREFIX}/bin
-DATADIR=${PREFIX}/share
+DATADIR=/var/lib/sky
 INCLUDEDIR=${PREFIX}/include
 LIBDIR=${PREFIX}/lib
 
-SKYD_SRCS = $(wildcard skyd/*.go)
-
-BINARIES = skyd
-BUILDDIR = build
-
-all: $(BINARIES)
-
-$(BUILDDIR)/%:
-	mkdir -p $(dir $@)
-	cd $* && go build -o $(abspath $@)
-
-$(BINARIES): %: $(BUILDDIR)/%
+all: build/skyd
 
 UNAME=$(shell uname)
 ifeq ($(UNAME), Darwin)
@@ -65,7 +54,11 @@ deps: leveldb luajit csky data
 # Build
 ################################################################################
 
-$(BUILDDIR)/skyd: $(SKYD_SRCS)
+build:
+	mkdir build
+
+build/skyd: build
+	go build -o build/skyd
 
 
 ################################################################################
@@ -73,12 +66,11 @@ $(BUILDDIR)/skyd: $(SKYD_SRCS)
 ################################################################################
 
 clean:
-	rm -fr $(BUILDDIR)
+	rm -rf build
 
 .PHONY: install clean all csky leveldb luajit data
-.PHONY: $(BINARIES)
 
-install: $(BINARIES)
+install: build/skyd
 	install -m 755 -d ${DESTDIR}${BINDIR}
-	install -m 755 $(BUILDDIR)/skyd ${DESTDIR}${BINDIR}/skyd
+	install -m 755 build/skyd ${DESTDIR}${BINDIR}/skyd
 	install -m 755 -d ${DESTDIR}${DATADIR}
