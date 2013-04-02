@@ -7,7 +7,7 @@ MINVER=3
 RELVER=0
 
 PREFIX?=/usr/local
-CFLAGS=-g -Wall -Wextra -std=c99 -Iinclude -fPIC -Wno-pointer-to-int-cast
+CFLAGS=-g -O2 -Wall -Wextra -std=c99 -Iinclude -fPIC -Wno-pointer-to-int-cast
 LDFLAGS=
 
 SOURCES=$(wildcard src/*.c)
