@@ -89,7 +89,7 @@ func (p *PropertyFile) CreateProperty(name string, transient bool, dataType stri
 
 	// Add to the list.
 	p.properties[property.Id] = property
-	p.propertiesByName[property.Name] = property
+	p.rebuildIndex()
 
 	return property, nil
 }
@@ -126,16 +126,26 @@ func (p *PropertyFile) GetPropertyByName(name string) *Property {
 
 // Deletes a property.
 func (p *PropertyFile) DeleteProperty(property *Property) {
-	if property != nil && property.Name != "" {
-		delete(p.properties, property.Id)
-		delete(p.propertiesByName, property.Name)
+	if property != nil {
+		property.Name = ""
 	}
+	p.rebuildIndex()
 }
 
 // Clears out the property file.
 func (p *PropertyFile) Reset() {
 	p.properties = make(map[int64]*Property)
+	p.rebuildIndex()
+}
+
+// Rebuilds the 'property by name' index.
+func (p *PropertyFile) rebuildIndex() {
 	p.propertiesByName = make(map[string]*Property)
+	for _, property := range p.properties {
+		if property.Name != "" {
+			p.propertiesByName[property.Name] = property
+		}
+	}
 }
 
 //--------------------------------------
@@ -166,10 +176,8 @@ func (p *PropertyFile) Decode(reader io.Reader) error {
 	p.Reset()
 	for _, property := range list {
 		p.properties[property.Id] = property
-		if property.Name != "" {
-			p.propertiesByName[property.Name] = property
-		}
 	}
+	p.rebuildIndex()
 
 	return nil
 }
@@ -240,6 +248,9 @@ func (p *PropertyFile) Save() error {
 	if err = w.Flush(); err != nil {
 		return err
 	}
+
+	// Rebuild the index.
+	p.rebuildIndex()
 
 	return nil
 }

@@ -58,3 +58,17 @@ func TestServerDeleteProperty(t *testing.T) {
 		assertResponse(t, resp, 200, `[{"id":-1,"name":"baz","transient":true,"dataType":"integer"}]`+"\n", "GET /tables/:name/properties after delete failed.")
 	})
 }
+
+// Ensure that we can delete a renamed property on the server.
+func TestServerDeleteRenamedProperty(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "bar", false, "string")
+		resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8586/tables/foo/properties/bar", "application/json", `{"name":"bar2"}`)
+		assertResponse(t, resp, 200, `{"id":1,"name":"bar2","transient":false,"dataType":"string"}`+"\n", "PATCH /tables/:name/properties/:propertyName failed.")
+		resp, _ = sendTestHttpRequest("DELETE", "http://localhost:8586/tables/foo/properties/bar2", "application/json", "")
+		assertResponse(t, resp, 200, "", "DELETE /tables/:name/properties/:propertyName failed.")
+		resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/properties", "application/json", "")
+		assertResponse(t, resp, 200, `[]`+"\n", "GET /tables/:name/properties after delete failed.")
+	})
+}
