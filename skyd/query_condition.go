@@ -252,7 +252,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 	}
 
 	// Full expressions should be prepended with cursor's event reference.
-	r, _ := regexp.Compile(`^ *(\w+) *(==) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
+	r, _ := regexp.Compile(`^ *(\w+) *(==|>|>=|<|<=|!=) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
 	m := r.FindSubmatch([]byte(c.Expression))
 	if m == nil {
 		return "", fmt.Errorf("skyd.QueryCondition: Invalid expression: %v", c.Expression)
@@ -301,6 +301,11 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a boolean literal for boolean properties: %v", c.Expression)
 		}
 		value = string(m[6])
+	}
+
+	// Convert "not equals" into Lua style.
+	if string(m[2]) == "!=" {
+		m[2] = []byte("~=")
 	}
 
 	return fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], value), nil

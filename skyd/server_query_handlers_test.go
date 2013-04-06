@@ -183,7 +183,7 @@ func TestServerTimestampQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"steps":[
-				{"type":"condition","expression":"timestamp == 2","steps":[
+				{"type":"condition","expression":"timestamp >= 2","steps":[
 					{"type":"selection","dimensions":["action"],"fields":[
 						{"name":"count","expression":"count()"},
 						{"name":"tsSum","expression":"sum(timestamp)"}
@@ -192,6 +192,6 @@ func TestServerTimestampQuery(t *testing.T) {
 			]
 		}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A3":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A2":{"count":1,"tsSum":60},"A3":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
