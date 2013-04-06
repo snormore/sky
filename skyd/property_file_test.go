@@ -35,10 +35,10 @@ func TestPropertyFileDecode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to decode property file: %v", err)
 	}
-	assertProperty(t, p.properties[-2], -2, "isMember", true, "boolean")
-	assertProperty(t, p.properties[-1], -1, "purchaseAmount", true, "integer")
-	assertProperty(t, p.properties[1], 1, "name", false, "string")
-	assertProperty(t, p.properties[2], 2, "salary", false, "float")
+	assertProperty(t, p.propertiesById[-2], -2, "isMember", true, "boolean")
+	assertProperty(t, p.propertiesById[-1], -1, "purchaseAmount", true, "integer")
+	assertProperty(t, p.propertiesById[1], 1, "name", false, "string")
+	assertProperty(t, p.propertiesById[2], 2, "salary", false, "float")
 }
 
 // Convert a map of string keys into property id keys.

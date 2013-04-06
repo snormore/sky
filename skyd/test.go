@@ -88,3 +88,10 @@ func _codegen(t *testing.T, tableName string, query string) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
 }
+
+func _dumpObject(t *testing.T, tableName string, objectId string) {
+	resp, _ := sendTestHttpRequest("GET", fmt.Sprintf("http://localhost:8586/tables/%s/objects/%s/events", tableName, objectId), "application/json", "")
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body))
+}

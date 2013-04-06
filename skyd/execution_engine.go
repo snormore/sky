@@ -396,14 +396,14 @@ func extractPropertyReferences(propertyFile *PropertyFile, source string) ([]*Pr
 }
 
 func propertyStructDef(args ...interface{}) string {
-	if property, ok := args[0].(*Property); ok {
+	if property, ok := args[0].(*Property); ok && property.Id != 0 {
 		return fmt.Sprintf("%v _%v;", getPropertyCType(property), property.Name)
 	}
 	return ""
 }
 
 func metatypeFunctionDef(args ...interface{}) string {
-	if property, ok := args[0].(*Property); ok {
+	if property, ok := args[0].(*Property); ok && property.Id != 0 {
 		switch property.DataType {
 		case StringDataType:
 			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", property.Name, property.Name, property.Name)
@@ -415,7 +415,7 @@ func metatypeFunctionDef(args ...interface{}) string {
 }
 
 func initDescriptorDef(args ...interface{}) string {
-	if property, ok := args[0].(*Property); ok {
+	if property, ok := args[0].(*Property); ok && property.Id != 0 {
 		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", property.Id, property.Name, getPropertyCType(property), property.DataType)
 	}
 	return ""

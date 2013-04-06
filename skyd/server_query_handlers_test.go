@@ -149,7 +149,7 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 			[]string{"f0", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
 			[]string{"f0", "2012-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
 		})
-
+		
 		// Run query.
 		query := `{
 			"sessionIdleTime":7200,
@@ -164,5 +164,34 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
+// Ensure that we can utilitize the timestamp in the query.
+func TestServerTimestampQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", true, "factor")
+		setupTestData(t, "foo", [][]string{
+			[]string{"00", "1970-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"00", "1970-01-01T00:00:02Z", `{"data":{"action":"A1"}}`},
+			[]string{"00", "1970-01-01T00:01:00Z", `{"data":{"action":"A2"}}`},
+			[]string{"01", "1970-01-01T00:00:02Z", `{"data":{"action":"A3"}}`},
+			[]string{"02", "1970-01-01T00:00:02Z", `{"data":{"action":"A3"}}`},
+		})
+
+		// Run query.
+		query := `{
+			"steps":[
+				{"type":"condition","expression":"timestamp == 2","steps":[
+					{"type":"selection","dimensions":["action"],"fields":[
+						{"name":"count","expression":"count()"},
+						{"name":"tsSum","expression":"sum(timestamp)"}
+					]}
+				]}
+			]
+		}`
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
+		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A3":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }

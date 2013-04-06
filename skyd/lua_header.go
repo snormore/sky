@@ -8,8 +8,8 @@ typedef struct sky_string_t { int32_t length; char *data; } sky_string_t;
 typedef struct {
   {{range .}}{{structdef .}}
   {{end}}
-  int64_t ts;
-  uint32_t timestamp;
+  int64_t _ts;
+  uint32_t _timestamp;
 } sky_lua_event_t;
 typedef struct sky_cursor_t { sky_lua_event_t *event; int32_t session_event_index; } sky_cursor_t;
 
@@ -45,6 +45,7 @@ ffi.metatype('sky_cursor_t', {
 })
 ffi.metatype('sky_lua_event_t', {
   __index = {
+  timestamp = function(event) return event._timestamp end,
   {{range .}}{{metatypedef .}}
   {{end}}
   }
@@ -54,8 +55,8 @@ function sky_init_cursor(_cursor)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
   {{range .}}{{initdescriptor .}}
   {{end}}
-  cursor:set_timestamp_offset(ffi.offsetof('sky_lua_event_t', 'timestamp'))
-  cursor:set_ts_offset(ffi.offsetof('sky_lua_event_t', 'ts'))
+  cursor:set_timestamp_offset(ffi.offsetof('sky_lua_event_t', '_timestamp'))
+  cursor:set_ts_offset(ffi.offsetof('sky_lua_event_t', '_ts'))
   cursor:set_data_sz(ffi.sizeof('sky_lua_event_t'))
 end
 

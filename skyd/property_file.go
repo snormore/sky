@@ -20,7 +20,8 @@ import (
 type PropertyFile struct {
 	opened           bool
 	path             string
-	properties       map[int64]*Property
+	properties       []*Property
+	propertiesById   map[int64]*Property
 	propertiesByName map[string]*Property
 }
 
@@ -87,8 +88,8 @@ func (p *PropertyFile) CreateProperty(name string, transient bool, dataType stri
 		property.Id, _ = p.NextIdentifiers()
 	}
 
-	// Add to the list.
-	p.properties[property.Id] = property
+	// Add to the property file.
+	p.properties = append(p.properties, property)
 	p.rebuildIndex()
 
 	return property, nil
@@ -97,18 +98,22 @@ func (p *PropertyFile) CreateProperty(name string, transient bool, dataType stri
 // Retrieves a list of undeleted properties sorted by id.
 func (p *PropertyFile) GetProperties() []*Property {
 	list := make([]*Property, 0)
-	for _, property := range p.propertiesByName {
-		list = append(list, property)
+	for _, property := range p.properties {
+		if property.Id != 0 && property.Name != "" {
+			list = append(list, property)
+		}
 	}
 	sort.Sort(PropertyList(list))
 	return list
 }
 
-// Retrieves a list of all properties sorted by id.
-func (p *PropertyFile) GetAllProperties() []*Property {
+// Retrieves a list of all non-system properties sorted by id.
+func (p *PropertyFile) GetAllNonSystemProperties() []*Property {
 	list := make([]*Property, 0)
 	for _, property := range p.properties {
-		list = append(list, property)
+		if property.Id != 0 {
+			list = append(list, property)
+		}
 	}
 	sort.Sort(PropertyList(list))
 	return list
@@ -116,7 +121,7 @@ func (p *PropertyFile) GetAllProperties() []*Property {
 
 // Retrieves a single property by id.
 func (p *PropertyFile) GetProperty(id int64) *Property {
-	return p.properties[id]
+	return p.propertiesById[id]
 }
 
 // Retrieves a single property by name.
@@ -126,7 +131,7 @@ func (p *PropertyFile) GetPropertyByName(name string) *Property {
 
 // Deletes a property.
 func (p *PropertyFile) DeleteProperty(property *Property) {
-	if property != nil {
+	if property.Id != 0 && property != nil {
 		property.Name = ""
 	}
 	p.rebuildIndex()
@@ -134,14 +139,26 @@ func (p *PropertyFile) DeleteProperty(property *Property) {
 
 // Clears out the property file.
 func (p *PropertyFile) Reset() {
-	p.properties = make(map[int64]*Property)
+	p.properties = make([]*Property, 0)
+	p.addSystemProperties()
 	p.rebuildIndex()
+}
+
+// Adds system level properties that cannot be removed. System properties
+// have an id of zero.
+func (p *PropertyFile) addSystemProperties() {
+	property, _ := NewProperty(0, "timestamp", true, IntegerDataType)
+	p.properties = append(p.properties, property)
 }
 
 // Rebuilds the 'property by name' index.
 func (p *PropertyFile) rebuildIndex() {
+	p.propertiesById = make(map[int64]*Property)
 	p.propertiesByName = make(map[string]*Property)
 	for _, property := range p.properties {
+		if property.Id != 0 {
+			p.propertiesById[property.Id] = property
+		}
 		if property.Name != "" {
 			p.propertiesByName[property.Name] = property
 		}
@@ -155,7 +172,7 @@ func (p *PropertyFile) rebuildIndex() {
 // Encodes a property file.
 func (p *PropertyFile) Encode(writer io.Writer) error {
 	// Convert the lookup into a sorted slice.
-	list := p.GetAllProperties()
+	list := p.GetAllNonSystemProperties()
 
 	// Encode the slice.
 	encoder := json.NewEncoder(writer)
@@ -175,7 +192,7 @@ func (p *PropertyFile) Decode(reader io.Reader) error {
 	// Create lookups for the properties.
 	p.Reset()
 	for _, property := range list {
-		p.properties[property.Id] = property
+		p.properties = append(p.properties, property)
 	}
 	p.rebuildIndex()
 
