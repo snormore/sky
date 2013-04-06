@@ -60,6 +60,19 @@ function sky_init_cursor(_cursor)
   cursor:set_data_sz(ffi.sizeof('sky_lua_event_t'))
 end
 
+function sky_initialize(_cursor)
+  cursor = ffi.cast('sky_cursor_t*', _cursor)
+  index = 0
+  data = {}
+  while cursor:nextObject() do
+    initialize(cursor, data)
+    index = index + 1
+    if index >= 1000 then break end
+  end
+  clear(data)
+  return data
+end
+
 function sky_aggregate(_cursor)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
   data = {}

@@ -327,3 +327,14 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 func (c *QueryCondition) Defactorize(data interface{}) error {
 	return c.Steps.Defactorize(data)
 }
+
+//--------------------------------------
+// Initialization
+//--------------------------------------
+
+// Checks if this condition requires a data structure to be initialized before
+// performing aggregation. This function returns true if any nested query
+// steps require initialization.
+func (c *QueryCondition) RequiresInitialization() bool {
+	return c.Steps.RequiresInitialization()
+}

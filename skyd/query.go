@@ -204,3 +204,14 @@ func (q *Query) NextIdentifier() int {
 func (q *Query) Defactorize(data interface{}) error {
 	return q.Steps.Defactorize(data)
 }
+
+//--------------------------------------
+// Initialization
+//--------------------------------------
+
+// Checks if this query requires a data structure to be initialized before
+// performing aggregation. This function returns true if any nested query
+// steps require initialization.
+func (q *Query) RequiresInitialization() bool {
+	return q.Steps.RequiresInitialization()
+}

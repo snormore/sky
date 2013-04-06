@@ -71,51 +71,91 @@ func (f *QuerySelectionField) Deserialize(obj map[string]interface{}) error {
 }
 
 //--------------------------------------
+// Expression
+//--------------------------------------
+
+// Extracts the parts of the expression. Returns the aggregate function name
+// and the aggregate field name.
+func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
+	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
+	if m := r.FindStringSubmatch(f.Expression); m != nil {
+		if len(m[1]) > 0 { // sum()/min()/max()
+			switch m[1] {
+			case "sum", "min", "max":
+				return m[1], m[2], nil
+			}
+			return "", "", fmt.Errorf("skyd.QuerySelectionField: Invalid aggregate function: %q", f.Expression)
+		} else if len(m[3]) > 0 { // assignment
+			return "", m[3], nil
+		} else { // count()
+			return "count", "", nil
+		}
+	}
+
+	return "", "", fmt.Errorf("skyd.QuerySelectionField: Invalid expression: %q", f.Expression)
+}
+
+//--------------------------------------
 // Code Generation
 //--------------------------------------
 
 // Generates Lua code for the expression.
 func (f *QuerySelectionField) CodegenExpression() (string, error) {
-	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
-	if m := r.FindStringSubmatch(f.Expression); m != nil {
-		if len(m[1]) > 0 { // sum()/min()/max()
-			switch m[1] {
-			case "sum":
-				return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", f.Name, f.Name, m[2]), nil
-			case "min":
-				return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, m[2], f.Name, m[2]), nil
-			case "max":
-				return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, m[2], f.Name, m[2]), nil
-			}
-		} else if len(m[3]) > 0 { // assignment
-			return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, m[3]), nil
-		} else { // count()
-			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
-		}
+	functionName, fieldName, err := f.ExpressionParts()
+	if err != nil {
+		return "", err
 	}
-
-	return "", fmt.Errorf("skyd.QuerySelectionField: Invalid expression: %q", f.Expression)
+	
+	switch(functionName) {
+		case "sum":
+			return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", f.Name, f.Name, fieldName), nil
+		case "min":
+			return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
+		case "max":
+			return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
+		case "count":
+			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
+		case "":
+			return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, fieldName), nil
+	}
+	
+	return "", fmt.Errorf("skyd.QuerySelectionField: Unexpected codegen error: %q", f.Expression)
 }
 
 // Generates Lua code for the merge expression.
 func (f *QuerySelectionField) CodegenMergeExpression() (string, error) {
-	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
-	if m := r.FindStringSubmatch(f.Expression); m != nil {
-		if len(m[1]) > 0 { // sum()/min()/max()
-			switch m[1] {
-			case "sum":
-				return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
-			case "min":
-				return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
-			case "max":
-				return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
-			}
-		} else if len(m[3]) > 0 { // assignment
-			return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
-		} else { // count()
-			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
-		}
+	functionName, _, err := f.ExpressionParts()
+	if err != nil {
+		return "", err
 	}
+	
+	switch(functionName) {
+		case "sum":
+			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+		case "min":
+			return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
+		case "max":
+			return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
+		case "count":
+			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+		case "":
+			return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
+	}
+		
+	return "", fmt.Errorf("skyd.QuerySelectionField: Unexpected merge codegen error: %q", f.Expression)
+}
 
-	return "", fmt.Errorf("skyd.QuerySelectionField: Invalid merge expression: %q", f.Expression)
+//--------------------------------------
+// Initialization
+//--------------------------------------
+
+// Checks if the field requires the data structure to be initialized before
+// aggregation. This will occur when computing histograms since all servlets
+// need to insert into the same bins.
+func (f *QuerySelectionField) RequiresInitialization() bool {
+	functionName, _, _ := f.ExpressionParts()
+	if functionName == "histogram" {
+		return true
+	}
+	return false
 }

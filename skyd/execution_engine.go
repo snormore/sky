@@ -251,6 +251,23 @@ func (e *ExecutionEngine) Destroy() {
 // Execution
 //--------------------------------------
 
+// Initializes the data structure used for aggregation.
+func (e *ExecutionEngine) Initialize() (interface{}, error) {
+	functionName := C.CString("sky_initialize")
+	defer C.free(unsafe.Pointer(functionName))
+
+	C.lua_getfield(e.state, -10002, functionName)
+	C.lua_pushlightuserdata(e.state, unsafe.Pointer(e.cursor))
+	rc := C.lua_pcall(e.state, 1, 1, 0)
+	if rc != 0 {
+		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
+		fmt.Println(e.FullAnnotatedSource())
+		return nil, fmt.Errorf("skyd.ExecutionEngine: Unable to initialize: %s", luaErrString)
+	}
+
+	return e.decodeResult()
+}
+
 // Executes an aggregation over the iterator.
 func (e *ExecutionEngine) Aggregate() (interface{}, error) {
 	functionName := C.CString("sky_aggregate")

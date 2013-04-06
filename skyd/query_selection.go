@@ -320,3 +320,18 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 
 	return nil
 }
+
+//--------------------------------------
+// Initialization
+//--------------------------------------
+
+// Checks if any of the selection fields require initialization before
+// performing aggregation.
+func (s *QuerySelection) RequiresInitialization() bool {
+	for _, field := range s.Fields {
+		if field.RequiresInitialization() {
+			return true
+		}
+	}
+	return false
+}

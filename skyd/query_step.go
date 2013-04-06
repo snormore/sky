@@ -31,6 +31,7 @@ type QueryStep interface {
 	CodegenAggregateFunction() (string, error)
 	CodegenMergeFunction() (string, error)
 	Defactorize(data interface{}) error
+	RequiresInitialization() bool
 }
 
 type QueryStepList []QueryStep
@@ -145,4 +146,20 @@ func (l QueryStepList) Defactorize(data interface{}) error {
 		}
 	}
 	return nil
+}
+
+//--------------------------------------
+// Initialization
+//--------------------------------------
+
+// Checks if this step requires a data structure to be initialized before
+// performing aggregation. This function returns true if any steps require
+// initialization.
+func (l QueryStepList) RequiresInitialization() bool {
+	for _, step := range l {
+		if step.RequiresInitialization() {
+			return true
+		}
+	}
+	return false
 }
