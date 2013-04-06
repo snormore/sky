@@ -175,15 +175,17 @@ func TestServerTimestampQuery(t *testing.T) {
 		setupTestData(t, "foo", [][]string{
 			[]string{"00", "1970-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
 			[]string{"00", "1970-01-01T00:00:02Z", `{"data":{"action":"A1"}}`},
-			[]string{"00", "1970-01-01T00:01:00Z", `{"data":{"action":"A2"}}`},
-			[]string{"01", "1970-01-01T00:00:02Z", `{"data":{"action":"A3"}}`},
-			[]string{"02", "1970-01-01T00:00:02Z", `{"data":{"action":"A3"}}`},
+			[]string{"00", "1970-01-01T00:00:04Z", `{"data":{"action":"A2"}}`},
+			[]string{"00", "1970-01-01T00:00:06Z", `{"data":{"action":"A3"}}`},
+			[]string{"00", "1970-01-01T00:01:00Z", `{"data":{"action":"A4"}}`},
+			[]string{"01", "1970-01-01T00:00:02Z", `{"data":{"action":"A5"}}`},
+			[]string{"02", "1970-01-01T00:00:02Z", `{"data":{"action":"A5"}}`},
 		})
 
 		// Run query.
 		query := `{
 			"steps":[
-				{"type":"condition","expression":"timestamp >= 2","steps":[
+				{"type":"condition","expression":"timestamp >= 2 && timestamp < 6","steps":[
 					{"type":"selection","dimensions":["action"],"fields":[
 						{"name":"count","expression":"count()"},
 						{"name":"tsSum","expression":"sum(timestamp)"}
@@ -192,6 +194,6 @@ func TestServerTimestampQuery(t *testing.T) {
 			]
 		}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A2":{"count":1,"tsSum":60},"A3":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A2":{"count":1,"tsSum":4},"A5":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }

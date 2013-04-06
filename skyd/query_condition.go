@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 //------------------------------------------------------------------------------
@@ -251,64 +252,71 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 		return c.Expression, nil
 	}
 
-	// Full expressions should be prepended with cursor's event reference.
-	r, _ := regexp.Compile(`^ *(\w+) *(==|>|>=|<|<=|!=) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
-	m := r.FindSubmatch([]byte(c.Expression))
-	if m == nil {
-		return "", fmt.Errorf("skyd.QueryCondition: Invalid expression: %v", c.Expression)
-	}
-
-	// Find the property.
-	property := c.query.table.propertyFile.GetPropertyByName(string(m[1]))
-	if property == nil {
-		return "", fmt.Errorf("skyd.QueryCondition: Property not found: %v", string(m[1]))
-	}
-
-	// Validate the expression value.
-	var value string
-	switch property.DataType {
-	case FactorDataType, StringDataType:
-		// Validate string value.
-		var stringValue string
-		if m[3] != nil {
-			stringValue = string(m[3])
-		} else if m[4] != nil {
-			stringValue = string(m[4])
-		} else {
-			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a string literal for string and factor properties: %v", c.Expression)
+	// Split out multiple expressions.
+	output := []string{}
+	expressions := strings.Split(c.Expression, "&&")
+	for _, expression := range expressions {
+		// Full expressions should be prepended with cursor's event reference.
+		r, _ := regexp.Compile(`^ *(\w+) *(==|>|>=|<|<=|!=) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
+		m := r.FindSubmatch([]byte(expression))
+		if m == nil {
+			return "", fmt.Errorf("skyd.QueryCondition: Invalid expression: %v", expression)
 		}
 
-		// Convert factors.
-		if property.DataType == FactorDataType {
-			sequence, err := c.query.factors.Factorize(c.query.table.Name, property.Name, stringValue, false)
-			if err != nil {
-				return "", err
+		// Find the property.
+		property := c.query.table.propertyFile.GetPropertyByName(string(m[1]))
+		if property == nil {
+			return "", fmt.Errorf("skyd.QueryCondition: Property not found: %v", string(m[1]))
+		}
+
+		// Validate the expression value.
+		var value string
+		switch property.DataType {
+		case FactorDataType, StringDataType:
+			// Validate string value.
+			var stringValue string
+			if m[3] != nil {
+				stringValue = string(m[3])
+			} else if m[4] != nil {
+				stringValue = string(m[4])
 			} else {
-				value = strconv.FormatUint(sequence, 10)
+				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a string literal for string and factor properties: %v", expression)
 			}
-		} else {
-			value = fmt.Sprintf(`"%s"`, stringValue)
+
+			// Convert factors.
+			if property.DataType == FactorDataType {
+				sequence, err := c.query.factors.Factorize(c.query.table.Name, property.Name, stringValue, false)
+				if err != nil {
+					return "", err
+				} else {
+					value = strconv.FormatUint(sequence, 10)
+				}
+			} else {
+				value = fmt.Sprintf(`"%s"`, stringValue)
+			}
+
+		case IntegerDataType, FloatDataType:
+			if m[5] == nil {
+				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a numeric literal for integer and float properties: %v", expression)
+			}
+			value = string(m[5])
+
+		case BooleanDataType:
+			if m[6] == nil {
+				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a boolean literal for boolean properties: %v", expression)
+			}
+			value = string(m[6])
 		}
 
-	case IntegerDataType, FloatDataType:
-		if m[5] == nil {
-			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a numeric literal for integer and float properties: %v", c.Expression)
+		// Convert "not equals" into Lua style.
+		if string(m[2]) == "!=" {
+			m[2] = []byte("~=")
 		}
-		value = string(m[5])
 
-	case BooleanDataType:
-		if m[6] == nil {
-			return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a boolean literal for boolean properties: %v", c.Expression)
-		}
-		value = string(m[6])
+		output = append(output, fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], value))
 	}
-
-	// Convert "not equals" into Lua style.
-	if string(m[2]) == "!=" {
-		m[2] = []byte("~=")
-	}
-
-	return fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], value), nil
+	
+	return strings.Join(output, " and "), nil
 }
 
 //--------------------------------------
