@@ -531,7 +531,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 			return nil, err
 		}
 		engines = append(engines, e)
-		
+
 		// Run initialization once if required.
 		if index == 0 && query.RequiresInitialization() {
 			if data, err = e.Initialize(); err != nil {

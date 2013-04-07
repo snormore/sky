@@ -14,11 +14,11 @@ import (
 
 // A selection step aggregates data in a query.
 type QuerySelection struct {
-	query             *Query
-	id      int
-	Name              string
-	Dimensions        []string
-	Fields            []*QuerySelectionField
+	query      *Query
+	id         int
+	Name       string
+	Dimensions []string
+	Fields     []*QuerySelectionField
 }
 
 //------------------------------------------------------------------------------
@@ -30,8 +30,8 @@ type QuerySelection struct {
 // Creates a new selection.
 func NewQuerySelection(query *Query) *QuerySelection {
 	return &QuerySelection{
-		query:             query,
-		id: query.NextIdentifier(),
+		query: query,
+		id:    query.NextIdentifier(),
 	}
 }
 

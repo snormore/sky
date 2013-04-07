@@ -25,7 +25,7 @@ type QuerySelectionField struct {
 
 // Creates a new selection field.
 func NewQuerySelectionField(name string, expression string) *QuerySelectionField {
-	return &QuerySelectionField{Name:name, Expression:expression}
+	return &QuerySelectionField{Name: name, Expression: expression}
 }
 
 //------------------------------------------------------------------------------
@@ -105,26 +105,26 @@ func (f *QuerySelectionField) CodegenExpression(init bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
-	switch(functionName) {
-		case "sum":
-			return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", f.Name, f.Name, fieldName), nil
-		case "min":
-			return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
-		case "max":
-			return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
-		case "count":
-			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
-		case "histogram":
-			if init {
-				return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, cursor.event:%s())", f.Name, f.Name, f.Name, fieldName), nil
-			} else {
-				return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, cursor.event:%s()) end", f.Name, f.Name, fieldName), nil
-			}
-		case "":
-			return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, fieldName), nil
+
+	switch functionName {
+	case "sum":
+		return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", f.Name, f.Name, fieldName), nil
+	case "min":
+		return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
+	case "max":
+		return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
+	case "count":
+		return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
+	case "histogram":
+		if init {
+			return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, cursor.event:%s())", f.Name, f.Name, f.Name, fieldName), nil
+		} else {
+			return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, cursor.event:%s()) end", f.Name, f.Name, fieldName), nil
+		}
+	case "":
+		return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, fieldName), nil
 	}
-	
+
 	return "", fmt.Errorf("skyd.QuerySelectionField: Unexpected codegen error: %q", f.Expression)
 }
 
@@ -134,22 +134,22 @@ func (f *QuerySelectionField) CodegenMergeExpression() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
-	switch(functionName) {
-		case "sum":
-			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
-		case "min":
-			return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
-		case "max":
-			return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
-		case "count":
-			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
-		case "histogram":
-			return fmt.Sprintf("result.%s = sky_histogram_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
-		case "":
-			return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
+
+	switch functionName {
+	case "sum":
+		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+	case "min":
+		return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
+	case "max":
+		return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
+	case "count":
+		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+	case "histogram":
+		return fmt.Sprintf("result.%s = sky_histogram_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
+	case "":
+		return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
 	}
-		
+
 	return "", fmt.Errorf("skyd.QuerySelectionField: Unexpected merge codegen error: %q", f.Expression)
 }
 

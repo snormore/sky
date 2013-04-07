@@ -149,7 +149,7 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 			[]string{"f0", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
 			[]string{"f0", "2012-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
 		})
-		
+
 		// Run query.
 		query := `{
 			"sessionIdleTime":7200,
@@ -213,7 +213,7 @@ func TestServerHistogramQuery(t *testing.T) {
 
 			[]string{"01", "2012-01-01T00:00:00Z", `{"data":{"val":3}}`}, // Different servlet.
 
-			[]string{"02", "2012-01-01T00:00:00Z", `{"data":{"val":-1}}`}, // Out of range
+			[]string{"02", "2012-01-01T00:00:00Z", `{"data":{"val":-1}}`},  // Out of range
 			[]string{"02", "2012-01-01T00:00:01Z", `{"data":{"val":100}}`}, // Out of range
 		})
 

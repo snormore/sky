@@ -30,7 +30,7 @@ const (
 // A condition step made within a query.
 type QueryCondition struct {
 	query            *Query
-	id         int
+	id               int
 	Expression       string
 	WithinRangeStart int
 	WithinRangeEnd   int
@@ -48,7 +48,7 @@ type QueryCondition struct {
 func NewQueryCondition(query *Query) *QueryCondition {
 	return &QueryCondition{
 		query:            query,
-		id:     query.NextIdentifier(),
+		id:               query.NextIdentifier(),
 		WithinRangeStart: 0,
 		WithinRangeEnd:   0,
 		WithinUnits:      QueryConditionUnitSteps,
@@ -317,7 +317,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 
 		output = append(output, fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], value))
 	}
-	
+
 	return strings.Join(output, " and "), nil
 }
 
