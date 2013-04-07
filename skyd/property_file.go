@@ -283,7 +283,7 @@ func (p *PropertyFile) NormalizeMap(m map[string]interface{}) (map[int64]interfa
 		// Look up the property by name and convert it to the ID.
 		property := p.GetPropertyByName(string(k))
 		if property != nil {
-			clone[property.Id] = v
+			clone[property.Id] = property.Cast(v)
 		} else {
 			return nil, fmt.Errorf("Property not found: %v", k)
 		}

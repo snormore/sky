@@ -60,6 +60,93 @@ function sky_init_cursor(_cursor)
   cursor:set_data_sz(ffi.sizeof('sky_lua_event_t'))
 end
 
+----------------------------------------------------------------------
+--
+-- Histogram Functions
+--
+----------------------------------------------------------------------
+
+-- Checks if a value is a histogram.
+function sky_is_histogram(histogram)
+   return (histogram ~= nil and histogram.__histogram__ == true)
+end
+
+-- Creates a new histogram object.
+function sky_histogram_new()
+  return {__histogram__=true, min=0, max=0, count=0, width=0, bins={}, values={}}
+end
+
+-- Converts a histogram with values into a set of bins and clears the values.
+function sky_histogram_finalize(histogram)
+  table.sort(histogram.values)
+  histogram.min, histogram.max = histogram.values[1], histogram.values[#histogram.values]
+
+  histogram.count = math.ceil(math.sqrt(#histogram.values))
+  if histogram.count == 0 then histogram.count = 1 end
+
+  histogram.width = (histogram.max - histogram.min) / histogram.count
+  if histogram.width == 0 then histogram.width = 1 end
+
+  for i=1,histogram.count do
+    histogram.bins[i] = 0
+  end
+
+  histogram.values = nil
+end
+
+-- Inserts a value into an existing histogram.
+function sky_histogram_insert(histogram, value)
+  if histogram == nil or histogram.count == 0 then return end
+  index = math.floor((value-histogram.min)/histogram.width) + 1
+  index = math.min(math.max(index, 1), histogram.count)
+  histogram.bins[index] = histogram.bins[index] + 1
+end
+
+-- Merges one histogram into another. It's assumed that both histograms share
+-- the same structure and bin count.
+function sky_histogram_merge(a, b)
+  if a == nil then
+    a = b
+  elseif b ~= nil then
+    for i=1,a.count do
+      a.bins[i] = a.bins[i] + b.bins[i]
+    end
+  end
+  return a
+end
+
+
+----------------------------------------------------------------------
+--
+-- Utility Functions
+--
+----------------------------------------------------------------------
+
+-- Finalizes a data structure so that it can be used to seed the aggregation.
+function sky_finalize(value)
+  if type(value) ~= "table" then return nil end
+   
+  if sky_is_histogram(value) then
+    sky_histogram_finalize(value)
+  else
+    for k,v in pairs(value) do
+      value[k] = sky_finalize(v)
+    end
+  end
+  
+  return value
+end
+
+
+----------------------------------------------------------------------
+--
+-- Entry Functions
+--
+----------------------------------------------------------------------
+
+-- Initializes the data structure used by all servlets. This is
+-- necessary for histograms where the number and size of of bins
+-- needs to be calculated.
 function sky_initialize(_cursor)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
   index = 0
@@ -69,20 +156,23 @@ function sky_initialize(_cursor)
     index = index + 1
     if index >= 1000 then break end
   end
-  clear(data)
+  sky_finalize(data)
   return data
 end
 
-function sky_aggregate(_cursor)
+-- Loops over every event for every object. This is run once per
+-- servlet.
+function sky_aggregate(_cursor, data)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
-  data = {}
+  if data == nil then data = {} end
   while cursor:nextObject() do
     aggregate(cursor, data)
   end
   return data
 end
 
--- The wrapper for the merge.
+-- Loops over the results from the aggregate function and combines
+-- them into a single table.
 function sky_merge(results, data)
   if data ~= nil then
     merge(results, data)

@@ -15,8 +15,7 @@ import (
 // A selection step aggregates data in a query.
 type QuerySelection struct {
 	query             *Query
-	functionName      string
-	mergeFunctionName string
+	id      int
 	Name              string
 	Dimensions        []string
 	Fields            []*QuerySelectionField
@@ -30,11 +29,9 @@ type QuerySelection struct {
 
 // Creates a new selection.
 func NewQuerySelection(query *Query) *QuerySelection {
-	id := query.NextIdentifier()
 	return &QuerySelection{
 		query:             query,
-		functionName:      fmt.Sprintf("a%d", id),
-		mergeFunctionName: fmt.Sprintf("m%d", id),
+		id: query.NextIdentifier(),
 	}
 }
 
@@ -50,13 +47,16 @@ func (s *QuerySelection) Query() *Query {
 }
 
 // Retrieves the function name used during codegen.
-func (s *QuerySelection) FunctionName() string {
-	return s.functionName
+func (s *QuerySelection) FunctionName(init bool) string {
+	if init {
+		return fmt.Sprintf("i%d", s.id)
+	}
+	return fmt.Sprintf("a%d", s.id)
 }
 
 // Retrieves the merge function name used during codegen.
 func (s *QuerySelection) MergeFunctionName() string {
-	return s.mergeFunctionName
+	return fmt.Sprintf("m%d", s.id)
 }
 
 // Retrieves the child steps.
@@ -154,11 +154,11 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 //--------------------------------------
 
 // Generates Lua code for the selection aggregation.
-func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
+func (s *QuerySelection) CodegenAggregateFunction(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate main function.
-	fmt.Fprintf(buffer, "function %s(cursor, data)\n", s.FunctionName())
+	fmt.Fprintf(buffer, "function %s(cursor, data)\n", s.FunctionName(init))
 
 	// Add selection name.
 	if s.Name != "" {
@@ -176,7 +176,7 @@ func (s *QuerySelection) CodegenAggregateFunction() (string, error) {
 
 	// Select fields.
 	for _, field := range s.Fields {
-		exp, err := field.CodegenExpression()
+		exp, err := field.CodegenExpression(init)
 		if err != nil {
 			return "", err
 		}

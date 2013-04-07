@@ -56,11 +56,11 @@ func TestPropertyFileNormalizeMap(t *testing.T) {
 	if ret[1] != "bob" {
 		t.Fatalf("ret[1]: Expected %q, got %q", "bob", ret[1])
 	}
-	if ret[2] != 100 {
-		t.Fatalf("ret[2]: Expected %q, got %q", 100, ret[2])
+	if ret[2] != float64(100) {
+		t.Fatalf("ret[2]: Expected %v, got %v", float64(100), ret[2])
 	}
-	if ret[-1] != 12 {
-		t.Fatalf("ret[-1]: Expected %q, got %q", 12, ret[-1])
+	if ret[-1] != int64(12) {
+		t.Fatalf("ret[-1]: Expected %v, got %v", 12, ret[-1])
 	}
 }
 

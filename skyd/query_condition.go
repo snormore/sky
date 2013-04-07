@@ -30,7 +30,7 @@ const (
 // A condition step made within a query.
 type QueryCondition struct {
 	query            *Query
-	functionName     string
+	id         int
 	Expression       string
 	WithinRangeStart int
 	WithinRangeEnd   int
@@ -46,10 +46,9 @@ type QueryCondition struct {
 
 // Creates a new condition.
 func NewQueryCondition(query *Query) *QueryCondition {
-	id := query.NextIdentifier()
 	return &QueryCondition{
 		query:            query,
-		functionName:     fmt.Sprintf("a%d", id),
+		id:     query.NextIdentifier(),
 		WithinRangeStart: 0,
 		WithinRangeEnd:   0,
 		WithinUnits:      QueryConditionUnitSteps,
@@ -68,8 +67,11 @@ func (c *QueryCondition) Query() *Query {
 }
 
 // Retrieves the function name used during codegen.
-func (c *QueryCondition) FunctionName() string {
-	return c.functionName
+func (c *QueryCondition) FunctionName(init bool) string {
+	if init {
+		return fmt.Sprintf("i%d", c.id)
+	}
+	return fmt.Sprintf("a%d", c.id)
 }
 
 // Retrieves the merge function name used during codegen.
@@ -175,7 +177,7 @@ func (c *QueryCondition) Deserialize(obj map[string]interface{}) error {
 //--------------------------------------
 
 // Generates Lua code for the query.
-func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
+func (c *QueryCondition) CodegenAggregateFunction(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Validate.
@@ -184,14 +186,14 @@ func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 	}
 
 	// Generate child step functions.
-	str, err := c.Steps.CodegenAggregateFunctions()
+	str, err := c.Steps.CodegenAggregateFunctions(init)
 	if err != nil {
 		return "", err
 	}
 	buffer.WriteString(str)
 
 	// Generate main function.
-	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName())
+	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName(init))
 	if c.WithinRangeStart > 0 {
 		fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
 	}
@@ -212,7 +214,7 @@ func (c *QueryCondition) CodegenAggregateFunction() (string, error) {
 
 	// Call each step function.
 	for _, step := range c.Steps {
-		fmt.Fprintf(buffer, "        %s(cursor, data)\n", step.FunctionName())
+		fmt.Fprintf(buffer, "        %s(cursor, data)\n", step.FunctionName(init))
 	}
 
 	fmt.Fprintf(buffer, "        return true\n")

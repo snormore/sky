@@ -23,12 +23,12 @@ const (
 //------------------------------------------------------------------------------
 
 type QueryStep interface {
-	FunctionName() string
+	FunctionName(init bool) string
 	MergeFunctionName() string
 	GetSteps() QueryStepList
 	Serialize() map[string]interface{}
 	Deserialize(map[string]interface{}) error
-	CodegenAggregateFunction() (string, error)
+	CodegenAggregateFunction(init bool) (string, error)
 	CodegenMergeFunction() (string, error)
 	Defactorize(data interface{}) error
 	RequiresInitialization() bool
@@ -90,10 +90,10 @@ func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) 
 //--------------------------------------
 
 // Generates aggregate code for all steps.
-func (l QueryStepList) CodegenAggregateFunctions() (string, error) {
+func (l QueryStepList) CodegenAggregateFunctions(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 	for _, step := range l {
-		code, err := step.CodegenAggregateFunction()
+		code, err := step.CodegenAggregateFunction(init)
 		if err != nil {
 			return "", err
 		}

@@ -139,8 +139,8 @@ func (e *ExecutionEngine) FullAnnotatedSource() string {
 
 // Sets the iterator to use.
 func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
-	// Close the old iterator.
-	if e.iterator != nil {
+	// Close the old iterator (if it's not the one being set).
+	if e.iterator != nil && e.iterator != iterator {
 		e.iterator.Close()
 	}
 
@@ -269,13 +269,17 @@ func (e *ExecutionEngine) Initialize() (interface{}, error) {
 }
 
 // Executes an aggregation over the iterator.
-func (e *ExecutionEngine) Aggregate() (interface{}, error) {
+func (e *ExecutionEngine) Aggregate(data interface{}) (interface{}, error) {
 	functionName := C.CString("sky_aggregate")
 	defer C.free(unsafe.Pointer(functionName))
 
 	C.lua_getfield(e.state, -10002, functionName)
 	C.lua_pushlightuserdata(e.state, unsafe.Pointer(e.cursor))
-	rc := C.lua_pcall(e.state, 1, 1, 0)
+	err := e.encodeArgument(data)
+	if err != nil {
+		return nil, err
+	}
+	rc := C.lua_pcall(e.state, 2, 1, 0)
 	if rc != 0 {
 		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
 		fmt.Println(e.FullAnnotatedSource())

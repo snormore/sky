@@ -516,7 +516,8 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	//fmt.Println(engine.FullAnnotatedSource())
 
 	// Initialize one execution engine for each servlet.
-	for _, servlet := range s.servlets {
+	var data interface{}
+	for index, servlet := range s.servlets {
 		// Create an engine for each servlet.
 		e, err := NewExecutionEngine(table, source)
 		if err != nil {
@@ -526,12 +527,21 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 		// Initialize iterator.
 		ro := levigo.NewReadOptions()
 		iterator := servlet.db.NewIterator(ro)
-		err = e.SetIterator(iterator)
-		if err != nil {
+		if err = e.SetIterator(iterator); err != nil {
 			return nil, err
 		}
-
 		engines = append(engines, e)
+		
+		// Run initialization once if required.
+		if index == 0 && query.RequiresInitialization() {
+			if data, err = e.Initialize(); err != nil {
+				return nil, err
+			}
+			// Reset the iterator.
+			if err = e.SetIterator(iterator); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Execute servlets asynchronously and retrieve responses outside
@@ -539,7 +549,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	for index, _ := range s.servlets {
 		e := engines[index]
 		go func() {
-			if result, err := e.Aggregate(); err != nil {
+			if result, err := e.Aggregate(data); err != nil {
 				rchannel <- err
 			} else {
 				rchannel <- result

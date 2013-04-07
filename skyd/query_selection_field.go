@@ -77,11 +77,11 @@ func (f *QuerySelectionField) Deserialize(obj map[string]interface{}) error {
 // Extracts the parts of the expression. Returns the aggregate function name
 // and the aggregate field name.
 func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
-	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max)\((\w+)\)|(\w+)) *$`)
+	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max|histogram)\((\w+)\)|(\w+)) *$`)
 	if m := r.FindStringSubmatch(f.Expression); m != nil {
 		if len(m[1]) > 0 { // sum()/min()/max()
 			switch m[1] {
-			case "sum", "min", "max":
+			case "sum", "min", "max", "histogram":
 				return m[1], m[2], nil
 			}
 			return "", "", fmt.Errorf("skyd.QuerySelectionField: Invalid aggregate function: %q", f.Expression)
@@ -100,7 +100,7 @@ func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
 //--------------------------------------
 
 // Generates Lua code for the expression.
-func (f *QuerySelectionField) CodegenExpression() (string, error) {
+func (f *QuerySelectionField) CodegenExpression(init bool) (string, error) {
 	functionName, fieldName, err := f.ExpressionParts()
 	if err != nil {
 		return "", err
@@ -115,6 +115,12 @@ func (f *QuerySelectionField) CodegenExpression() (string, error) {
 			return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
 		case "count":
 			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
+		case "histogram":
+			if init {
+				return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, cursor.event:%s())", f.Name, f.Name, f.Name, fieldName), nil
+			} else {
+				return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, cursor.event:%s()) end", f.Name, f.Name, fieldName), nil
+			}
 		case "":
 			return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, fieldName), nil
 	}
@@ -138,6 +144,8 @@ func (f *QuerySelectionField) CodegenMergeExpression() (string, error) {
 			return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
 		case "count":
 			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+		case "histogram":
+			return fmt.Sprintf("result.%s = sky_histogram_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
 		case "":
 			return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
 	}

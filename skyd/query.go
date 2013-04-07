@@ -123,13 +123,23 @@ func (q *Query) Decode(reader io.Reader) error {
 func (q *Query) Codegen() (string, error) {
 	buffer := new(bytes.Buffer)
 
+	// Generate initialization functions (if necessary).
+	if q.RequiresInitialization() {
+		str, err := q.Steps.CodegenAggregateFunctions(true)
+		if err != nil {
+			return "", err
+		}
+		buffer.WriteString(str)
+		buffer.WriteString(q.CodegenAggregateFunction(true))
+	}
+
 	// Generate aggregation functions.
-	str, err := q.Steps.CodegenAggregateFunctions()
+	str, err := q.Steps.CodegenAggregateFunctions(false)
 	if err != nil {
 		return "", err
 	}
 	buffer.WriteString(str)
-	buffer.WriteString(q.CodegenAggregateFunction())
+	buffer.WriteString(q.CodegenAggregateFunction(false))
 
 	// Generate merge functions.
 	str, err = q.Steps.CodegenMergeFunctions()
@@ -142,12 +152,19 @@ func (q *Query) Codegen() (string, error) {
 	return buffer.String(), nil
 }
 
-// Generates the 'aggregate()' function.
-func (q *Query) CodegenAggregateFunction() string {
+// Generates the 'aggregate()' function. If the "init" flag is specified then
+// a special set of initialization functions are created to generate the data
+// structure used by the main aggregate function. This is primarily used to
+// setup histogram structures.
+func (q *Query) CodegenAggregateFunction(init bool) string {
 	buffer := new(bytes.Buffer)
 
 	// Generate the function definition.
-	fmt.Fprintln(buffer, "function aggregate(cursor, data)")
+	if init {
+		fmt.Fprintln(buffer, "function initialize(cursor, data)")
+	} else {
+		fmt.Fprintln(buffer, "function aggregate(cursor, data)")
+	}
 
 	// Set the session idle if one is available.
 	if q.SessionIdleTime > 0 {
@@ -160,7 +177,7 @@ func (q *Query) CodegenAggregateFunction() string {
 
 	// Call each step function.
 	for _, step := range q.Steps {
-		fmt.Fprintf(buffer, "      %s(cursor, data)\n", step.FunctionName())
+		fmt.Fprintf(buffer, "      %s(cursor, data)\n", step.FunctionName(init))
 	}
 
 	// End cursor loop.

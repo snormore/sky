@@ -197,3 +197,33 @@ func TestServerTimestampQuery(t *testing.T) {
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A2":{"count":1,"tsSum":4},"A5":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
+
+// Ensure that we can query the server for a histogram of values.
+func TestServerHistogramQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "val", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"00", "2012-01-01T00:00:00Z", `{"data":{"val":1}}`},
+			[]string{"00", "2012-01-01T00:00:01Z", `{"data":{"val":2}}`},
+			[]string{"00", "2012-01-01T00:00:02Z", `{}`},
+			[]string{"00", "2012-01-01T00:00:03Z", `{"data":{"val":3}}`},
+			[]string{"00", "2012-01-01T00:00:04Z", `{"data":{"val":4}}`},
+			[]string{"00", "2012-01-01T00:00:05Z", `{"data":{"val":4}}`},
+
+			[]string{"01", "2012-01-01T00:00:00Z", `{"data":{"val":3}}`}, // Different servlet.
+
+			[]string{"02", "2012-01-01T00:00:00Z", `{"data":{"val":-1}}`}, // Out of range
+			[]string{"02", "2012-01-01T00:00:01Z", `{"data":{"val":100}}`}, // Out of range
+		})
+
+		// Run query.
+		query := `{
+			"steps":[
+				{"type":"selection","dimensions":[],"fields":[{"name":"hist","expression":"histogram(val)"}]}
+			]
+		}`
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
+		assertResponse(t, resp, 200, `{"hist":{"__histogram__":true,"bins":{"1":3,"2":1,"3":5},"count":3,"max":4,"min":0,"width":1.3333333333333333}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
