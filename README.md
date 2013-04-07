@@ -39,7 +39,7 @@ Linux users: You'll need to make sure that `/usr/local/lib` is in your ldconfig.
 You can add it by running this:
 
 ```sh
-$ sudo echo '/usr/local/lib' > /etc/ld.so.conf.d/sky.conf
+$ echo '/usr/local/lib' | sudo tee /etc/ld.so.conf.d/sky.conf
 $ sudo ldconfig
 ```
 
