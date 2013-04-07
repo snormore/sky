@@ -224,6 +224,6 @@ func TestServerHistogramQuery(t *testing.T) {
 			]
 		}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"hist":{"__histogram__":true,"bins":{"1":3,"2":1,"3":5},"count":3,"max":4,"min":0,"width":1.3333333333333333}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"hist":{"__histogram__":true,"bins":{"0":3,"1":1,"2":5},"count":3,"max":4,"min":0,"width":1.3333333333333333}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }

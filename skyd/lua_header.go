@@ -87,7 +87,7 @@ function sky_histogram_finalize(histogram)
   histogram.width = (histogram.max - histogram.min) / histogram.count
   if histogram.width == 0 then histogram.width = 1 end
 
-  for i=1,histogram.count do
+  for i=0,histogram.count-1 do
     histogram.bins[i] = 0
   end
 
@@ -97,8 +97,8 @@ end
 -- Inserts a value into an existing histogram.
 function sky_histogram_insert(histogram, value)
   if histogram == nil or histogram.count == 0 then return end
-  index = math.floor((value-histogram.min)/histogram.width) + 1
-  index = math.min(math.max(index, 1), histogram.count)
+  index = math.floor((value-histogram.min)/histogram.width)
+  index = math.min(math.max(index, 0), histogram.count-1)
   histogram.bins[index] = histogram.bins[index] + 1
 end
 
@@ -108,7 +108,7 @@ function sky_histogram_merge(a, b)
   if a == nil then
     a = b
   elseif b ~= nil then
-    for i=1,a.count do
+    for i=0,a.count-1 do
       a.bins[i] = a.bins[i] + b.bins[i]
     end
   end
