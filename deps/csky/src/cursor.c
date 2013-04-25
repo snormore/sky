@@ -389,16 +389,34 @@ void sky_set_string(void *target, void *value, size_t *sz)
 void sky_set_int(void *target, void *value, size_t *sz)
 {
     *((int32_t*)target) = (int32_t)minipack_unpack_int(value, sz);
+    if(*sz == 0) {
+      minipack_unpack_nil(value, sz);
+      if(*sz != 0) {
+        *((int32_t*)target) = 0;
+      }
+    }
 }
 
 void sky_set_double(void *target, void *value, size_t *sz)
 {
     *((double*)target) = minipack_unpack_double(value, sz);
+    if(*sz == 0) {
+      minipack_unpack_nil(value, sz);
+      if(*sz != 0) {
+        *((double*)target) = 0;
+      }
+    }
 }
 
 void sky_set_boolean(void *target, void *value, size_t *sz)
 {
     *((bool*)target) = minipack_unpack_bool(value, sz);
+    if(*sz == 0) {
+      minipack_unpack_nil(value, sz);
+      if(*sz != 0) {
+        *((bool*)target) = false;
+      }
+    }
 }
 
 

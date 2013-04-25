@@ -306,7 +306,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 					}
 					copy[stringValue] = v
 				} else {
-					return fmt.Errorf("Invalid factor sequence: %v", k)
+					return fmt.Errorf("skyd.QuerySelection: Invalid factor sequence: %v", k)
 				}
 			} else {
 				copy[k] = v
