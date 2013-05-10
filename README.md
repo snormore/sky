@@ -49,6 +49,8 @@ Now your environment is setup and you can run `skyd` to start the server:
 $ sudo skyd
 ```
 
+If you visit `http://localhost:8585` (the default host:port) you should be greeted by a welcome message along with the current version of sky you are running.
+
 ## API
 
 ### Overview
