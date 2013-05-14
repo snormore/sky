@@ -17,6 +17,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,7 @@ type Server struct {
 	tables          map[string]*Table
 	factors         *Factors
 	shutdownChannel chan bool
+	mutex           sync.Mutex
 }
 
 //------------------------------------------------------------------------------
@@ -398,6 +400,8 @@ func (s *Server) GetObjectServletIndex(t *Table, objectId string) (uint32, error
 
 // Retrieves a table that has already been opened.
 func (s *Server) GetTable(name string) *Table {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	return s.tables[name]
 }
 
@@ -435,7 +439,10 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 		table.Close()
 		return nil, err
 	}
+
+	s.mutex.Lock()
 	s.tables[name] = table
+	s.mutex.Unlock()
 
 	return table, nil
 }
@@ -485,7 +492,10 @@ func (s *Server) DeleteTable(name string) error {
 	}
 
 	// Remove the table from the lookup and remove it's schema.
+	s.mutex.Lock()
 	delete(s.tables, name)
+	defer s.mutex.Unlock()
+
 	return table.Delete()
 }
 
@@ -568,15 +578,13 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 			servletError = err
 		} else {
 			// Defactorize aggregate results.
-			err = query.Defactorize(ret)
-			if err != nil {
+			if err = query.Defactorize(ret); err != nil {
 				return nil, err
 			}
 
 			// Merge results.
 			if ret != nil {
-				result, err = engine.Merge(result, ret)
-				if err != nil {
+				if result, err = engine.Merge(result, ret); err != nil {
 					fmt.Printf("skyd.Server: Merge error: %v", err)
 					servletError = err
 				}
