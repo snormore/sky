@@ -282,35 +282,38 @@ int test_sky_cursor_sessionize() {
 // Object Iteration
 //--------------------------------------
 
-int next_obj(void *_cursor) {
-  size_t sz;
-  void *ptr = NULL;
-  
-  sky_cursor *cursor = (sky_cursor*)_cursor;
-  if(cursor->context == NULL) {
-      ptr = DATA3; sz = DATA3_LENGTH;
-  } else if(cursor->context == DATA3) {
-      ptr = DATA4; sz = DATA4_LENGTH;
-  }
-  
-  if(ptr != NULL) {
-      cursor->context = ptr;
-      sky_cursor_set_ptr(cursor, ptr, sz);
-      return 1;
-  }
-  else {
-      return 0;
-  }
-}
-
 int test_sky_cursor_object_iteration() {
+    // Setup database.
+    char* errptr = NULL;
+    leveldb_options_t* options = leveldb_options_create();
+    leveldb_options_set_create_if_missing(options, true);
+    leveldb_t* db = leveldb_open(options, "tmp/object_iteration", &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error: %s", errptr);
+    
+    // Write two objects.
+    leveldb_writeoptions_t *writeoptions = leveldb_writeoptions_create();
+    leveldb_put(db, writeoptions, "aa", 2, DATA5, DATA5_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (xx): %s", errptr);
+    leveldb_put(db, writeoptions, "dat3", 4, DATA3, DATA3_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (dat3): %s", errptr);
+    leveldb_put(db, writeoptions, "dat4", 4, DATA4, DATA4_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (dat4): %s", errptr);
+    leveldb_put(db, writeoptions, "xx", 2, DATA5, DATA5_LENGTH, &errptr);
+    mu_assert_with_msg(errptr == NULL, "leveldb.put error (xx): %s", errptr);
+
     // Setup cursor.
     sky_cursor *cursor = sky_cursor_new(0, 1);
-    cursor->next_object_func = next_obj;
+    sky_cursor_set_key_prefix(cursor, "dat", 3);
     sky_cursor_set_ts_offset(cursor, offsetof(test2_t, ts));
     sky_cursor_set_timestamp_offset(cursor, offsetof(test2_t, timestamp));
     sky_cursor_set_property(cursor, 1, offsetof(test2_t, int_value), sizeof(int32_t), "integer");
     sky_cursor_set_data_sz(cursor, sizeof(test2_t));
+
+    // Setup iterator.
+    leveldb_readoptions_t *readoptions = leveldb_readoptions_create();
+    leveldb_iterator_t *leveldb_iterator = leveldb_create_iterator(db, readoptions);
+    leveldb_iter_seek(leveldb_iterator, "dat", 3);
+    cursor->leveldb_iterator = leveldb_iterator;
     test2_t *obj = (test2_t*)cursor->data;
 
     // Loop over first object.
@@ -332,6 +335,11 @@ int test_sky_cursor_object_iteration() {
     mu_assert_bool(!sky_cursor_next_object(cursor));
 
     sky_cursor_free(cursor);
+    leveldb_iter_destroy(leveldb_iterator);
+    leveldb_readoptions_destroy(readoptions);
+    leveldb_writeoptions_destroy(writeoptions);
+    leveldb_options_destroy(options);
+    leveldb_close(db);
     return 0;
 }
 
