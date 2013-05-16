@@ -11,16 +11,6 @@ package skyd
 int mp_pack(lua_State *L);
 int mp_unpack(lua_State *L);
 
-int executionEngine_nextObject(void *cursor);
-
-int executionEngine_c_next_object(void *cursor) {
-	return (bool)executionEngine_nextObject(cursor);
-}
-
-void executionEngine_setNextObjectFunc(void *cursor) {
-	((sky_cursor*)cursor)->next_object_func = executionEngine_c_next_object;
-}
-
 */
 import "C"
 
@@ -47,16 +37,12 @@ type ExecutionEngine struct {
 	tableName    string
 	iterator     *levigo.Iterator
 	cursor       *C.sky_cursor
-	prefix       []byte
 	state        *C.lua_State
 	header       string
 	source       string
 	fullSource   string
 	propertyFile *PropertyFile
 	propertyRefs []*Property
-
-	cprefix    unsafe.Pointer
-	cprefix_sz C.size_t
 }
 
 //------------------------------------------------------------------------------
@@ -80,16 +66,9 @@ func NewExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
 		return nil, err
 	}
 
-	// Determine table prefix.
-	prefix, err := TablePrefix(table.Name)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create the engine.
 	e := &ExecutionEngine{
 		tableName:    table.Name,
-		prefix:       prefix,
 		propertyFile: propertyFile,
 		source:       source,
 		propertyRefs: propertyRefs,
@@ -147,7 +126,19 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 	// Attach the new iterator.
 	e.iterator = iterator
 	if e.iterator != nil {
-		e.iterator.Seek(e.prefix)
+		// Determine table prefix.
+		prefix, err := TablePrefix(e.tableName)
+		if err != nil {
+			return err
+		}
+		prefix = prefix[0 : len(prefix)-1]
+
+		// Set the prefix & seek.
+		C.sky_cursor_set_key_prefix(e.cursor, (unsafe.Pointer(&prefix[0])), C.uint32_t(len(prefix)))
+		e.iterator.Seek(prefix)
+
+		// Assign the iterator to the cursor.
+		e.cursor.leveldb_iterator = e.iterator.Iter
 	}
 
 	return nil
@@ -217,8 +208,6 @@ func (e *ExecutionEngine) initCursor() error {
 	// Create the cursor.
 	minPropertyId, maxPropertyId := e.propertyFile.NextIdentifiers()
 	e.cursor = C.sky_cursor_new((C.int32_t)(minPropertyId), (C.int32_t)(maxPropertyId))
-	e.cursor.context = unsafe.Pointer(e)
-	C.executionEngine_setNextObjectFunc(unsafe.Pointer(e.cursor))
 
 	// Initialize the cursor from within Lua.
 	functionName := C.CString("sky_init_cursor")
