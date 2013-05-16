@@ -255,6 +255,7 @@ void sky_cursor_free(sky_cursor *cursor)
         cursor->property_count = 0;
 
         if(cursor->data != NULL) free(cursor->data);
+        if(cursor->key_prefix != NULL) free(cursor->key_prefix);
 
         free(cursor);
     }
@@ -789,7 +790,8 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 		prefix = prefix[0 : len(prefix)-1]
 
 		// Set the prefix & seek.
-		C.sky_cursor_set_key_prefix(e.cursor, (unsafe.Pointer(&prefix[0])), C.uint32_t(len(prefix)))
+		cprefix := C.CString(string(prefix))
+		C.sky_cursor_set_key_prefix(e.cursor, unsafe.Pointer(cprefix), C.uint32_t(len(prefix)))
 		e.iterator.Seek(prefix)
 
 		// Assign the iterator to the cursor.
@@ -888,6 +890,10 @@ func (e *ExecutionEngine) Destroy() {
 	}
 	if e.iterator != nil {
 		e.SetIterator(nil)
+	}
+	if e.cursor != nil {
+		C.sky_cursor_free(e.cursor)
+		e.cursor = nil
 	}
 }
 
