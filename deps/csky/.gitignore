@@ -1,4 +1,0 @@
-libcsky.*
-src/*.o
-tests/*_tests
-tests/*_tests.dSYM
