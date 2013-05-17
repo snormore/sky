@@ -219,6 +219,7 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
                            int32_t max_property_id)
 {
     sky_cursor *cursor = calloc(1, sizeof(sky_cursor));
+    if(cursor == NULL) debug("[malloc] Unable to allocate cursor.");
 
     // Add one property to account for the zero descriptor.
     min_property_id -= SKY_PROPERTY_DESCRIPTOR_PADDING;
@@ -227,6 +228,7 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
 
     // Allocate memory for the descriptors.
     cursor->property_descriptors = calloc(property_count, sizeof(sky_property_descriptor));
+    if(cursor->property_descriptors == NULL) debug("[malloc] Unable to allocate property descriptors.");
     cursor->property_count = property_count;
     cursor->property_zero_descriptor = NULL;
     
@@ -282,6 +284,7 @@ void sky_cursor_set_data_sz(sky_cursor *cursor, uint32_t sz) {
     cursor->data_sz = sz;
     if(cursor->data != NULL) free(cursor->data);
     cursor->data = calloc(1, sz);
+    if(cursor->data == NULL) debug("[malloc] Unable to allocate cursor data.");
 }
 
 void sky_cursor_set_timestamp_offset(sky_cursor *cursor, uint32_t offset) {
