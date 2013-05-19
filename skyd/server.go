@@ -528,11 +528,13 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	// Initialize one execution engine for each servlet.
 	var data interface{}
 	for index, servlet := range s.servlets {
-		// Create an engine for each servlet.
+		// Create an engine for each servlet. The execution engine is
+		// protected by a mutex so it's safe to destroy it at any time.
 		e, err := NewExecutionEngine(table, source)
 		if err != nil {
 			return nil, err
 		}
+		defer e.Destroy()
 
 		// Initialize iterator.
 		ro := levigo.NewReadOptions()
@@ -592,12 +594,6 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 		}
 	}
 	err = servletError
-
-	// Clean up engines.
-	// TODO: Defer clean up earlier on in case of failure.
-	for _, e := range engines {
-		e.Destroy()
-	}
 
 	return result, err
 }
