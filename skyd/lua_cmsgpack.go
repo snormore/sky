@@ -1,6 +1,7 @@
 package skyd
 
 /*
+#cgo LDFLAGS: -lm
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
