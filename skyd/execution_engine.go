@@ -109,6 +109,7 @@ struct sky_cursor {
     uint32_t action_data_sz;
 
     int32_t session_event_index;
+    void *rawptr;
     void *startptr;
     void *nextptr;
     void *endptr;
@@ -220,6 +221,8 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
 {
     sky_cursor *cursor = calloc(1, sizeof(sky_cursor));
     if(cursor == NULL) debug("[malloc] Unable to allocate cursor.");
+    cursor->rawptr = malloc(4096);
+    if(cursor->rawptr == NULL) debug("[malloc] Unable to allocate cursor raw data.");
 
     // Add one property to account for the zero descriptor.
     min_property_id -= SKY_PROPERTY_DESCRIPTOR_PADDING;
@@ -257,7 +260,11 @@ void sky_cursor_free(sky_cursor *cursor)
         cursor->property_count = 0;
 
         if(cursor->data != NULL) free(cursor->data);
+        cursor->data = NULL;
         if(cursor->key_prefix != NULL) free(cursor->key_prefix);
+        cursor->key_prefix = NULL;
+        if(cursor->rawptr != NULL) free(cursor->rawptr);
+        cursor->rawptr = NULL;
 
         free(cursor);
     }
@@ -347,7 +354,7 @@ bool sky_cursor_next_object(sky_cursor *cursor)
         // Retrieve the data for the next object.
         size_t data_length;
         void *data = (void*)leveldb_iter_value(cursor->leveldb_iterator, &data_length);
-        
+
         // Set the pointer on the cursor.
         sky_cursor_set_ptr(cursor, data, data_length);
         
@@ -390,6 +397,12 @@ void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz)
 
 void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
 {
+    // Copy data.
+    if(sz > 0) {
+        memcpy(cursor->rawptr, ptr, sz);
+        ptr = cursor->rawptr;
+    }
+
     // Set the start of the path and the length of the data.
     cursor->startptr   = ptr;
     cursor->nextptr    = ptr;
