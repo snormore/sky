@@ -3,7 +3,6 @@ package skyd
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/jmhodges/levigo"
@@ -349,7 +348,7 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&params)
 	if err != nil && err != io.EOF {
-		return nil, errors.New("Malformed json request.")
+		return nil, fmt.Errorf("Malformed json request: %v", err)
 	}
 	return params, nil
 }

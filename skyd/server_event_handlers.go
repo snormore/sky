@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -28,10 +29,10 @@ func (s *Server) addEventHandlers() {
 		return s.deleteEventHandler(w, req, params)
 	}).Methods("DELETE")
 
-	//BULK
-	s.ApiHandleFunc("/tables/{name}/objects/_bulk", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-		return s.updateMultipleEventsHandler(w, req, params)
-	}).Methods("PUT")
+	// Bulk import.
+	s.ApiHandleFunc("/tables/{name}/events", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.bulkUpdateEventsHandler(w, req, params)
+	}).Methods("PATCH")
 }
 
 // GET /tables/:name/objects/:objectId/events
@@ -153,39 +154,46 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 	return nil, servlet.PutEvent(table, vars["objectId"], event, false)
 }
 
-// PUT /tables/:name/objects/_bulk
-func (s *Server) updateMultipleEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+// PATCH /tables/:name/events
+func (s *Server) bulkUpdateEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
 
-	type BulkEvent struct {
-		data      map[string]interface{}
-		timestamp string
-		objectId  string
+	events, ok := params["events"].([]interface{})
+	if !ok {
+		return nil, errors.New("Events required")
 	}
-
-	for _, item := range params["events"].([]interface{}) {
-		//is there any way to share this across the full MPUT request?
-		table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
-
-		rawEvent := item.(map[string]interface{})
-
+	
+	for index, item := range events {
+		// Grab the event object.
+		rawEvent, ok := item.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("Invalid event object [%d]", index)
+		}
+		// Extract the object identifier.
+		objectId, ok := rawEvent["id"].(string)
+		if !ok {
+			return nil, fmt.Errorf("Object identifier required [%d]", index)
+		}
+		
+		// Determine the appropriate servlet to insert into.
+		table, servlet, err := s.GetObjectContext(vars["name"], objectId)
 		if err != nil {
 			return nil, err
 		}
+
+		// Convert to a Sky event and insert.
 		event, err := table.DeserializeEvent(rawEvent)
 		if err != nil {
 			return nil, err
 		}
-		err = table.FactorizeEvent(event, s.factors, true)
-		if err != nil {
+		if err = table.FactorizeEvent(event, s.factors, true); err != nil {
 			return nil, err
 		}
-		err = servlet.PutEvent(table, rawEvent["id"].(string), event, false)
-		if err != nil {
+		if err = servlet.PutEvent(table, objectId, event, false); err != nil {
 			return nil, err
 		}
 	}
-	return nil, err
+	return nil, nil
 }
 
 // DELETE /tables/:name/objects/:objectId/events/:timestamp
