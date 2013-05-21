@@ -27,6 +27,11 @@ func (s *Server) addEventHandlers() {
 	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 		return s.deleteEventHandler(w, req, params)
 	}).Methods("DELETE")
+
+	//BULK
+	s.ApiHandleFunc("/tables/{name}/objects/_bulk", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.updateMultipleEventsHandler(w, req, params)
+	}).Methods("PUT")
 }
 
 // GET /tables/:name/objects/:objectId/events
@@ -146,6 +151,41 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 		return nil, err
 	}
 	return nil, servlet.PutEvent(table, vars["objectId"], event, false)
+}
+
+// PUT /tables/:name/objects/_bulk
+func (s *Server) updateMultipleEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+	vars := mux.Vars(req)
+
+	type BulkEvent struct {
+		data      map[string]interface{}
+		timestamp string
+		objectId  string
+	}
+
+	for _, item := range params["events"].([]interface{}) {
+		//is there any way to share this across the full MPUT request?
+		table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+
+		rawEvent := item.(map[string]interface{})
+
+		if err != nil {
+			return nil, err
+		}
+		event, err := table.DeserializeEvent(rawEvent)
+		if err != nil {
+			return nil, err
+		}
+		err = table.FactorizeEvent(event, s.factors, true)
+		if err != nil {
+			return nil, err
+		}
+		err = servlet.PutEvent(table, rawEvent["id"].(string), event, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, err
 }
 
 // DELETE /tables/:name/objects/:objectId/events/:timestamp
