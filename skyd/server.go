@@ -1,7 +1,6 @@
 package skyd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -457,36 +456,10 @@ func (s *Server) DeleteTable(name string) error {
 		return fmt.Errorf("Table does not exist: %s", name)
 	}
 
-	// Determine table prefix.
-	prefix, err := TablePrefix(table.Name)
-	if err != nil {
-		return err
-	}
-
 	// Delete data from each servlet.
 	for _, servlet := range s.servlets {
-		servlet.Lock()
-		defer servlet.Unlock()
-
-		// Delete the data from disk.
-		ro := levigo.NewReadOptions()
-		defer ro.Close()
-		wo := levigo.NewWriteOptions()
-		defer wo.Close()
-		iterator := servlet.db.NewIterator(ro)
-		defer iterator.Close()
-
-		iterator.Seek(prefix)
-		for iterator = iterator; iterator.Valid(); iterator.Next() {
-			key := iterator.Key()
-			if bytes.HasPrefix(key, prefix) {
-				err := servlet.db.Delete(wo, key)
-				if err != nil {
-					return err
-				}
-			} else {
-				break
-			}
+		if err := servlet.DeleteTable(name); err != nil {
+			return err
 		}
 	}
 

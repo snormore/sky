@@ -77,6 +77,41 @@ func (s *Servlet) Close() {
 	}
 }
 
+// Deletes a table stored on the servlet.
+func (s *Servlet) DeleteTable(name string) error {
+	s.Lock()
+	defer s.Unlock()
+
+	// Determine table prefix.
+	prefix, err := TablePrefix(name)
+	if err != nil {
+		return err
+	}
+
+	// Delete the data from disk.
+	ro := levigo.NewReadOptions()
+	defer ro.Close()
+	wo := levigo.NewWriteOptions()
+	defer wo.Close()
+	iterator := s.db.NewIterator(ro)
+	defer iterator.Close()
+
+	iterator.Seek(prefix)
+	for iterator = iterator; iterator.Valid(); iterator.Next() {
+		key := iterator.Key()
+		if bytes.HasPrefix(key, prefix) {
+			err := s.db.Delete(wo, key)
+			if err != nil {
+				return err
+			}
+		} else {
+			break
+		}
+	}
+
+	return nil
+}
+
 //--------------------------------------
 // Lock Management
 //--------------------------------------
