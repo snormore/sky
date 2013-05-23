@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/szferi/gomdb"
+	"github.com/benbjohnson/gomdb"
 	"github.com/ugorji/go-msgpack"
 	"io"
 	"io/ioutil"
@@ -470,12 +470,30 @@ func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*Execution
 		return nil, err
 	}
 
-	// TODO: Initialize cursor.
-	if err = e.SetIterator(nil); err != nil {
+	// Begin a transaction.
+	txn, dbi, err := s.mdbTxnBegin(table.Name, false)
+	if err != nil {
+		return nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for execution engine: %s", err)
+	}
+	defer s.env.DBIClose(dbi)
+
+	// Setup cursor.
+	cursor, err := txn.CursorOpen(dbi)
+	if err != nil {
 		e.Destroy()
-		return nil, err
+		cursor.Close()
+		txn.Abort()
+		return nil, fmt.Errorf("skyd.Servlet: Unable to open LMDB cursor: %s", err)
 	}
 
+	// Initialize cursor.
+	if err = e.SetLmdbCursor(cursor); err != nil {
+		e.Destroy()
+		cursor.Close()
+		txn.Abort()
+		return nil, fmt.Errorf("skyd.Servlet: Unable to open LMDB cursor: %s", err)
+	}
+	
 	return e, nil
 }
 

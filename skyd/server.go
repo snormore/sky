@@ -514,7 +514,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 				return nil, err
 			}
 			// Reset the iterator.
-			if err = e.ResetIterator(); err != nil {
+			if err = e.ResetLmdbCursor(); err != nil {
 				return nil, err
 			}
 		}

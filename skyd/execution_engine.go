@@ -1,13 +1,13 @@
 package skyd
 
 /*
-#cgo LDFLAGS: -lluajit-5.1 -lleveldb
+#cgo LDFLAGS: -lluajit-5.1 -llmdb
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
 #include <string.h>
-#include <leveldb/c.h>
+#include <lmdb.h>
 #include <luajit-2.0/lua.h>
 #include <luajit-2.0/lualib.h>
 #include <luajit-2.0/lauxlib.h>
@@ -109,7 +109,6 @@ struct sky_cursor {
     uint32_t action_data_sz;
 
     int32_t session_event_index;
-    void *rawptr;
     void *startptr;
     void *nextptr;
     void *endptr;
@@ -126,7 +125,7 @@ struct sky_cursor {
 
     void *key_prefix;
     uint32_t key_prefix_sz;
-    leveldb_iterator_t* leveldb_iterator;
+    MDB_cursor* lmdb_cursor;
 };
 
 //==============================================================================
@@ -166,7 +165,6 @@ void sky_clear_boolean(void *target);
 //--------------------------------------
 
 bool sky_cursor_next_object(sky_cursor *cursor);
-bool sky_cursor_has_next_object(sky_cursor *cursor);
 
 //--------------------------------------
 // Event Iteration
@@ -221,8 +219,6 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
 {
     sky_cursor *cursor = calloc(1, sizeof(sky_cursor));
     if(cursor == NULL) debug("[malloc] Unable to allocate cursor.");
-    cursor->rawptr = malloc(4096);
-    if(cursor->rawptr == NULL) debug("[malloc] Unable to allocate cursor raw data.");
 
     // Add one property to account for the zero descriptor.
     min_property_id -= SKY_PROPERTY_DESCRIPTOR_PADDING;
@@ -263,8 +259,6 @@ void sky_cursor_free(sky_cursor *cursor)
         cursor->data = NULL;
         if(cursor->key_prefix != NULL) free(cursor->key_prefix);
         cursor->key_prefix = NULL;
-        if(cursor->rawptr != NULL) free(cursor->rawptr);
-        cursor->rawptr = NULL;
 
         free(cursor);
     }
@@ -350,38 +344,14 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
 bool sky_cursor_next_object(sky_cursor *cursor)
 {
     // Move to next object.
-    if(sky_cursor_has_next_object(cursor)) {
-        // Retrieve the data for the next object.
-        size_t data_length;
-        void *data = (void*)leveldb_iter_value(cursor->leveldb_iterator, &data_length);
-
-        // Set the pointer on the cursor.
-        sky_cursor_set_ptr(cursor, data, data_length);
-        
-        leveldb_iter_next(cursor->leveldb_iterator);
+    MDB_val key, data;
+    if(cursor->lmdb_cursor != NULL && mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_NEXT) == 0) {
+        sky_cursor_set_ptr(cursor, data.mv_data, data.mv_size);
         return true;
     }
     else {
         return false;
     }
-}
-
-bool sky_cursor_has_next_object(sky_cursor *cursor)
-{
-    if(cursor->leveldb_iterator != NULL && leveldb_iter_valid(cursor->leveldb_iterator)) {
-        // If there's no prefix then the key is valid.
-        if(cursor->key_prefix_sz == 0) {
-            return true;
-        }
-
-        // Otherwise check that the key has the given the prefix.
-        size_t key_sz;
-        void *key = (void*)leveldb_iter_key(cursor->leveldb_iterator, &key_sz);
-
-        return (cursor->key_prefix_sz <= key_sz && memcmp(cursor->key_prefix, key, cursor->key_prefix_sz) == 0);
-    }
-    
-    return false;
 }
 
 void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz)
@@ -397,12 +367,6 @@ void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz)
 
 void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
 {
-    // Copy data.
-    if(sz > 0) {
-        memcpy(cursor->rawptr, ptr, sz);
-        ptr = cursor->rawptr;
-    }
-
     // Set the start of the path and the length of the data.
     cursor->startptr   = ptr;
     cursor->nextptr    = ptr;
@@ -690,7 +654,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/jmhodges/levigo"
+	"github.com/benbjohnson/gomdb"
 	"github.com/ugorji/go-msgpack"
 	"regexp"
 	"sort"
@@ -708,7 +672,7 @@ import (
 // An ExecutionEngine is used to iterate over a series of objects.
 type ExecutionEngine struct {
 	tableName    string
-	iterator     *levigo.Iterator
+	lmdbCursor   *mdb.Cursor
 	cursor       *C.sky_cursor
 	state        *C.lua_State
 	header       string
@@ -793,47 +757,34 @@ func (e *ExecutionEngine) FullAnnotatedSource() string {
 	})
 }
 
-// Sets the iterator to use.
-func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
+// Sets the low-level LMDB cursor to use.
+func (e *ExecutionEngine) SetLmdbCursor(lmdbCursor *mdb.Cursor) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	return e.setIterator(iterator)
+	return e.setLmdbCursor(lmdbCursor)
 }
 
-// Resets the iterator.
-func (e *ExecutionEngine) ResetIterator() error {
-	return e.SetIterator(e.iterator)
+// Resets the LMDB cursor.
+func (e *ExecutionEngine) ResetLmdbCursor() error {
+	return e.SetLmdbCursor(e.lmdbCursor)
 }
 	
-func (e *ExecutionEngine) setIterator(iterator *levigo.Iterator) error {
-	// Close the old iterator (if it's not the one being set).
-	if e.iterator != nil && e.iterator != iterator {
-		e.iterator.Close()
+func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
+	// Close the old cursor (if it's not the one being set).
+	if e.lmdbCursor != nil && e.lmdbCursor != lmdbCursor {
+		txn := e.lmdbCursor.Txn()
+		e.lmdbCursor.Close()
+		txn.Abort()
 	}
 	if e.cursor != nil {
-		e.cursor.leveldb_iterator = nil
+		e.cursor.lmdb_cursor = nil
 	}
 
-	// Attach the new iterator.
-	e.iterator = iterator
-	if e.iterator != nil {
-		// Determine table prefix.
-		prefix, err := TablePrefix(e.tableName)
-		if err != nil {
-			return err
-		}
-		prefix = prefix[0 : len(prefix)-1]
-
-		// Set the prefix & seek. This will be cleaned up by sky_cursor_free().
-		if cprefix := C.CString(string(prefix)); cprefix != nil {
-			C.sky_cursor_set_key_prefix(e.cursor, unsafe.Pointer(cprefix), C.uint32_t(len(prefix)))
-			e.iterator.Seek(prefix)
-		} else {
-			return errors.New("skyd.ExecutionEngine: Unable to allocate table prefix")
-		}
-
-		// Assign the iterator to the cursor.
-		e.cursor.leveldb_iterator = e.iterator.Iter
+	// Attach the new cursor.
+	e.lmdbCursor = lmdbCursor
+	if e.lmdbCursor != nil {
+		// CursorRenew()?
+		e.cursor.lmdb_cursor = e.lmdbCursor.MdbCursor()
 	}
 
 	return nil
@@ -936,8 +887,8 @@ func (e *ExecutionEngine) destroy() {
 		C.lua_close(e.state)
 		e.state = nil
 	}
-	if e.iterator != nil {
-		e.setIterator(nil)
+	if e.lmdbCursor != nil {
+		e.setLmdbCursor(nil)
 	}
 	if e.cursor != nil {
 		C.sky_cursor_free(e.cursor)
@@ -971,7 +922,7 @@ func (e *ExecutionEngine) Initialize() (interface{}, error) {
 	return e.decodeResult()
 }
 
-// Executes an aggregation over the iterator.
+// Executes an aggregation over the entire database.
 func (e *ExecutionEngine) Aggregate(data interface{}) (interface{}, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -997,7 +948,7 @@ func (e *ExecutionEngine) Aggregate(data interface{}) (interface{}, error) {
 	return e.decodeResult()
 }
 
-// Executes an merge over the iterator.
+// Executes an merge over the aggregated data.
 func (e *ExecutionEngine) Merge(results interface{}, data interface{}) (interface{}, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
