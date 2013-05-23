@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/jmhodges/levigo"
 	"hash/fnv"
 	"io"
 	"io/ioutil"
@@ -502,18 +501,11 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	for index, servlet := range s.servlets {
 		// Create an engine for each servlet. The execution engine is
 		// protected by a mutex so it's safe to destroy it at any time.
-		e, err := NewExecutionEngine(table, source)
+		e, err := servlet.CreateExecutionEngine(table, source)
 		if err != nil {
 			return nil, err
 		}
 		defer e.Destroy()
-
-		// Initialize iterator.
-		ro := levigo.NewReadOptions()
-		iterator := servlet.db.NewIterator(ro)
-		if err = e.SetIterator(iterator); err != nil {
-			return nil, err
-		}
 		engines = append(engines, e)
 
 		// Run initialization once if required.
@@ -522,7 +514,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 				return nil, err
 			}
 			// Reset the iterator.
-			if err = e.SetIterator(iterator); err != nil {
+			if err = e.ResetIterator(); err != nil {
 				return nil, err
 			}
 		}

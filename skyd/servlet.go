@@ -430,3 +430,21 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 
 	return nil
 }
+
+// Creates and initializes an execution engine for querying this servlet.
+func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
+	e, err := NewExecutionEngine(table, source)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize iterator.
+	ro := levigo.NewReadOptions()
+	iterator := s.db.NewIterator(ro)
+	if err = e.SetIterator(iterator); err != nil {
+		e.Destroy()
+		return nil, err
+	}
+
+	return e, nil
+}

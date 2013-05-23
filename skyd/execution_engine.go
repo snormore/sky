@@ -799,6 +799,11 @@ func (e *ExecutionEngine) SetIterator(iterator *levigo.Iterator) error {
 	defer e.mutex.Unlock()
 	return e.setIterator(iterator)
 }
+
+// Resets the iterator.
+func (e *ExecutionEngine) ResetIterator() error {
+	return e.SetIterator(e.iterator)
+}
 	
 func (e *ExecutionEngine) setIterator(iterator *levigo.Iterator) error {
 	// Close the old iterator (if it's not the one being set).
