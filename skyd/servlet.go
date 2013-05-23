@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/jmhodges/levigo"
+	"github.com/szferi/gomdb"
 	"github.com/ugorji/go-msgpack"
 	"io"
 	"io/ioutil"
@@ -23,7 +23,7 @@ import (
 // A Servlet is a small wrapper around a single shard of a LevelDB data file.
 type Servlet struct {
 	path    string
-	db      *levigo.DB
+	env     *mdb.Env
 	factors *Factors
 	mutex   sync.Mutex
 }
@@ -54,26 +54,37 @@ func NewServlet(path string, factors *Factors) *Servlet {
 
 // Opens the underlying LevelDB database and starts the message loop.
 func (s *Servlet) Open() error {
-	err := os.MkdirAll(s.path, 0700)
-	if err != nil {
+	// Create directory if it doesn't exist.
+	if err := os.MkdirAll(s.path, 0700); err != nil {
 		return err
 	}
 
-	opts := levigo.NewOptions()
-	opts.SetCreateIfMissing(true)
-	db, err := levigo.Open(s.path, opts)
-	if err != nil {
-		panic(fmt.Sprintf("skyd.Servlet: Unable to open LevelDB database: %v", err))
+	// Create the database environment.
+	var err error
+	if s.env, err = mdb.NewEnv(); err != nil {
+		return fmt.Errorf(fmt.Sprintf("skyd.Servlet: Unable to create LMDB environment: %v", err))
 	}
-	s.db = db
+	// Setup max dbs.
+	if err := s.env.SetMaxDBs(1024); err != nil {
+		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
+	}
+	// Setup map size.
+	if err := s.env.SetMapSize(10485760); err != nil {
+		return fmt.Errorf("skyd.Servlet: Unable to set LMDB map size: %v", err)
+	}
+	// Open the database.
+	err = s.env.Open(s.path, mdb.FIXEDMAP, 0664)
+	if err != nil {
+		return fmt.Errorf("skyd.Servlet: Cannot open servlet: %s", err)
+	}
 
 	return nil
 }
 
-// Closes the underlying LevelDB database.
+// Closes the underlying database.
 func (s *Servlet) Close() {
-	if s.db != nil {
-		s.db.Close()
+	if s.env != nil {
+		s.env.Close()
 	}
 }
 
@@ -82,33 +93,25 @@ func (s *Servlet) DeleteTable(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
-	// Determine table prefix.
-	prefix, err := TablePrefix(name)
+	// Begin a transaction.
+	txn, dbi, err := s.mdbTxnBegin(name, false)
 	if err != nil {
-		return err
+		return fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for table deletion: %s", err)
 	}
+	defer s.env.DBIClose(dbi)
 
-	// Delete the data from disk.
-	ro := levigo.NewReadOptions()
-	defer ro.Close()
-	wo := levigo.NewWriteOptions()
-	defer wo.Close()
-	iterator := s.db.NewIterator(ro)
-	defer iterator.Close()
-
-	iterator.Seek(prefix)
-	for iterator = iterator; iterator.Valid(); iterator.Next() {
-		key := iterator.Key()
-		if bytes.HasPrefix(key, prefix) {
-			err := s.db.Delete(wo, key)
-			if err != nil {
-				return err
-			}
-		} else {
-			break
-		}
+	// Drop the table.
+	if err = txn.Drop(dbi, 1); err != nil {
+		txn.Abort()
+		return fmt.Errorf("skyd.Servlet: Unable to drop LMDB DBI: %s", err)
 	}
-
+	
+	// Commit the transaction.
+	if err = txn.Commit(); err != nil {
+		txn.Abort()
+		return fmt.Errorf("skyd.Servlet: Unable to commit LMDB drop: %s", err)
+	}
+	
 	return nil
 }
 
@@ -136,7 +139,7 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 	defer s.Unlock()
 
 	// Make sure the servlet is open.
-	if s.db == nil {
+	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
 	}
 
@@ -240,7 +243,7 @@ func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time
 	defer s.Unlock()
 
 	// Make sure the servlet is open.
-	if s.db == nil {
+	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
 	}
 
@@ -271,22 +274,28 @@ func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time
 // Retrieves the state and the remaining serialized event stream for an object.
 func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error) {
 	// Make sure the servlet is open.
-	if s.db == nil {
+	if s.env == nil {
 		return nil, nil, fmt.Errorf("Servlet is not open: %v", s.path)
 	}
 
-	// Encode object identifier.
-	encodedObjectId, err := table.EncodeObjectId(objectId)
+	// Begin a transaction.
+	txn, dbi, err := s.mdbTxnBegin(table.Name, false)
 	if err != nil {
+		return nil, nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for get: %s", err)
+	}
+	defer s.env.DBIClose(dbi)
+
+	// Retrieve byte array.
+	data, err := txn.Get(dbi, []byte(objectId))
+	if err != nil {
+		txn.Abort()
 		return nil, nil, err
 	}
 
-	// Retrieve byte array.
-	ro := levigo.NewReadOptions()
-	data, err := s.db.Get(ro, encodedObjectId)
-	ro.Close()
-	if err != nil {
-		return nil, nil, err
+	// Commit the transaction.
+	if err = txn.Commit(); err != nil {
+		txn.Abort()
+		return nil, nil, fmt.Errorf("skyd.Servlet: Unable to commit LMDB get: %s", err)
 	}
 
 	// Decode the events into a slice.
@@ -374,15 +383,11 @@ func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event, stat
 
 // Writes a list of events for an object in table.
 func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state *Event) error {
+	var err error
+	
 	// Make sure the servlet is open.
-	if s.db == nil {
+	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
-	}
-
-	// Encode object identifier.
-	encodedObjectId, err := table.EncodeObjectId(objectId)
-	if err != nil {
-		return err
 	}
 
 	// Encode the state at the beginning.
@@ -404,32 +409,59 @@ func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state
 	// Encode the rest of the data.
 	buffer.Write(data)
 
-	// Write bytes to the database.
-	wo := levigo.NewWriteOptions()
-	defer wo.Close()
-	return s.db.Put(wo, encodedObjectId, buffer.Bytes())
+	// Begin a transaction.
+	txn, dbi, err := s.mdbTxnBegin(table.Name, false)
+	if err != nil {
+		return fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction to set raw: %s", err)
+	}
+	defer s.env.DBIClose(dbi)
+
+	if err = txn.Put(dbi, []byte(objectId), buffer.Bytes(), mdb.NODUPDATA); err != nil {
+		txn.Abort()
+		return fmt.Errorf("skyd.Servlet: Unable to put LMDB value: %s", err)
+	}
+	
+	// Commit the transaction.
+	if err = txn.Commit(); err != nil {
+		txn.Abort()
+		return fmt.Errorf("skyd.Servlet: Unable to commit LMDB get: %s", err)
+	}
+
+	return nil
 }
 
 // Deletes all events for a given object in a table.
 func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 	// Make sure the servlet is open.
-	if s.db == nil {
+	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
 	}
 
-	// Encode object identifier.
-	encodedObjectId, err := table.EncodeObjectId(objectId)
+	// Begin a transaction.
+	txn, dbi, err := s.mdbTxnBegin(table.Name, false)
 	if err != nil {
-		return err
+		return fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for deletion: %s", err)
+	}
+	defer s.env.DBIClose(dbi)
+
+	// Delete the key.
+	if err = txn.Del(dbi, []byte(objectId), nil); err != nil {
+		txn.Abort()
+		return fmt.Errorf("skyd.Servlet: Unable to delete LMDB key: %s", err)
 	}
 
-	// Delete object from the database.
-	wo := levigo.NewWriteOptions()
-	err = s.db.Delete(wo, encodedObjectId)
-	wo.Close()
+	// Commit the transaction.
+	if err = txn.Commit(); err != nil {
+		txn.Abort()
+		return fmt.Errorf("skyd.Servlet: Unable to commit LMDB get: %s", err)
+	}
 
 	return nil
 }
+
+//--------------------------------------
+// Execution Engine
+//--------------------------------------
 
 // Creates and initializes an execution engine for querying this servlet.
 func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
@@ -438,13 +470,35 @@ func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*Execution
 		return nil, err
 	}
 
-	// Initialize iterator.
-	ro := levigo.NewReadOptions()
-	iterator := s.db.NewIterator(ro)
-	if err = e.SetIterator(iterator); err != nil {
+	// TODO: Initialize cursor.
+	if err = e.SetIterator(nil); err != nil {
 		e.Destroy()
 		return nil, err
 	}
 
 	return e, nil
+}
+
+//--------------------------------------
+// LDMB
+//--------------------------------------
+
+// Creates and initializes an execution engine for querying this servlet.
+func (s *Servlet) mdbTxnBegin(name string, readOnly bool) (*mdb.Txn, mdb.DBI, error) {
+	var flags uint = 0
+	if readOnly {
+		flags = flags | mdb.RDONLY
+	}
+	
+	// Setup cursor to iterate over table data.
+	txn, err := s.env.BeginTxn(nil, flags)
+	if err != nil {
+		return nil, 0, fmt.Errorf("skyd.Servlet: Unable to start LMDB transaction: %s", err)
+	}
+	dbi, err := txn.DBIOpen(&name, mdb.CREATE)
+	if err != nil {
+		return nil, 0, fmt.Errorf("skyd.Servlet: Unable to open LMDB DBI: %s", err)
+	}
+	
+	return txn, dbi, nil
 }
