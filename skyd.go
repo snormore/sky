@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/skydb/sky/skyd"
 	"flag"
 	"fmt"
+	"github.com/skydb/sky/skyd"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -30,7 +30,7 @@ var configPath string
 //--------------------------------------
 
 func init() {
- 	config = skyd.NewConfig()
+	config = skyd.NewConfig()
 	flag.UintVar(&config.Port, "port", config.Port, "the port to listen on")
 	flag.UintVar(&config.Port, "p", config.Port, "the port to listen on")
 	flag.StringVar(&config.DataPath, "data-path", config.DataPath, "the data directory")
