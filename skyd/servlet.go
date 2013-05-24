@@ -98,7 +98,6 @@ func (s *Servlet) DeleteTable(name string) error {
 	if err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for table deletion: %s", err)
 	}
-	defer s.env.DBIClose(dbi)
 
 	// Drop the table.
 	if err = txn.Drop(dbi, 1); err != nil {
@@ -283,7 +282,6 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 	if err != nil {
 		return nil, nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for get: %s", err)
 	}
-	defer s.env.DBIClose(dbi)
 
 	// Retrieve byte array.
 	data, err := txn.Get(dbi, []byte(objectId))
@@ -414,7 +412,6 @@ func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state
 	if err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction to set raw: %s", err)
 	}
-	defer s.env.DBIClose(dbi)
 
 	if err = txn.Put(dbi, []byte(objectId), buffer.Bytes(), mdb.NODUPDATA); err != nil {
 		txn.Abort()
@@ -442,7 +439,6 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 	if err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for deletion: %s", err)
 	}
-	defer s.env.DBIClose(dbi)
 
 	// Delete the key.
 	if err = txn.Del(dbi, []byte(objectId), nil); err != nil {
@@ -475,7 +471,6 @@ func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*Execution
 	if err != nil {
 		return nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for execution engine: %s", err)
 	}
-	defer s.env.DBIClose(dbi)
 
 	// Setup cursor.
 	cursor, err := txn.CursorOpen(dbi)
