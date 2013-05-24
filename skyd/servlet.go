@@ -69,7 +69,7 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
 	}
 	// Setup map size.
-	if err := s.env.SetMapSize(10485760); err != nil {
+	if err := s.env.SetMapSize(10 * (2<<30)); err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB map size: %v", err)
 	}
 	// Open the database.
