@@ -73,7 +73,7 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB map size: %v", err)
 	}
 	// Open the database.
-	err = s.env.Open(s.path, mdb.FIXEDMAP, 0664)
+	err = s.env.Open(s.path, mdb.NOSYNC, 0664)
 	if err != nil {
 		return fmt.Errorf("skyd.Servlet: Cannot open servlet: %s", err)
 	}
