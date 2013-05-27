@@ -285,7 +285,7 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 
 	// Retrieve byte array.
 	data, err := txn.Get(dbi, []byte(objectId))
-	if err != nil {
+	if err != nil && err != mdb.NotFound {
 		txn.Abort()
 		return nil, nil, err
 	}
