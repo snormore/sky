@@ -285,7 +285,7 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 
 	// Retrieve byte array.
 	data, err := txn.Get(dbi, []byte(objectId))
-	if err != nil {
+	if err != nil && err != mdb.NotFound {
 		txn.Abort()
 		return nil, nil, err
 	}
@@ -485,7 +485,6 @@ func (s *Servlet) CreateExecutionEngine(table *Table, prefix string, source stri
 	if err = e.SetLmdbCursor(cursor); err != nil {
 		e.Destroy()
 		cursor.Close()
-		txn.Abort()
 		return nil, fmt.Errorf("skyd.Servlet: Unable to open LMDB cursor: %s", err)
 	}
 
