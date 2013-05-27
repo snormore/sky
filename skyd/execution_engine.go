@@ -674,6 +674,7 @@ type ExecutionEngine struct {
 	lmdbCursor   *mdb.Cursor
 	cursor       *C.sky_cursor
 	state        *C.lua_State
+	prefix       string
 	header       string
 	source       string
 	fullSource   string
@@ -789,6 +790,17 @@ func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
 	if e.lmdbCursor != nil {
 		// CursorRenew()?
 		e.cursor.lmdb_cursor = e.lmdbCursor.MdbCursor()
+
+		// Move the cursor to the prefix start.
+		if len(e.prefix) > 0 {
+			if _, _, err := e.lmdbCursor.Get([]byte(e.prefix), mdb.SET_RANGE); err != nil && err != mdb.NotFound {
+				return err
+			} else if err == nil {
+				if _, _, err := e.lmdbCursor.Get(nil, mdb.PREV); err != nil && err != mdb.NotFound {
+					return err
+				}
+			}
+		}
 	}
 
 	return nil
@@ -926,6 +938,7 @@ func (e *ExecutionEngine) setPrefix(prefix string) error {
 		}
 	}
 	e.cursor.key_prefix_sz = C.uint32_t(len(prefix))
+	e.prefix = prefix
 
 	return nil
 }
