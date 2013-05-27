@@ -26,16 +26,17 @@ import (
 
 // A Server is the front end that controls access to tables.
 type Server struct {
-	httpServer      *http.Server
-	router          *mux.Router
-	logger          *log.Logger
-	path            string
-	listener        net.Listener
-	servlets        []*Servlet
-	tables          map[string]*Table
-	factors         *Factors
-	shutdownChannel chan bool
-	mutex           sync.Mutex
+	httpServer       *http.Server
+	router           *mux.Router
+	logger           *log.Logger
+	path             string
+	listener         net.Listener
+	servlets         []*Servlet
+	tables           map[string]*Table
+	factors          *Factors
+	shutdownChannel  chan bool
+	shutdownFinished chan bool
+	mutex            sync.Mutex
 }
 
 //------------------------------------------------------------------------------
@@ -144,7 +145,12 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 		return err
 	}
 	s.listener = listener
-	go s.httpServer.Serve(s.listener)
+
+	s.shutdownFinished = make(chan bool)
+	go func() {
+		s.httpServer.Serve(s.listener)
+		s.shutdownFinished <- true
+	}()
 
 	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", Version, s.httpServer.Addr)
 
@@ -165,6 +171,8 @@ func (s *Server) Shutdown() error {
 			return err
 		}
 	}
+	// wait for server goroutine to finish
+	<-s.shutdownFinished
 
 	// Notify that the server is shutdown.
 	if s.shutdownChannel != nil {
