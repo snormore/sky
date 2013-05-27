@@ -12,9 +12,9 @@ import (
 //------------------------------------------------------------------------------
 
 const (
-	DefaultPort = 8585
+	DefaultPort     = 8585
 	DefaultDataPath = "/var/lib/sky"
-	DefaultPidPath = "/var/run/skyd.pid"
+	DefaultPidPath  = "/var/run/skyd.pid"
 )
 
 //------------------------------------------------------------------------------
@@ -25,9 +25,9 @@ const (
 
 // The configuration for running Sky.
 type Config struct {
-	Port uint `toml:"port"`
+	Port     uint   `toml:"port"`
 	DataPath string `toml:"data-path"`
-	PidPath string `toml:"pid-path"`
+	PidPath  string `toml:"pid-path"`
 }
 
 //------------------------------------------------------------------------------
@@ -37,11 +37,11 @@ type Config struct {
 //------------------------------------------------------------------------------
 
 // Creates a new configuration object.
-func NewConfig() (*Config) {
+func NewConfig() *Config {
 	return &Config{
-		Port: DefaultPort,
+		Port:     DefaultPort,
 		DataPath: DefaultDataPath,
-		PidPath: DefaultPidPath,
+		PidPath:  DefaultPidPath,
 	}
 }
 

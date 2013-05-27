@@ -227,3 +227,28 @@ func TestServerHistogramQuery(t *testing.T) {
 		assertResponse(t, resp, 200, `{"hist":{"__histogram__":true,"bins":{"0":3,"1":1,"2":5},"count":3,"max":4,"min":0,"width":1.3333333333333333}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
+
+// Ensure that we can can filter by prefix.
+func TestServerPrefixQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "price", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"0010a", "2012-01-01T00:00:00Z", `{"data":{"price":100}}`},
+			[]string{"0010b", "2012-01-01T00:00:00Z", `{"data":{"price":200}}`},
+			[]string{"0010b", "2012-01-01T00:00:01Z", `{}`},
+			[]string{"0020a", "2012-01-01T00:00:00Z", `{"data":{"price":30}}`},
+			[]string{"0030a", "2012-01-01T00:00:00Z", `{"data":{"price":40}}`},
+		})
+
+		// Run query.
+		query := `{
+			"prefix":"001",
+			"steps":[
+				{"type":"selection","dimensions":[],"fields":[{"name":"totalPrice","expression":"sum(price)"}]}
+			]
+		}`
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
+		assertResponse(t, resp, 200, `{"totalPrice":300}`+"\n", "POST /tables/:name/query failed.")
+	})
+}

@@ -15,7 +15,7 @@ pid-path = "/home/pid"
 func TestDecode(t *testing.T) {
 	config := NewConfig()
 	err := config.Decode(bytes.NewBufferString(testConfigFileA))
-	
+
 	if err != nil {
 		t.Fatalf("Unable to decode: %v", err)
 	} else if config.Port != 9000 {

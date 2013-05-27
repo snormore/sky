@@ -162,7 +162,7 @@ func (s *Server) bulkUpdateEventsHandler(w http.ResponseWriter, req *http.Reques
 	if !ok {
 		return nil, errors.New("Events required")
 	}
-	
+
 	for index, item := range events {
 		// Grab the event object.
 		rawEvent, ok := item.(map[string]interface{})
@@ -174,7 +174,7 @@ func (s *Server) bulkUpdateEventsHandler(w http.ResponseWriter, req *http.Reques
 		if !ok {
 			return nil, fmt.Errorf("Object identifier required [%d]", index)
 		}
-		
+
 		// Determine the appropriate servlet to insert into.
 		table, servlet, err := s.GetObjectContext(vars["name"], objectId)
 		if err != nil {

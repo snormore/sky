@@ -230,14 +230,14 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
     if(cursor->property_descriptors == NULL) debug("[malloc] Unable to allocate property descriptors.");
     cursor->property_count = property_count;
     cursor->property_zero_descriptor = NULL;
-    
+
     // Initialize all property descriptors to noop.
     int32_t i;
     for(i=0; i<property_count; i++) {
         int64_t property_id = min_property_id + (int64_t)i;
         cursor->property_descriptors[i].property_id = property_id;
         cursor->property_descriptors[i].set_func = sky_set_noop;
-        
+
         // Save a pointer to the descriptor that points to property zero.
         if(property_id == 0) {
             cursor->property_zero_descriptor = &cursor->property_descriptors[i];
@@ -301,7 +301,7 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
                              uint32_t offset, uint32_t sz, const char *data_type)
 {
     sky_property_descriptor *property_descriptor = &cursor->property_zero_descriptor[property_id];
-    
+
     // Set the offset and set_func function on the descriptor.
     property_descriptor->offset = offset;
     if(strlen(data_type) == 0) {
@@ -328,7 +328,7 @@ void sky_cursor_set_property(sky_cursor *cursor, int64_t property_id,
         property_descriptor->set_func = sky_set_boolean;
         property_descriptor->clear_func = sky_clear_boolean;
     }
-    
+
     // Resize the action data area.
     if(property_id < 0 && offset+sz > cursor->action_data_sz) {
         cursor->action_data_sz = offset+sz;
@@ -346,18 +346,17 @@ bool sky_cursor_next_object(sky_cursor *cursor)
     // Move to next object.
     MDB_val key, data;
     if(cursor->lmdb_cursor != NULL && mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_NEXT) == 0) {
+        // Don't move to the next object if the prefix doesn't match.
+        if(cursor->key_prefix != NULL && (key.mv_size < cursor->key_prefix_sz || memcmp(cursor->key_prefix, key.mv_data, cursor->key_prefix_sz) != 0)) {
+            return false;
+        }
+
         sky_cursor_set_ptr(cursor, data.mv_data, data.mv_size);
         return true;
     }
     else {
         return false;
     }
-}
-
-void sky_cursor_set_key_prefix(sky_cursor *cursor, void *prefix, uint32_t sz)
-{
-    cursor->key_prefix = prefix;
-    cursor->key_prefix_sz = sz;
 }
 
 
@@ -377,10 +376,10 @@ void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     cursor->session_idle_in_sec = 0;
     cursor->session_event_index = -1;
     cursor->eof        = !(ptr != NULL && cursor->startptr < cursor->endptr);
-    
+
     // Clear the data object if set.
     memset(cursor->data, 0, cursor->data_sz);
-    
+
     // The first item is the current state so skip it.
     if(cursor->startptr != NULL && minipack_is_raw(cursor->startptr)) {
         cursor->startptr += minipack_sizeof_elem_and_data(cursor->startptr);
@@ -412,11 +411,11 @@ void sky_cursor_next_event(sky_cursor *cursor)
     // Otherwise update the event object with data.
     else {
         sky_event_flag_t flag = *((sky_event_flag_t*)ptr);
-        
+
         // If flag isn't correct then report and exit.
         if(flag != EVENT_FLAG) badcursordata("eflag", ptr);
         ptr += sizeof(sky_event_flag_t);
-        
+
         // Read timestamp.
         size_t sz;
         int64_t ts = minipack_unpack_int(ptr, &sz);
@@ -440,13 +439,13 @@ void sky_cursor_next_event(sky_cursor *cursor)
         // Only process the event if we're still in session.
         if(cursor->in_session) {
             cursor->session_event_index++;
-            
+
             // Set timestamp.
             int64_t *data_ts = (int64_t*)(cursor->data + cursor->timestamp_descriptor.ts_offset);
             uint32_t *data_timestamp = (uint32_t*)(cursor->data + cursor->timestamp_descriptor.timestamp_offset);
             *data_ts = ts;
             *data_timestamp = timestamp;
-            
+
             // Clear old action data.
             if(cursor->action_data_sz > 0) {
               memset(cursor->data, 0, cursor->action_data_sz);
@@ -619,7 +618,7 @@ int64_t sky_timestamp_shift(int64_t value)
 {
     int64_t usec = value % USEC_PER_SEC;
     int64_t sec  = (value / USEC_PER_SEC);
-    
+
     return (sec << SECONDS_BIT_OFFSET) + usec;
 }
 
@@ -633,7 +632,7 @@ int64_t sky_timestamp_unshift(int64_t value)
 {
     int64_t usec = value & USEC_MASK;
     int64_t sec  = value >> SECONDS_BIT_OFFSET;
-    
+
     return (sec * USEC_PER_SEC) + usec;
 }
 
@@ -689,7 +688,7 @@ type ExecutionEngine struct {
 //
 //------------------------------------------------------------------------------
 
-func NewExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
+func NewExecutionEngine(table *Table, prefix string, source string) (*ExecutionEngine, error) {
 	if table == nil {
 		return nil, errors.New("skyd.ExecutionEngine: Table required")
 	}
@@ -716,9 +715,14 @@ func NewExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
 	defer e.mutex.Unlock()
 
 	// Initialize the engine.
-	err = e.init()
-	if err != nil {
+	if err = e.init(); err != nil {
 		fmt.Printf("%s\n\n", e.FullAnnotatedSource())
+		e.destroy()
+		return nil, err
+	}
+
+	// Set the prefix.
+	if err = e.setPrefix(prefix); err != nil {
 		e.destroy()
 		return nil, err
 	}
@@ -768,7 +772,7 @@ func (e *ExecutionEngine) SetLmdbCursor(lmdbCursor *mdb.Cursor) error {
 func (e *ExecutionEngine) ResetLmdbCursor() error {
 	return e.SetLmdbCursor(e.lmdbCursor)
 }
-	
+
 func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
 	// Close the old cursor (if it's not the one being set).
 	if e.lmdbCursor != nil && e.lmdbCursor != lmdbCursor {
@@ -894,6 +898,36 @@ func (e *ExecutionEngine) destroy() {
 		C.sky_cursor_free(e.cursor)
 		e.cursor = nil
 	}
+}
+
+//--------------------------------------
+// Prefix
+//--------------------------------------
+
+// Sets the prefix on the execution engine.
+func (e *ExecutionEngine) setPrefix(prefix string) error {
+	if e.cursor == nil {
+		return errors.New("Cursor not initialized")
+	}
+
+	// Clean up existing key prefix.
+	if e.cursor.key_prefix != nil {
+		C.free(e.cursor.key_prefix)
+		e.cursor.key_prefix = nil
+		e.cursor.key_prefix_sz = 0
+	}
+
+	// Allocate new prefix.
+	if prefix == "" {
+		e.cursor.key_prefix = nil
+	} else {
+		if e.cursor.key_prefix = unsafe.Pointer(C.CString(prefix)); e.cursor.key_prefix == nil {
+			return errors.New("skyd.ExecutionEngine: Unable to allocate cursor key prefix")
+		}
+	}
+	e.cursor.key_prefix_sz = C.uint32_t(len(prefix))
+
+	return nil
 }
 
 //--------------------------------------

@@ -11,7 +11,7 @@ func TestQueryEncodeDecode(t *testing.T) {
 	table.Open()
 	defer table.Close()
 
-	json := `{"sessionIdleTime":0,"steps":[{"expression":"baz == 'hello'","steps":[{"dimensions":[],"fields":[{"expression":"sum(x)","name":"myValue"}],"name":"xyz","type":"selection"}],"type":"condition","within":[0,2],"withinUnits":"steps"},{"dimensions":["foo","bar"],"fields":[{"expression":"count()","name":"count"}],"name":"","type":"selection"}]}` + "\n"
+	json := `{"prefix":"","sessionIdleTime":0,"steps":[{"expression":"baz == 'hello'","steps":[{"dimensions":[],"fields":[{"expression":"sum(x)","name":"myValue"}],"name":"xyz","type":"selection"}],"type":"condition","within":[0,2],"withinUnits":"steps"},{"dimensions":["foo","bar"],"fields":[{"expression":"count()","name":"count"}],"name":"","type":"selection"}]}` + "\n"
 
 	// Decode
 	q := NewQuery(table, nil)

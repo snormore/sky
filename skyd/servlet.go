@@ -69,7 +69,7 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
 	}
 	// Setup map size.
-	if err := s.env.SetMapSize(10 * (2<<30)); err != nil {
+	if err := s.env.SetMapSize(10 * (2 << 30)); err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB map size: %v", err)
 	}
 	// Open the database.
@@ -104,13 +104,13 @@ func (s *Servlet) DeleteTable(name string) error {
 		txn.Abort()
 		return fmt.Errorf("skyd.Servlet: Unable to drop LMDB DBI: %s", err)
 	}
-	
+
 	// Commit the transaction.
 	if err = txn.Commit(); err != nil {
 		txn.Abort()
 		return fmt.Errorf("skyd.Servlet: Unable to commit LMDB drop: %s", err)
 	}
-	
+
 	return nil
 }
 
@@ -382,7 +382,7 @@ func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event, stat
 // Writes a list of events for an object in table.
 func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state *Event) error {
 	var err error
-	
+
 	// Make sure the servlet is open.
 	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
@@ -417,7 +417,7 @@ func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state
 		txn.Abort()
 		return fmt.Errorf("skyd.Servlet: Unable to put LMDB value: %s", err)
 	}
-	
+
 	// Commit the transaction.
 	if err = txn.Commit(); err != nil {
 		txn.Abort()
@@ -460,8 +460,8 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 //--------------------------------------
 
 // Creates and initializes an execution engine for querying this servlet.
-func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*ExecutionEngine, error) {
-	e, err := NewExecutionEngine(table, source)
+func (s *Servlet) CreateExecutionEngine(table *Table, prefix string, source string) (*ExecutionEngine, error) {
+	e, err := NewExecutionEngine(table, prefix, source)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +488,7 @@ func (s *Servlet) CreateExecutionEngine(table *Table, source string) (*Execution
 		txn.Abort()
 		return nil, fmt.Errorf("skyd.Servlet: Unable to open LMDB cursor: %s", err)
 	}
-	
+
 	return e, nil
 }
 
@@ -502,7 +502,7 @@ func (s *Servlet) mdbTxnBegin(name string, readOnly bool) (*mdb.Txn, mdb.DBI, er
 	if readOnly {
 		flags = flags | mdb.RDONLY
 	}
-	
+
 	// Setup cursor to iterate over table data.
 	txn, err := s.env.BeginTxn(nil, flags)
 	if err != nil {
@@ -512,6 +512,6 @@ func (s *Servlet) mdbTxnBegin(name string, readOnly bool) (*mdb.Txn, mdb.DBI, er
 	if err != nil {
 		return nil, 0, fmt.Errorf("skyd.Servlet: Unable to open LMDB DBI: %s", err)
 	}
-	
+
 	return txn, dbi, nil
 }

@@ -15,7 +15,7 @@ func TestExecutionEngineExtractPropertyReferences(t *testing.T) {
 	table.CreateProperty("purchaseAmount", true, "integer")
 	table.CreateProperty("isMember", true, "boolean")
 
-	l, err := NewExecutionEngine(table, "function f(event) x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end end")
+	l, err := NewExecutionEngine(table, "", "function f(event) x = event:name() if event.salary > 100 then print(event.purchaseAmount, event, event:name()) end end")
 	if err != nil {
 		t.Fatalf("Unable to create execution engine: %v", err)
 	}

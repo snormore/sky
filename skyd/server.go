@@ -489,7 +489,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	}
 
 	// Create an engine for merging results.
-	engine, err = NewExecutionEngine(table, source)
+	engine, err = NewExecutionEngine(table, query.Prefix, source)
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +501,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	for index, servlet := range s.servlets {
 		// Create an engine for each servlet. The execution engine is
 		// protected by a mutex so it's safe to destroy it at any time.
-		e, err := servlet.CreateExecutionEngine(table, source)
+		e, err := servlet.CreateExecutionEngine(table, query.Prefix, source)
 		if err != nil {
 			return nil, err
 		}

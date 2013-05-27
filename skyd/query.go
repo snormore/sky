@@ -18,6 +18,7 @@ type Query struct {
 	table           *Table
 	factors         *Factors
 	sequence        int
+	Prefix          string
 	Steps           QueryStepList
 	SessionIdleTime int
 }
@@ -67,6 +68,7 @@ func (q *Query) Factors() *Factors {
 func (q *Query) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"sessionIdleTime": q.SessionIdleTime,
+		"prefix":          q.Prefix,
 		"steps":           q.Steps.Serialize(),
 	}
 	return obj
@@ -75,6 +77,13 @@ func (q *Query) Serialize() map[string]interface{} {
 // Decodes a query from an untyped map.
 func (q *Query) Deserialize(obj map[string]interface{}) error {
 	var err error
+
+	// Deserialize "prefix".
+	if prefix, ok := obj["prefix"].(string); ok || obj["prefix"] == nil {
+		q.Prefix = prefix
+	} else {
+		return fmt.Errorf("Invalid 'prefix': %v", obj["prefix"])
+	}
 
 	// Deserialize "session idle time".
 	if sessionIdleTime, ok := obj["sessionIdleTime"].(float64); ok || obj["sessionIdleTime"] == nil {
