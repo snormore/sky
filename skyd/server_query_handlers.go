@@ -31,6 +31,7 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 	query := NewQuery(table, s.factors)
 	selection := NewQuerySelection(query)
 	selection.Fields = append(selection.Fields, NewQuerySelectionField("count", "count()"))
+	query.Prefix = req.FormValue("prefix")
 	query.Steps = append(query.Steps, selection)
 
 	return s.RunQuery(table, query)
