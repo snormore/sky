@@ -485,7 +485,6 @@ func (s *Servlet) CreateExecutionEngine(table *Table, prefix string, source stri
 	if err = e.SetLmdbCursor(cursor); err != nil {
 		e.Destroy()
 		cursor.Close()
-		txn.Abort()
 		return nil, fmt.Errorf("skyd.Servlet: Unable to open LMDB cursor: %s", err)
 	}
 
