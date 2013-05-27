@@ -312,7 +312,7 @@ func (t *Table) DefactorizeEvent(event *Event, factors *Factors) error {
 	for k, v := range event.Data {
 		property := propertyFile.GetProperty(k)
 		if property.DataType == FactorDataType {
-			if sequence, ok := v.(uint64); ok {
+			if sequence, ok := castUint64(v); ok {
 				stringValue, err := factors.Defactorize(t.Name, property.Name, sequence)
 				if err != nil {
 					return err

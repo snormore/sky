@@ -51,11 +51,10 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 	// Denormalize events.
 	output := make([]map[string]interface{}, 0)
 	for _, event := range events {
-		e, err := table.SerializeEvent(event)
-		if err != nil {
+		if err = table.DefactorizeEvent(event, s.factors); err != nil {
 			return nil, err
 		}
-		err = table.DefactorizeEvent(event, s.factors)
+		e, err := table.SerializeEvent(event)
 		if err != nil {
 			return nil, err
 		}
@@ -101,11 +100,10 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 	}
 
 	// Convert an event to a serializable object.
-	e, err := table.SerializeEvent(event)
-	if err != nil {
+	if err = table.DefactorizeEvent(event, s.factors); err != nil {
 		return nil, err
 	}
-	err = table.DefactorizeEvent(event, s.factors)
+	e, err := table.SerializeEvent(event)
 	if err != nil {
 		return nil, err
 	}

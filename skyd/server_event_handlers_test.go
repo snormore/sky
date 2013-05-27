@@ -8,7 +8,7 @@ import (
 func TestServerUpdateEvents(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "bar", false, "string")
+		setupTestProperty("foo", "bar", false, "factor")
 		setupTestProperty("foo", "baz", true, "integer")
 
 		// Send two new events.
