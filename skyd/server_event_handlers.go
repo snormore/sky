@@ -1,10 +1,11 @@
 package skyd
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"io"
 	"time"
 )
 
@@ -29,10 +30,8 @@ func (s *Server) addEventHandlers() {
 		return s.deleteEventHandler(w, req, params)
 	}).Methods("DELETE")
 
-	// Bulk import.
-	s.ApiHandleFunc("/tables/{name}/events", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-		return s.bulkUpdateEventsHandler(w, req, params)
-	}).Methods("PATCH")
+	// Streaming import.
+	s.router.HandleFunc("/tables/{name}/events", s.streamUpdateEventsHandler).Methods("PATCH")
 }
 
 // GET /tables/:name/objects/:objectId/events
@@ -155,45 +154,49 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 }
 
 // PATCH /tables/:name/events
-func (s *Server) bulkUpdateEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
-	events, ok := params["events"].([]interface{})
-	if !ok {
-		return nil, errors.New("Events required")
-	}
-
-	for index, item := range events {
-		// Grab the event object.
-		rawEvent, ok := item.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("Invalid event object [%d]", index)
+	// Stream in JSON event objects.
+	decoder := json.NewDecoder(req.Body)
+	for {
+		// Read in a JSON object.
+		rawEvent := map[string]interface{}{}
+		if err := decoder.Decode(&rawEvent); err == io.EOF {
+			break
+		} else if err != nil {
+			fmt.Fprintf(w, `{"message":"Malformed json event: %v"}`, err)
+			return
 		}
 		// Extract the object identifier.
 		objectId, ok := rawEvent["id"].(string)
 		if !ok {
-			return nil, fmt.Errorf("Object identifier required [%d]", index)
+			fmt.Fprintf(w, `{"message":"Object identifier required"}`)
+			return
 		}
 
 		// Determine the appropriate servlet to insert into.
 		table, servlet, err := s.GetObjectContext(vars["name"], objectId)
 		if err != nil {
-			return nil, err
+			fmt.Fprintf(w, `{"message":"Cannot determine object context: %v"}`, err)
+			return
 		}
 
 		// Convert to a Sky event and insert.
 		event, err := table.DeserializeEvent(rawEvent)
 		if err != nil {
-			return nil, err
+			fmt.Fprintf(w, `{"message":"Cannot deserialize: %v"}`, err)
+			return
 		}
 		if err = table.FactorizeEvent(event, s.factors, true); err != nil {
-			return nil, err
+			fmt.Fprintf(w, `{"message":"Cannot factorize: %v"}`, err)
+			return
 		}
 		if err = servlet.PutEvent(table, objectId, event, false); err != nil {
-			return nil, err
+			fmt.Fprintf(w, `{"message":"Cannot put event: %v"}`, err)
+			return
 		}
 	}
-	return nil, nil
 }
 
 // DELETE /tables/:name/objects/:objectId/events/:timestamp

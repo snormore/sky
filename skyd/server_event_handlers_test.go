@@ -80,14 +80,14 @@ func TestServerDeleteEvents(t *testing.T) {
 }
 
 // Ensure that we can put multiple events on the server at once.
-func TestServerBulkUpdateEvents(t *testing.T) {
+func TestServerStreamUpdateEvents(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "bar", false, "string")
 		setupTestProperty("foo", "baz", true, "integer")
 
 		// Send two new events in one request.
-		resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8586/tables/foo/events", "application/json", `{"events":[{"id":"xyz","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}},{"id":"xyz","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}]}`)
+		resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8586/tables/foo/events", "application/json", `{"id":"xyz","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}{"id":"xyz","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}`)
 		assertResponse(t, resp, 200, "", "PATCH /tables/:name/events failed.")
 
 		// Check our work.
