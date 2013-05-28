@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"net/http"
 	"io"
+	"net/http"
 	"time"
 )
 
@@ -154,9 +154,11 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 // PATCH /tables/:name/events
 func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
+	t0 := time.Now()
 
 	// Stream in JSON event objects.
 	decoder := json.NewDecoder(req.Body)
+	events_written := 0
 	for {
 		// Read in a JSON object.
 		rawEvent := map[string]interface{}{}
@@ -194,7 +196,10 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 			fmt.Fprintf(w, `{"message":"Cannot put event: %v"}`, err)
 			return
 		}
+		events_written++
 	}
+	// Write to access log.
+	s.logger.Printf("%s \"%s %s %s %d events OK\" %0.3f", req.RemoteAddr, req.Method, req.URL.Path, req.Proto, events_written, time.Since(t0).Seconds())
 }
 
 // DELETE /tables/:name/objects/:objectId/events/:timestamp
