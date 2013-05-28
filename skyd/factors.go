@@ -124,17 +124,17 @@ func (f *Factors) IsOpen() bool {
 
 // The key for a given namespace/id/value.
 func (f *Factors) key(namespace string, id string, value string) string {
-	return fmt.Sprintf("%s>%s:%s", namespace, id, value)
+	return fmt.Sprintf("%s.%s>%s", namespace, id, value)
 }
 
 // The reverse key for a given namespace/id/value.
 func (f *Factors) revkey(namespace string, id string, value uint64) string {
-	return fmt.Sprintf("%s>%s:%d", namespace, id, value)
+	return fmt.Sprintf("%s.%s<%d", namespace, id, value)
 }
 
 // The sequence key for a given namespace/id.
 func (f *Factors) seqkey(namespace string, id string) string {
-	return fmt.Sprintf("%s>%s!", namespace, id)
+	return fmt.Sprintf("%s.%s!", namespace, id)
 }
 
 //--------------------------------------
