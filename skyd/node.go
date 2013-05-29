@@ -85,7 +85,7 @@ func (n *Node) Serialize() map[string]interface{} {
 // Checks that the node is in a valid state.
 func (n *Node) Validate() error {
 	if !ValidNodeIdRegexp.MatchString(n.id) {
-		return InvalidNodeHostError
+		return InvalidNodeIdError
 	}
 	if !ValidNodeHostRegexp.MatchString(n.host) {
 		return InvalidNodeHostError

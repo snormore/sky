@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"errors"
+	"regexp"
 	"sort"
 )
 
@@ -13,9 +14,13 @@ import (
 
 const NodeGroupIdLength = 7
 
-var NodeRequiredError error = errors.New("Node required")
-var NodeNotFoundError error = errors.New("Node not found")
-var AttachedShardsError error = errors.New("Cannot delete node while group has shards attached")
+var ValidNodeGroupIdRegexp *regexp.Regexp = regexp.MustCompile(`^\w+$`)
+
+var InvalidNodeGroupIdError = errors.New("Invalid node group identifier")
+var NodeRequiredError = errors.New("Node required")
+var NodeNotFoundError = errors.New("Node not found")
+var NodeAttachedShardsError = errors.New("Cannot delete node while group has shards attached")
+var DuplicateShardError = errors.New("Duplicate shard already exists")
 
 //------------------------------------------------------------------------------
 //
@@ -130,7 +135,7 @@ func (g *NodeGroup) removeNode(node *Node) error {
 		if n == node {
 			// Require that at least one node be in the group if there are shards attached.
 			if len(g.nodes) == 1 && len(g.shards) > 0 {
-				return AttachedShardsError
+				return NodeAttachedShardsError
 			}
 
 			// Otherwise remove the node.
@@ -152,6 +157,43 @@ func (g *NodeGroup) removeNode(node *Node) error {
 }
 
 //--------------------------------------
+// Shards
+//--------------------------------------
+
+// Determines if the group has a given shard.
+func (g *NodeGroup) hasShard(index int) bool {
+	for _, shard := range g.shards {
+		if shard == index {
+			return true
+		}
+	}
+	return false
+}
+
+// Adds a shard to a group.
+func (g *NodeGroup) addShard(index int) error {
+	if g.hasShard(index) {
+		return DuplicateShardError
+	}
+
+	g.shards = append(g.shards, index)
+	sort.Sort(sort.IntSlice(g.shards))
+
+	return nil
+}
+
+// Removes a shard from a group.
+func (g *NodeGroup) removeShard(index int) error {
+	for i, shard := range g.shards {
+		if shard == index {
+			g.shards = append(g.shards[:i], g.shards[i+1:]...)
+			return nil
+		}
+	}
+	return ShardNotFoundError
+}
+
+//--------------------------------------
 // Serialization
 //--------------------------------------
 
@@ -169,6 +211,18 @@ func (g *NodeGroup) Serialize() map[string]interface{} {
 		"shards":       shards,
 		"nodes":        nodes,
 	}
+}
+
+//--------------------------------------
+// Validation
+//--------------------------------------
+
+// Checks that the node group is in a valid state.
+func (g *NodeGroup) Validate() error {
+	if !ValidNodeGroupIdRegexp.MatchString(g.id) {
+		return InvalidNodeGroupIdError
+	}
+	return nil
 }
 
 //--------------------------------------

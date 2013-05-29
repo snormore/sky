@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 )
@@ -18,8 +19,11 @@ const (
 
 var NodeGroupRequiredError = errors.New("Node group required")
 var NodeGroupNotFoundError = errors.New("Node group not found")
+var NodeGroupAttachedShardsError = errors.New("Cannot delete node group while shards are attached")
+var NodeGroupAttachedNodesError = errors.New("Cannot delete node group while nodes are attached")
 var DuplicateNodeError = errors.New("Duplicate node already exists")
 var ExistingShardsError = errors.New("Node group cannot be added with existing shards")
+var ShardNotFoundError = errors.New("Shard not found")
 
 //------------------------------------------------------------------------------
 //
@@ -82,6 +86,9 @@ func (c *Cluster) AddNodeGroup(group *NodeGroup) error {
 	if group == nil {
 		return NodeGroupRequiredError
 	}
+	if err := group.Validate(); err != nil {
+		return err
+	}
 	if len(group.shards) > 0 {
 		return ExistingShardsError
 	}
@@ -106,6 +113,12 @@ func (c *Cluster) RemoveNodeGroup(group *NodeGroup) error {
 
 	if group == nil {
 		return NodeGroupRequiredError
+	}
+	if len(group.nodes) > 0 {
+		return NodeGroupAttachedNodesError
+	}
+	if len(group.shards) > 0 {
+		return NodeGroupAttachedShardsError
 	}
 	for index, g := range c.groups {
 		if g == group {
@@ -178,6 +191,63 @@ func (c *Cluster) RemoveNode(node *Node) error {
 	}
 
 	return group.removeNode(node)
+}
+
+//--------------------------------------
+// Shards
+//--------------------------------------
+
+// Finds the group that the shard currently belongs to.
+func (c *Cluster) GetShardOwner(index int) (*NodeGroup, error) {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+	return c.getShardOwner(index)
+}
+
+func (c *Cluster) getShardOwner(index int) (*NodeGroup, error) {
+	for _, group := range c.groups {
+		if group.hasShard(index) {
+			return group, nil
+		}
+	}
+	return nil, ShardNotFoundError
+}
+
+// Moves a shard to a new group.
+func (c *Cluster) MoveShard(index int, group *NodeGroup) error {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+
+	// Find which group the shard currently belongs to.
+	src, err := c.getShardOwner(index)
+	if err != nil {
+		return err
+	}
+
+	// Find the group the shard is moving to.
+	if group == nil {
+		return NodeGroupRequiredError
+	}
+	if group = c.getNodeGroup(group.id); group == nil {
+		return NodeGroupNotFoundError
+	}
+
+	// Remove from the source group.
+	if err = src.removeShard(index); err != nil {
+		return err
+	} else {
+		// Add the shard to the destination group.
+		if err = group.addShard(index); err != nil {
+			// If we can't add to the new group then rollback to the old state.
+			if tempErr := src.addShard(index); tempErr != nil {
+				// This shouldn't ever happen but if it does then we'll shut
+				// down the server because now we're missing a shard in the database.
+				panic(fmt.Sprintf("skyd.Cluster: Unable to rollback shard transfer: %v", tempErr))
+			}
+			return err
+		}
+	}
+	return nil
 }
 
 //--------------------------------------
