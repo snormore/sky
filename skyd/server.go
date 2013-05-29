@@ -27,6 +27,7 @@ import (
 // A Server is the front end that controls access to tables.
 type Server struct {
 	httpServer       *http.Server
+	cluster          *Cluster
 	router           *mux.Router
 	logger           *log.Logger
 	path             string
