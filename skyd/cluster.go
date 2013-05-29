@@ -2,8 +2,19 @@ package skyd
 
 import (
 	"errors"
+	"sort"
 	"sync"
 )
+
+//------------------------------------------------------------------------------
+//
+// Globals
+//
+//------------------------------------------------------------------------------
+
+var NodeGroupRequiredError = errors.New("Node group required")
+var NodeGroupNotFoundError = errors.New("Node group not found")
+var DuplicateNodeError = errors.New("Duplicate node already exists")
 
 //------------------------------------------------------------------------------
 //
@@ -18,9 +29,6 @@ type Cluster struct {
 	groups []*NodeGroup
 	mutex  sync.Mutex
 }
-
-var NodeGroupNotFoundError = errors.New("Node group not found")
-var DuplicateNodeError = errors.New("Duplicate node already exists")
 
 //------------------------------------------------------------------------------
 //
@@ -45,49 +53,109 @@ func NewCluster() *Cluster {
 // Node Groups
 //--------------------------------------
 
-// Adds a group to the cluster.
-func (c *Cluster) addNodeGroup() {
+// Finds a group in the cluster by id.
+func (c *Cluster) GetNodeGroup(id string) *NodeGroup {
 	c.mutex.Lock()
 	c.mutex.Unlock()
-	c.groups = append(c.groups, NewNodeGroup())
+	return c.getNodeGroup(id)
+}
+
+func (c *Cluster) getNodeGroup(id string) *NodeGroup {
+	for _, group := range c.groups {
+		if group.id == id {
+			return group
+		}
+	}
+	return nil
+}
+
+// Adds a group to the cluster.
+func (c *Cluster) AddNodeGroup(group *NodeGroup) {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+	c.groups = append(c.groups, group)
+	sort.Sort(NodeGroups(c.groups))
 }
 
 // Removes a group from the cluster.
-func (c *Cluster) removeNodeGroup(index int) error {
+func (c *Cluster) RemoveNodeGroup(group *NodeGroup) error {
 	c.mutex.Lock()
 	c.mutex.Unlock()
 
-	if index < 0 || len(c.groups) <= index {
-		return NodeGroupNotFoundError
+	if group == nil {
+		return NodeGroupRequiredError
+	}
+	for index, g := range c.groups {
+		if g == group {
+			c.groups = append(c.groups[:index], c.groups[index+1:]...)
+			return nil
+		}
 	}
 
-	c.groups = append(c.groups[:index], c.groups[index+1:]...)
-	return nil
+	return NodeGroupNotFoundError
 }
 
 //--------------------------------------
 // Nodes
 //--------------------------------------
 
+// Retrieves a node and its group from the cluster by id.
+func (c *Cluster) GetNode(id string) (*Node, *NodeGroup) {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+	return c.getNode(id)
+}
+
+func (c *Cluster) getNode(id string) (*Node, *NodeGroup) {
+	for _, group := range c.groups {
+		if node := group.getNode(id); node != nil {
+			return node, group
+		}
+	}
+	return nil, nil
+}
+
 // Adds a node to an existing group in the cluster.
-func (c *Cluster) addNode(name string, groupIndex int) error {
+func (c *Cluster) AddNode(node *Node, group *NodeGroup) error {
 	c.mutex.Lock()
 	c.mutex.Unlock()
 
-	// Validate that the group exists.
-	if groupIndex < 0 || len(c.groups) <= groupIndex {
+	// Validate node.
+	if node == nil {
+		return NodeRequiredError
+	}
+
+	// Check if the node id exists in the cluster already.
+	if n, _ := c.getNode(node.id); n != nil {
+		return DuplicateNodeError
+	}
+
+	// Find the group.
+	if group == nil {
+		return NodeGroupRequiredError
+	}
+	if group = c.getNodeGroup(group.id); group == nil {
 		return NodeGroupNotFoundError
 	}
 
-	// Check if the node exists in the cluster already.
-	for _, group := range c.groups {
-		if group.hasNode(name) {
-			return DuplicateNodeError
-		}
+	return group.addNode(node)
+}
+
+// Removes a node from a group in the cluster.
+func (c *Cluster) RemoveNode(node *Node) error {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+
+	if node == nil {
+		return NodeRequiredError
 	}
 
-	group := c.groups[groupIndex]
-	return group.addNode(name)
+	var group *NodeGroup
+	if node, group = c.getNode(node.id); node == nil {
+		return NodeNotFoundError
+	}
+
+	return group.removeNode(node)
 }
 
 //--------------------------------------
