@@ -17,6 +17,12 @@ func TestClusterAddNodeGroups(t *testing.T) {
 	if len(cluster.groups) != 2 {
 		t.Fatalf("Unexpected group count: %v", len(cluster.groups))
 	}
+	if len(g0.shards) != 256 {
+		t.Fatalf("Unexpected shard count: %v", len(g0.shards))
+	}
+	if len(g1.shards) != 0 {
+		t.Fatalf("Unexpected shard count for secondary group: %v", len(g1.shards))
+	}
 }
 
 // Ensure that nodes can be added to a group.

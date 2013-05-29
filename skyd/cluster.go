@@ -12,9 +12,14 @@ import (
 //
 //------------------------------------------------------------------------------
 
+const (
+	ShardCount = 256
+)
+
 var NodeGroupRequiredError = errors.New("Node group required")
 var NodeGroupNotFoundError = errors.New("Node group not found")
 var DuplicateNodeError = errors.New("Duplicate node already exists")
+var ExistingShardsError = errors.New("Node group cannot be added with existing shards")
 
 //------------------------------------------------------------------------------
 //
@@ -70,11 +75,28 @@ func (c *Cluster) getNodeGroup(id string) *NodeGroup {
 }
 
 // Adds a group to the cluster.
-func (c *Cluster) AddNodeGroup(group *NodeGroup) {
+func (c *Cluster) AddNodeGroup(group *NodeGroup) error {
 	c.mutex.Lock()
 	c.mutex.Unlock()
+
+	if group == nil {
+		return NodeGroupRequiredError
+	}
+	if len(group.shards) > 0 {
+		return ExistingShardsError
+	}
+
+	// Append the group.
 	c.groups = append(c.groups, group)
 	sort.Sort(NodeGroups(c.groups))
+
+	// Add all the shards to the first group.
+	if len(c.groups) == 1 {
+		for i := 0; i < ShardCount; i++ {
+			group.shards = append(group.shards, i)
+		}
+	}
+	return nil
 }
 
 // Removes a group from the cluster.
