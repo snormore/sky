@@ -15,8 +15,8 @@ import (
 // Clusters are made up of cluster groups which are sets of servers that
 // manage a subset of the total dataset.
 type Cluster struct {
-	groups           []*NodeGroup
-	mutex            sync.Mutex
+	groups []*NodeGroup
+	mutex  sync.Mutex
 }
 
 var NodeGroupNotFoundError = errors.New("Node group not found")
@@ -56,11 +56,11 @@ func (c *Cluster) addNodeGroup() {
 func (c *Cluster) removeNodeGroup(index int) error {
 	c.mutex.Lock()
 	c.mutex.Unlock()
-	
+
 	if index < 0 || len(c.groups) <= index {
 		return NodeGroupNotFoundError
 	}
-	
+
 	c.groups = append(c.groups[:index], c.groups[index+1:]...)
 	return nil
 }
@@ -78,7 +78,7 @@ func (c *Cluster) addNode(name string, groupIndex int) error {
 	if groupIndex < 0 || len(c.groups) <= groupIndex {
 		return NodeGroupNotFoundError
 	}
-	
+
 	// Check if the node exists in the cluster already.
 	for _, group := range c.groups {
 		if group.hasNode(name) {
@@ -99,13 +99,12 @@ func (c *Cluster) addNode(name string, groupIndex int) error {
 func (c *Cluster) serialize() map[string]interface{} {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	
+
 	// Serialize groups.
 	groups := []interface{}{}
 	for _, group := range c.groups {
 		groups = append(groups, group.Serialize())
 	}
-	
-	return map[string]interface{}{"groups":groups}
-}
 
+	return map[string]interface{}{"groups": groups}
+}

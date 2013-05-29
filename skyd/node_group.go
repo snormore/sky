@@ -59,7 +59,7 @@ func (g *NodeGroup) addNode(name string) error {
 	if name == "" {
 		return InvalidNodeNameError
 	}
-	
+
 	g.nodes = append(g.nodes, NewNode(name))
 	return nil
 }
@@ -87,8 +87,7 @@ func (g *NodeGroup) Serialize() map[string]interface{} {
 	shards := make([]uint8, len(g.shards))
 	copy(shards, g.shards)
 	return map[string]interface{}{
-		"shards":shards,
-		"nodes":nodes,
+		"shards": shards,
+		"nodes":  nodes,
 	}
 }
-

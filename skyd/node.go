@@ -25,7 +25,7 @@ var InvalidNodeNameError = errors.New("Invalid node name")
 
 // Creates a new node.
 func NewNode(name string) *Node {
-	return &Node{name:name}
+	return &Node{name: name}
 }
 
 //------------------------------------------------------------------------------
@@ -39,6 +39,5 @@ func NewNode(name string) *Node {
 //--------------------------------------
 
 func (n *Node) Serialize() map[string]interface{} {
-	return map[string]interface{}{"name":n.name}
+	return map[string]interface{}{"name": n.name}
 }
-

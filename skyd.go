@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/skydb/sky/skyd"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
@@ -57,6 +58,9 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// Seed the random number generator.
+	rand.Seed(time.Now().UnixNano())
 
 	// Hardcore parallelism right here.
 	runtime.GOMAXPROCS(runtime.NumCPU())
