@@ -40,7 +40,10 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
 }
 
 func runTestServerAt(path string, f func(s *Server)) {
-	server := NewServer(8586, path)
+	server, err := NewServer(8586, path)
+	if err != nil {
+		panic(fmt.Sprintf("Unable to run test server: %s", err))
+	}
 	server.Silence()
 	server.ListenAndServe(nil)
 	defer server.Shutdown()
@@ -50,7 +53,7 @@ func runTestServerAt(path string, f func(s *Server)) {
 func runTestServer(f func(s *Server)) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
-  runTestServerAt(path, f)
+	runTestServerAt(path, f)
 }
 
 func createTempTable(t *testing.T) *Table {

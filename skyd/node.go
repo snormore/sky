@@ -14,7 +14,7 @@ import (
 const NodeIdLength = 7
 
 var ValidNodeIdRegexp *regexp.Regexp = regexp.MustCompile(`^\w+$`)
-var ValidNodeHostRegexp *regexp.Regexp = regexp.MustCompile(`^(\w+|\d+\.\d+\.\d+\.\d+)$`)
+var ValidNodeHostRegexp *regexp.Regexp = regexp.MustCompile(`^[a-zA-Z0-9\._-]+$`)
 
 var InvalidNodeIdError = errors.New("Invalid node identifier")
 var InvalidNodeHostError = errors.New("Invalid node host")

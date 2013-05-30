@@ -1,8 +1,10 @@
 package skyd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/benbjohnson/go-raft"
 	"github.com/gorilla/mux"
 	"hash/fnv"
 	"io"
@@ -20,6 +22,18 @@ import (
 
 //------------------------------------------------------------------------------
 //
+// Globals
+//
+//------------------------------------------------------------------------------
+
+const (
+	ElectionTimeout = 2 * time.Second
+	HeartbeatTimeout = 1 * time.Second
+)
+
+
+//------------------------------------------------------------------------------
+//
 // Typedefs
 //
 //------------------------------------------------------------------------------
@@ -27,10 +41,13 @@ import (
 // A Server is the front end that controls access to tables.
 type Server struct {
 	httpServer       *http.Server
+	raftServer       *raft.Server
 	cluster          *Cluster
 	router           *mux.Router
 	logger           *log.Logger
 	path             string
+	host             string
+	port             uint
 	listener         net.Listener
 	servlets         []*Servlet
 	tables           map[string]*Table
@@ -66,13 +83,21 @@ func (e *TextPlainContentTypeError) Error() string {
 //------------------------------------------------------------------------------
 
 // NewServer returns a new Server.
-func NewServer(port uint, path string) *Server {
+func NewServer(port uint, path string) (*Server, error) {
+	// Retrieve the host information.
+	host, err := os.Hostname()
+	if err != nil {
+		return nil, fmt.Errorf("skyd.Server: Unable to determine hostname: %s", err)
+	}
+
 	r := mux.NewRouter()
 	s := &Server{
 		httpServer: &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
 		router:     r,
 		logger:     log.New(os.Stdout, "", log.LstdFlags),
 		path:       path,
+		host:       host,
+		port:       port,
 		tables:     make(map[string]*Table),
 	}
 
@@ -87,7 +112,7 @@ func NewServer(port uint, path string) *Server {
 	s.addEventHandlers()
 	s.addQueryHandlers()
 
-	return s
+	return s, nil
 }
 
 //------------------------------------------------------------------------------
@@ -120,6 +145,19 @@ func (s *Server) TablePath(name string) string {
 func (s *Server) FactorsPath() string {
 	return fmt.Sprintf("%v/factors", s.path)
 }
+
+// The path to the binlog directory. This is used to log updates to the server
+// for the purpose of replication.
+func (s *Server) BinlogPath() string {
+	return fmt.Sprintf("%v/binlog", s.path)
+}
+
+// The path to the raft directory. This is used for consensus information
+// for replicating server configuration.
+func (s *Server) RaftPath() string {
+	return fmt.Sprintf("%v/raft", s.path)
+}
+
 
 //------------------------------------------------------------------------------
 //
@@ -226,6 +264,15 @@ func (s *Server) open() error {
 		}
 	}
 
+	// Initialize empty cluster.
+	s.cluster = NewCluster()
+
+	// Initialize consensus server.
+	if err = s.initRaftServer(); err != nil {
+		s.close()
+		return err
+	}
+	
 	// Open servlets.
 	for _, servlet := range s.servlets {
 		err = servlet.Open()
@@ -238,8 +285,47 @@ func (s *Server) open() error {
 	return nil
 }
 
+// Sets up and starts the consensus server.
+func (s *Server) initRaftServer() error {
+	// Setup the consensus server.
+	var err error
+	if s.raftServer, err = raft.NewServer(NewNodeId(), s.RaftPath(), s, s); err != nil {
+		return err
+	}
+	s.raftServer.SetElectionTimeout(ElectionTimeout)
+	s.raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
+
+	// Start the consensus server.
+	if err = s.raftServer.Start(); err != nil {
+		return err
+	}
+	
+	// If this is a new server then add a group and a single node.
+	if s.raftServer.IsLogEmpty() {
+		s.raftServer.Initialize()
+		nodeGroupId := NewNodeGroupId()
+		if err = s.raftServer.Do(&CreateNodeGroupCommand{NodeGroupId:nodeGroupId}); err != nil {
+			return err
+		}
+		if err = s.raftServer.Do(NewCreateNodeCommand(NewNodeId(), nodeGroupId, s.host, s.port)); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
 // Closes the data directory and servlets.
 func (s *Server) close() {
+	// Close consensus server.
+	if s.raftServer != nil {
+		s.raftServer.Stop()
+		s.raftServer = nil
+	}
+	
+	// Remove cluster info.
+	s.cluster = nil
+
 	// Close servlets.
 	if s.servlets != nil {
 		for _, servlet := range s.servlets {
@@ -257,24 +343,18 @@ func (s *Server) close() {
 
 // Creates the appropriate directory structure if one does not exist.
 func (s *Server) createIfNotExists() error {
-	// Create root directory.
-	err := os.MkdirAll(s.path, 0700)
-	if err != nil {
+	if err := os.MkdirAll(s.path, 0700); err != nil {
 		return err
 	}
-
-	// Create data directory and one directory for each servlet.
-	err = os.MkdirAll(s.DataPath(), 0700)
-	if err != nil {
+	if err := os.MkdirAll(s.DataPath(), 0700); err != nil {
 		return err
 	}
-
-	// Create tables directory.
-	err = os.MkdirAll(s.TablesPath(), 0700)
-	if err != nil {
+	if err := os.MkdirAll(s.TablesPath(), 0700); err != nil {
 		return err
 	}
-
+	if err := os.MkdirAll(s.RaftPath(), 0700); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -293,6 +373,10 @@ func (s *Server) Silence() {
 
 // Parses incoming JSON objects and converts outgoing responses to JSON.
 func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
+	return s.apiHandleFunc(route, handlerFunction)
+}
+
+func (s *Server) apiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
 	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
 		// warn("%s \"%s %s %s\"", req.RemoteAddr, req.Method, req.RequestURI, req.Proto)
 		t0 := time.Now()
@@ -569,4 +653,70 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	err = servletError
 
 	return result, err
+}
+
+//--------------------------------------
+// Raft Execution
+//--------------------------------------
+
+// Executes a command on the server if the server is the leader. Otherwise
+// it forwards the command to the leader.
+func (s *Server) Do(command raft.Command) error {
+	// TODO: Check if this is the leader.
+	// TODO: If not then forward the command.
+	return nil
+}
+
+//--------------------------------------
+// Raft Transport
+//--------------------------------------
+
+// Sends AppendEntries RPCs to a peer when the server is the leader.
+func (s *Server) SendAppendEntriesRequest(raftServer *raft.Server, peer *raft.Peer, req *raft.AppendEntriesRequest) (*raft.AppendEntriesResponse, error) {
+	// Find connection info.
+	host, port, err := s.cluster.GetNodeHostname(peer.Name())
+	if err != nil {
+		return nil, fmt.Errorf("skyd.Server: Peer not found: %s", peer.Name())
+	}
+
+	// Send the entries over HTTP.
+	var b bytes.Buffer
+	json.NewEncoder(&b).Encode(req)
+	resp, err := http.Post(fmt.Sprintf("http://%s:%d/raft/append", host, port), "application/json", &b)
+	if resp == nil {
+		return nil, fmt.Errorf("skyd.Server: Append entries connection failed: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	// Process the response.
+	r := &raft.AppendEntriesResponse{}
+	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil && err != io.EOF {
+		return nil, err
+	}
+	return r, nil
+}
+
+// Sends RequestVote RPCs to a peer when the server is the candidate.
+func (s *Server) SendVoteRequest(raftServer *raft.Server, peer *raft.Peer, req *raft.RequestVoteRequest) (*raft.RequestVoteResponse, error) {
+	// Find connection info.
+	host, port, err := s.cluster.GetNodeHostname(peer.Name())
+	if err != nil {
+		return nil, fmt.Errorf("skyd.Server: Peer not found: %s", peer.Name())
+	}
+
+	// Send the entries over HTTP.
+	var b bytes.Buffer
+	json.NewEncoder(&b).Encode(req)
+	resp, err := http.Post(fmt.Sprintf("http://%s:%d/raft/vote", host, port), "application/json", &b)
+	if resp == nil {
+		return nil, fmt.Errorf("skyd.Server: Request vote connection failed: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	// Process the response.
+	r := &raft.RequestVoteResponse{}
+	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil && err != io.EOF {
+		return nil, err
+	}
+	return r, nil
 }

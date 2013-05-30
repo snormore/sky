@@ -150,6 +150,17 @@ func (c *Cluster) getNode(id string) (*Node, *NodeGroup) {
 	return nil, nil
 }
 
+// Retrieves the host and port for a given node.
+func (c *Cluster) GetNodeHostname(id string) (string, uint, error) {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+	node, _ := c.getNode(id)
+	if node == nil {
+		return "", 0, NodeNotFoundError
+	}
+	return node.host, node.port, nil
+}
+
 // Adds a node to an existing group in the cluster.
 func (c *Cluster) AddNode(node *Node, group *NodeGroup) error {
 	c.mutex.Lock()
