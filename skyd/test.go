@@ -39,14 +39,18 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
 	return client.Do(req)
 }
 
-func runTestServer(f func(s *Server)) {
-	path, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(path)
+func runTestServerAt(path string, f func(s *Server)) {
 	server := NewServer(8586, path)
 	server.Silence()
 	server.ListenAndServe(nil)
 	defer server.Shutdown()
 	f(server)
+}
+
+func runTestServer(f func(s *Server)) {
+	path, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(path)
+  runTestServerAt(path, f)
 }
 
 func createTempTable(t *testing.T) *Table {
