@@ -67,13 +67,17 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Initialize
-	server := skyd.NewServer(config.Port, config.DataPath)
+	server, err := skyd.NewServer(config.Port, config.DataPath)
+	if err != nil {
+		fmt.Printf("Unable to create server: %v\n", err)
+		os.Exit(1)
+	}
 	writePidFile()
 	setupSignalHandlers(server)
 
 	// Start the server up!
 	c := make(chan bool)
-	err := server.ListenAndServe(c)
+	err = server.ListenAndServe(c)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		cleanup(server)
