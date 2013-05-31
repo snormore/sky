@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -32,24 +31,18 @@ var PROPERTIES = []Property{
 	{0, "day", true, "integer"}}
 
 func benchmarkEventsCount(s *Server) int {
-	query := `{
-    "steps":[{"type":"selection","dimensions":[],"fields":[{"name":"count","expression":"count()"}]}]
-  }`
-	resp, err := sendTestHttpRequest("POST", "http://localhost:8586/tables/benchmark/query", "application/json", query)
+	resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/benchmark/stats", "application/json", "")
 	defer resp.Body.Close()
 	if err != nil || resp.StatusCode != 200 {
-		log.Printf("error 1: %v", err)
 		return 0
 	}
 	result := make(map[string]interface{})
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&result)
-	if err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		log.Fatalf("error 2: %v", err)
 		return 0
 	}
-	count, _ := result["count"].(int)
-	return count
+	count, _ := result["count"].(float64)
+	return int(count)
 }
 
 func randomString(l int) string {
@@ -62,74 +55,75 @@ func randomString(l int) string {
 
 func randomValueForProperty(p *Property) interface{} {
 	switch p.DataType {
-	case "string", "factor":
+	case StringDataType, FactorDataType:
 		return randomString(1 + rand.Int()%10)
-	case "integer":
+	case IntegerDataType:
 		return rand.Int() % 10000000
-	case "float":
+	case FloatDataType:
 		return rand.Float64()
 	}
 	return ""
 }
 
-func generateBenchmarkData(s *Server, count int, events int) {
-	if benchmarkEventsCount(s) != events {
+func generateBenchmarkData(s *Server, count int, batchSize int) {
+	if benchmarkEventsCount(s) != count {
 		setupTestTable("benchmark")
 
 		for _, prop := range PROPERTIES {
 			setupTestProperty("benchmark", prop.Name, prop.Transient, prop.DataType)
 		}
 
-		reader, writer := io.Pipe()
+		for batchIndex := 0; batchIndex < count/batchSize; batchIndex++ {
+			reader, writer := io.Pipe()
 
-		client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
-		req, _ := http.NewRequest("PATCH", "http://localhost:8586/tables/benchmark/events", reader)
-		req.Header.Add("Content-Type", "application/json")
+			client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+			req, _ := http.NewRequest("PATCH", "http://localhost:8586/tables/benchmark/events", reader)
+			req.Header.Add("Content-Type", "application/json")
 
-		finished := make(chan *http.Response)
-		go func() {
-			resp, err := client.Do(req)
-			if err != nil {
-				log.Fatalf("Failure streaming request: %v", err)
-			}
-			finished <- resp
-		}()
+			finished := make(chan *http.Response)
+			go func() {
+				resp, err := client.Do(req)
+				if err != nil {
+					log.Fatalf("Failure streaming request: %v", err)
+				}
+				finished <- resp
+			}()
 
-		j := json.NewEncoder(writer)
-		rand.Seed(time.Now().UnixNano())
+			j := json.NewEncoder(writer)
+			rand.Seed(time.Now().UnixNano())
 
-		for i := 0; i < count; i++ {
-			event := make(map[string]interface{})
-			event["timestamp"] = "2012-01-01T03:00:00Z"
-			data := make(map[string]interface{})
-			event["id"] = fmt.Sprintf("%d", i)
-			for _, prop := range PROPERTIES {
-				if rand.Float32() > 0.5 {
-					data[prop.Name] = randomValueForProperty(&prop)
+			for i := 0; i < batchSize; i++ {
+				index := (batchIndex * batchSize) + i
+				event := make(map[string]interface{})
+				event["timestamp"] = "2012-01-01T03:00:00Z"
+				data := make(map[string]interface{})
+				event["id"] = fmt.Sprintf("%d", index)
+				for _, prop := range PROPERTIES {
+					if rand.Float32() > 0.5 {
+						data[prop.Name] = randomValueForProperty(&prop)
+					}
+				}
+				event["data"] = data
+				err := j.Encode(event)
+				if err != nil {
+					log.Printf("JSON encoding error: %v", err)
 				}
 			}
-			event["data"] = data
-			err := j.Encode(event)
-			if err != nil {
-				log.Printf("JSON encoding error: %v", err)
+
+			writer.Close()
+			resp := <-finished
+			reader.Close()
+
+			if resp.StatusCode != 200 {
+				log.Printf("Request failed! %v", req)
 			}
 		}
-
-		writer.Close()
-		resp := <-finished
-		reader.Close()
-
-		if resp.StatusCode != 200 {
-			log.Printf("Request failed! %v", req)
-		}
-		str, _ := ioutil.ReadAll(resp.Body)
-		log.Printf("streaming request returned %v:%s", resp.StatusCode, str)
 	}
 }
 
-func withBenchmarkData(path string, events int, f func(s *Server)) {
+func withBenchmarkData(path string, events int, batchSize int, f func(s *Server)) {
 	runTestServerAt(path, func(s *Server) {
-		generateBenchmarkData(s, events, 5)
+		generateBenchmarkData(s, events, batchSize)
 
 		f(s)
 	})
