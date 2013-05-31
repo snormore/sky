@@ -12,6 +12,8 @@ import (
 )
 
 const TestPort = 8800
+const TestElectionTimeout = 60 * time.Millisecond
+const TestHeartbeatTimeout = 20 * time.Millisecond
 
 func assertProperty(t *testing.T, property *Property, id int64, name string, transient bool, dataType string) {
 	if property.Id != id {
@@ -73,8 +75,8 @@ func runTestServers(callbacks ...func(s *Server)) {
 		if err != nil {
 			panic(fmt.Sprintf("Unable to run test server: %s", err))
 		}
-		server.ElectionTimeout = 60 * time.Millisecond
-		server.HeartbeatTimeout = 20 * time.Millisecond
+		server.ElectionTimeout = TestElectionTimeout
+		server.HeartbeatTimeout = TestHeartbeatTimeout
 		server.Silence()
 		server.ListenAndServe(nil)
 		defer server.Shutdown()

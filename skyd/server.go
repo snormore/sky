@@ -108,6 +108,7 @@ func NewServer(port uint, path string) (*Server, error) {
 	s.addPropertyHandlers()
 	s.addEventHandlers()
 	s.addQueryHandlers()
+	s.addClusterHandlers()
 	s.addDebugHandlers()
 
 	return s, nil
@@ -659,6 +660,10 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 // Executes a command on the server if the server is the leader. Otherwise
 // it forwards the command to the leader.
 func (s *Server) Do(command raft.Command) error {
+	warn("do.1 %v", command)
+	if s.raftServer.State() == raft.Follower {
+		
+	}
 	// TODO: Check if this is the leader.
 	// TODO: If not then forward the command.
 	return nil

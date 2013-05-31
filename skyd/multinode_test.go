@@ -2,23 +2,24 @@ package skyd
 
 import (
 	"testing"
+	"time"
 )
 
 // Ensure that we can add a server to the cluster and the configuration is
 // replicated between the nodes.
 func TestMultinodeJoin(t *testing.T) {
-	runTestServers(func(s *Server) {
-		resp, err := sendTestHttpRequest("GET", "http://localhost:8800/ping", "application/json", "")
-		if err != nil {
-			t.Fatalf("Unable to ping: %v", err)
+	f0 := func(s *Server) {
+		time.Sleep(100 * time.Millisecond)
+		if len(s.cluster.groups[0].nodes) != 2 {
+			t.Fatalf("Unexpected node count: %v", len(s.cluster.groups[0].nodes))
 		}
-		assertResponse(t, resp, 200, `{"message":"ok"}`+"\n", "GET /ping failed.")
-	},
-		func(s *Server) {
-			resp, err := sendTestHttpRequest("GET", "http://localhost:8801/ping", "application/json", "")
-			if err != nil {
-				t.Fatalf("Unable to ping: %v", err)
-			}
-			assertResponse(t, resp, 200, `{"message":"ok"}`+"\n", "GET /ping failed.")
-		})
+	}
+	f1 := func(s *Server) {
+		resp, err := sendTestHttpRequest("POST", "http://localhost:8800/cluster/nodes", "application/json", `{"host":"localhost","port":8801}`)
+		if err != nil {
+			t.Fatalf("Unable to join: %v", err)
+		}
+		assertResponse(t, resp, 200, ``+"\n", "POST /cluster/nodes failed.")
+	}
+	runTestServers(f0, f1)
 }

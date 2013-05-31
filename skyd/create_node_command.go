@@ -46,13 +46,16 @@ func (c *CreateNodeCommand) CommandName() string {
 func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 	server := raftServer.Context().(*Server)
 
+	warn("cnc.apply.1: %v", c)
 	// Locate the group to add to.
 	group := server.cluster.GetNodeGroup(c.NodeGroupId)
 	if group == nil {
 		return NodeGroupNotFoundError
 	}
 
+	warn("cnc.apply.2")
 	// Create node and add it to the cluster.
 	node := NewNode(c.NodeId, c.Host, c.Port)
+	warn("cnc.apply.3")
 	return server.cluster.AddNode(node, group)
 }

@@ -78,6 +78,22 @@ func (c *Cluster) getNodeGroup(id string) *NodeGroup {
 	return nil
 }
 
+// Finds the most appropriate group to add a new node to.
+func (c *Cluster) GetAvailableNodeGroup() *NodeGroup {
+	c.mutex.Lock()
+	c.mutex.Unlock()
+
+	// Find the least crowded group.
+	var group *NodeGroup
+	for _, g := range c.groups {
+		if group == nil || len(g.nodes) < len(group.nodes) {
+			group = g
+		}
+	}
+
+	return group
+}
+
 // Adds a group to the cluster.
 func (c *Cluster) AddNodeGroup(group *NodeGroup) error {
 	c.mutex.Lock()
