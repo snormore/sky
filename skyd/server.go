@@ -26,10 +26,9 @@ import (
 //------------------------------------------------------------------------------
 
 const (
-	ElectionTimeout = 2 * time.Second
-	HeartbeatTimeout = 1 * time.Second
+	DefaultElectionTimeout  = 2 * time.Second
+	DefaultHeartbeatTimeout = 1 * time.Second
 )
-
 
 //------------------------------------------------------------------------------
 //
@@ -54,6 +53,8 @@ type Server struct {
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
+	ElectionTimeout  time.Duration
+	HeartbeatTimeout time.Duration
 }
 
 //------------------------------------------------------------------------------
@@ -91,13 +92,15 @@ func NewServer(port uint, path string) (*Server, error) {
 
 	r := mux.NewRouter()
 	s := &Server{
-		httpServer: &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
-		router:     r,
-		logger:     log.New(os.Stdout, "", log.LstdFlags),
-		path:       path,
-		host:       host,
-		port:       port,
-		tables:     make(map[string]*Table),
+		httpServer:       &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: r},
+		router:           r,
+		logger:           log.New(os.Stdout, "", log.LstdFlags),
+		path:             path,
+		host:             host,
+		port:             port,
+		tables:           make(map[string]*Table),
+		ElectionTimeout:  DefaultElectionTimeout,
+		HeartbeatTimeout: DefaultHeartbeatTimeout,
 	}
 
 	s.addHandlers()
@@ -152,7 +155,6 @@ func (s *Server) BinlogPath() string {
 func (s *Server) RaftPath() string {
 	return fmt.Sprintf("%v/raft", s.path)
 }
-
 
 //------------------------------------------------------------------------------
 //
@@ -267,7 +269,7 @@ func (s *Server) open() error {
 		s.close()
 		return err
 	}
-	
+
 	// Open servlets.
 	for _, servlet := range s.servlets {
 		err = servlet.Open()
@@ -287,26 +289,26 @@ func (s *Server) initRaftServer() error {
 	if s.raftServer, err = raft.NewServer(NewNodeId(), s.RaftPath(), s, s); err != nil {
 		return err
 	}
-	s.raftServer.SetElectionTimeout(ElectionTimeout)
-	s.raftServer.SetHeartbeatTimeout(HeartbeatTimeout)
+	s.raftServer.SetElectionTimeout(s.ElectionTimeout)
+	s.raftServer.SetHeartbeatTimeout(s.HeartbeatTimeout)
 
 	// Start the consensus server.
 	if err = s.raftServer.Start(); err != nil {
 		return err
 	}
-	
+
 	// If this is a new server then add a group and a single node.
 	if s.raftServer.IsLogEmpty() {
 		s.raftServer.Initialize()
 		nodeGroupId := NewNodeGroupId()
-		if err = s.raftServer.Do(&CreateNodeGroupCommand{NodeGroupId:nodeGroupId}); err != nil {
+		if err = s.raftServer.Do(&CreateNodeGroupCommand{NodeGroupId: nodeGroupId}); err != nil {
 			return err
 		}
 		if err = s.raftServer.Do(NewCreateNodeCommand(NewNodeId(), nodeGroupId, s.host, s.port)); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -317,7 +319,7 @@ func (s *Server) close() {
 		s.raftServer.Stop()
 		s.raftServer = nil
 	}
-	
+
 	// Remove cluster info.
 	s.cluster = nil
 
@@ -682,7 +684,7 @@ func (s *Server) SendAppendEntriesRequest(raftServer *raft.Server, peer *raft.Pe
 		return nil, fmt.Errorf("skyd.Server: Append entries connection failed: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Process the response.
 	r := &raft.AppendEntriesResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil && err != io.EOF {
@@ -707,7 +709,7 @@ func (s *Server) SendVoteRequest(raftServer *raft.Server, peer *raft.Peer, req *
 		return nil, fmt.Errorf("skyd.Server: Request vote connection failed: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Process the response.
 	r := &raft.RequestVoteResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil && err != io.EOF {

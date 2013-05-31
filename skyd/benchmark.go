@@ -31,7 +31,7 @@ var PROPERTIES = []Property{
 	{0, "day", true, "integer"}}
 
 func benchmarkEventsCount(s *Server) int {
-	resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/benchmark/stats", "application/json", "")
+	resp, err := sendTestHttpRequest("GET", "http://localhost:8800/tables/benchmark/stats", "application/json", "")
 	defer resp.Body.Close()
 	if err != nil || resp.StatusCode != 200 {
 		return 0
@@ -77,7 +77,7 @@ func generateBenchmarkData(s *Server, count int, batchSize int) {
 			reader, writer := io.Pipe()
 
 			client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
-			req, _ := http.NewRequest("PATCH", "http://localhost:8586/tables/benchmark/events", reader)
+			req, _ := http.NewRequest("PATCH", "http://localhost:8800/tables/benchmark/events", reader)
 			req.Header.Add("Content-Type", "application/json")
 
 			finished := make(chan *http.Response)
@@ -124,7 +124,6 @@ func generateBenchmarkData(s *Server, count int, batchSize int) {
 func withBenchmarkData(path string, events int, batchSize int, f func(s *Server)) {
 	runTestServerAt(path, func(s *Server) {
 		generateBenchmarkData(s, events, batchSize)
-
 		f(s)
 	})
 }
