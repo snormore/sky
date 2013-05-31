@@ -79,6 +79,7 @@ func NewServer(port uint, path string) *Server {
 	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	s.router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	s.router.HandleFunc("/debug/pprof/{name}", pprof.Index)
 
 	s.addHandlers()
 	s.addTableHandlers()

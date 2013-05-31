@@ -50,7 +50,7 @@ func runTestServerAt(path string, f func(s *Server)) {
 func runTestServer(f func(s *Server)) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
-  runTestServerAt(path, f)
+	runTestServerAt(path, f)
 }
 
 func createTempTable(t *testing.T) *Table {
