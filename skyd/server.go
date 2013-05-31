@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"regexp"
 	"runtime"
@@ -75,17 +74,12 @@ func NewServer(port uint, path string) *Server {
 		tables:     make(map[string]*Table),
 	}
 
-	s.router.HandleFunc("/debug/pprof", pprof.Index)
-	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	s.router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	s.router.HandleFunc("/debug/pprof/{name}", pprof.Index)
-
 	s.addHandlers()
 	s.addTableHandlers()
 	s.addPropertyHandlers()
 	s.addEventHandlers()
 	s.addQueryHandlers()
+	s.addDebugHandlers()
 
 	return s
 }
