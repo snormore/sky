@@ -794,10 +794,10 @@ func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
 		// Move the cursor to the prefix start.
 		if len(e.prefix) > 0 {
 			if _, _, err := e.lmdbCursor.Get([]byte(e.prefix), mdb.SET_RANGE); err != nil && err != mdb.NotFound {
-				return err
+				return fmt.Errorf("skyd.ExecutionEngine: Unable to set lmdb range [%v]: %v", e.prefix, err)
 			} else if err == nil {
 				if _, _, err := e.lmdbCursor.Get(nil, mdb.PREV); err != nil && err != mdb.NotFound {
-					return err
+					return fmt.Errorf("skyd.ExecutionEngine: Unable to init lmdb range: %v", e.prefix, err)
 				}
 			}
 		}
