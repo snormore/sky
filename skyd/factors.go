@@ -97,6 +97,10 @@ func (f *Factors) Open() error {
 		f.Close()
 		return fmt.Errorf("skyd: Unable to set factors max dbs: %v", err)
 	}
+	// Setup map size.
+	if err := f.env.SetMapSize(10 << 30); err != nil {
+		return fmt.Errorf("skyd: Unable to set factors map size: %v", err)
+	}
 	// Open the database.
 	if err = f.env.Open(f.path, 0, 0664); err != nil {
 		f.Close()
