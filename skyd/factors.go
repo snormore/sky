@@ -137,8 +137,10 @@ func (f *Factors) get(namespace string, key string) (string, bool, error) {
 	// Retrieve byte array.
 	data, err := txn.Get(dbi, []byte(key))
 	if err != nil && err != mdb.NotFound {
+		err = fmt.Errorf("skyd: Unable to get factor: %s", err)
+		warn(err.Error())
 		txn.Abort()
-		return "", false, fmt.Errorf("skyd: Unable to get factor: %s", err)
+		return "", false, err
 	}
 	txn.Abort()
 
@@ -158,12 +160,16 @@ func (f *Factors) put(namespace string, key string, value string) error {
 
 	// Set value for key.
 	if err = txn.Put(dbi, []byte(key), []byte(value), mdb.NODUPDATA); err != nil {
+		err = fmt.Errorf("skyd: Unable to put factor: %s", err)
+		warn(err.Error())
 		txn.Abort()
-		return fmt.Errorf("skyd: Unable to put factor: %s", err)
+		return err
 	}
 	if err = txn.Commit(); err != nil {
+		err = fmt.Errorf("skyd: Unable to commit factor: %s", err)
+		warn(err.Error())
 		txn.Abort()
-		return fmt.Errorf("skyd: Unable to commit factor: %s", err)
+		return err
 	}
 
 	return nil
