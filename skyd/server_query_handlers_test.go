@@ -204,14 +204,14 @@ func TestServerHistogramQuery(t *testing.T) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "val", true, "integer")
 		setupTestData(t, "foo", [][]string{
-			[]string{"00", "2012-01-01T00:00:00Z", `{"data":{"val":1}}`},
-			[]string{"00", "2012-01-01T00:00:01Z", `{"data":{"val":2}}`},
-			[]string{"00", "2012-01-01T00:00:02Z", `{}`},
-			[]string{"00", "2012-01-01T00:00:03Z", `{"data":{"val":3}}`},
-			[]string{"00", "2012-01-01T00:00:04Z", `{"data":{"val":4}}`},
-			[]string{"00", "2012-01-01T00:00:05Z", `{"data":{"val":4}}`},
+			[]string{"00", "2012-01-01T00:00:00Z", `{"data":{"val":3}}`}, // Different servlet.
 
-			[]string{"01", "2012-01-01T00:00:00Z", `{"data":{"val":3}}`}, // Different servlet.
+			[]string{"01", "2012-01-01T00:00:00Z", `{"data":{"val":1}}`},
+			[]string{"01", "2012-01-01T00:00:01Z", `{"data":{"val":2}}`},
+			[]string{"01", "2012-01-01T00:00:02Z", `{}`},
+			[]string{"01", "2012-01-01T00:00:03Z", `{"data":{"val":3}}`},
+			[]string{"01", "2012-01-01T00:00:04Z", `{"data":{"val":4}}`},
+			[]string{"01", "2012-01-01T00:00:05Z", `{"data":{"val":4}}`},
 
 			[]string{"02", "2012-01-01T00:00:00Z", `{"data":{"val":-1}}`},  // Out of range
 			[]string{"02", "2012-01-01T00:00:01Z", `{"data":{"val":100}}`}, // Out of range
