@@ -3,7 +3,6 @@ package skyd
 import (
 	"errors"
 	"fmt"
-	"github.com/ugorji/go-msgpack"
 	"os"
 	"path/filepath"
 	"time"
@@ -132,16 +131,6 @@ func (t *Table) Exists() bool {
 	return true
 }
 
-// Generates a prefix key used for iterating over the table's data.
-func TablePrefix(tableName string) ([]byte, error) {
-	// The table prefix should match the encoded object id syntax but without the last item.
-	prefix, err := msgpack.Marshal([]interface{}{tableName, nil})
-	if err != nil {
-		return nil, err
-	}
-	return prefix[0 : len(prefix)-1], nil
-}
-
 //--------------------------------------
 // Property Management
 //--------------------------------------
@@ -221,11 +210,6 @@ func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[string]interface{},
 //--------------------------------------
 // Event Encoding
 //--------------------------------------
-
-// Encodes an object identifier for this table.
-func (t *Table) EncodeObjectId(objectId string) ([]byte, error) {
-	return msgpack.Marshal([]string{t.Name, objectId})
-}
 
 // Deserializes a map into a normalized event.
 func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/benbjohnson/gomdb"
-	"github.com/ugorji/go-msgpack"
+	"github.com/ugorji/go/codec"
 	"io"
 	"io/ioutil"
 	"os"
@@ -302,7 +302,9 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 
 		// The first item should be the current state wrapped in a raw value.
 		var raw interface{}
-		decoder := msgpack.NewDecoder(reader, nil)
+		var handle codec.MsgpackHandle
+		handle.RawToString = true
+		decoder := codec.NewDecoder(reader, &handle)
 		if err := decoder.Decode(&raw); err != nil && err != io.EOF {
 			return nil, nil, err
 		}
@@ -398,11 +400,11 @@ func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state
 	} else {
 		b = []byte{}
 	}
-	b2, err := msgpack.Marshal(b)
-	if err != nil {
+	var handle codec.MsgpackHandle
+	handle.RawToString = true
+	if err := codec.NewEncoder(buffer, &handle).Encode(b); err != nil {
 		return err
 	}
-	buffer.Write(b2)
 
 	// Encode the rest of the data.
 	buffer.Write(data)
