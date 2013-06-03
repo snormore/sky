@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"fmt"
 	"github.com/benbjohnson/go-raft"
 )
 
@@ -20,9 +21,13 @@ type CreateNodeCommand struct {
 
 //------------------------------------------------------------------------------
 //
-// Constructor
+// Methods
 //
 //------------------------------------------------------------------------------
+
+//--------------------------------------
+// Constructor
+//--------------------------------------
 
 func NewCreateNodeCommand(nodeId string, nodeGroupId string, host string, port uint) *CreateNodeCommand {
 	return &CreateNodeCommand{
@@ -33,11 +38,9 @@ func NewCreateNodeCommand(nodeId string, nodeGroupId string, host string, port u
 	}
 }
 
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
+//--------------------------------------
+// Command
+//--------------------------------------
 
 func (c *CreateNodeCommand) CommandName() string {
 	return "node:create"
@@ -45,6 +48,7 @@ func (c *CreateNodeCommand) CommandName() string {
 
 func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 	server := raftServer.Context().(*Server)
+	warn("[%p] apply.1: %v", server, c)
 
 	// TODO: Validate host & port.
 
@@ -57,5 +61,16 @@ func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 	// Create node and add it to the cluster.
 	node := NewNode(c.NodeId, c.Host, c.Port)
 	err := server.cluster.AddNode(node, group)
-	return err
+	if err != nil {
+		return err
+	}
+	
+	// Add the node as a peer.
+	if err := server.clusterRaftServer.AddPeer(node.id); err != nil {
+		// This should never error so if it does then our cluster configuration
+		// and list of peers are out of sync and we should just crash.
+		panic(fmt.Sprintf("skyd: %v", err))
+	}
+
+	return nil
 }

@@ -21,6 +21,18 @@ type CreateNodeGroupCommand struct {
 //
 //------------------------------------------------------------------------------
 
+//--------------------------------------
+// Constructor
+//--------------------------------------
+
+func NewCreateNodeGroupCommand(nodeGroupId string) *CreateNodeGroupCommand {
+	return &CreateNodeGroupCommand{NodeGroupId: nodeGroupId}
+}
+
+//--------------------------------------
+// Command
+//--------------------------------------
+
 func (c *CreateNodeGroupCommand) CommandName() string {
 	return "group:create"
 }

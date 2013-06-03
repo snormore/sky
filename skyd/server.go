@@ -315,10 +315,10 @@ func (s *Server) initClusterRaftServer() error {
 	if s.clusterRaftServer.IsLogEmpty() {
 		s.clusterRaftServer.Initialize()
 		nodeGroupId := NewNodeGroupId()
-		if err = s.clusterRaftServer.Do(&CreateNodeGroupCommand{NodeGroupId: nodeGroupId}); err != nil {
+		if err = s.clusterRaftServer.Do(NewCreateNodeGroupCommand(nodeGroupId)); err != nil {
 			return err
 		}
-		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(NewNodeId(), nodeGroupId, s.host, s.port)); err != nil {
+		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(s.clusterRaftServer.Name(), nodeGroupId, s.host, s.port)); err != nil {
 			return err
 		}
 	}
@@ -712,14 +712,18 @@ func (s *Server) Join(host string, port uint) error {
 
 // Executes a command on the cluster-level state machine.
 func (s *Server) ExecuteClusterCommand(command raft.Command) error {
+	warn("[%p] cluster.execute: [%s/%d/%d]%v", s, s.clusterRaftServer.State(), s.clusterRaftServer.QuorumSize(), s.clusterRaftServer.MemberCount(), command)
+	
 	// Forward to leader if we're not the leader.
-	if s.clusterRaftServer.State() != raft.Follower {
+	if s.clusterRaftServer.State() != raft.Leader {
 		// leaderName := s.clusterRaftServer.Leader()
 
 	}
 
 	// Apply to this node if we're leader.
-	return s.clusterRaftServer.Do(command)
+	err := s.clusterRaftServer.Do(command)
+	warn("[%p] cluster.execute.do: %v", s, err)
+	return err
 }
 
 //--------------------------------------
