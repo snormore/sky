@@ -39,23 +39,24 @@ const (
 
 // A Server is the front end that controls access to tables.
 type Server struct {
-	httpServer       *http.Server
-	raftServer       *raft.Server
-	cluster          *Cluster
-	router           *mux.Router
-	logger           *log.Logger
-	path             string
-	host             string
-	port             uint
-	listener         net.Listener
-	servlets         []*Servlet
-	tables           map[string]*Table
-	factors          *Factors
-	shutdownChannel  chan bool
-	shutdownFinished chan bool
-	mutex            sync.Mutex
-	ElectionTimeout  time.Duration
-	HeartbeatTimeout time.Duration
+	httpServer        *http.Server
+	clusterRaftServer *raft.Server
+	groupRaftServer   *raft.Server
+	cluster           *Cluster
+	router            *mux.Router
+	logger            *log.Logger
+	path              string
+	host              string
+	port              uint
+	listener          net.Listener
+	servlets          []*Servlet
+	tables            map[string]*Table
+	factors           *Factors
+	shutdownChannel   chan bool
+	shutdownFinished  chan bool
+	mutex             sync.Mutex
+	ElectionTimeout   time.Duration
+	HeartbeatTimeout  time.Duration
 }
 
 //------------------------------------------------------------------------------
@@ -267,7 +268,7 @@ func (s *Server) open() error {
 	s.cluster = NewCluster()
 
 	// Initialize consensus server.
-	if err = s.initRaftServer(); err != nil {
+	if err = s.initRaftServers(); err != nil {
 		s.close()
 		return err
 	}
@@ -284,29 +285,40 @@ func (s *Server) open() error {
 	return nil
 }
 
-// Sets up and starts the consensus server.
-func (s *Server) initRaftServer() error {
-	// Setup the consensus server.
-	var err error
-	if s.raftServer, err = raft.NewServer(NewNodeId(), s.RaftPath(), s, s); err != nil {
+// Sets up and starts the cluster and group consensus servers.
+func (s *Server) initRaftServers() error {
+	if err := s.initClusterRaftServer(); err != nil {
 		return err
 	}
-	s.raftServer.SetElectionTimeout(s.ElectionTimeout)
-	s.raftServer.SetHeartbeatTimeout(s.HeartbeatTimeout)
+	if err := s.initGroupRaftServer(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Sets up and starts the cluster and group consensus servers.
+func (s *Server) initClusterRaftServer() error {
+	// Setup the consensus server.
+	var err error
+	if s.clusterRaftServer, err = raft.NewServer(NewNodeId(), s.RaftPath(), s, s); err != nil {
+		return err
+	}
+	s.clusterRaftServer.SetElectionTimeout(s.ElectionTimeout)
+	s.clusterRaftServer.SetHeartbeatTimeout(s.HeartbeatTimeout)
 
 	// Start the consensus server.
-	if err = s.raftServer.Start(); err != nil {
+	if err = s.clusterRaftServer.Start(); err != nil {
 		return err
 	}
 
 	// If this is a new server then add a group and a single node.
-	if s.raftServer.IsLogEmpty() {
-		s.raftServer.Initialize()
+	if s.clusterRaftServer.IsLogEmpty() {
+		s.clusterRaftServer.Initialize()
 		nodeGroupId := NewNodeGroupId()
-		if err = s.raftServer.Do(&CreateNodeGroupCommand{NodeGroupId: nodeGroupId}); err != nil {
+		if err = s.clusterRaftServer.Do(&CreateNodeGroupCommand{NodeGroupId: nodeGroupId}); err != nil {
 			return err
 		}
-		if err = s.raftServer.Do(NewCreateNodeCommand(NewNodeId(), nodeGroupId, s.host, s.port)); err != nil {
+		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(NewNodeId(), nodeGroupId, s.host, s.port)); err != nil {
 			return err
 		}
 	}
@@ -314,12 +326,36 @@ func (s *Server) initRaftServer() error {
 	return nil
 }
 
+// Initializes the consensus server for the node's group.
+func (s *Server) initGroupRaftServer() error {
+	// Setup the consensus server.
+	var err error
+	if s.groupRaftServer, err = raft.NewServer(NewNodeId(), s.RaftPath(), s, s); err != nil {
+		return err
+	}
+	s.groupRaftServer.SetElectionTimeout(s.ElectionTimeout)
+	s.groupRaftServer.SetHeartbeatTimeout(s.HeartbeatTimeout)
+
+	// Start the consensus server.
+	if err = s.groupRaftServer.Start(); err != nil {
+		return err
+	}
+
+	// TODO: Initialize peers from cluster raft server.
+
+	return nil
+}
+
 // Closes the data directory and servlets.
 func (s *Server) close() {
-	// Close consensus server.
-	if s.raftServer != nil {
-		s.raftServer.Stop()
-		s.raftServer = nil
+	// Close consensus servers.
+	if s.clusterRaftServer != nil {
+		s.clusterRaftServer.Stop()
+		s.clusterRaftServer = nil
+	}
+	if s.groupRaftServer != nil {
+		s.groupRaftServer.Stop()
+		s.groupRaftServer = nil
 	}
 
 	// Remove cluster info.
@@ -405,7 +441,7 @@ func (s *Server) ApiHandleFunc(route string, obj interface{}, handlerFunction fu
 
 		// If there is an error then replace the return value.
 		if err != nil {
-			ret = map[string]interface{}{"message": err.Error()}
+			ret = map[string]interface{}{"error":map[string]interface{}{"message": err.Error()}}
 		}
 
 		// Write header status.
@@ -648,23 +684,44 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 }
 
 //--------------------------------------
+// Membership
+//--------------------------------------
+
+// Attempts to join a cluster that a given host is a part of.
+func (s *Server) Join(host string, port uint) error {
+	// TODO: Make sure server has no data or log before attempting to join.
+
+	// Send request to server.
+	url := fmt.Sprintf("http://%s:%d/cluster/nodes", host, port)
+	body, _ := json.Marshal(map[string]interface{}{"host":s.host, "port":s.port})
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if _, err := parseResponse(resp); err != nil {
+		return err
+	}
+
+	return err
+}
+
+//--------------------------------------
 // Raft Execution
 //--------------------------------------
 
-// Executes a command on the server if the server is the leader. Otherwise
-// it forwards the command to the leader.
-func (s *Server) Do(command raft.Command) error {
-	warn("do.1 %v (->%v)", command, s.raftServer.Leader())
+// Executes a command on the cluster-level state machine.
+func (s *Server) ExecuteClusterCommand(command raft.Command) error {
+	warn("[%p] do.1 %v (%v->%v)", s, command, s.clusterRaftServer.Name(), s.clusterRaftServer.Leader())
 
 	// Forward to leader if we're not the leader.
-	if s.raftServer.State() != raft.Follower {
-		// leaderName := s.raftServer.Leader()
-		
+	if s.clusterRaftServer.State() != raft.Follower {
+		// leaderName := s.clusterRaftServer.Leader()
+
 	}
-	
+
 	// Apply to this node if we're leader.
-	
-	return nil
+	return s.clusterRaftServer.Do(command)
 }
 
 //--------------------------------------

@@ -85,8 +85,8 @@ func runTestServers(callbacks ...func(s *Server)) {
 	}
 
 	// Execute all the callbacks at the same time.
-	for i, _f := range callbacks {
-		f := _f
+	for _i, _f := range callbacks {
+		i, f := _i, _f
 		go func() {
 			defer wg.Done()
 			f(servers[i])

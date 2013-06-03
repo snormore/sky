@@ -35,7 +35,7 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params i
 func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 	p := params.(map[string]interface{})
-	
+
 	// Return an error if the table already exists.
 	table, err := s.OpenTable(vars["name"])
 	if err != nil {

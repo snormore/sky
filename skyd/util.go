@@ -1,7 +1,11 @@
 package skyd
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 )
 
@@ -16,6 +20,25 @@ func ConvertToStringKeys(value interface{}) interface{} {
 	}
 
 	return value
+}
+
+// Parse response to map and/or error.
+func parseResponse(resp *http.Response) (map[string]interface{}, error) {
+	// Parse the response into a map.
+	ret := make(map[string]interface{})
+	if err := json.NewDecoder(resp.Body).Decode(&ret); err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	// Extract the error if one is returned.
+	var retErr error
+	if errObj, ok := ret["error"].(map[string]interface{}); ok {
+		errorMessage, _ := errObj["message"].(string)
+		retErr = errors.New(errorMessage)
+		delete(ret, "error")
+	}
+	
+	return ret, retErr
 }
 
 // Writes to standard error.
