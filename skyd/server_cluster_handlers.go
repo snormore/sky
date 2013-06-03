@@ -8,17 +8,9 @@ import (
 )
 
 func (s *Server) addClusterHandlers() {
-	s.ApiHandleFunc("/cluster", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getClusterHandler(w, req, params)
-	}).Methods("GET")
-
-	s.ApiHandleFunc("/cluster/commands", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.doClusterCommandHandler(w, req, params)
-	}).Methods("POST")
-
-	s.ApiHandleFunc("/cluster/nodes", &CreateNodeCommand{}, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.createClusterNodeHandler(w, req, params)
-	}).Methods("POST")
+	s.ApiHandleFunc("/cluster", nil, s.getClusterHandler).Methods("GET")
+	s.ApiHandleFunc("/cluster/commands", nil, s.doClusterCommandHandler).Methods("POST")
+	s.ApiHandleFunc("/cluster/nodes", &CreateNodeCommand{}, s.createClusterNodeHandler).Methods("POST")
 }
 
 // GET /cluster

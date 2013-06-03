@@ -10,25 +10,13 @@ import (
 )
 
 func (s *Server) addEventHandlers() {
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getEventsHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.deleteEventsHandler(w, req, params)
-	}).Methods("DELETE")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, s.getEventsHandler).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, s.deleteEventsHandler).Methods("DELETE")
 
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getEventHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.replaceEventHandler(w, req, params)
-	}).Methods("PUT")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.updateEventHandler(w, req, params)
-	}).Methods("PATCH")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.deleteEventHandler(w, req, params)
-	}).Methods("DELETE")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.getEventHandler).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.replaceEventHandler).Methods("PUT")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.updateEventHandler).Methods("PATCH")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.deleteEventHandler).Methods("DELETE")
 
 	// Streaming import.
 	s.router.HandleFunc("/tables/{name}/events", s.streamUpdateEventsHandler).Methods("PATCH")

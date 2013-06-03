@@ -8,9 +8,7 @@ import (
 )
 
 func (s *Server) addRaftHandlers() {
-	s.ApiHandleFunc("/raft/run/{name}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.doRaftCommandHandler(w, req, params)
-	}).Methods("POST")
+	s.ApiHandleFunc("/raft/run/{name}", nil, s.doRaftCommandHandler).Methods("POST")
 }
 
 // POST /raft

@@ -5,12 +5,8 @@ import (
 )
 
 func (s *Server) addHandlers() {
-	s.ApiHandleFunc("/ping", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.pingHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.indexHandler(w, req, params)
-	}).Methods("GET")
+	s.ApiHandleFunc("/ping", nil, s.pingHandler).Methods("GET")
+	s.ApiHandleFunc("/", nil, s.indexHandler).Methods("GET")
 }
 
 // GET /ping

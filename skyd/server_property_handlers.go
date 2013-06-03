@@ -7,22 +7,12 @@ import (
 )
 
 func (s *Server) addPropertyHandlers() {
-	s.ApiHandleFunc("/tables/{name}/properties", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getPropertiesHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/properties", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.createPropertyHandler(w, req, params)
-	}).Methods("POST")
+	s.ApiHandleFunc("/tables/{name}/properties", nil, s.getPropertiesHandler).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/properties", nil, s.createPropertyHandler).Methods("POST")
 
-	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getPropertyHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.updatePropertyHandler(w, req, params)
-	}).Methods("PATCH")
-	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.deletePropertyHandler(w, req, params)
-	}).Methods("DELETE")
+	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, s.getPropertyHandler).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, s.updatePropertyHandler).Methods("PATCH")
+	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, s.deletePropertyHandler).Methods("DELETE")
 }
 
 // GET /tables/:name/properties

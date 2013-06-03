@@ -6,15 +6,9 @@ import (
 )
 
 func (s *Server) addQueryHandlers() {
-	s.ApiHandleFunc("/tables/{name}/stats", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.statsHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/query", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.queryHandler(w, req, params)
-	}).Methods("POST")
-	s.ApiHandleFunc("/tables/{name}/query/codegen", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.queryCodegenHandler(w, req, params)
-	}).Methods("POST")
+	s.ApiHandleFunc("/tables/{name}/stats", nil, s.statsHandler).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}/query", nil, s.queryHandler).Methods("POST")
+	s.ApiHandleFunc("/tables/{name}/query/codegen", nil, s.queryCodegenHandler).Methods("POST")
 }
 
 // GET /tables/:name/stats

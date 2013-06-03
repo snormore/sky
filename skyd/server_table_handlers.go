@@ -7,18 +7,10 @@ import (
 )
 
 func (s *Server) addTableHandlers() {
-	s.ApiHandleFunc("/tables", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getTablesHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.getTableHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/tables", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.createTableHandler(w, req, params)
-	}).Methods("POST")
-	s.ApiHandleFunc("/tables/{name}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-		return s.deleteTableHandler(w, req, params)
-	}).Methods("DELETE")
+	s.ApiHandleFunc("/tables", nil, s.getTablesHandler).Methods("GET")
+	s.ApiHandleFunc("/tables/{name}", nil, s.getTableHandler).Methods("GET")
+	s.ApiHandleFunc("/tables", nil, s.createTableHandler).Methods("POST")
+	s.ApiHandleFunc("/tables/{name}", nil, s.deleteTableHandler).Methods("DELETE")
 }
 
 // GET /tables
