@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"regexp"
 	"runtime"
 	"sync"
@@ -370,17 +371,24 @@ func (s *Server) Silence() {
 //--------------------------------------
 
 // Parses incoming JSON objects and converts outgoing responses to JSON.
-func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
-	return s.apiHandleFunc(route, handlerFunction)
-}
-
-func (s *Server) apiHandleFunc(route string, handlerFunction func(http.ResponseWriter, *http.Request, map[string]interface{}) (interface{}, error)) *mux.Route {
+func (s *Server) ApiHandleFunc(route string, obj interface{}, handlerFunction func(http.ResponseWriter, *http.Request, interface{}) (interface{}, error)) *mux.Route {
 	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
 		// warn("%s \"%s %s %s\"", req.RemoteAddr, req.Method, req.RequestURI, req.Proto)
 		t0 := time.Now()
 
+		// Copy the serialization object.
+		var err error
+		var params interface{}
+		if obj == nil {
+			params = make(map[string]interface{})
+			err = s.decodeParams(w, req, &params)
+		} else {
+			params = reflect.New(reflect.Indirect(reflect.ValueOf(obj)).Type()).Interface()
+			err = s.decodeParams(w, req, params)
+		}
+
+		// Execute the handler.
 		var ret interface{}
-		params, err := s.decodeParams(w, req)
 		if err == nil {
 			ret, err = handlerFunction(w, req, params)
 		}
@@ -431,15 +439,13 @@ func (s *Server) apiHandleFunc(route string, handlerFunction func(http.ResponseW
 }
 
 // Decodes the body of the message into parameters.
-func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[string]interface{}, error) {
-	// Parses body parameters.
-	params := make(map[string]interface{})
+func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request, params interface{}) error {
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&params)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Malformed json request: %v", err)
+		return fmt.Errorf("skyd: Malformed json request: %v", err)
 	}
-	return params, nil
+	return nil
 }
 
 //--------------------------------------
@@ -648,12 +654,16 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 // Executes a command on the server if the server is the leader. Otherwise
 // it forwards the command to the leader.
 func (s *Server) Do(command raft.Command) error {
-	warn("do.1 %v", command)
-	if s.raftServer.State() == raft.Follower {
+	warn("do.1 %v (->%v)", command, s.raftServer.Leader())
+
+	// Forward to leader if we're not the leader.
+	if s.raftServer.State() != raft.Follower {
+		// leaderName := s.raftServer.Leader()
 		
 	}
-	// TODO: Check if this is the leader.
-	// TODO: If not then forward the command.
+	
+	// Apply to this node if we're leader.
+	
 	return nil
 }
 

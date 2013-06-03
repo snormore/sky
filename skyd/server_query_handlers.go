@@ -6,19 +6,19 @@ import (
 )
 
 func (s *Server) addQueryHandlers() {
-	s.ApiHandleFunc("/tables/{name}/stats", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/stats", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.statsHandler(w, req, params)
 	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/query", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/query", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.queryHandler(w, req, params)
 	}).Methods("POST")
-	s.ApiHandleFunc("/tables/{name}/query/codegen", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/query/codegen", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.queryCodegenHandler(w, req, params)
 	}).Methods("POST")
 }
 
 // GET /tables/:name/stats
-func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 
 	// Return an error if the table already exists.
@@ -38,9 +38,10 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 }
 
 // POST /tables/:name/query
-func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-
+	p := params.(map[string]interface{})
+	
 	// Return an error if the table already exists.
 	table, err := s.OpenTable(vars["name"])
 	if err != nil {
@@ -49,7 +50,7 @@ func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params m
 
 	// Deserialize the query.
 	query := NewQuery(table, s.factors)
-	err = query.Deserialize(params)
+	err = query.Deserialize(p)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +59,9 @@ func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params m
 }
 
 // POST /tables/:name/query/codegen
-func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
+	p := params.(map[string]interface{})
 
 	// Retrieve table and codegen query.
 	var source string
@@ -71,7 +73,7 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 
 	// Deserialize the query.
 	query := NewQuery(table, s.factors)
-	err = query.Deserialize(params)
+	err = query.Deserialize(p)
 	if err != nil {
 		return nil, err
 	}

@@ -10,23 +10,23 @@ import (
 )
 
 func (s *Server) addEventHandlers() {
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.getEventsHandler(w, req, params)
 	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.deleteEventsHandler(w, req, params)
 	}).Methods("DELETE")
 
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.getEventHandler(w, req, params)
 	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.replaceEventHandler(w, req, params)
 	}).Methods("PUT")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.updateEventHandler(w, req, params)
 	}).Methods("PATCH")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.deleteEventHandler(w, req, params)
 	}).Methods("DELETE")
 
@@ -35,7 +35,7 @@ func (s *Server) addEventHandlers() {
 }
 
 // GET /tables/:name/objects/:objectId/events
-func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 }
 
 // DELETE /tables/:name/objects/:objectId/events
-func (s *Server) deleteEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+func (s *Server) deleteEventsHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
 	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *Server) deleteEventsHandler(w http.ResponseWriter, req *http.Request, p
 }
 
 // GET /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
 	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
 	if err != nil {
@@ -111,15 +111,16 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 }
 
 // PUT /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
 	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
 	if err != nil {
 		return nil, err
 	}
 
-	params["timestamp"] = vars["timestamp"]
-	event, err := table.DeserializeEvent(params)
+	p := params.(map[string]interface{})
+	p["timestamp"] = vars["timestamp"]
+	event, err := table.DeserializeEvent(p)
 	if err != nil {
 		return nil, err
 	}
@@ -132,15 +133,16 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, p
 }
 
 // PATCH /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
 	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
 	if err != nil {
 		return nil, err
 	}
 
-	params["timestamp"] = vars["timestamp"]
-	event, err := table.DeserializeEvent(params)
+	p := params.(map[string]interface{})
+	p["timestamp"] = vars["timestamp"]
+	event, err := table.DeserializeEvent(p)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +206,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 }
 
 // DELETE /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
+func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
 	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
 	if err != nil {

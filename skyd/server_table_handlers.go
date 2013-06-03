@@ -7,35 +7,37 @@ import (
 )
 
 func (s *Server) addTableHandlers() {
-	s.ApiHandleFunc("/tables", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.getTablesHandler(w, req, params)
 	}).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.getTableHandler(w, req, params)
 	}).Methods("GET")
-	s.ApiHandleFunc("/tables", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.createTableHandler(w, req, params)
 	}).Methods("POST")
-	s.ApiHandleFunc("/tables/{name}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/tables/{name}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.deleteTableHandler(w, req, params)
 	}).Methods("DELETE")
 }
 
 // GET /tables
-func (s *Server) getTablesHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) getTablesHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	return s.GetAllTables()
 }
 
 // GET /tables/:name
-func (s *Server) getTableHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) getTableHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 	return s.OpenTable(vars["name"])
 }
 
 // POST /tables
-func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	p := params.(map[string]interface{})
+
 	// Retrieve table parameters.
-	tableName, ok := params["name"].(string)
+	tableName, ok := p["name"].(string)
 	if !ok {
 		return nil, errors.New("Table name required.")
 	}
@@ -57,7 +59,7 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, pa
 }
 
 // DELETE /tables/:name
-func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 	tableName := vars["name"]
 

@@ -46,7 +46,7 @@ func (c *CreateNodeCommand) CommandName() string {
 func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 	server := raftServer.Context().(*Server)
 
-	warn("cnc.apply.1: %v", c)
+	warn("cnc.apply.1[%s]: %v", server.raftServer.Name(), c)
 	// Locate the group to add to.
 	group := server.cluster.GetNodeGroup(c.NodeGroupId)
 	if group == nil {

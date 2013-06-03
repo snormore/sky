@@ -3,32 +3,38 @@ package skyd
 import (
 	"errors"
 	"fmt"
+	"github.com/benbjohnson/go-raft"
 	"net/http"
 )
 
 func (s *Server) addClusterHandlers() {
-	s.ApiHandleFunc("/cluster", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/cluster", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.getClusterHandler(w, req, params)
 	}).Methods("GET")
 
-	s.ApiHandleFunc("/cluster/nodes", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/cluster/commands", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+		return s.doClusterCommandHandler(w, req, params)
+	}).Methods("POST")
+
+	s.ApiHandleFunc("/cluster/nodes", &CreateNodeCommand{}, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.createClusterNodeHandler(w, req, params)
 	}).Methods("POST")
 }
 
 // GET /cluster
-func (s *Server) getClusterHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) getClusterHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	return s.cluster.serialize(), nil
 }
 
+// POST /cluster/commands
+func (s *Server) doClusterCommandHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	command := params.(raft.Command)
+	return nil, s.raftServer.Do(command)
+}
+
 // POST /cluster/nodes
-func (s *Server) createClusterNodeHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-	command := &CreateNodeCommand{}
-	command.NodeId, _ = params["nodeId"].(string)
-	command.NodeGroupId, _ = params["nodeGroupId"].(string)
-	command.Host, _ = params["host"].(string)
-	port, _ := params["port"].(float64)
-	command.Port = uint(port)
+func (s *Server) createClusterNodeHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	command := params.(*CreateNodeCommand)
 	
 	// Generate a node id if one is not passed in.
 	if command.NodeId == "" {

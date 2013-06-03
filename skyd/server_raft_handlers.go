@@ -8,13 +8,13 @@ import (
 )
 
 func (s *Server) addRaftHandlers() {
-	s.ApiHandleFunc("/raft/run/{name}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	s.ApiHandleFunc("/raft/run/{name}", nil, func(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 		return s.doRaftCommandHandler(w, req, params)
 	}).Methods("POST")
 }
 
 // POST /raft
-func (s *Server) doRaftCommandHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+func (s *Server) doRaftCommandHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 	command, err := raft.NewCommand(vars["name"])
 	if err != nil {
