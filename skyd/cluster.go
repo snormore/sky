@@ -65,7 +65,7 @@ func NewCluster() *Cluster {
 // Finds a group in the cluster by id.
 func (c *Cluster) GetNodeGroup(id string) *NodeGroup {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 	return c.getNodeGroup(id)
 }
 
@@ -81,7 +81,7 @@ func (c *Cluster) getNodeGroup(id string) *NodeGroup {
 // Finds the most appropriate group to add a new node to.
 func (c *Cluster) GetAvailableNodeGroup() *NodeGroup {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 
 	// Find the least crowded group.
 	var group *NodeGroup
@@ -97,7 +97,7 @@ func (c *Cluster) GetAvailableNodeGroup() *NodeGroup {
 // Adds a group to the cluster.
 func (c *Cluster) AddNodeGroup(group *NodeGroup) error {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 
 	if group == nil {
 		return NodeGroupRequiredError
@@ -125,7 +125,7 @@ func (c *Cluster) AddNodeGroup(group *NodeGroup) error {
 // Removes a group from the cluster.
 func (c *Cluster) RemoveNodeGroup(group *NodeGroup) error {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 
 	if group == nil {
 		return NodeGroupRequiredError
@@ -153,7 +153,7 @@ func (c *Cluster) RemoveNodeGroup(group *NodeGroup) error {
 // Retrieves a node and its group from the cluster by id.
 func (c *Cluster) GetNode(id string) (*Node, *NodeGroup) {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 	return c.getNode(id)
 }
 
@@ -169,7 +169,7 @@ func (c *Cluster) getNode(id string) (*Node, *NodeGroup) {
 // Retrieves the host and port for a given node.
 func (c *Cluster) GetNodeHostname(id string) (string, uint, error) {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 	node, _ := c.getNode(id)
 	if node == nil {
 		return "", 0, NodeNotFoundError
@@ -180,7 +180,7 @@ func (c *Cluster) GetNodeHostname(id string) (string, uint, error) {
 // Adds a node to an existing group in the cluster.
 func (c *Cluster) AddNode(node *Node, group *NodeGroup) error {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 
 	// Validate node.
 	if node == nil {
@@ -206,7 +206,7 @@ func (c *Cluster) AddNode(node *Node, group *NodeGroup) error {
 // Removes a node from a group in the cluster.
 func (c *Cluster) RemoveNode(node *Node) error {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 
 	if node == nil {
 		return NodeRequiredError
@@ -227,7 +227,7 @@ func (c *Cluster) RemoveNode(node *Node) error {
 // Finds the group that the shard currently belongs to.
 func (c *Cluster) GetShardOwner(index int) (*NodeGroup, error) {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 	return c.getShardOwner(index)
 }
 
@@ -243,7 +243,7 @@ func (c *Cluster) getShardOwner(index int) (*NodeGroup, error) {
 // Moves a shard to a new group.
 func (c *Cluster) MoveShard(index int, group *NodeGroup) error {
 	c.mutex.Lock()
-	c.mutex.Unlock()
+	defer c.mutex.Unlock()
 
 	// Find which group the shard currently belongs to.
 	src, err := c.getShardOwner(index)
