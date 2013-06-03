@@ -19,6 +19,10 @@ type CreateNodeCommand struct {
 	Port        uint   `json:"port"`
 }
 
+func init() {
+	raft.RegisterCommand(&CreateNodeCommand{})
+}
+
 //------------------------------------------------------------------------------
 //
 // Methods
