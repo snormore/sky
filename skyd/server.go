@@ -712,8 +712,6 @@ func (s *Server) Join(host string, port uint) error {
 
 // Executes a command on the cluster-level state machine.
 func (s *Server) ExecuteClusterCommand(command raft.Command) error {
-	warn("[%p] do.1 %v (%v->%v)", s, command, s.clusterRaftServer.Name(), s.clusterRaftServer.Leader())
-
 	// Forward to leader if we're not the leader.
 	if s.clusterRaftServer.State() != raft.Follower {
 		// leaderName := s.clusterRaftServer.Leader()
