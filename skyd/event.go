@@ -3,7 +3,7 @@ package skyd
 import (
 	"bytes"
 	"fmt"
-	"github.com/ugorji/go-msgpack"
+	"github.com/ugorji/go/codec"
 	"io"
 	"time"
 )
@@ -51,8 +51,10 @@ func NewEvent(timestamp string, data map[int64]interface{}) *Event {
 
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(writer io.Writer) error {
+	var handle codec.MsgpackHandle
+	handle.RawToString = true
 	raw := []interface{}{ShiftTime(e.Timestamp), e.Data}
-	encoder := msgpack.NewEncoder(writer)
+	encoder := codec.NewEncoder(writer, &handle)
 	err := encoder.Encode(raw)
 	return err
 }
@@ -68,8 +70,10 @@ func (e *Event) MarshalRaw() ([]byte, error) {
 
 // Decodes an event from MsgPack format.
 func (e *Event) DecodeRaw(reader io.Reader) error {
+	var handle codec.MsgpackHandle
+	handle.RawToString = true
 	raw := make([]interface{}, 2)
-	err := msgpack.NewDecoder(reader, nil).Decode(&raw)
+	err := codec.NewDecoder(reader, &handle).Decode(&raw)
 	if err != nil {
 		return err
 	}

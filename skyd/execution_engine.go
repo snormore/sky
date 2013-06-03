@@ -654,7 +654,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/benbjohnson/gomdb"
-	"github.com/ugorji/go-msgpack"
+	"github.com/ugorji/go/codec"
 	"regexp"
 	"sort"
 	"sync"
@@ -794,10 +794,10 @@ func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
 		// Move the cursor to the prefix start.
 		if len(e.prefix) > 0 {
 			if _, _, err := e.lmdbCursor.Get([]byte(e.prefix), mdb.SET_RANGE); err != nil && err != mdb.NotFound {
-				return err
+				return fmt.Errorf("skyd.ExecutionEngine: Unable to set lmdb range [%v]: %v", e.prefix, err)
 			} else if err == nil {
 				if _, _, err := e.lmdbCursor.Get(nil, mdb.PREV); err != nil && err != mdb.NotFound {
-					return err
+					return fmt.Errorf("skyd.ExecutionEngine: Unable to init lmdb range: %v", e.prefix, err)
 				}
 			}
 		}
@@ -1025,8 +1025,10 @@ func (e *ExecutionEngine) Merge(results interface{}, data interface{}) (interfac
 // Encodes a Go object into Msgpack and adds it to the function arguments.
 func (e *ExecutionEngine) encodeArgument(value interface{}) error {
 	// Encode Go object into msgpack.
+	var handle codec.MsgpackHandle
+	handle.RawToString = true
 	buffer := new(bytes.Buffer)
-	encoder := msgpack.NewEncoder(buffer)
+	encoder := codec.NewEncoder(buffer, &handle)
 	if err := encoder.Encode(value); err != nil {
 		return err
 	}
@@ -1061,8 +1063,10 @@ func (e *ExecutionEngine) decodeResult() (interface{}, error) {
 	C.lua_settop(e.state, -(1)-1) // lua_pop()
 
 	// Decode msgpack into a Go object.
+	var handle codec.MsgpackHandle
+	handle.RawToString = true
 	var ret interface{}
-	decoder := msgpack.NewDecoder(bytes.NewBufferString(str), nil)
+	decoder := codec.NewDecoder(bytes.NewBufferString(str), &handle)
 	if err := decoder.Decode(&ret); err != nil {
 		return nil, err
 	}

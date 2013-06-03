@@ -156,50 +156,50 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 	vars := mux.Vars(req)
 	t0 := time.Now()
 
-	// Stream in JSON event objects.
-	decoder := json.NewDecoder(req.Body)
 	events_written := 0
-	for {
-		// Read in a JSON object.
-		rawEvent := map[string]interface{}{}
-		if err := decoder.Decode(&rawEvent); err == io.EOF {
-			break
-		} else if err != nil {
-			fmt.Fprintf(w, `{"message":"Malformed json event: %v"}`, err)
-			return
-		}
-		// Extract the object identifier.
-		objectId, ok := rawEvent["id"].(string)
-		if !ok {
-			fmt.Fprintf(w, `{"message":"Object identifier required"}`)
-			return
-		}
+	err := func() error {
+		// Stream in JSON event objects.
+		decoder := json.NewDecoder(req.Body)
+		for {
+			// Read in a JSON object.
+			rawEvent := map[string]interface{}{}
+			if err := decoder.Decode(&rawEvent); err == io.EOF {
+				break
+			} else if err != nil {
+				return fmt.Errorf("Malformed json event: %v", err)
+			}
+			// Extract the object identifier.
+			objectId, ok := rawEvent["id"].(string)
+			if !ok {
+				return fmt.Errorf("Object identifier required")
+			}
 
-		// Determine the appropriate servlet to insert into.
-		table, servlet, err := s.GetObjectContext(vars["name"], objectId)
-		if err != nil {
-			fmt.Fprintf(w, `{"message":"Cannot determine object context: %v"}`, err)
-			return
-		}
+			// Determine the appropriate servlet to insert into.
+			table, servlet, err := s.GetObjectContext(vars["name"], objectId)
+			if err != nil {
+				return fmt.Errorf("Cannot determine object context: %v", err)
+			}
 
-		// Convert to a Sky event and insert.
-		event, err := table.DeserializeEvent(rawEvent)
-		if err != nil {
-			fmt.Fprintf(w, `{"message":"Cannot deserialize: %v"}`, err)
-			return
+			// Convert to a Sky event and insert.
+			event, err := table.DeserializeEvent(rawEvent)
+			if err != nil {
+				return fmt.Errorf("Cannot deserialize: %v", err)
+			}
+			if err = table.FactorizeEvent(event, s.factors, true); err != nil {
+				return fmt.Errorf("Cannot factorize: %v", err)
+			}
+			if err = servlet.PutEvent(table, objectId, event, false); err != nil {
+				return fmt.Errorf("Cannot put event: %v", err)
+			}
+			events_written++
 		}
-		if err = table.FactorizeEvent(event, s.factors, true); err != nil {
-			fmt.Fprintf(w, `{"message":"Cannot factorize: %v"}`, err)
-			return
-		}
-		if err = servlet.PutEvent(table, objectId, event, false); err != nil {
-			fmt.Fprintf(w, `{"message":"Cannot put event: %v"}`, err)
-			return
-		}
-		events_written++
+		return nil
+	}()
+
+	if err != nil {
+		s.logger.Printf("ERR %v", err)
+		fmt.Fprintf(w, `{"message":"%v"}`, err)
 	}
-
-	// Write to access log.
 	s.logger.Printf("%s \"%s %s %s %d events OK\" %0.3f", req.RemoteAddr, req.Method, req.URL.Path, req.Proto, events_written, time.Since(t0).Seconds())
 }
 

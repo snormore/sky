@@ -446,7 +446,7 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 // Servlet Management
 //--------------------------------------
 
-// Executes a function through a single-threaded servlet context.
+// Retrieves the table and servlet reference for a single object.
 func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *Servlet, error) {
 	// Return an error if the table already exists.
 	table, err := s.OpenTable(tableName)
@@ -455,31 +455,19 @@ func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *S
 	}
 
 	// Determine servlet index.
-	index, err := s.GetObjectServletIndex(table, objectId)
-	if err != nil {
-		return nil, nil, err
-	}
+	index := s.GetObjectServletIndex(table, objectId)
 	servlet := s.servlets[index]
 
 	return table, servlet, nil
 }
 
 // Calculates a tablet index based on the object identifier even hash.
-func (s *Server) GetObjectServletIndex(t *Table, objectId string) (uint32, error) {
-	// Encode object identifier.
-	encodedObjectId, err := t.EncodeObjectId(objectId)
-	if err != nil {
-		return 0, err
-	}
-
-	// Calculate the even bits of the FNV1a hash.
+func (s *Server) GetObjectServletIndex(t *Table, objectId string) uint32 {
 	h := fnv.New64a()
 	h.Reset()
-	h.Write(encodedObjectId)
+	h.Write([]byte(objectId))
 	hashcode := h.Sum64()
-	index := CondenseUint64Even(hashcode) % uint32(len(s.servlets))
-
-	return index, nil
+	return CondenseUint64Even(hashcode) % uint32(len(s.servlets))
 }
 
 //--------------------------------------
