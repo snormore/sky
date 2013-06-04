@@ -204,6 +204,7 @@ func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 	fmt.Fprintf(buffer, "function %s(result, data)\n", s.MergeFunctionName())
 	if s.Name != "" {
 		fmt.Fprintf(buffer, "  if result[\"%s\"] == nil then result[\"%s\"] = {} end\n", s.Name, s.Name)
+		fmt.Fprintf(buffer, "  if data[\"%s\"] == nil then data[\"%s\"] = {} end\n", s.Name, s.Name)
 		fmt.Fprintf(buffer, "  %sn0(result[\"%s\"], data[\"%s\"])\n", s.MergeFunctionName(), s.Name, s.Name)
 	} else {
 		fmt.Fprintf(buffer, "  %sn0(result, data)\n", s.MergeFunctionName())
