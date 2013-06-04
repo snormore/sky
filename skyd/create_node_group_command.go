@@ -15,6 +15,10 @@ type CreateNodeGroupCommand struct {
 	NodeGroupId string `json:"nodeGroupId"`
 }
 
+func init() {
+	raft.RegisterCommand(&CreateNodeGroupCommand{})
+}
+
 //------------------------------------------------------------------------------
 //
 // Methods

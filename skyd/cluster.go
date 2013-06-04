@@ -21,7 +21,6 @@ var NodeGroupRequiredError = errors.New("Node group required")
 var NodeGroupNotFoundError = errors.New("Node group not found")
 var NodeGroupAttachedShardsError = errors.New("Cannot delete node group while shards are attached")
 var NodeGroupAttachedNodesError = errors.New("Cannot delete node group while nodes are attached")
-var DuplicateNodeError = errors.New("Duplicate node already exists")
 var ExistingShardsError = errors.New("Node group cannot be added with existing shards")
 var ShardNotFoundError = errors.New("Shard not found")
 
@@ -189,7 +188,7 @@ func (c *Cluster) AddNode(node *Node, group *NodeGroup) error {
 
 	// Check if the node id exists in the cluster already.
 	if n, _ := c.getNode(node.id); n != nil {
-		return DuplicateNodeError
+		return fmt.Errorf("Duplicate node already exists: %v", node.id)
 	}
 
 	// Find the group.

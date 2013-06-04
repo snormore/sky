@@ -52,7 +52,6 @@ func (c *CreateNodeCommand) CommandName() string {
 
 func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 	server := raftServer.Context().(*Server)
-	warn("[%p] apply.1: %v", server, c)
 
 	// TODO: Validate host & port.
 

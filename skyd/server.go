@@ -46,6 +46,7 @@ type Server struct {
 	cluster           *Cluster
 	router            *mux.Router
 	logger            *log.Logger
+	name              string
 	path              string
 	host              string
 	port              uint
@@ -123,9 +124,19 @@ func NewServer(port uint, path string) (*Server, error) {
 //
 //------------------------------------------------------------------------------
 
+// The server's name
+func (s *Server) Name() string {
+	return s.name
+}
+
 // The root server path.
 func (s *Server) Path() string {
 	return s.path
+}
+
+// The path to the name file.
+func (s *Server) NamePath() string {
+	return fmt.Sprintf("%v/name", s.path)
 }
 
 // The path to the data directory.
@@ -241,6 +252,16 @@ func (s *Server) open() error {
 		return fmt.Errorf("skyd.Server: Unable to create server folders: %v", err)
 	}
 
+	// Read in the server's name or generate a name.
+	if name, err := ioutil.ReadFile(s.NamePath()); err == nil {
+		s.name = string(name)
+	} else {
+		s.name = NewNodeId()
+		if err = ioutil.WriteFile(s.NamePath(), []byte(s.name), 0644); err != nil {
+			panic("skyd: Unable to write name file")
+		}
+	}
+	
 	// Open factors database.
 	s.factors = NewFactors(s.FactorsPath())
 	err = s.factors.Open()
@@ -269,9 +290,6 @@ func (s *Server) open() error {
 		}
 	}
 
-	// Initialize empty cluster.
-	s.cluster = NewCluster()
-
 	// Initialize consensus server.
 	if err = s.initRaftServers(); err != nil {
 		s.close()
@@ -292,26 +310,28 @@ func (s *Server) open() error {
 
 // Sets up and starts the cluster and group consensus servers.
 func (s *Server) initRaftServers() error {
-	name := NewNodeId()
-	if err := s.initClusterRaftServer(name, true); err != nil {
+	if err := s.initClusterRaftServer(true); err != nil {
 		return err
 	}
-	if err := s.initGroupRaftServer(name); err != nil {
+	if err := s.initGroupRaftServer(); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Sets up and starts the cluster and group consensus servers.
-func (s *Server) initClusterRaftServer(name string, initSingleNode bool) error {
+func (s *Server) initClusterRaftServer(initSingleNode bool) error {
 	// Create the log directory.
 	if err := os.MkdirAll(s.ClusterRaftPath(), 0700); err != nil {
 		return err
 	}
 
+	// Initialize empty cluster.
+	s.cluster = NewCluster()
+
 	// Setup the consensus server.
 	var err error
-	if s.clusterRaftServer, err = raft.NewServer(name, s.ClusterRaftPath(), s, s); err != nil {
+	if s.clusterRaftServer, err = raft.NewServer(s.name, s.ClusterRaftPath(), s, s); err != nil {
 		return err
 	}
 	s.clusterRaftServer.SetElectionTimeout(s.ElectionTimeout)
@@ -329,7 +349,7 @@ func (s *Server) initClusterRaftServer(name string, initSingleNode bool) error {
 		if err = s.clusterRaftServer.Do(NewCreateNodeGroupCommand(nodeGroupId)); err != nil {
 			return err
 		}
-		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(name, nodeGroupId, s.host, s.port)); err != nil {
+		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(s.name, nodeGroupId, s.host, s.port)); err != nil {
 			return err
 		}
 		if err = s.clusterRaftServer.Do(NewInitCommand()); err != nil {
@@ -341,7 +361,7 @@ func (s *Server) initClusterRaftServer(name string, initSingleNode bool) error {
 }
 
 // Initializes the consensus server for the node's group.
-func (s *Server) initGroupRaftServer(name string) error {
+func (s *Server) initGroupRaftServer() error {
 	// Create the log directory.
 	if err := os.MkdirAll(s.GroupRaftPath(), 0700); err != nil {
 		return err
@@ -349,7 +369,7 @@ func (s *Server) initGroupRaftServer(name string) error {
 
 	// Setup the consensus server.
 	var err error
-	if s.groupRaftServer, err = raft.NewServer(name, s.GroupRaftPath(), s, s); err != nil {
+	if s.groupRaftServer, err = raft.NewServer(s.name, s.GroupRaftPath(), s, s); err != nil {
 		return err
 	}
 	s.groupRaftServer.SetElectionTimeout(s.ElectionTimeout)
@@ -367,13 +387,6 @@ func (s *Server) initGroupRaftServer(name string) error {
 
 // Closes the data directory and servlets.
 func (s *Server) close() {
-	// Close consensus servers.
-	s.closeClusterRaftServer();
-	s.closeGroupRaftServer();
-
-	// Remove cluster info.
-	s.cluster = nil
-
 	// Close servlets.
 	if s.servlets != nil {
 		for _, servlet := range s.servlets {
@@ -387,6 +400,14 @@ func (s *Server) close() {
 		s.factors.Close()
 		s.factors = nil
 	}
+
+	// Close consensus servers.
+	s.closeClusterRaftServer();
+	s.closeGroupRaftServer();
+
+	// Remove cluster info.
+	s.cluster = nil
+	s.name = ""
 }
 
 func (s *Server) closeClusterRaftServer() {
@@ -394,6 +415,7 @@ func (s *Server) closeClusterRaftServer() {
 		s.clusterRaftServer.Stop()
 		s.clusterRaftServer = nil
 	}
+	s.cluster = nil
 }
 
 func (s *Server) closeGroupRaftServer() {
@@ -717,7 +739,7 @@ func (s *Server) Join(host string, port uint) error {
 
 	// Send request to server.
 	url := fmt.Sprintf("http://%s:%d/cluster/nodes", host, port)
-	body, _ := json.Marshal(map[string]interface{}{"host":s.host, "port":s.port})
+	body, _ := json.Marshal(map[string]interface{}{"nodeId":s.name, "host":s.host, "port":s.port})
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return err
@@ -734,10 +756,18 @@ func (s *Server) Join(host string, port uint) error {
 // Raft Execution
 //--------------------------------------
 
+// Retrieves the number of members in the cluster-level Raft server.
+func (s *Server) ClusterRaftMemberCount() int {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.clusterRaftServer != nil {
+		return s.clusterRaftServer.MemberCount()
+	}
+	return 0
+}
+
 // Executes a command on the cluster-level state machine.
 func (s *Server) ExecuteClusterCommand(command raft.Command) error {
-	warn("[%p] cluster.execute: [%s/%d/%d]%v", s, s.clusterRaftServer.State(), s.clusterRaftServer.QuorumSize(), s.clusterRaftServer.MemberCount(), command)
-	
 	// Forward to leader if we're not the leader.
 	if s.clusterRaftServer.State() != raft.Leader {
 		// leaderName := s.clusterRaftServer.Leader()
@@ -746,7 +776,6 @@ func (s *Server) ExecuteClusterCommand(command raft.Command) error {
 
 	// Apply to this node if we're leader.
 	err := s.clusterRaftServer.Do(command)
-	warn("[%p] cluster.execute.do: %v", s, err)
 	return err
 }
 
@@ -761,9 +790,11 @@ func (s *Server) Reset() error {
 	if s.clusterRaftServer.LastCommandName() != "init" {
 		return errors.New("skyd: Cannot reset server that has existing log")
 	}
+	if s.clusterRaftServer.LastCommandName() != "init" {
+		return errors.New("skyd: Cannot reset server that has existing log")
+	}
 	
 	// Maintain the name of the server and close it.
-	name := s.clusterRaftServer.Name()
 	s.closeClusterRaftServer()
 	
 	// Clear the cluster raft directory.
@@ -772,7 +803,7 @@ func (s *Server) Reset() error {
 	}
 
 	// Reinitialize the cluster raft server with no log initialization.
-	if err := s.initClusterRaftServer(name, false); err != nil {
+	if err := s.initClusterRaftServer(false); err != nil {
 		panic("skyd: Unable to reinitialize for join")
 	}
 
