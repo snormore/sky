@@ -11,6 +11,7 @@ func (s *Server) addClusterHandlers() {
 	s.ApiHandleFunc("/cluster/commands", nil, s.clusterExecuteCommandHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/append", &raft.AppendEntriesRequest{}, s.clusterAppendEntriesHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/nodes", &CreateNodeCommand{}, s.clusterCreateNodeHandler).Methods("POST")
+	s.ApiHandleFunc("/cluster/nodes", &RemoveNodeCommand{}, s.clusterRemoveNodeHandler).Methods("DELETE")
 }
 
 // GET /cluster
@@ -64,5 +65,11 @@ func (s *Server) clusterCreateNodeHandler(w http.ResponseWriter, req *http.Reque
 		command.NodeGroupId = group.id
 	}
 
+	return nil, s.ExecuteClusterCommand(command)
+}
+
+// DELETE /cluster/nodes
+func (s *Server) clusterRemoveNodeHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	command := params.(*RemoveNodeCommand)
 	return nil, s.ExecuteClusterCommand(command)
 }

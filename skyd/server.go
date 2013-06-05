@@ -205,6 +205,7 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 	go func() {
 		s.httpServer.Serve(s.listener)
 		s.shutdownFinished <- true
+		s.shutdownFinished = nil
 	}()
 
 	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", Version, s.httpServer.Addr)
@@ -214,6 +215,10 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 
 // Stops the server.
 func (s *Server) Shutdown() error {
+	if !s.Running() {
+		return nil
+	}
+	
 	// Close servlets.
 	s.close()
 
@@ -226,8 +231,11 @@ func (s *Server) Shutdown() error {
 			return err
 		}
 	}
+
 	// wait for server goroutine to finish
-	<-s.shutdownFinished
+	if s.shutdownFinished != nil {
+		<-s.shutdownFinished
+	}
 
 	// Notify that the server is shutdown.
 	if s.shutdownChannel != nil {
@@ -244,7 +252,9 @@ func (s *Server) Running() bool {
 
 // Opens the data directory and servlets.
 func (s *Server) open() error {
-	s.close()
+	if(s.Running()) {
+		s.close()
+	}
 
 	// Setup the file system if it doesn't exist.
 	err := s.createIfNotExists()
@@ -328,6 +338,7 @@ func (s *Server) initClusterRaftServer(initSingleNode bool) error {
 
 	// Initialize empty cluster.
 	s.cluster = NewCluster()
+	warn("[%p] cluster.init (%p)", s, s.cluster)
 
 	// Setup the consensus server.
 	var err error
@@ -404,9 +415,6 @@ func (s *Server) close() {
 	// Close consensus servers.
 	s.closeClusterRaftServer();
 	s.closeGroupRaftServer();
-
-	// Remove cluster info.
-	s.cluster = nil
 	s.name = ""
 }
 
@@ -416,6 +424,7 @@ func (s *Server) closeClusterRaftServer() {
 		s.clusterRaftServer = nil
 	}
 	s.cluster = nil
+	warn("[%p] cluster.close (%p)", s, s.cluster)
 }
 
 func (s *Server) closeGroupRaftServer() {
@@ -455,6 +464,12 @@ func (s *Server) Silence() {
 // Parses incoming JSON objects and converts outgoing responses to JSON.
 func (s *Server) ApiHandleFunc(route string, obj interface{}, handlerFunction func(http.ResponseWriter, *http.Request, interface{}) (interface{}, error)) *mux.Route {
 	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
+		// Make sure there's not a lingering connection open after shutdown.
+		if !s.Running() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		
 		// warn("%s \"%s %s %s\"", req.RemoteAddr, req.Method, req.RequestURI, req.Proto)
 		t0 := time.Now()
 
@@ -741,6 +756,39 @@ func (s *Server) Join(host string, port uint) error {
 	url := fmt.Sprintf("http://%s:%d/cluster/nodes", host, port)
 	body, _ := json.Marshal(map[string]interface{}{"nodeId":s.name, "host":s.host, "port":s.port})
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if _, err := parseResponse(resp); err != nil {
+		return err
+	}
+
+	return err
+}
+
+// Attempts to leave cluster.
+func (s *Server) Leave() error {
+	if s.ClusterRaftMemberCount() == 1 {
+		return fmt.Errorf("skyd: Server is not a member of a cluster")
+	}
+
+	// Send request to leader.
+	leaderNodeId := s.clusterRaftServer.Leader()
+	host, port, err := s.cluster.GetNodeHostname(s.clusterRaftServer.Leader())
+	if err != nil {
+		return fmt.Errorf("skyd: Unable to find leader: %v (%v)", leaderNodeId, err)
+	}
+
+	var b bytes.Buffer
+	url := fmt.Sprintf("http://%s:%d/cluster/nodes", host, port)
+	json.NewEncoder(&b).Encode(map[string]interface{}{"nodeId":s.name})
+	req, err := http.NewRequest("DELETE", url, &b)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}

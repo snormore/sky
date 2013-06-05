@@ -112,6 +112,9 @@ func (f *Factors) Open() error {
 
 // Closes the factors database.
 func (f *Factors) Close() {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	if f.env != nil {
 		f.env.Close()
 		f.env = nil

@@ -62,19 +62,23 @@ func (s *Servlet) Open() error {
 	// Create the database environment.
 	var err error
 	if s.env, err = mdb.NewEnv(); err != nil {
+		s.Close()
 		return fmt.Errorf(fmt.Sprintf("skyd.Servlet: Unable to create LMDB environment: %v", err))
 	}
 	// Setup max dbs.
 	if err := s.env.SetMaxDBs(1024); err != nil {
+		s.Close()
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
 	}
 	// Setup map size.
-	if err := s.env.SetMapSize(2 << 40); err != nil {
+	if err := s.env.SetMapSize(100 << 30); err != nil {
+		s.Close()
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB map size: %v", err)
 	}
 	// Open the database.
 	err = s.env.Open(s.path, 0, 0664)
 	if err != nil {
+		s.Close()
 		return fmt.Errorf("skyd.Servlet: Cannot open servlet: %s", err)
 	}
 
@@ -83,8 +87,12 @@ func (s *Servlet) Open() error {
 
 // Closes the underlying database.
 func (s *Servlet) Close() {
+	s.Lock()
+	defer s.Unlock()
+
 	if s.env != nil {
 		s.env.Close()
+		s.env = nil
 	}
 }
 
@@ -499,6 +507,9 @@ func (s *Servlet) CreateExecutionEngine(table *Table, prefix string, source stri
 
 // Creates and initializes an execution engine for querying this servlet.
 func (s *Servlet) mdbTxnBegin(name string, readOnly bool) (*mdb.Txn, mdb.DBI, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	var flags uint = 0
 	if readOnly {
 		flags = flags | mdb.RDONLY

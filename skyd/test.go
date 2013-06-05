@@ -62,7 +62,7 @@ func runTestServer(f func(s *Server)) {
 	runTestServerAt(path, f)
 }
 
-func runTestServers(callbacks ...func(s *Server)) {
+func runTestServers(autojoin bool, callbacks ...func(s *Server)) []*Server {
 	var wg sync.WaitGroup
 	servers := []*Server{}
 	for i, _ := range callbacks {
@@ -89,12 +89,25 @@ func runTestServers(callbacks ...func(s *Server)) {
 		i, f := _i, _f
 		go func() {
 			defer wg.Done()
+			
+			// Join to the first server if autojoin is enabled.
+			if autojoin {
+				if i > 0 {
+					if err := servers[i].Join("localhost", TestPort); err != nil {
+						panic(fmt.Sprintf("skyd: autojoin failed: %v", err))
+					}
+				}
+				time.Sleep(TestHeartbeatTimeout * 2)
+			}
+			
 			f(servers[i])
 		}()
 	}
 
 	// Wait until everything is done.
 	wg.Wait()
+	
+	return servers
 }
 
 func createTempTable(t *testing.T) *Table {
