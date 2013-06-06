@@ -13,7 +13,7 @@ import (
 
 // This command removes a node from the cluster configuration.
 type RemoveNodeCommand struct {
-	NodeId      string `json:"nodeId"`
+	NodeId string `json:"nodeId"`
 }
 
 func init() {

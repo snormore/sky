@@ -9,7 +9,7 @@ import (
 // Ensure that we can retrieve a list of all available tables on the server.
 func TestServerGetTables(t *testing.T) {
 	runTestServer(func(s *Server) {
-		rpc("localhost", TestPort, "POST", "/tables", map[string]interface{}{"name":"foo"}, nil)
+		rpc("localhost", TestPort, "POST", "/tables", map[string]interface{}{"name": "foo"}, nil)
 		os.MkdirAll(s.TablePath("bar"), 0700)
 
 		tables := make([]map[string]interface{}, 0)

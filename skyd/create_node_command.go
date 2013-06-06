@@ -62,7 +62,7 @@ func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Add the node as a peer.
 	if err := server.clusterRaftServer.AddPeer(node.id); err != nil {
 		// This should never error so if it does then our cluster configuration

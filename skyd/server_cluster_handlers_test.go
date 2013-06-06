@@ -28,7 +28,7 @@ func TestHttpClusterAddNode(t *testing.T) {
 			t.Fatalf("[%d.%p] Unexpected cluster member count: %v", index, s, num)
 		}
 	}
-	
+
 	f0 := func(s *Server) {
 		// Wait for #2 to join
 		time.Sleep(100 * time.Millisecond)
@@ -38,7 +38,7 @@ func TestHttpClusterAddNode(t *testing.T) {
 		if err := s.Join("localhost", 8800); err != nil {
 			t.Fatalf("Unable to join cluster: %v", err)
 		}
-	
+
 		time.Sleep(100 * time.Millisecond)
 		assert(1, s)
 	}
@@ -81,7 +81,6 @@ func TestHttpClusterRemoveLastNode(t *testing.T) {
 	runTestServers(true, f0)
 }
 
-
 //--------------------------------------
 // Groups
 //--------------------------------------
@@ -91,7 +90,7 @@ func TestHttpClusterCreateAndRemoveNodeGroup(t *testing.T) {
 	f0 := func(s *Server) {
 		// Add group.
 		resp := make(map[string]interface{})
-		err := rpc("localhost", 8800, "POST", "/cluster/groups", map[string]interface{}{"nodeGroupId":"foo"}, resp)
+		err := rpc("localhost", 8800, "POST", "/cluster/groups", map[string]interface{}{"nodeGroupId": "foo"}, resp)
 		if err != nil {
 			t.Fatalf("Unable to add group: %v", err)
 		}
@@ -115,7 +114,7 @@ func TestHttpClusterCreateAndRemoveNodeGroup(t *testing.T) {
 func TestHttpClusterRemoveNodeGroupWithNodes(t *testing.T) {
 	f0 := func(s *Server) {
 		nodeGroupId := s.cluster.groups[0].id
-		err := rpc("localhost", 8800, "DELETE", "/cluster/groups/" + nodeGroupId, nil, nil)
+		err := rpc("localhost", 8800, "DELETE", "/cluster/groups/"+nodeGroupId, nil, nil)
 		if err == nil || strings.Index(err.Error(), "Cannot delete node group while nodes are attached") != 0 {
 			t.Fatalf("Unexpected error: %v", err)
 		}

@@ -13,7 +13,7 @@ import (
 
 // This command creates a table.
 type CreateTableCommand struct {
-	Name      string `json:"name"`
+	Name string `json:"name"`
 }
 
 func init() {
@@ -31,7 +31,7 @@ func init() {
 //--------------------------------------
 
 func NewCreateTableCommand(name string) *CreateTableCommand {
-	return &CreateTableCommand{Name:name}
+	return &CreateTableCommand{Name: name}
 }
 
 //--------------------------------------

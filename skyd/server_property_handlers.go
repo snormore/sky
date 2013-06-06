@@ -8,7 +8,7 @@ import (
 
 func (s *Server) addPropertyHandlers() {
 	s.ApiHandleFunc("/tables/{name}/properties", nil, s.getPropertiesHandler).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/properties", nil, s.createPropertyHandler).Methods("POST")
+	s.ApiHandleFunc("/tables/{name}/properties", &CreatePropertyCommand{}, s.createPropertyHandler).Methods("POST")
 
 	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, s.getPropertyHandler).Methods("GET")
 	s.ApiHandleFunc("/tables/{name}/properties/{propertyName}", nil, s.updatePropertyHandler).Methods("PATCH")
@@ -18,7 +18,6 @@ func (s *Server) addPropertyHandlers() {
 // GET /tables/:name/properties
 func (s *Server) getPropertiesHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-
 	table, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
@@ -30,16 +29,16 @@ func (s *Server) getPropertiesHandler(w http.ResponseWriter, req *http.Request, 
 // POST /tables/:name/properties
 func (s *Server) createPropertyHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	table, err := s.OpenTable(vars["name"])
+	command := params.(*CreatePropertyCommand)
+	command.TableName = vars["name"]
+	err := s.ExecuteClusterCommand(command)
+
+	table, err := s.OpenTable(command.TableName)
 	if err != nil {
 		return nil, err
 	}
-
-	p := params.(map[string]interface{})
-	name, _ := p["name"].(string)
-	transient, _ := p["transient"].(bool)
-	dataType, _ := p["dataType"].(string)
-	return table.CreateProperty(name, transient, dataType)
+	property, _ := table.GetPropertyByName(command.Name)
+	return property, err
 }
 
 // GET /tables/:name/properties/:propertyName

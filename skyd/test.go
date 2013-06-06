@@ -100,14 +100,14 @@ func runTestServers(autojoin bool, callbacks ...func(s *Server)) []*Server {
 				}
 				time.Sleep(TestHeartbeatTimeout * 2)
 			}
-			
+
 			f(servers[i])
 		}()
 	}
 
 	// Wait until everything is done.
 	wg.Wait()
-	
+
 	return servers
 }
 

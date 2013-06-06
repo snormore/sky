@@ -217,7 +217,7 @@ func (s *Server) Shutdown() error {
 	if !s.Running() {
 		return nil
 	}
-	
+
 	// Close servlets.
 	s.close()
 
@@ -251,7 +251,7 @@ func (s *Server) Running() bool {
 
 // Opens the data directory and servlets.
 func (s *Server) open() error {
-	if(s.Running()) {
+	if s.Running() {
 		s.close()
 	}
 
@@ -270,7 +270,7 @@ func (s *Server) open() error {
 			panic("skyd: Unable to write name file")
 		}
 	}
-	
+
 	// Open factors database.
 	s.factors = NewFactors(s.FactorsPath())
 	err = s.factors.Open()
@@ -411,8 +411,8 @@ func (s *Server) close() {
 	}
 
 	// Close consensus servers.
-	s.closeClusterRaftServer();
-	s.closeGroupRaftServer();
+	s.closeClusterRaftServer()
+	s.closeGroupRaftServer()
 	s.name = ""
 }
 
@@ -470,7 +470,7 @@ func (s *Server) ApiHandleFunc(route string, obj interface{}, handlerFunction fu
 			w.WriteHeader(http.StatusGone)
 			return
 		}
-		
+
 		// Copy the serialization object.
 		var err error
 		var params interface{}
@@ -747,7 +747,6 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 // RPC
 //--------------------------------------
 
-
 //--------------------------------------
 // Membership
 //--------------------------------------
@@ -755,7 +754,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 // Attempts to join a cluster that a given host is a part of.
 func (s *Server) Join(host string, port uint) error {
 	// TODO: Make sure server has no data or log before attempting to join.
-	return rpc(host, port, "POST", "/cluster/nodes", map[string]interface{}{"nodeId":s.name, "host":s.host, "port":s.port}, nil)
+	return rpc(host, port, "POST", "/cluster/nodes", map[string]interface{}{"nodeId": s.name, "host": s.host, "port": s.port}, nil)
 }
 
 // Attempts to leave cluster.
@@ -811,10 +810,10 @@ func (s *Server) Reset() error {
 	if s.clusterRaftServer.LastCommandName() != "init" {
 		return errors.New("skyd: Cannot reset server that has existing log")
 	}
-	
+
 	// Maintain the name of the server and close it.
 	s.closeClusterRaftServer()
-	
+
 	// Clear the cluster raft directory.
 	if err := os.RemoveAll(s.ClusterRaftPath()); err != nil {
 		panic("skyd: Unable to clear cluster log before join")

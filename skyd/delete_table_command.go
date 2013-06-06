@@ -12,7 +12,7 @@ import (
 
 // This command deletes a table.
 type DeleteTableCommand struct {
-	Name      string `json:"name"`
+	Name string `json:"name"`
 }
 
 func init() {
@@ -30,7 +30,7 @@ func init() {
 //--------------------------------------
 
 func NewDeleteTableCommand(name string) *DeleteTableCommand {
-	return &DeleteTableCommand{Name:name}
+	return &DeleteTableCommand{Name: name}
 }
 
 //--------------------------------------
