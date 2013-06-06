@@ -34,7 +34,6 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, pa
 // DELETE /tables/:name
 func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	tableName := vars["name"]
-
-	return nil, s.DeleteTable(tableName)
+	command := NewDeleteTableCommand(vars["name"])
+	return nil, s.ExecuteClusterCommand(command)
 }
