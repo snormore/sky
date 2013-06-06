@@ -110,3 +110,18 @@ func TestHttpClusterCreateAndRemoveNodeGroup(t *testing.T) {
 	}
 	runTestServers(true, f0)
 }
+
+// Ensure that we can't remove a group that has nodes.
+func TestHttpClusterRemoveNodeGroupWithNodes(t *testing.T) {
+	f0 := func(s *Server) {
+		nodeGroupId := s.cluster.groups[0].id
+		err := rpc("localhost", 8800, "DELETE", "/cluster/groups/" + nodeGroupId, nil, nil)
+		if err == nil || strings.Index(err.Error(), "Cannot delete node group while nodes are attached") != 0 {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if num := len(s.cluster.groups); num != 1 {
+			t.Fatalf("[%p] Unexpected cluster state: %d", s, num)
+		}
+	}
+	runTestServers(true, f0)
+}
