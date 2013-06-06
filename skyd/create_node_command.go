@@ -55,14 +55,9 @@ func (c *CreateNodeCommand) Apply(raftServer *raft.Server) error {
 
 	// TODO: Validate host & port.
 
-	// Locate the group to add to.
-	group := server.cluster.GetNodeGroup(c.NodeGroupId)
-	if group == nil {
-		return NodeGroupNotFoundError
-	}
-
 	// Create node and add it to the cluster.
 	node := NewNode(c.NodeId, c.Host, c.Port)
+	group := NewNodeGroup(c.NodeGroupId)
 	err := server.cluster.AddNode(node, group)
 	if err != nil {
 		return err

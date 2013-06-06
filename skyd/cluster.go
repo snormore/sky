@@ -18,7 +18,6 @@ const (
 )
 
 var NodeGroupRequiredError = errors.New("Node group required")
-var NodeGroupNotFoundError = errors.New("Node group not found")
 var NodeGroupAttachedShardsError = errors.New("Cannot delete node group while shards are attached")
 var NodeGroupAttachedNodesError = errors.New("Cannot delete node group while nodes are attached")
 var ExistingShardsError = errors.New("Node group cannot be added with existing shards")
@@ -129,6 +128,10 @@ func (c *Cluster) RemoveNodeGroup(group *NodeGroup) error {
 	if group == nil {
 		return NodeGroupRequiredError
 	}
+	nodeGroupId := group.id
+	if group = c.getNodeGroup(nodeGroupId); group == nil {
+		return fmt.Errorf("Node group not found for removal: %s", nodeGroupId)
+	}
 	if len(group.nodes) > 0 {
 		return NodeGroupAttachedNodesError
 	}
@@ -138,11 +141,9 @@ func (c *Cluster) RemoveNodeGroup(group *NodeGroup) error {
 	for index, g := range c.groups {
 		if g == group {
 			c.groups = append(c.groups[:index], c.groups[index+1:]...)
-			return nil
 		}
 	}
-
-	return NodeGroupNotFoundError
+	return nil
 }
 
 //--------------------------------------
@@ -196,7 +197,7 @@ func (c *Cluster) AddNode(node *Node, group *NodeGroup) error {
 		return NodeGroupRequiredError
 	}
 	if group = c.getNodeGroup(group.id); group == nil {
-		return NodeGroupNotFoundError
+		return fmt.Errorf("Node group not found to add to: %s", group.id)
 	}
 
 	return group.addNode(node)
@@ -255,7 +256,7 @@ func (c *Cluster) MoveShard(index int, group *NodeGroup) error {
 		return NodeGroupRequiredError
 	}
 	if group = c.getNodeGroup(group.id); group == nil {
-		return NodeGroupNotFoundError
+		return fmt.Errorf("Node group not found for shard movement: %s", group.id)
 	}
 
 	// Remove from the source group.

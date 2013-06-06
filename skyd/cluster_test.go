@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -90,7 +91,7 @@ func TestClusterRemoveNodeGroupWithNodes(t *testing.T) {
 }
 
 func TestClusterRemoveNonExistentNodeGroup(t *testing.T) {
-	if err := NewCluster().RemoveNodeGroup(NewNodeGroup("a")); err != NodeGroupNotFoundError {
+	if err := NewCluster().RemoveNodeGroup(NewNodeGroup("a")); strings.Index(err.Error(), "Node group not found") != 0 {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }

@@ -10,13 +10,13 @@ import (
 //
 //------------------------------------------------------------------------------
 
-// This command creates a node group in the cluster configuration.
-type CreateNodeGroupCommand struct {
+// This command removes a node group from the cluster configuration.
+type RemoveNodeGroupCommand struct {
 	NodeGroupId string `json:"nodeGroupId"`
 }
 
 func init() {
-	raft.RegisterCommand(&CreateNodeGroupCommand{})
+	raft.RegisterCommand(&RemoveNodeGroupCommand{})
 }
 
 //------------------------------------------------------------------------------
@@ -29,19 +29,19 @@ func init() {
 // Constructor
 //--------------------------------------
 
-func NewCreateNodeGroupCommand(nodeGroupId string) *CreateNodeGroupCommand {
-	return &CreateNodeGroupCommand{NodeGroupId: nodeGroupId}
+func NewRemoveNodeGroupCommand(nodeGroupId string) *RemoveNodeGroupCommand {
+	return &RemoveNodeGroupCommand{NodeGroupId: nodeGroupId}
 }
 
 //--------------------------------------
 // Command
 //--------------------------------------
 
-func (c *CreateNodeGroupCommand) CommandName() string {
-	return "group:create"
+func (c *RemoveNodeGroupCommand) CommandName() string {
+	return "group:remove"
 }
 
-func (c *CreateNodeGroupCommand) Apply(raftServer *raft.Server) error {
+func (c *RemoveNodeGroupCommand) Apply(raftServer *raft.Server) error {
 	server := raftServer.Context().(*Server)
-	return server.cluster.AddNodeGroup(NewNodeGroup(c.NodeGroupId))
+	return server.cluster.RemoveNodeGroup(NewNodeGroup(c.NodeGroupId))
 }

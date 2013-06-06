@@ -767,7 +767,7 @@ func (s *Server) Leave() error {
 		return fmt.Errorf("skyd: Unable to find leader: %v (%v)", leaderNodeId, err)
 	}
 
-	return rpc(host, port, "DELETE", "/cluster/nodes", map[string]interface{}{"nodeId":s.name}, nil)
+	return rpc(host, port, "DELETE", fmt.Sprintf("/cluster/nodes/%s", s.name), nil, nil)
 }
 
 //--------------------------------------

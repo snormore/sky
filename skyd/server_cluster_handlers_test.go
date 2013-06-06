@@ -6,6 +6,16 @@ import (
 	"time"
 )
 
+//------------------------------------------------------------------------------
+//
+// Tests
+//
+//------------------------------------------------------------------------------
+
+//--------------------------------------
+// Nodes
+//--------------------------------------
+
 // Ensure that we can add a server to the cluster and the configuration is
 // replicated between the nodes.
 func TestHttpClusterAddNode(t *testing.T) {
@@ -65,9 +75,38 @@ func TestHttpClusterRemoveLastNode(t *testing.T) {
 			t.Fatalf("Last node should not be able to leave cluster", err)
 		}
 		if !s.Running() {
-			t.Fatalf("[%p] Unexpected server state: stopped", 0, s)
+			t.Fatalf("[%p] Unexpected server state: stopped", s)
 		}
 	}
 	runTestServers(true, f0)
 }
 
+
+//--------------------------------------
+// Groups
+//--------------------------------------
+
+// Ensure that we can create and remove a group.
+func TestHttpClusterCreateAndRemoveNodeGroup(t *testing.T) {
+	f0 := func(s *Server) {
+		// Add group.
+		resp := make(map[string]interface{})
+		err := rpc("localhost", 8800, "POST", "/cluster/groups", map[string]interface{}{"nodeGroupId":"foo"}, resp)
+		if err != nil {
+			t.Fatalf("Unable to add group: %v", err)
+		}
+		if num := len(s.cluster.groups); num != 2 || s.cluster.groups[1].id != "foo" {
+			t.Fatalf("[%p] Unexpected group state: %d", s, num)
+		}
+
+		// Remove group.
+		err = rpc("localhost", 8800, "DELETE", "/cluster/groups/foo", nil, nil)
+		if err != nil {
+			t.Fatalf("Unable to remove group: %v", err)
+		}
+		if num := len(s.cluster.groups); num != 1 {
+			t.Fatalf("[%p] Unexpected group state after removal: %d", s, num)
+		}
+	}
+	runTestServers(true, f0)
+}

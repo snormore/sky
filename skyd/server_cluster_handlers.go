@@ -3,6 +3,7 @@ package skyd
 import (
 	"errors"
 	"github.com/benbjohnson/go-raft"
+	"github.com/gorilla/mux"
 	"net/http"
 )
 
@@ -11,13 +12,14 @@ func (s *Server) addClusterHandlers() {
 	s.ApiHandleFunc("/cluster/commands", nil, s.clusterExecuteCommandHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/append", &raft.AppendEntriesRequest{}, s.clusterAppendEntriesHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/nodes", &CreateNodeCommand{}, s.clusterCreateNodeHandler).Methods("POST")
-	s.ApiHandleFunc("/cluster/nodes", &RemoveNodeCommand{}, s.clusterRemoveNodeHandler).Methods("DELETE")
+	s.ApiHandleFunc("/cluster/nodes/{id}", nil, s.clusterRemoveNodeHandler).Methods("DELETE")
+	s.ApiHandleFunc("/cluster/groups", &CreateNodeGroupCommand{}, s.clusterCreateNodeGroupHandler).Methods("POST")
+	s.ApiHandleFunc("/cluster/groups/{id}", nil, s.clusterRemoveNodeGroupHandler).Methods("DELETE")
 }
 
-// GET /cluster
-func (s *Server) getClusterHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-	return s.cluster.serialize(), nil
-}
+//--------------------------------------
+// Cluster-level Raft Replication
+//--------------------------------------
 
 // POST /cluster/commands
 func (s *Server) clusterExecuteCommandHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
@@ -53,6 +55,19 @@ func (s *Server) clusterAppendEntriesHandler(w http.ResponseWriter, req *http.Re
 	return resp, nil
 }
 
+//--------------------------------------
+// Cluster endpoints
+//--------------------------------------
+
+// GET /cluster
+func (s *Server) getClusterHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	return s.cluster.serialize(), nil
+}
+
+//--------------------------------------
+// Node endpoints
+//--------------------------------------
+
 // POST /cluster/nodes
 func (s *Server) clusterCreateNodeHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	command := params.(*CreateNodeCommand)
@@ -69,8 +84,32 @@ func (s *Server) clusterCreateNodeHandler(w http.ResponseWriter, req *http.Reque
 	return nil, s.ExecuteClusterCommand(command)
 }
 
-// DELETE /cluster/nodes
+// DELETE /cluster/nodes/:id
 func (s *Server) clusterRemoveNodeHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-	command := params.(*RemoveNodeCommand)
+	vars := mux.Vars(req)
+	command := NewRemoveNodeCommand(vars["id"])
+	return nil, s.ExecuteClusterCommand(command)
+}
+
+//--------------------------------------
+// Node Group
+//--------------------------------------
+
+// POST /cluster/groups
+func (s *Server) clusterCreateNodeGroupHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	command := params.(*CreateNodeGroupCommand)
+
+	// Create a group id if one is not specified.
+	if command.NodeGroupId == "" {
+		command.NodeGroupId = NewNodeGroupId()
+	}
+
+	return nil, s.ExecuteClusterCommand(command)
+}
+
+// DELETE /cluster/groups/:id
+func (s *Server) clusterRemoveNodeGroupHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	vars := mux.Vars(req)
+	command := NewRemoveNodeGroupCommand(vars["id"])
 	return nil, s.ExecuteClusterCommand(command)
 }
