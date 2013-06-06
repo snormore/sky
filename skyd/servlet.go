@@ -507,9 +507,6 @@ func (s *Servlet) CreateExecutionEngine(table *Table, prefix string, source stri
 
 // Creates and initializes an execution engine for querying this servlet.
 func (s *Servlet) mdbTxnBegin(name string, readOnly bool) (*mdb.Txn, mdb.DBI, error) {
-	s.Lock()
-	defer s.Unlock()
-
 	var flags uint = 0
 	if readOnly {
 		flags = flags | mdb.RDONLY

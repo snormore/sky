@@ -28,6 +28,7 @@ func (s *Server) clusterExecuteCommandHandler(w http.ResponseWriter, req *http.R
 // POST /cluster/append
 func (s *Server) clusterAppendEntriesHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
 	r := params.(*raft.AppendEntriesRequest)
+	// warn("[%p] POST /cluster/append (%v)", s, r)
 
 	// If the log has not been appended to (except for server init) then
 	// truncate it and allow entries. This occurs in the case of a server join.

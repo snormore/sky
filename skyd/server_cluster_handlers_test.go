@@ -17,7 +17,7 @@ func TestHttpClusterAddNode(t *testing.T) {
 			t.Fatalf("[%d.%p] Unexpected cluster member count: %v", index, s, num)
 		}
 	}
-		
+	
 	f0 := func(s *Server) {
 		// Wait for #2 to join
 		time.Sleep(100 * time.Millisecond)
@@ -27,7 +27,8 @@ func TestHttpClusterAddNode(t *testing.T) {
 		if err := s.Join("localhost", 8800); err != nil {
 			t.Fatalf("Unable to join cluster: %v", err)
 		}
-		time.Sleep(50 * time.Millisecond)
+	
+		time.Sleep(100 * time.Millisecond)
 		assert(1, s)
 	}
 	runTestServers(false, f0, f1)

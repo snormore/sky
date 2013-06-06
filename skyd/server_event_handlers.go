@@ -105,7 +105,7 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, p
 	if err != nil {
 		return nil, err
 	}
-
+	
 	p := params.(map[string]interface{})
 	p["timestamp"] = vars["timestamp"]
 	event, err := table.DeserializeEvent(p)

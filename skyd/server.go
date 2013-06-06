@@ -1,7 +1,6 @@
 package skyd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -338,7 +337,6 @@ func (s *Server) initClusterRaftServer(initSingleNode bool) error {
 
 	// Initialize empty cluster.
 	s.cluster = NewCluster()
-	warn("[%p] cluster.init (%p)", s, s.cluster)
 
 	// Setup the consensus server.
 	var err error
@@ -424,7 +422,6 @@ func (s *Server) closeClusterRaftServer() {
 		s.clusterRaftServer = nil
 	}
 	s.cluster = nil
-	warn("[%p] cluster.close (%p)", s, s.cluster)
 }
 
 func (s *Server) closeGroupRaftServer() {
@@ -464,15 +461,16 @@ func (s *Server) Silence() {
 // Parses incoming JSON objects and converts outgoing responses to JSON.
 func (s *Server) ApiHandleFunc(route string, obj interface{}, handlerFunction func(http.ResponseWriter, *http.Request, interface{}) (interface{}, error)) *mux.Route {
 	wrappedFunction := func(w http.ResponseWriter, req *http.Request) {
-		// Make sure there's not a lingering connection open after shutdown.
-		if !s.Running() {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		
 		// warn("%s \"%s %s %s\"", req.RemoteAddr, req.Method, req.RequestURI, req.Proto)
 		t0 := time.Now()
 
+		// Make sure there's not a lingering connection open after shutdown.
+		if !s.Running() {
+			warn("[%p] not running", s)
+			w.WriteHeader(http.StatusGone)
+			return
+		}
+		
 		// Copy the serialization object.
 		var err error
 		var params interface{}
@@ -502,7 +500,8 @@ func (s *Server) ApiHandleFunc(route string, obj interface{}, handlerFunction fu
 
 		// If there is an error then replace the return value.
 		if err != nil {
-			ret = map[string]interface{}{"error":map[string]interface{}{"message": err.Error()}}
+			w.Header().Set("Sky-Error-Message", err.Error())
+			ret = map[string]interface{}{"message": err.Error()}
 		}
 
 		// Write header status.
@@ -745,26 +744,18 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 }
 
 //--------------------------------------
+// RPC
+//--------------------------------------
+
+
+//--------------------------------------
 // Membership
 //--------------------------------------
 
 // Attempts to join a cluster that a given host is a part of.
 func (s *Server) Join(host string, port uint) error {
 	// TODO: Make sure server has no data or log before attempting to join.
-
-	// Send request to server.
-	url := fmt.Sprintf("http://%s:%d/cluster/nodes", host, port)
-	body, _ := json.Marshal(map[string]interface{}{"nodeId":s.name, "host":s.host, "port":s.port})
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if _, err := parseResponse(resp); err != nil {
-		return err
-	}
-
-	return err
+	return rpc(host, port, "POST", "/cluster/nodes", map[string]interface{}{"nodeId":s.name, "host":s.host, "port":s.port}, nil)
 }
 
 // Attempts to leave cluster.
@@ -773,31 +764,14 @@ func (s *Server) Leave() error {
 		return fmt.Errorf("skyd: Server is not a member of a cluster")
 	}
 
-	// Send request to leader.
+	// Determine the cluster leader.
 	leaderNodeId := s.clusterRaftServer.Leader()
 	host, port, err := s.cluster.GetNodeHostname(s.clusterRaftServer.Leader())
 	if err != nil {
 		return fmt.Errorf("skyd: Unable to find leader: %v (%v)", leaderNodeId, err)
 	}
 
-	var b bytes.Buffer
-	url := fmt.Sprintf("http://%s:%d/cluster/nodes", host, port)
-	json.NewEncoder(&b).Encode(map[string]interface{}{"nodeId":s.name})
-	req, err := http.NewRequest("DELETE", url, &b)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if _, err := parseResponse(resp); err != nil {
-		return err
-	}
-
-	return err
+	return rpc(host, port, "DELETE", "/cluster/nodes", map[string]interface{}{"nodeId":s.name}, nil)
 }
 
 //--------------------------------------
@@ -871,20 +845,9 @@ func (s *Server) SendAppendEntriesRequest(raftServer *raft.Server, peer *raft.Pe
 	}
 
 	// Send the entries over HTTP.
-	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(req)
-	resp, err := http.Post(fmt.Sprintf("http://%s:%d/cluster/append", host, port), "application/json", &b)
-	if resp == nil {
-		return nil, fmt.Errorf("skyd.Server: Append entries connection failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Process the response.
-	r := &raft.AppendEntriesResponse{}
-	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil && err != io.EOF {
-		return nil, err
-	}
-	return r, nil
+	resp := &raft.AppendEntriesResponse{}
+	err = rpc(host, port, "POST", "/cluster/append", req, resp)
+	return resp, err
 }
 
 // Sends RequestVote RPCs to a peer when the server is the candidate.
@@ -896,18 +859,7 @@ func (s *Server) SendVoteRequest(raftServer *raft.Server, peer *raft.Peer, req *
 	}
 
 	// Send the entries over HTTP.
-	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(req)
-	resp, err := http.Post(fmt.Sprintf("http://%s:%d/cluster/vote", host, port), "application/json", &b)
-	if resp == nil {
-		return nil, fmt.Errorf("skyd.Server: Request vote connection failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Process the response.
-	r := &raft.RequestVoteResponse{}
-	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil && err != io.EOF {
-		return nil, err
-	}
-	return r, nil
+	resp := &raft.RequestVoteResponse{}
+	err = rpc(host, port, "POST", "/cluster/vote", req, resp)
+	return resp, err
 }

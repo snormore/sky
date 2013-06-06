@@ -81,6 +81,7 @@ func runTestServers(autojoin bool, callbacks ...func(s *Server)) []*Server {
 		server.ListenAndServe(nil)
 		defer server.Shutdown()
 
+		//warn("[%p] running (%s)", server, server.name)
 		servers = append(servers, server)
 	}
 
@@ -89,7 +90,7 @@ func runTestServers(autojoin bool, callbacks ...func(s *Server)) []*Server {
 		i, f := _i, _f
 		go func() {
 			defer wg.Done()
-			
+
 			// Join to the first server if autojoin is enabled.
 			if autojoin {
 				if i > 0 {
