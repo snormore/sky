@@ -760,10 +760,6 @@ func (s *Server) Join(host string, port uint) error {
 
 // Attempts to leave cluster.
 func (s *Server) Leave() error {
-	if s.ClusterRaftMemberCount() == 1 {
-		return fmt.Errorf("skyd: Server is not a member of a cluster")
-	}
-
 	// Determine the cluster leader.
 	leaderNodeId := s.clusterRaftServer.Leader()
 	host, port, err := s.cluster.GetNodeHostname(s.clusterRaftServer.Leader())

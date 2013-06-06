@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"fmt"
 	"github.com/benbjohnson/go-raft"
 )
 
@@ -43,6 +44,14 @@ func (c *RemoveNodeCommand) CommandName() string {
 
 func (c *RemoveNodeCommand) Apply(raftServer *raft.Server) error {
 	server := raftServer.Context().(*Server)
+
+	// Don't allow the last node to be removed from a group.
+	node, group := server.cluster.GetNode(c.NodeId)
+	if node == nil {
+		return fmt.Errorf("Node not found: %s", c.NodeId)
+	} else if len(group.nodes) == 1 {
+		return fmt.Errorf("Cannot remove last node from group: %s/%s", node.id, group.id)
+	}
 
 	// If the node being removed is this server then clear out the data
 	// and shutdown.

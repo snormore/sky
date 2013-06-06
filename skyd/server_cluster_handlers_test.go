@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -55,5 +56,18 @@ func TestHttpClusterRemoveNode(t *testing.T) {
 		}
 	}
 	runTestServers(true, f0, f1)
+}
+
+// Ensure that we cannot remove the last node from a group.
+func TestHttpClusterRemoveLastNode(t *testing.T) {
+	f0 := func(s *Server) {
+		if err := s.Leave(); strings.Index(err.Error(), "Cannot remove last node from group") != 0 {
+			t.Fatalf("Last node should not be able to leave cluster", err)
+		}
+		if !s.Running() {
+			t.Fatalf("[%p] Unexpected server state: stopped", 0, s)
+		}
+	}
+	runTestServers(true, f0)
 }
 
