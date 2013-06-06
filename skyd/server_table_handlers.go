@@ -1,7 +1,6 @@
 package skyd
 
 import (
-	"errors"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -9,7 +8,7 @@ import (
 func (s *Server) addTableHandlers() {
 	s.ApiHandleFunc("/tables", nil, s.getTablesHandler).Methods("GET")
 	s.ApiHandleFunc("/tables/{name}", nil, s.getTableHandler).Methods("GET")
-	s.ApiHandleFunc("/tables", nil, s.createTableHandler).Methods("POST")
+	s.ApiHandleFunc("/tables", &CreateTableCommand{}, s.createTableHandler).Methods("POST")
 	s.ApiHandleFunc("/tables/{name}", nil, s.deleteTableHandler).Methods("DELETE")
 }
 
@@ -26,28 +25,10 @@ func (s *Server) getTableHandler(w http.ResponseWriter, req *http.Request, param
 
 // POST /tables
 func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
-	p := params.(map[string]interface{})
-
-	// Retrieve table parameters.
-	tableName, ok := p["name"].(string)
-	if !ok {
-		return nil, errors.New("Table name required.")
-	}
-
-	// Return an error if the table already exists.
-	table, err := s.OpenTable(tableName)
-	if table != nil {
-		return nil, errors.New("Table already exists.")
-	}
-
-	// Otherwise create it.
-	table = NewTable(tableName, s.TablePath(tableName))
-	err = table.Create()
-	if err != nil {
-		return nil, err
-	}
-
-	return table, nil
+	command := params.(*CreateTableCommand)
+	err := s.ExecuteClusterCommand(command)
+	table, _ := s.OpenTable(command.Name)
+	return table, err
 }
 
 // DELETE /tables/:name

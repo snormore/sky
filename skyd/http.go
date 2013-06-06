@@ -44,7 +44,7 @@ func rpc(host string, port uint, method string, path string, reqObj interface{},
 
 	// Decode response into object.
 	if respObj != nil {
-		if err := json.NewDecoder(resp.Body).Decode(&respObj); err != nil && err != io.EOF {
+		if err := json.NewDecoder(resp.Body).Decode(respObj); err != nil && err != io.EOF {
 			return fmt.Errorf("skyd: Deserialization error: %v", err)
 		}
 	}

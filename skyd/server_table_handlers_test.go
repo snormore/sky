@@ -9,17 +9,15 @@ import (
 // Ensure that we can retrieve a list of all available tables on the server.
 func TestServerGetTables(t *testing.T) {
 	runTestServer(func(s *Server) {
-		// Make and open one table.
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8800/tables", "application/json", `{"name":"foo"}`)
-		resp.Body.Close()
-		// Create another one as an empty directory.
+		rpc("localhost", TestPort, "POST", "/tables", map[string]interface{}{"name":"foo"}, nil)
 		os.MkdirAll(s.TablePath("bar"), 0700)
 
-		resp, err := sendTestHttpRequest("GET", "http://localhost:8800/tables", "application/json", ``)
-		if err != nil {
+		tables := make([]map[string]interface{}, 0)
+		if err := rpc("localhost", TestPort, "GET", "/tables", nil, &tables); err != nil {
 			t.Fatalf("Unable to get tables: %v", err)
+		} else if !(len(tables) == 2 && tables[0]["name"] == "bar" && tables[1]["name"] == "foo") {
+			t.Fatalf("Unexpected response: %v", tables)
 		}
-		assertResponse(t, resp, 200, `[{"name":"bar"},{"name":"foo"}]`+"\n", "GET /tables failed.")
 	})
 }
 
