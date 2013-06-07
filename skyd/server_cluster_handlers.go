@@ -11,6 +11,7 @@ func (s *Server) addClusterHandlers() {
 	s.ApiHandleFunc("/cluster", nil, s.getClusterHandler).Methods("GET")
 	s.ApiHandleFunc("/cluster/commands", nil, s.clusterExecuteCommandHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/append", &raft.AppendEntriesRequest{}, s.clusterAppendEntriesHandler).Methods("POST")
+	s.ApiHandleFunc("/cluster/vote", &raft.RequestVoteRequest{}, s.clusterRequestVoteHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/nodes", &CreateNodeCommand{}, s.clusterCreateNodeHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/nodes/{id}", nil, s.clusterRemoveNodeHandler).Methods("DELETE")
 	s.ApiHandleFunc("/cluster/groups", &CreateNodeGroupCommand{}, s.clusterCreateNodeGroupHandler).Methods("POST")
@@ -41,16 +42,32 @@ func (s *Server) clusterAppendEntriesHandler(w http.ResponseWriter, req *http.Re
 	}
 
 	// Retrieve the Raft server.
-	s.mutex.Lock()
 	raftServer := s.clusterRaftServer
-	s.mutex.Unlock()
 	if raftServer == nil {
-		return nil, errors.New("skyd: Raft server unavailable")
+		return nil, errors.New("Cluster raft server unavailable")
 	}
 
-	resp, err := s.clusterRaftServer.AppendEntries(r)
+	resp, err := raftServer.AppendEntries(r)
 	if err != nil {
 		warn("[/append] %v", err)
+	}
+	return resp, nil
+}
+
+// POST /cluster/vote
+func (s *Server) clusterRequestVoteHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	r := params.(*raft.RequestVoteRequest)
+	// warn("[%p] POST /cluster/vote (%v)", s, r)
+
+	// Retrieve the Raft server.
+	raftServer := s.clusterRaftServer
+	if raftServer == nil {
+		return nil, errors.New("Cluster raft server unavailable")
+	}
+
+	resp, err := raftServer.RequestVote(r)
+	if err != nil {
+		warn("[/vote] %v", err)
 	}
 	return resp, nil
 }
