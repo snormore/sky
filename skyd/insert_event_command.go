@@ -13,11 +13,11 @@ import (
 
 // This command inserts an event into a table.
 type InsertEventCommand struct {
-	TableName string `json:"tableName"`
-	ObjectId      string `json:"id"`
-	Timestamp time.Time   `json:"timestamp"`
-	Data  map[string]interface{} `json:"data"`
-	Method string `json:"method"`
+	TableName string                 `json:"tableName"`
+	ObjectId  string                 `json:"id"`
+	Timestamp time.Time              `json:"timestamp"`
+	Data      map[string]interface{} `json:"data"`
+	Method    string                 `json:"method"`
 }
 
 func init() {
@@ -37,10 +37,10 @@ func init() {
 func NewInsertEventCommand(tableName string, objectId string, timestamp time.Time, data map[string]interface{}, method string) *InsertEventCommand {
 	return &InsertEventCommand{
 		TableName: tableName,
-		ObjectId:      objectId,
-		Timestamp:      timestamp,
+		ObjectId:  objectId,
+		Timestamp: timestamp,
 		Data:      data,
-		Method:      method,
+		Method:    method,
 	}
 }
 
@@ -56,4 +56,3 @@ func (c *InsertEventCommand) Apply(raftServer *raft.Server) error {
 	//server := raftServer.Context().(*Server)
 	return nil
 }
-

@@ -831,7 +831,7 @@ func (s *Server) ExecuteClusterCommand(command raft.Command) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Forward to leader if we're not the leader.
 	if leaderNodeId != s.nodeId {
 		return rpc(host, port, "POST", "/cluster/commands", command, nil)
