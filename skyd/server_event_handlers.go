@@ -111,6 +111,16 @@ func (s *Server) insertEventHandler(w http.ResponseWriter, req *http.Request, pa
 	return nil, s.ExecuteGroupCommand(command)
 }
 
+// DELETE /tables/:name/objects/:objectId/events/:timestamp
+func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
+	vars := mux.Vars(req)
+	command := params.(*DeleteEventCommand)
+	command.TableName = vars["name"]
+	command.ObjectId = vars["objectId"]
+	command.Timestamp, _ = time.Parse(time.RFC3339, vars["timestamp"])
+	return nil, s.ExecuteGroupCommand(command)
+}
+
 // PATCH /tables/:name/events
 func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
@@ -122,35 +132,17 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 		decoder := json.NewDecoder(req.Body)
 		for {
 			// Read in a JSON object.
-			rawEvent := map[string]interface{}{}
-			if err := decoder.Decode(&rawEvent); err == io.EOF {
+			command := &InsertEventCommand{TableName:vars["name"]}
+			if err := decoder.Decode(&command); err == io.EOF {
 				break
 			} else if err != nil {
 				return fmt.Errorf("Malformed json event: %v", err)
 			}
-			// Extract the object identifier.
-			objectId, ok := rawEvent["id"].(string)
-			if !ok {
-				return fmt.Errorf("Object identifier required")
+
+			if err := s.ExecuteGroupCommand(command); err != nil {
+				return err
 			}
 
-			// Determine the appropriate servlet to insert into.
-			table, servlet, err := s.GetObjectContext(vars["name"], objectId)
-			if err != nil {
-				return fmt.Errorf("Cannot determine object context: %v", err)
-			}
-
-			// Convert to a Sky event and insert.
-			event, err := table.DeserializeEvent(rawEvent)
-			if err != nil {
-				return fmt.Errorf("Cannot deserialize: %v", err)
-			}
-			if err = table.FactorizeEvent(event, s.factors, true); err != nil {
-				return fmt.Errorf("Cannot factorize: %v", err)
-			}
-			if err = servlet.PutEvent(table, objectId, event, false); err != nil {
-				return fmt.Errorf("Cannot put event: %v", err)
-			}
 			events_written++
 		}
 		return nil
@@ -161,14 +153,4 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 		fmt.Fprintf(w, `{"message":"%v"}`, err)
 	}
 	s.logger.Printf("%s \"%s %s %s %d events OK\" %0.3f", req.RemoteAddr, req.Method, req.URL.Path, req.Proto, events_written, time.Since(t0).Seconds())
-}
-
-// DELETE /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
-	vars := mux.Vars(req)
-	command := params.(*DeleteEventCommand)
-	command.TableName = vars["name"]
-	command.ObjectId = vars["objectId"]
-	command.Timestamp, _ = time.Parse(time.RFC3339, vars["timestamp"])
-	return nil, s.ExecuteGroupCommand(command)
 }
