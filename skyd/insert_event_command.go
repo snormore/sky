@@ -1,8 +1,20 @@
 package skyd
 
 import (
+	"errors"
 	"github.com/benbjohnson/go-raft"
 	"time"
+)
+
+//------------------------------------------------------------------------------
+//
+// Globals
+//
+//------------------------------------------------------------------------------
+
+const (
+	ReplaceMethod = "replace"
+	MergeMethod = "merge"
 )
 
 //------------------------------------------------------------------------------
@@ -53,6 +65,24 @@ func (c *InsertEventCommand) CommandName() string {
 }
 
 func (c *InsertEventCommand) Apply(raftServer *raft.Server) error {
-	//server := raftServer.Context().(*Server)
-	return nil
+	server := raftServer.Context().(*Server)
+	table, servlet, err := server.GetObjectContext(c.TableName, c.ObjectId)
+	if err != nil {
+		return err
+	}
+
+	if c.Timestamp.IsZero() {
+		return errors.New("Timestamp required")
+	}
+
+	// Build event, factorize it and insert it.
+	event := &Event{Timestamp:c.Timestamp}
+	event.Data, err = table.NormalizeMap(c.Data)
+	if err = table.FactorizeEvent(event, server.factors, true); err != nil {
+		return err
+	}
+
+	replace := (c.Method == ReplaceMethod)
+	err = servlet.PutEvent(table, c.ObjectId, event, replace)
+	return err
 }

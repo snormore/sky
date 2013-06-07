@@ -14,8 +14,7 @@ func (s *Server) addEventHandlers() {
 	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events", nil, s.deleteEventsHandler).Methods("DELETE")
 
 	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.getEventHandler).Methods("GET")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.replaceEventHandler).Methods("PUT")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.updateEventHandler).Methods("PATCH")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", &InsertEventCommand{}, s.insertEventHandler).Methods("PUT", "PATCH")
 	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.deleteEventHandler).Methods("DELETE")
 
 	// Streaming import.
@@ -98,47 +97,20 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 	return e, nil
 }
 
-// PUT /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
-	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
-	if err != nil {
-		return nil, err
-	}
-
-	p := params.(map[string]interface{})
-	p["timestamp"] = vars["timestamp"]
-	event, err := table.DeserializeEvent(p)
-	if err != nil {
-		return nil, err
-	}
-	err = table.FactorizeEvent(event, s.factors, true)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, servlet.PutEvent(table, vars["objectId"], event, true)
-}
-
+// PUT   /tables/:name/objects/:objectId/events/:timestamp
 // PATCH /tables/:name/objects/:objectId/events/:timestamp
-func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
+func (s *Server) insertEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
-	if err != nil {
-		return nil, err
+	command := params.(*InsertEventCommand)
+	command.TableName = vars["name"]
+	command.ObjectId = vars["objectId"]
+	command.Timestamp, _ = time.Parse(time.RFC3339, vars["timestamp"])
+	if req.Method == "PUT" {
+		command.Method = ReplaceMethod
+	} else {
+		command.Method = MergeMethod
 	}
-
-	p := params.(map[string]interface{})
-	p["timestamp"] = vars["timestamp"]
-	event, err := table.DeserializeEvent(p)
-	if err != nil {
-		return nil, err
-	}
-	err = table.FactorizeEvent(event, s.factors, true)
-	if err != nil {
-		return nil, err
-	}
-	return nil, servlet.PutEvent(table, vars["objectId"], event, false)
+	return nil, s.ExecuteGroupCommand(command)
 }
 
 // PATCH /tables/:name/events

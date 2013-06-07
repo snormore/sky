@@ -333,7 +333,7 @@ func (s *Server) initRaftServers() error {
 	if err := s.initClusterRaftServer(true); err != nil {
 		return err
 	}
-	if err := s.initGroupRaftServer(); err != nil {
+	if err := s.initGroupRaftServer(true); err != nil {
 		return err
 	}
 	return nil
@@ -380,7 +380,7 @@ func (s *Server) initClusterRaftServer(initSingleNode bool) error {
 }
 
 // Initializes the consensus server for the node's group.
-func (s *Server) initGroupRaftServer() error {
+func (s *Server) initGroupRaftServer(initSingleNode bool) error {
 	// Create the log directory.
 	if err := os.MkdirAll(s.GroupRaftPath(), 0700); err != nil {
 		return err
@@ -397,6 +397,10 @@ func (s *Server) initGroupRaftServer() error {
 	// Start the consensus server.
 	if err = s.groupRaftServer.Start(); err != nil {
 		return err
+	}
+
+	if initSingleNode && s.groupRaftServer.IsLogEmpty() {
+		s.groupRaftServer.Initialize()
 	}
 
 	// TODO: Initialize peers from cluster raft server.
@@ -781,7 +785,7 @@ func (s *Server) Leave() error {
 }
 
 //--------------------------------------
-// Raft Execution
+// Cluster-level Raft Execution
 //--------------------------------------
 
 // Retrieves the number of members in the cluster-level Raft server.
@@ -814,16 +818,6 @@ func (s *Server) GetClusterLeaderHostname() (string, string, uint, error) {
 	return leaderNodeId, host, port, nil
 }
 
-// Retrieves the number of members in the group-level Raft server.
-func (s *Server) GroupRaftMemberCount() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if s.groupRaftServer != nil {
-		return s.groupRaftServer.MemberCount()
-	}
-	return 0
-}
-
 // Executes a command on the cluster-level state machine.
 func (s *Server) ExecuteClusterCommand(command raft.Command) error {
 	raftServer := s.clusterRaftServer
@@ -842,17 +836,61 @@ func (s *Server) ExecuteClusterCommand(command raft.Command) error {
 	return err
 }
 
+//--------------------------------------
+// Cluster-level Raft Execution
+//--------------------------------------
+
+// Retrieves the number of members in the group-level Raft server.
+func (s *Server) GroupRaftMemberCount() int {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.groupRaftServer != nil {
+		return s.groupRaftServer.MemberCount()
+	}
+	return 0
+}
+
+// Retrieves the leader node id and host/port.
+func (s *Server) GetGroupLeaderHostname() (string, string, uint, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.groupRaftServer == nil || s.groupRaftServer.State() == raft.Stopped {
+		return "", "", 0, fmt.Errorf("Group raft server unavailable")
+	}
+	if s.cluster == nil {
+		return "", "", 0, fmt.Errorf("Cluster data unavailable")
+	}
+
+	leaderNodeId := s.groupRaftServer.Leader()
+	host, port, err := s.cluster.GetNodeHostname(leaderNodeId)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("Unable to find leader: %v (%v)", leaderNodeId, err)
+	}
+	return leaderNodeId, host, port, nil
+}
+
 // Executes a command on the group-level state machine.
 func (s *Server) ExecuteGroupCommand(command raft.Command) error {
+	raftServer := s.groupRaftServer
+	leaderNodeId, host, port, err := s.GetGroupLeaderHostname()
+	if err != nil {
+		return err
+	}
+
 	// Forward to leader if we're not the leader.
-	if s.groupRaftServer.State() != raft.Leader {
-		// leaderName := s.groupRaftServer.Leader()
+	if leaderNodeId != s.nodeId {
+		return rpc(host, port, "POST", fmt.Sprintf("/cluster/groups/%s/commands", s.nodeGroupId), command, nil)
 	}
 
 	// Apply to this node if we're leader.
-	err := s.groupRaftServer.Do(command)
+	err = raftServer.Do(command)
 	return err
 }
+
+//--------------------------------------
+// Log Reset
+//--------------------------------------
 
 // Resets the server so it is in a mode that it can join a cluster. To join a
 // cluster, the server must not have any log entries (e.g. cluster config,
