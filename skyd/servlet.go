@@ -24,6 +24,7 @@ import (
 type Servlet struct {
 	path    string
 	env     *mdb.Env
+	transactions map[string]*mdb.Txn
 	factors *Factors
 	mutex   sync.Mutex
 }
