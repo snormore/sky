@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/benbjohnson/go-raft"
 	"github.com/gorilla/mux"
-	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"log"
@@ -580,11 +579,7 @@ func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *S
 
 // Calculates a tablet index based on the object identifier even hash.
 func (s *Server) GetObjectServletIndex(t *Table, objectId string) uint32 {
-	h := fnv.New64a()
-	h.Reset()
-	h.Write([]byte(objectId))
-	hashcode := h.Sum64()
-	return CondenseUint64Even(hashcode) % uint32(len(s.servlets))
+	return ObjectLocalHash(objectId) % uint32(len(s.servlets))
 }
 
 //--------------------------------------
