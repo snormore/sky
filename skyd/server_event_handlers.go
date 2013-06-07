@@ -15,7 +15,7 @@ func (s *Server) addEventHandlers() {
 
 	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.getEventHandler).Methods("GET")
 	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", &InsertEventCommand{}, s.insertEventHandler).Methods("PUT", "PATCH")
-	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", nil, s.deleteEventHandler).Methods("DELETE")
+	s.ApiHandleFunc("/tables/{name}/objects/{objectId}/events/{timestamp}", &DeleteEventCommand{}, s.deleteEventHandler).Methods("DELETE")
 
 	// Streaming import.
 	s.router.HandleFunc("/tables/{name}/events", s.streamUpdateEventsHandler).Methods("PATCH")
@@ -80,9 +80,7 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 	event, err := servlet.GetEvent(table, vars["objectId"], timestamp)
 	if err != nil {
 		return nil, err
-	}
-	// Return an empty event if there isn't one.
-	if event == nil {
+	} else if event == nil {
 		event = NewEvent(vars["timestamp"], map[int64]interface{}{})
 	}
 
@@ -168,15 +166,9 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 // DELETE /tables/:name/objects/:objectId/events/:timestamp
 func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, params interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
-	if err != nil {
-		return nil, err
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, vars["timestamp"])
-	if err != nil {
-		return nil, fmt.Errorf("Unable to parse timestamp: %v", timestamp)
-	}
-
-	return nil, servlet.DeleteEvent(table, vars["objectId"], timestamp)
+	command := params.(*DeleteEventCommand)
+	command.TableName = vars["name"]
+	command.ObjectId = vars["objectId"]
+	command.Timestamp, _ = time.Parse(time.RFC3339, vars["timestamp"])
+	return nil, s.ExecuteGroupCommand(command)
 }
