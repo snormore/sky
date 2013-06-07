@@ -45,7 +45,8 @@ type Server struct {
 	cluster           *Cluster
 	router            *mux.Router
 	logger            *log.Logger
-	name              string
+	nodeId            string
+	nodeGroupId       string
 	path              string
 	host              string
 	port              uint
@@ -123,19 +124,19 @@ func NewServer(port uint, path string) (*Server, error) {
 //
 //------------------------------------------------------------------------------
 
-// The server's name
-func (s *Server) Name() string {
-	return s.name
-}
-
 // The root server path.
 func (s *Server) Path() string {
 	return s.path
 }
 
-// The path to the name file.
-func (s *Server) NamePath() string {
-	return fmt.Sprintf("%v/name", s.path)
+// The path to the file containing the server's node id.
+func (s *Server) NodeIdPath() string {
+	return fmt.Sprintf("%v/node", s.path)
+}
+
+// The path to the file containing the server's node group id.
+func (s *Server) NodeGroupIdPath() string {
+	return fmt.Sprintf("%v/group", s.path)
 }
 
 // The path to the data directory.
@@ -261,13 +262,23 @@ func (s *Server) open() error {
 		return fmt.Errorf("skyd.Server: Unable to create server folders: %v", err)
 	}
 
-	// Read in the server's name or generate a name.
-	if name, err := ioutil.ReadFile(s.NamePath()); err == nil {
-		s.name = string(name)
+	// Read in the server's node id or generate one.
+	if nodeId, err := ioutil.ReadFile(s.NodeIdPath()); err == nil {
+		s.nodeId = string(nodeId)
 	} else {
-		s.name = NewNodeId()
-		if err = ioutil.WriteFile(s.NamePath(), []byte(s.name), 0644); err != nil {
-			panic("skyd: Unable to write name file")
+		s.nodeId = NewNodeId()
+		if err = ioutil.WriteFile(s.NodeIdPath(), []byte(s.nodeId), 0644); err != nil {
+			panic("skyd: Unable to write node file")
+		}
+	}
+
+	// Read in the server's node group id or generate one.
+	if nodeGroupId, err := ioutil.ReadFile(s.NodeGroupIdPath()); err == nil {
+		s.nodeGroupId = string(nodeGroupId)
+	} else {
+		s.nodeGroupId = NewNodeGroupId()
+		if err = ioutil.WriteFile(s.NodeGroupIdPath(), []byte(s.nodeGroupId), 0644); err != nil {
+			panic("skyd: Unable to write group file")
 		}
 	}
 
@@ -340,7 +351,7 @@ func (s *Server) initClusterRaftServer(initSingleNode bool) error {
 
 	// Setup the consensus server.
 	var err error
-	if s.clusterRaftServer, err = raft.NewServer(s.name, s.ClusterRaftPath(), s, s); err != nil {
+	if s.clusterRaftServer, err = raft.NewServer(s.nodeId, s.ClusterRaftPath(), s, s); err != nil {
 		return err
 	}
 	s.clusterRaftServer.SetElectionTimeout(s.ElectionTimeout)
@@ -354,11 +365,10 @@ func (s *Server) initClusterRaftServer(initSingleNode bool) error {
 	// If this is a new server then add a group and a single node.
 	if initSingleNode && s.clusterRaftServer.IsLogEmpty() {
 		s.clusterRaftServer.Initialize()
-		nodeGroupId := NewNodeGroupId()
-		if err = s.clusterRaftServer.Do(NewCreateNodeGroupCommand(nodeGroupId)); err != nil {
+		if err = s.clusterRaftServer.Do(NewCreateNodeGroupCommand(s.nodeGroupId)); err != nil {
 			return err
 		}
-		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(s.name, nodeGroupId, s.host, s.port)); err != nil {
+		if err = s.clusterRaftServer.Do(NewCreateNodeCommand(s.nodeId, s.nodeGroupId, s.host, s.port)); err != nil {
 			return err
 		}
 		if err = s.clusterRaftServer.Do(NewInitCommand()); err != nil {
@@ -378,7 +388,7 @@ func (s *Server) initGroupRaftServer() error {
 
 	// Setup the consensus server.
 	var err error
-	if s.groupRaftServer, err = raft.NewServer(s.name, s.GroupRaftPath(), s, s); err != nil {
+	if s.groupRaftServer, err = raft.NewServer(s.nodeId, s.GroupRaftPath(), s, s); err != nil {
 		return err
 	}
 	s.groupRaftServer.SetElectionTimeout(s.ElectionTimeout)
@@ -413,7 +423,8 @@ func (s *Server) close() {
 	// Close consensus servers.
 	s.closeClusterRaftServer()
 	s.closeGroupRaftServer()
-	s.name = ""
+	s.nodeId = ""
+	s.nodeGroupId = ""
 }
 
 func (s *Server) closeClusterRaftServer() {
@@ -754,7 +765,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 // Attempts to join a cluster that a given host is a part of.
 func (s *Server) Join(host string, port uint) error {
 	// TODO: Make sure server has no data or log before attempting to join.
-	return rpc(host, port, "POST", "/cluster/nodes", map[string]interface{}{"nodeId": s.name, "host": s.host, "port": s.port}, nil)
+	return rpc(host, port, "POST", "/cluster/nodes", map[string]interface{}{"nodeId": s.nodeId, "host": s.host, "port": s.port}, nil)
 }
 
 // Attempts to leave cluster.
@@ -766,7 +777,7 @@ func (s *Server) Leave() error {
 		return fmt.Errorf("skyd: Unable to find leader: %v (%v)", leaderNodeId, err)
 	}
 
-	return rpc(host, port, "DELETE", fmt.Sprintf("/cluster/nodes/%s", s.name), nil, nil)
+	return rpc(host, port, "DELETE", fmt.Sprintf("/cluster/nodes/%s", s.nodeId), nil, nil)
 }
 
 //--------------------------------------
@@ -783,16 +794,63 @@ func (s *Server) ClusterRaftMemberCount() int {
 	return 0
 }
 
+// Retrieves the leader node id and host/port.
+func (s *Server) GetClusterLeaderHostname() (string, string, uint, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.clusterRaftServer == nil || s.clusterRaftServer.State() == raft.Stopped {
+		return "", "", 0, fmt.Errorf("Cluster raft server unavailable")
+	}
+	if s.cluster == nil {
+		return "", "", 0, fmt.Errorf("Cluster data unavailable")
+	}
+
+	leaderNodeId := s.clusterRaftServer.Leader()
+	host, port, err := s.cluster.GetNodeHostname(leaderNodeId)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("Unable to find leader: %v (%v)", leaderNodeId, err)
+	}
+	return leaderNodeId, host, port, nil
+}
+
+// Retrieves the number of members in the group-level Raft server.
+func (s *Server) GroupRaftMemberCount() int {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.groupRaftServer != nil {
+		return s.groupRaftServer.MemberCount()
+	}
+	return 0
+}
+
 // Executes a command on the cluster-level state machine.
 func (s *Server) ExecuteClusterCommand(command raft.Command) error {
+	raftServer := s.clusterRaftServer
+	leaderNodeId, host, port, err := s.GetClusterLeaderHostname()
+	if err != nil {
+		return err
+	}
+	
 	// Forward to leader if we're not the leader.
-	if s.clusterRaftServer.State() != raft.Leader {
-		// leaderName := s.clusterRaftServer.Leader()
-
+	if leaderNodeId != s.nodeId {
+		return rpc(host, port, "POST", "/cluster/commands", command, nil)
 	}
 
 	// Apply to this node if we're leader.
-	err := s.clusterRaftServer.Do(command)
+	err = raftServer.Do(command)
+	return err
+}
+
+// Executes a command on the group-level state machine.
+func (s *Server) ExecuteGroupCommand(command raft.Command) error {
+	// Forward to leader if we're not the leader.
+	if s.groupRaftServer.State() != raft.Leader {
+		// leaderName := s.groupRaftServer.Leader()
+	}
+
+	// Apply to this node if we're leader.
+	err := s.groupRaftServer.Do(command)
 	return err
 }
 

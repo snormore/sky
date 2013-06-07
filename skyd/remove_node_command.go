@@ -55,7 +55,7 @@ func (c *RemoveNodeCommand) Apply(raftServer *raft.Server) error {
 
 	// If the node being removed is this server then clear out the data
 	// and shutdown.
-	if server.name == c.NodeId {
+	if server.nodeId == c.NodeId {
 		// TODO: Clear all data.
 		go func() { server.Shutdown() }()
 	} else {

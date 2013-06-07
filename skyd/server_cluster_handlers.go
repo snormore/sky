@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"errors"
+	"fmt"
 	"github.com/benbjohnson/go-raft"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -16,6 +17,10 @@ func (s *Server) addClusterHandlers() {
 	s.ApiHandleFunc("/cluster/nodes/{id}", nil, s.clusterRemoveNodeHandler).Methods("DELETE")
 	s.ApiHandleFunc("/cluster/groups", &CreateNodeGroupCommand{}, s.clusterCreateNodeGroupHandler).Methods("POST")
 	s.ApiHandleFunc("/cluster/groups/{id}", nil, s.clusterRemoveNodeGroupHandler).Methods("DELETE")
+
+	s.ApiHandleFunc("/cluster/groups/{groupId}/commands", nil, s.groupExecuteCommandHandler).Methods("POST")
+	s.ApiHandleFunc("/cluster/groups/{groupId}/append", &raft.AppendEntriesRequest{}, s.groupAppendEntriesHandler).Methods("POST")
+	s.ApiHandleFunc("/cluster/groups/{groupId}/vote", &raft.RequestVoteRequest{}, s.groupRequestVoteHandler).Methods("POST")
 }
 
 //--------------------------------------
@@ -63,6 +68,64 @@ func (s *Server) clusterRequestVoteHandler(w http.ResponseWriter, req *http.Requ
 	raftServer := s.clusterRaftServer
 	if raftServer == nil {
 		return nil, errors.New("Cluster raft server unavailable")
+	}
+
+	resp, err := raftServer.RequestVote(r)
+	if err != nil {
+		warn("[/vote] %v", err)
+	}
+	return resp, nil
+}
+
+//--------------------------------------
+// Group-level Raft Replication
+//--------------------------------------
+
+// POST /cluster/groups/:groupId/commands
+func (s *Server) groupExecuteCommandHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	vars := mux.Vars(req)
+	command := params.(raft.Command)
+	if vars["groupId"] != s.nodeGroupId {
+		return nil, fmt.Errorf("Group mismatch: %s", s.nodeGroupId)
+	}
+	return nil, s.ExecuteGroupCommand(command)
+}
+
+// POST /cluster/groups/:groupId/append
+func (s *Server) groupAppendEntriesHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	// warn("[%p] POST /group/append (%v)", s, r)
+	vars := mux.Vars(req)
+	r := params.(*raft.AppendEntriesRequest)
+	if vars["groupId"] != s.nodeGroupId {
+		return nil, fmt.Errorf("Group mismatch: %s", s.nodeGroupId)
+	}
+
+	// Retrieve the Raft server.
+	raftServer := s.groupRaftServer
+	if raftServer == nil {
+		return nil, errors.New("Group raft server unavailable")
+	}
+
+	resp, err := raftServer.AppendEntries(r)
+	if err != nil {
+		warn("[/append] %v", err)
+	}
+	return resp, nil
+}
+
+// POST /cluster/groups/:groupId/vote
+func (s *Server) groupRequestVoteHandler(w http.ResponseWriter, req *http.Request, params interface{}) (interface{}, error) {
+	// warn("[%p] POST /group/vote (%v)", s, r)
+	vars := mux.Vars(req)
+	r := params.(*raft.RequestVoteRequest)
+	if vars["groupId"] != s.nodeGroupId {
+		return nil, fmt.Errorf("Group mismatch: %s", s.nodeGroupId)
+	}
+
+	// Retrieve the Raft server.
+	raftServer := s.groupRaftServer
+	if raftServer == nil {
+		return nil, errors.New("Group raft server unavailable")
 	}
 
 	resp, err := raftServer.RequestVote(r)
