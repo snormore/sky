@@ -48,22 +48,30 @@ func TestHttpClusterAddNode(t *testing.T) {
 // Ensure that we can remove a server from the cluster.
 func TestHttpClusterRemoveNode(t *testing.T) {
 	f0 := func(s *Server) {
+		warn("0.1")
 		time.Sleep(TestHeartbeatTimeout)
+		warn("0.2")
 		if num := len(s.cluster.groups[0].nodes); num != 1 {
 			t.Fatalf("[%d.%p] Unexpected node count: %v", 0, s, num)
 		}
+		warn("0.3")
 		if num := s.clusterRaftServer.MemberCount(); num != 1 {
 			t.Fatalf("[%d.%p] Unexpected cluster member count: %v", 0, s, num)
 		}
+		warn("0.4")
 	}
 	f1 := func(s *Server) {
+		warn("1.1")
 		if err := s.Leave(); err != nil {
 			t.Fatalf("Unable to leave cluster: %v", err)
 		}
+		warn("1.2")
 		time.Sleep(TestHeartbeatTimeout)
+		warn("1.3")
 		if s.Running() {
 			t.Fatalf("[%d.%p] Unexpected server state: running", 1, s)
 		}
+		warn("1.4")
 	}
 	runTestServers(true, f0, f1)
 }

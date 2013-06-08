@@ -949,3 +949,10 @@ func (s *Server) SendVoteRequest(raftServer *raft.Server, peer *raft.Peer, req *
 	err = rpc(host, port, "POST", "/cluster/vote", req, resp)
 	return resp, err
 }
+
+// Sends a Snapshot RPC to a peer when the server is the leader.
+func (s *Server) SendSnapshotRequest(raftServer *raft.Server, peer *raft.Peer, req *raft.SnapshotRequest) (*raft.SnapshotResponse, error) {
+	panic("skyd: snapshot not implemented yet")
+	return nil, nil
+}
+
