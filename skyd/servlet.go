@@ -167,7 +167,7 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 		// Replace or merge with existing event.
 		if v.Timestamp.Equal(event.Timestamp) {
 			// Dedupe all permanent state.
-			event.Dedupe(state)
+			event.DedupePermanent(state)
 
 			// Replace or merge.
 			if replace {
@@ -179,12 +179,14 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 		}
 		events = append(events, v)
 
-		// Keep track of permanent state.
-		state.MergePermanent(v)
+		// Keep track of permanent state until we're after the event's timestamp.
+		if v.Timestamp.Before(event.Timestamp) {
+			state.MergePermanent(v)
+		}
 	}
 	// Add the event if it wasn't found.
 	if !found {
-		event.Dedupe(state)
+		event.DedupePermanent(state)
 		events = append(events, event)
 		state.MergePermanent(event)
 	}
@@ -205,7 +207,7 @@ func (s *Servlet) appendEvent(table *Table, objectId string, event *Event, state
 		state = &Event{Data: map[int64]interface{}{}}
 	}
 	state.Timestamp = event.Timestamp
-	event.Dedupe(state)
+	event.DedupePermanent(state)
 	state.MergePermanent(event)
 
 	// Append new event.

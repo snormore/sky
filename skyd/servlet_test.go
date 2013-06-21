@@ -45,9 +45,9 @@ func TestServletPutEvent(t *testing.T) {
 
 	// Setup expected events.
 	expected := make([]*Event, len(input))
-	expected[0] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar"})
+	expected[0] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3:"baz"})
 	expected[1] = input[0]
-	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20})
+	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20, 1:"foo"})
 	expectedState := NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1: "foo", 2: "bar", 3: "baz"})
 
 	// Read events out.
