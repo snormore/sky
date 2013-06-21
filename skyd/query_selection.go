@@ -300,6 +300,8 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 		copy := map[interface{}]interface{}{}
 		for k, v := range outer {
 			if property.DataType == FactorDataType {
+				// Only process this if it hasn't been defactorized already. Duplicate
+				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
 					stringValue, err := s.query.factors.Defactorize(s.query.table.Name, dimension, uint64(sequence))
 					if err != nil {
@@ -307,7 +309,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 					}
 					copy[stringValue] = v
 				} else {
-					return fmt.Errorf("skyd.QuerySelection: Invalid factor sequence: %v", k)
+					copy[k] = v
 				}
 			} else {
 				copy[k] = v
