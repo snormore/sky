@@ -3,7 +3,7 @@ package skyd
 import (
 	"errors"
 	"fmt"
-	"github.com/benbjohnson/gomdb"
+	"github.com/szferi/gomdb"
 	"os"
 	"strconv"
 	"sync"
