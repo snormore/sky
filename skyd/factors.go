@@ -93,7 +93,7 @@ func (f *Factors) Open() error {
 		return fmt.Errorf(fmt.Sprintf("skyd: Unable to create factors environment: %v", err))
 	}
 	// Setup max dbs.
-	if err = f.env.SetMaxDBs(1024); err != nil {
+	if err = f.env.SetMaxDBs(4096); err != nil {
 		f.Close()
 		return fmt.Errorf("skyd: Unable to set factors max dbs: %v", err)
 	}
