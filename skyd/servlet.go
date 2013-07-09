@@ -20,7 +20,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
-// A Servlet is a small wrapper around a single shard of a LevelDB data file.
+// A Servlet is a small wrapper around a single shard of a LMDB data file.
 type Servlet struct {
 	path    string
 	env     *mdb.Env
@@ -52,7 +52,7 @@ func NewServlet(path string, factors *Factors) *Servlet {
 // Lifecycle
 //--------------------------------------
 
-// Opens the underlying LevelDB database and starts the message loop.
+// Opens the underlying LMDB database and starts the message loop.
 func (s *Servlet) Open() error {
 	// Create directory if it doesn't exist.
 	if err := os.MkdirAll(s.path, 0700); err != nil {
@@ -65,7 +65,7 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf(fmt.Sprintf("skyd.Servlet: Unable to create LMDB environment: %v", err))
 	}
 	// Setup max dbs.
-	if err := s.env.SetMaxDBs(1024); err != nil {
+	if err := s.env.SetMaxDBs(4096); err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
 	}
 	// Setup map size.
