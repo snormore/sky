@@ -158,8 +158,8 @@ func (e *Event) MergePermanent(a *Event) {
 	}
 }
 
-// Removes data in the event that is present in another event.
-func (e *Event) Dedupe(a *Event) {
+// Removes permanent data in the event that is present in another event.
+func (e *Event) DedupePermanent(a *Event) {
 	for k, v := range a.Data {
 		if normalize(e.Data[k]) == normalize(v) {
 			delete(e.Data, k)

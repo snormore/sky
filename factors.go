@@ -3,7 +3,7 @@ package skyd
 import (
 	"errors"
 	"fmt"
-	"github.com/benbjohnson/gomdb"
+	"github.com/szferi/gomdb"
 	"os"
 	"strconv"
 	"sync"
@@ -80,7 +80,7 @@ func (f *Factors) Path() string {
 func (f *Factors) Open() error {
 	var err error
 	if f.IsOpen() {
-		return errors.New("skyd.Factors: Factors database is already open.")
+		return errors.New("skyd: Factors database is already open.")
 	}
 
 	// Create the factors directory.
@@ -93,7 +93,7 @@ func (f *Factors) Open() error {
 		return fmt.Errorf(fmt.Sprintf("skyd: Unable to create factors environment: %v", err))
 	}
 	// Setup max dbs.
-	if err = f.env.SetMaxDBs(1024); err != nil {
+	if err = f.env.SetMaxDBs(4096); err != nil {
 		f.Close()
 		return fmt.Errorf("skyd: Unable to set factors max dbs: %v", err)
 	}
@@ -227,7 +227,7 @@ func (f *Factors) Factorize(namespace string, id string, value string, createIfM
 		return f.add(namespace, id, value)
 	}
 
-	err = NewFactorNotFound(fmt.Sprintf("skyd.Factors: Factor not found: %v", f.key(id, value)))
+	err = NewFactorNotFound(fmt.Sprintf("skyd: Factor not found: %v", f.key(id, value)))
 	return 0, err
 }
 
@@ -298,7 +298,7 @@ func (f *Factors) inc(namespace string, id string) (uint64, error) {
 	// Parse existing sequence.
 	sequence, err := strconv.ParseUint(string(data), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("skyd.Factors: Unable to parse sequence: %v", data)
+		return 0, fmt.Errorf("skyd: Unable to parse factor sequence: %v", data)
 	}
 
 	// Increment and save the new value.

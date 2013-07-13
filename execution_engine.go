@@ -653,7 +653,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/benbjohnson/gomdb"
+	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"regexp"
 	"sort"

@@ -53,10 +53,10 @@ func TestMergePermanent(t *testing.T) {
 
 // Ensure that duplicate values of two events can be deduplicated.
 func TestDedupe(t *testing.T) {
-	a := NewEvent("1970-01-01T00:00:00Z", map[int64]interface{}{-1: int64(20), -2: "foo", 3: "baz"})
-	b := NewEvent("1970-01-01T00:00:00Z", map[int64]interface{}{-1: int32(20), -2: "bar", 3: "baz"})
-	a.Dedupe(b)
-	if a.Data[-1] != nil || a.Data[-2] != "foo" || a.Data[-3] != nil {
+	a := NewEvent("1970-01-01T00:00:00Z", map[int64]interface{}{1: int64(20), 2: "foo", 3: "baz"})
+	b := NewEvent("1970-01-01T00:00:00Z", map[int64]interface{}{1: int32(20), 2: "bar", 3: "baz"})
+	a.DedupePermanent(b)
+	if a.Data[1] != nil || a.Data[2] != "foo" || a.Data[3] != nil {
 		t.Fatalf("Invalid dedupe: %v", a.Data)
 	}
 }

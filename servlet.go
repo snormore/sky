@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/benbjohnson/gomdb"
+	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"io"
 	"io/ioutil"
@@ -20,7 +20,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
-// A Servlet is a small wrapper around a single shard of a LevelDB data file.
+// A Servlet is a small wrapper around a single shard of a LMDB data file.
 type Servlet struct {
 	path    string
 	env     *mdb.Env
@@ -53,7 +53,7 @@ func NewServlet(path string, factors *Factors) *Servlet {
 // Lifecycle
 //--------------------------------------
 
-// Opens the underlying LevelDB database and starts the message loop.
+// Opens the underlying LMDB database and starts the message loop.
 func (s *Servlet) Open() error {
 	// Create directory if it doesn't exist.
 	if err := os.MkdirAll(s.path, 0700); err != nil {
@@ -67,7 +67,7 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf(fmt.Sprintf("skyd.Servlet: Unable to create LMDB environment: %v", err))
 	}
 	// Setup max dbs.
-	if err := s.env.SetMaxDBs(1024); err != nil {
+	if err := s.env.SetMaxDBs(4096); err != nil {
 		s.Close()
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
 	}
@@ -176,7 +176,7 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 		// Replace or merge with existing event.
 		if v.Timestamp.Equal(event.Timestamp) {
 			// Dedupe all permanent state.
-			event.Dedupe(state)
+			event.DedupePermanent(state)
 
 			// Replace or merge.
 			if replace {
@@ -188,12 +188,14 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 		}
 		events = append(events, v)
 
-		// Keep track of permanent state.
-		state.MergePermanent(v)
+		// Keep track of permanent state until we're after the event's timestamp.
+		if v.Timestamp.Before(event.Timestamp) {
+			state.MergePermanent(v)
+		}
 	}
 	// Add the event if it wasn't found.
 	if !found {
-		event.Dedupe(state)
+		event.DedupePermanent(state)
 		events = append(events, event)
 		state.MergePermanent(event)
 	}
@@ -214,7 +216,7 @@ func (s *Servlet) appendEvent(table *Table, objectId string, event *Event, state
 		state = &Event{Data: map[int64]interface{}{}}
 	}
 	state.Timestamp = event.Timestamp
-	event.Dedupe(state)
+	event.DedupePermanent(state)
 	state.MergePermanent(event)
 
 	// Append new event.

@@ -137,11 +137,33 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can factorize overlapping factors.
+func TestServerFactorizeOverlappingQueries(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", false, "factor")
+		setupTestData(t, "foo", [][]string{
+			[]string{"f0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
+		})
+
+		// Run query.
+		query := `{
+			"steps":[
+				{"type":"selection","name":"q","dimensions":["action"],"fields":[{"name":"count1","expression":"count()"}]},
+				{"type":"selection","name":"q","dimensions":["action"],"fields":[{"name":"count2","expression":"count()"}]}
+			]
+		}`
+		//_codegen(t, "foo", query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
+		assertResponse(t, resp, 200, `{"q":{"action":{"A0":{"count1":1,"count2":1}}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can perform a sessionized funnel analysis.
 func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "action", false, "string")
+		setupTestProperty("foo", "action", false, "factor")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..1] occurs once for this object. The second one is broken across sessions.
 			[]string{"f0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},

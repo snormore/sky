@@ -204,6 +204,7 @@ func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 	fmt.Fprintf(buffer, "function %s(result, data)\n", s.MergeFunctionName())
 	if s.Name != "" {
 		fmt.Fprintf(buffer, "  if result[\"%s\"] == nil then result[\"%s\"] = {} end\n", s.Name, s.Name)
+		fmt.Fprintf(buffer, "  if data[\"%s\"] == nil then data[\"%s\"] = {} end\n", s.Name, s.Name)
 		fmt.Fprintf(buffer, "  %sn0(result[\"%s\"], data[\"%s\"])\n", s.MergeFunctionName(), s.Name, s.Name)
 	} else {
 		fmt.Fprintf(buffer, "  %sn0(result, data)\n", s.MergeFunctionName())
@@ -299,6 +300,8 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 		copy := map[interface{}]interface{}{}
 		for k, v := range outer {
 			if property.DataType == FactorDataType {
+				// Only process this if it hasn't been defactorized already. Duplicate
+				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
 					stringValue, err := s.query.factors.Defactorize(s.query.table.Name, dimension, uint64(sequence))
 					if err != nil {
@@ -306,7 +309,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 					}
 					copy[stringValue] = v
 				} else {
-					return fmt.Errorf("skyd.QuerySelection: Invalid factor sequence: %v", k)
+					copy[k] = v
 				}
 			} else {
 				copy[k] = v

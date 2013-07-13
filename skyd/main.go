@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/skydb/sky/skyd"
+	"github.com/skydb/sky"
 	"io/ioutil"
 	"math/rand"
 	"os"
