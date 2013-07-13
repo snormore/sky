@@ -11,7 +11,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
-var validPropertyNameRegex = regexp.MustCompile(`^[ a-zA-Z0-9_-]+$`)
+var validPropertyNameRegex = regexp.MustCompile(`^\w+$`)
 
 //------------------------------------------------------------------------------
 //
