@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 )
 
 //------------------------------------------------------------------------------
@@ -71,6 +72,8 @@ func (p *PropertyFile) DbPath() string {
 
 // Adds a new property to the property file and generate an identifier for it.
 func (p *PropertyFile) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
+	name = strings.TrimSpace(name)
+
 	// Don't allow duplicate names.
 	if p.propertiesByName[name] != nil {
 		return nil, errors.New("Property already exists.")

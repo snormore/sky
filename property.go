@@ -2,7 +2,16 @@ package skyd
 
 import (
 	"fmt"
+	"regexp"
 )
+
+//------------------------------------------------------------------------------
+//
+// Variables
+//
+//------------------------------------------------------------------------------
+
+var validPropertyNameRegex = regexp.MustCompile(`^[ a-zA-Z0-9_-]+$`)
 
 //------------------------------------------------------------------------------
 //
@@ -26,6 +35,13 @@ type Property struct {
 
 // NewProperty returns a new Property.
 func NewProperty(id int64, name string, transient bool, dataType string) (*Property, error) {
+	// Validate name.
+	if name == "" {
+		return nil, fmt.Errorf("Property name cannot be blank")
+	} else if !validPropertyNameRegex.MatchString(name) {
+		return nil, fmt.Errorf("Property name contains invalid characters: %s", name)
+	}
+
 	// Validate data type.
 	switch dataType {
 	case FactorDataType, StringDataType, IntegerDataType, FloatDataType, BooleanDataType:
