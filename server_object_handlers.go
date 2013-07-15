@@ -37,19 +37,21 @@ func (s *Server) mergeObjectHandler(w http.ResponseWriter, req *http.Request, pa
 	}
 
 	// Insert events into destination object.
-	destTable, destServlet, err := s.GetObjectContext(vars["name"], destObjectId)
-	if err != nil {
-		return nil, err
-	}
-	if err = destServlet.PutEvents(destTable, destObjectId, srcEvents, true); err != nil {
-		return nil, err
+	if len(srcEvents) > 0 {
+		destTable, destServlet, err := s.GetObjectContext(vars["name"], destObjectId)
+		if err != nil {
+			return nil, err
+		}
+		if err = destServlet.PutEvents(destTable, destObjectId, srcEvents, true); err != nil {
+			return nil, err
+		}
+
+		// Delete source timeline.
+		if err = srcServlet.DeleteEvents(srcTable, srcObjectId); err != nil {
+			return nil, err
+		}
 	}
 	
-	// Delete source timeline.
-	if err = srcServlet.DeleteEvents(srcTable, srcObjectId); err != nil {
-		return nil, err
-	}
-
 	return nil, nil
 }
 

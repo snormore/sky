@@ -34,6 +34,40 @@ func TestServerMergeObject(t *testing.T) {
 	})
 }
 
+// Ensure a merge from a non-existent source object is ignored.
+func TestServerMergeNonExistentSourceObject(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "num", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"a", "2012-01-01T00:00:00Z", `{"data":{"num":10}}`},
+		})
+
+		// Merge the two objects
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/objects/a/merge", "application/json", `{"id":"b"}`)
+		assertResponse(t, resp, 200, "", "Merge failed")
+	})
+}
+
+// Ensure a merge from a non-existent destination object works.
+func TestServerMergeNonExistentDestinationObject(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "num", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"b", "2012-01-01T00:00:00Z", `{"data":{"num":10}}`},
+		})
+
+		// Merge the two objects
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/objects/a/merge", "application/json", `{"id":"b"}`)
+		assertResponse(t, resp, 200, "", "Merge failed")
+
+		// Verify destination timeline.
+		resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/a/events", "application/json", "")
+		assertResponse(t, resp, 200, `[{"data":{"num":10},"timestamp":"2012-01-01T00:00:00Z"}]`+"\n", "GET /tables/foo/objects/a/events failed.")
+	})
+}
+
 // Ensure that we cannot merge an object into itself.
 func TestServerMergeSameObjectNotAllowed(t *testing.T) {
 	runTestServer(func(s *Server) {

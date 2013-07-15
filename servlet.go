@@ -469,7 +469,7 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 	}
 
 	// Delete the key.
-	if err = txn.Del(dbi, []byte(objectId), nil); err != nil {
+	if err = txn.Del(dbi, []byte(objectId), nil); err != nil && err != mdb.NotFound {
 		txn.Abort()
 		return fmt.Errorf("skyd.Servlet: Unable to delete LMDB key: %s", err)
 	}
