@@ -78,6 +78,7 @@ func NewServer(port uint, path string) *Server {
 	s.addTableHandlers()
 	s.addPropertyHandlers()
 	s.addEventHandlers()
+	s.addObjectHandlers()
 	s.addQueryHandlers()
 	s.addDebugHandlers()
 

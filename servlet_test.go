@@ -46,8 +46,8 @@ func TestServletPutEvent(t *testing.T) {
 	// Setup expected events.
 	expected := make([]*Event, len(input))
 	expected[0] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3:"baz"})
-	expected[1] = input[0]
-	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20, 1:"foo"})
+	expected[1] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo"})
+	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20})
 	expectedState := NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1: "foo", 2: "bar", 3: "baz"})
 
 	// Read events out.
@@ -63,7 +63,7 @@ func TestServletPutEvent(t *testing.T) {
 	}
 	for i := range output {
 		if !expected[i].Equal(output[i]) {
-			t.Fatalf("Events not equal:\n  IN:  %v\n  OUT: %v", expected[i], output[i])
+			t.Fatalf("Events not equal (%d):\n  IN:  %v\n  OUT: %v", i, expected[i], output[i])
 		}
 	}
 }
