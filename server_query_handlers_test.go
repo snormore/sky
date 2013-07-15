@@ -9,10 +9,11 @@ func TestServerSimpleCountQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "fruit", true, "string")
+		setupTestProperty("foo", "num", true, "integer")
 		setupTestData(t, "foo", [][]string{
 			[]string{"a0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 			[]string{"a1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
-			[]string{"a1", "2012-01-01T00:00:01Z", `{}`},
+			[]string{"a1", "2012-01-01T00:00:01Z", `{"data":{"num":12}}`},
 			[]string{"a2", "2012-01-01T00:00:00Z", `{"data":{"fruit":"orange"}}`},
 			[]string{"a3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 		})
@@ -41,10 +42,11 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "fruit", true, "string")
+		setupTestProperty("foo", "num", true, "integer")
 		setupTestData(t, "foo", [][]string{
 			[]string{"b0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 			[]string{"b1", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
-			[]string{"b1", "2012-01-01T00:00:01Z", `{}`},
+			[]string{"b1", "2012-01-01T00:00:01Z", `{"data":{"num":12}}`},
 			[]string{"b2", "2012-01-01T00:00:00Z", `{"data":{"fruit":"orange"}}`},
 			[]string{"b3", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
 		})
@@ -68,13 +70,14 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		setupTestProperty("foo", "gender", false, "string")
 		setupTestProperty("foo", "state", false, "factor")
 		setupTestProperty("foo", "price", true, "float")
+		setupTestProperty("foo", "num", true, "integer")
 		setupTestData(t, "foo", [][]string{
 			[]string{"c0", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"NY", "price":100}}`},
 			[]string{"c0", "2012-01-01T00:00:01Z", `{"data":{"price":200}}`},
 			[]string{"c0", "2012-01-01T00:00:02Z", `{"data":{"state":"CA","price":10}}`},
 
 			[]string{"c1", "2012-01-01T00:00:00Z", `{"data":{"gender":"m", "state":"CA", "price":20}}`},
-			[]string{"c1", "2012-01-01T00:00:01Z", `{"data":{}}`},
+			[]string{"c1", "2012-01-01T00:00:01Z", `{"data":{"num":1000}}`},
 
 			[]string{"c2", "2012-01-01T00:00:00Z", `{"data":{"gender":"f", "state":"NY", "price":30}}`},
 		})
@@ -102,7 +105,7 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 func TestServerFunnelAnalysisQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "action", false, "factor")
+		setupTestProperty("foo", "action", true, "factor")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..2] occurs twice for this object.
 			[]string{"d0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
@@ -230,7 +233,7 @@ func TestServerHistogramQuery(t *testing.T) {
 
 			[]string{"01", "2012-01-01T00:00:00Z", `{"data":{"val":1}}`},
 			[]string{"01", "2012-01-01T00:00:01Z", `{"data":{"val":2}}`},
-			[]string{"01", "2012-01-01T00:00:02Z", `{}`},
+			[]string{"01", "2012-01-01T00:00:02Z", `{"data":{"val":0}}`},
 			[]string{"01", "2012-01-01T00:00:03Z", `{"data":{"val":3}}`},
 			[]string{"01", "2012-01-01T00:00:04Z", `{"data":{"val":4}}`},
 			[]string{"01", "2012-01-01T00:00:05Z", `{"data":{"val":4}}`},
@@ -283,7 +286,7 @@ func TestServerStatsQuery(t *testing.T) {
 		setupTestData(t, "foo", [][]string{
 			[]string{"0010a", "2012-01-01T00:00:00Z", `{"data":{"price":100}}`},
 			[]string{"0010b", "2012-01-01T00:00:00Z", `{"data":{"price":200}}`},
-			[]string{"0010b", "2012-01-01T00:00:01Z", `{}`},
+			[]string{"0010b", "2012-01-01T00:00:01Z", `{"data":{"price":0}}`},
 			[]string{"0020a", "2012-01-01T00:00:00Z", `{"data":{"price":30}}`},
 			[]string{"0030a", "2012-01-01T00:00:00Z", `{"data":{"price":40}}`},
 		})

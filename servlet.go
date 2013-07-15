@@ -134,6 +134,11 @@ func (s *Servlet) Unlock() {
 
 // Adds an event for a given object in a table to a servlet.
 func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {
+	return s.PutEvents(table, objectId, []*Event{event}, replace)
+}
+
+// Inserts multiple events for a given object.
+func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, replace bool) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -141,55 +146,70 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
 	}
-
-	// Do not allow empty events to be added.
-	if event == nil {
-		return errors.New("skyd.PutEvent: Cannot add nil event")
+	
+	if len(newEvents) == 0 {
+		return nil
 	}
+
+	// Sort events in timestamp order.
+	sort.Sort(EventList(newEvents))
 
 	// Check the current state and perform an optimized append if possible.
 	state, data, err := s.GetState(table, objectId)
-	if state == nil || state.Timestamp.Before(event.Timestamp) {
-		return s.appendEvent(table, objectId, event, state, data)
+	var appendOnly bool
+	if state == nil {
+		appendOnly = true
+	} else {
+		for _, newEvent := range newEvents {
+			if !state.Timestamp.Before(newEvent.Timestamp) {
+				appendOnly = false
+				break
+			}
+		}
+	}
+	if appendOnly {
+		return s.appendEvents(table, objectId, newEvents, state, data)
 	}
 
 	// Retrieve the events and state for the object.
-	tmp, state, err := s.GetEvents(table, objectId)
+	events, state, err := s.GetEvents(table, objectId)
 	if err != nil {
 		return err
 	}
-
-	// Remove any event matching the timestamp.
-	found := false
-	state = &Event{Timestamp: event.Timestamp, Data: map[int64]interface{}{}}
-	events := make([]*Event, 0)
-	for _, v := range tmp {
-		// Replace or merge with existing event.
-		if v.Timestamp.Equal(event.Timestamp) {
-			// Dedupe all permanent state.
-			event.DedupePermanent(state)
-
-			// Replace or merge.
-			if replace {
-				v = event
-			} else {
-				v.Merge(event)
+	
+	// Append all the new events and sort.
+	for _, newEvent := range newEvents {
+		// Merge events with an existing timestamp.
+		merged := false
+		for index, event := range events {
+			if event.Timestamp.Equal(newEvent.Timestamp) {
+				if replace {
+					events[index] = newEvent
+				} else {
+					event.Merge(newEvent)
+				}
+				merged = true
+				break
 			}
-			found = true
 		}
-		events = append(events, v)
-
-		// Keep track of permanent state until we're after the event's timestamp.
-		if v.Timestamp.Before(event.Timestamp) {
-			state.MergePermanent(v)
+		
+		// If no existing events exist then just append to the end.
+		if !merged {
+			events = append(events, newEvent)
 		}
 	}
-	// Add the event if it wasn't found.
-	if !found {
+	sort.Sort(EventList(events))
+
+	// Deduplicate permanent state.
+	state = &Event{Data: map[int64]interface{}{}}
+	for _, event := range events {
+		state.Timestamp = event.Timestamp
 		event.DedupePermanent(state)
-		events = append(events, event)
 		state.MergePermanent(event)
 	}
+
+	// Remove all empty events.
+	events = []*Event(EventList(events).NonEmptyEvents())
 
 	// Write events back to the database.
 	err = s.SetEvents(table, objectId, events, state)
@@ -200,20 +220,24 @@ func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace 
 	return nil
 }
 
-// Appends an event for a given object in a table to a servlet. This should not
+// Appends events for a given object in a table to a servlet. This should not
 // be called directly but only through PutEvent().
-func (s *Servlet) appendEvent(table *Table, objectId string, event *Event, state *Event, data []byte) error {
+func (s *Servlet) appendEvents(table *Table, objectId string, events []*Event, state *Event, data []byte) error {
 	if state == nil {
 		state = &Event{Data: map[int64]interface{}{}}
 	}
-	state.Timestamp = event.Timestamp
-	event.DedupePermanent(state)
-	state.MergePermanent(event)
 
-	// Append new event.
+	// Encode the event data to the end of the buffer.
 	buffer := bytes.NewBuffer(data)
-	if err := event.EncodeRaw(buffer); err != nil {
-		return err
+	for _, event := range events {
+		state.Timestamp = event.Timestamp
+		event.DedupePermanent(state)
+		state.MergePermanent(event)
+
+		// Append new event.
+		if err := event.EncodeRaw(buffer); err != nil {
+			return err
+		}
 	}
 
 	// Write everything to the database.
