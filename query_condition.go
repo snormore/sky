@@ -288,7 +288,9 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 			// Convert factors.
 			if property.DataType == FactorDataType {
 				sequence, err := c.query.factors.Factorize(c.query.table.Name, property.Name, stringValue, false)
-				if err != nil {
+				if _, ok := err.(*FactorNotFound); ok {
+					value = "0"
+				} else if err != nil {
 					return "", err
 				} else {
 					value = strconv.FormatUint(sequence, 10)
