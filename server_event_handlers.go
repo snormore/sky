@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"io"
+	"launchpad.net/tomb"
 	"net/http"
 	"time"
 )
@@ -151,6 +152,34 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 	return nil, servlet.PutEvent(table, vars["objectId"], event, false)
 }
 
+func processStreamEvent(rawEvent map[string]interface{}) error {
+
+	// Extract the object identifier.
+	objectId, ok := rawEvent["id"].(string)
+	if !ok {
+		return fmt.Errorf("Object identifier required")
+	}
+
+	// Determine the appropriate servlet to insert into.
+	table, servlet, err := s.GetObjectContext(vars["name"], objectId)
+	if err != nil {
+		return fmt.Errorf("Cannot determine object context: %v", err)
+	}
+
+	// Convert to a Sky event and insert.
+	event, err := table.DeserializeEvent(rawEvent)
+	if err != nil {
+		return fmt.Errorf("Cannot deserialize: %v", err)
+	}
+	if err = table.FactorizeEvent(event, s.factors, true); err != nil {
+		return fmt.Errorf("Cannot factorize: %v", err)
+	}
+	if err = servlet.PutEvent(table, objectId, event, false); err != nil {
+		return fmt.Errorf("Cannot put event: %v", err)
+	}
+	return nil
+}
+
 // PATCH /tables/:name/events
 func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
@@ -158,9 +187,46 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 
 	events_written := 0
 	err := func() error {
+
+		// Spawn an event listener goroutine.
+		events := make(chan map[string]interface{}, 1024)
+		errs := make(chan error)
+		var eventListenerTomb *tomb.Tomb
+		go func() {
+			for {
+				select {
+
+				// Listen for tear down signal.
+				case <-eventListenerTomb.Dying():
+					eventListenerTomb.Done()
+					return
+
+				// Process the next event
+				case rawEvent := <-events:
+					err := processStreamEvent(rawEvent)
+					if err != nil {
+						events_written++
+					} else {
+						errs <- err
+					}
+
+				}
+			}
+		}()
+
 		// Stream in JSON event objects.
 		decoder := json.NewDecoder(req.Body)
 		for {
+
+			// Check for errors from the event listener.
+			select {
+			case err := <-errs:
+				eventListenerTomb.Kill(err)
+				eventListenerTomb.Wait()
+				return err
+			default:
+			}
+
 			// Read in a JSON object.
 			rawEvent := map[string]interface{}{}
 			if err := decoder.Decode(&rawEvent); err == io.EOF {
@@ -168,31 +234,10 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 			} else if err != nil {
 				return fmt.Errorf("Malformed json event: %v", err)
 			}
-			// Extract the object identifier.
-			objectId, ok := rawEvent["id"].(string)
-			if !ok {
-				return fmt.Errorf("Object identifier required")
-			}
-
-			// Determine the appropriate servlet to insert into.
-			table, servlet, err := s.GetObjectContext(vars["name"], objectId)
-			if err != nil {
-				return fmt.Errorf("Cannot determine object context: %v", err)
-			}
-
-			// Convert to a Sky event and insert.
-			event, err := table.DeserializeEvent(rawEvent)
-			if err != nil {
-				return fmt.Errorf("Cannot deserialize: %v", err)
-			}
-			if err = table.FactorizeEvent(event, s.factors, true); err != nil {
-				return fmt.Errorf("Cannot factorize: %v", err)
-			}
-			if err = servlet.PutEvent(table, objectId, event, false); err != nil {
-				return fmt.Errorf("Cannot put event: %v", err)
-			}
-			events_written++
+			events <- rawEvent
 		}
+		eventListenerTomb.Killf("Gracefully tearing down event listener goroutine...")
+		eventListenerTomb.Wait()
 		return nil
 	}()
 
