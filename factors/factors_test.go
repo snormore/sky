@@ -1,4 +1,4 @@
-package skyd
+package factors
 
 import (
 	"fmt"
@@ -13,27 +13,27 @@ func TestFactorization(t *testing.T) {
 	defer os.RemoveAll(path)
 	path = fmt.Sprintf("%v/factors", path)
 
-	factors := NewFactors(path)
-	defer factors.Close()
-	err = factors.Open()
+	db := NewDB(path)
+	defer db.Close()
+	err = db.Open()
 	if err != nil {
-		t.Fatalf("Unable to create factors: %v", err)
+		t.Fatalf("Unable to create db: %v", err)
 	}
 
-	num, err := factors.Factorize("foo", "bar", "/index.html", true)
+	num, err := db.Factorize("foo", "bar", "/index.html", true)
 	if err != nil || num != 1 {
 		t.Fatalf("Wrong factorization: exp: %v, got: %v (%v)", 1, num, err)
 	}
-	num, err = factors.Factorize("foo", "bar", "/about.html", true)
+	num, err = db.Factorize("foo", "bar", "/about.html", true)
 	if err != nil || num != 2 {
 		t.Fatalf("Wrong factorization: exp: %v, got: %v (%v)", 2, num, err)
 	}
 
-	str, err := factors.Defactorize("foo", "bar", 1)
+	str, err := db.Defactorize("foo", "bar", 1)
 	if err != nil || str != "/index.html" {
 		t.Fatalf("Wrong defactorization: exp: %v, got: %v (%v)", "/index.html", str, err)
 	}
-	str, err = factors.Defactorize("foo", "bar", 2)
+	str, err = db.Defactorize("foo", "bar", 2)
 	if err != nil || str != "/about.html" {
 		t.Fatalf("Wrong defactorization: exp: %v, got: %v (%v)", "/about.html", str, err)
 	}

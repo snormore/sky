@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/skydb/sky/core"
 	"io"
 	"net/http"
 	"time"
@@ -51,7 +52,7 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 	// Denormalize events.
 	output := make([]map[string]interface{}, 0)
 	for _, event := range events {
-		if err = table.DefactorizeEvent(event, s.factors); err != nil {
+		if err = s.fdb.DefactorizeEvent(event, table.Name, table.PropertyFile()); err != nil {
 			return nil, err
 		}
 		e, err := table.SerializeEvent(event)
@@ -96,11 +97,11 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 	}
 	// Return an empty event if there isn't one.
 	if event == nil {
-		event = NewEvent(vars["timestamp"], map[int64]interface{}{})
+		event = core.NewEvent(vars["timestamp"], map[int64]interface{}{})
 	}
 
 	// Convert an event to a serializable object.
-	if err = table.DefactorizeEvent(event, s.factors); err != nil {
+	if err = s.fdb.DefactorizeEvent(event, table.Name, table.PropertyFile()); err != nil {
 		return nil, err
 	}
 	e, err := table.SerializeEvent(event)
@@ -123,7 +124,7 @@ func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, p
 	if err != nil {
 		return nil, err
 	}
-	err = table.FactorizeEvent(event, s.factors, true)
+	err = s.fdb.FactorizeEvent(event, table.Name, table.PropertyFile(), true)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +145,7 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 	if err != nil {
 		return nil, err
 	}
-	err = table.FactorizeEvent(event, s.factors, true)
+	err = s.fdb.FactorizeEvent(event, table.Name, table.PropertyFile(), true)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +186,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 			if err != nil {
 				return fmt.Errorf("Cannot deserialize: %v", err)
 			}
-			if err = table.FactorizeEvent(event, s.factors, true); err != nil {
+			if err = s.fdb.FactorizeEvent(event, table.Name, table.PropertyFile(), true); err != nil {
 				return fmt.Errorf("Cannot factorize: %v", err)
 			}
 			if err = servlet.PutEvent(table, objectId, event, false); err != nil {

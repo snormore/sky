@@ -653,7 +653,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-    "github.com/skydb/sky/schema"
+	"github.com/skydb/sky/core"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"regexp"
@@ -679,8 +679,8 @@ type ExecutionEngine struct {
 	header       string
 	source       string
 	fullSource   string
-	propertyFile *schema.PropertyFile
-	propertyRefs []*schema.Property
+	propertyFile *core.PropertyFile
+	propertyRefs []*core.Property
 	mutex        sync.Mutex
 }
 
@@ -690,11 +690,11 @@ type ExecutionEngine struct {
 //
 //------------------------------------------------------------------------------
 
-func NewExecutionEngine(table *Table, prefix string, source string) (*ExecutionEngine, error) {
+func NewExecutionEngine(table *core.Table, prefix string, source string) (*ExecutionEngine, error) {
 	if table == nil {
 		return nil, errors.New("skyd.ExecutionEngine: Table required")
 	}
-	propertyFile := table.propertyFile
+	propertyFile := table.PropertyFile()
 	if propertyFile == nil {
 		return nil, errors.New("skyd.ExecutionEngine: Property file required")
 	}
@@ -1101,10 +1101,10 @@ func (e *ExecutionEngine) generateHeader() error {
 }
 
 // Extracts the property references from the source string.
-func extractPropertyReferences(propertyFile *schema.PropertyFile, source string) ([]*schema.Property, error) {
+func extractPropertyReferences(propertyFile *core.PropertyFile, source string) ([]*core.Property, error) {
 	// Create a list of properties.
-	properties := make([]*schema.Property, 0)
-	lookup := make(map[int64]*schema.Property)
+	properties := make([]*core.Property, 0)
+	lookup := make(map[int64]*core.Property)
 
 	// Find all the event property references in the script.
 	r, err := regexp.Compile(`\bevent(?:\.|:)(\w+)`)
@@ -1122,22 +1122,22 @@ func extractPropertyReferences(propertyFile *schema.PropertyFile, source string)
 			lookup[property.Id] = property
 		}
 	}
-	sort.Sort(schema.PropertyList(properties))
+	sort.Sort(core.PropertyList(properties))
 
 	return properties, nil
 }
 
 func propertyStructDef(args ...interface{}) string {
-	if property, ok := args[0].(*schema.Property); ok && property.Id != 0 {
+	if property, ok := args[0].(*core.Property); ok && property.Id != 0 {
 		return fmt.Sprintf("%v _%v;", getPropertyCType(property), property.Name)
 	}
 	return ""
 }
 
 func metatypeFunctionDef(args ...interface{}) string {
-	if property, ok := args[0].(*schema.Property); ok && property.Id != 0 {
+	if property, ok := args[0].(*core.Property); ok && property.Id != 0 {
 		switch property.DataType {
-		case schema.StringDataType:
+		case core.StringDataType:
 			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", property.Name, property.Name, property.Name)
 		default:
 			return fmt.Sprintf("%v = function(event) return event._%v end,", property.Name, property.Name)
@@ -1147,21 +1147,21 @@ func metatypeFunctionDef(args ...interface{}) string {
 }
 
 func initDescriptorDef(args ...interface{}) string {
-	if property, ok := args[0].(*schema.Property); ok && property.Id != 0 {
+	if property, ok := args[0].(*core.Property); ok && property.Id != 0 {
 		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", property.Id, property.Name, getPropertyCType(property), property.DataType)
 	}
 	return ""
 }
 
-func getPropertyCType(property *schema.Property) string {
+func getPropertyCType(property *core.Property) string {
 	switch property.DataType {
-	case schema.StringDataType:
+	case core.StringDataType:
 		return "sky_string_t"
-	case schema.FactorDataType, schema.IntegerDataType:
+	case core.FactorDataType, core.IntegerDataType:
 		return "int32_t"
-	case schema.FloatDataType:
+	case core.FloatDataType:
 		return "double"
-	case schema.BooleanDataType:
+	case core.BooleanDataType:
 		return "bool"
 	default:
 		panic(fmt.Sprintf("skyd.ExecutionEngine: Invalid data type: %v", property.DataType))

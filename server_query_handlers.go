@@ -2,6 +2,7 @@ package skyd
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/skydb/sky/query"
 	"net/http"
 )
 
@@ -28,13 +29,13 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 	}
 
 	// Run a simple count query.
-	query := NewQuery(table, s.factors)
-	selection := NewQuerySelection(query)
-	selection.Fields = append(selection.Fields, NewQuerySelectionField("count", "count()"))
-	query.Prefix = req.FormValue("prefix")
-	query.Steps = append(query.Steps, selection)
+	q := query.NewQuery(table, s.fdb)
+	selection := query.NewQuerySelection(q)
+	selection.Fields = append(selection.Fields, query.NewQuerySelectionField("count", "count()"))
+	q.Prefix = req.FormValue("prefix")
+	q.Steps = append(q.Steps, selection)
 
-	return s.RunQuery(table, query)
+	return s.RunQuery(table, q)
 }
 
 // POST /tables/:name/query
@@ -48,13 +49,13 @@ func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params m
 	}
 
 	// Deserialize the query.
-	query := NewQuery(table, s.factors)
-	err = query.Deserialize(params)
+	q := query.NewQuery(table, s.fdb)
+	err = q.Deserialize(params)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.RunQuery(table, query)
+	return s.RunQuery(table, q)
 }
 
 // POST /tables/:name/query/codegen
@@ -70,14 +71,14 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 	}
 
 	// Deserialize the query.
-	query := NewQuery(table, s.factors)
-	err = query.Deserialize(params)
+	q := query.NewQuery(table, s.fdb)
+	err = q.Deserialize(params)
 	if err != nil {
 		return nil, err
 	}
 
 	// Generate the query source code.
-	source, err = query.Codegen()
+	source, err = q.Codegen()
 	//fmt.Println(source)
 
 	return source, &TextPlainContentTypeError{}

@@ -1,4 +1,4 @@
-package schema
+package core
 
 import (
 	"testing"
@@ -20,4 +20,3 @@ func TestPropertyNameCannotContainInvalidCharacters(t *testing.T) {
 		t.Fatal("Invalid name:", err)
 	}
 }
-

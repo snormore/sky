@@ -51,7 +51,6 @@ func (s *Server) mergeObjectHandler(w http.ResponseWriter, req *http.Request, pa
 			return nil, err
 		}
 	}
-	
+
 	return nil, nil
 }
-

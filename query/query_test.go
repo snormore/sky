@@ -1,7 +1,10 @@
-package skyd
+package query
 
 import (
 	"bytes"
+	"github.com/skydb/sky/core"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -27,4 +30,17 @@ func TestQueryEncodeDecode(t *testing.T) {
 	if buffer.String() != json {
 		t.Fatalf("Query encoding error:\nexp: %s\ngot: %s", json, buffer.String())
 	}
+}
+
+func createTempTable(t *testing.T) *core.Table {
+	path, err := ioutil.TempDir("", "")
+	os.RemoveAll(path)
+
+	table := core.NewTable("test", path)
+	err = table.Create()
+	if err != nil {
+		t.Fatalf("Unable to create table: %v", err)
+	}
+
+	return table
 }

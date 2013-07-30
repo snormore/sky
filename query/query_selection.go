@@ -1,10 +1,10 @@
-package skyd
+package query
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/schema"
+	"github.com/skydb/sky/core"
 )
 
 //------------------------------------------------------------------------------
@@ -291,7 +291,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 
 	// Retrieve property.
 	dimension := s.Dimensions[index]
-	property := s.query.table.propertyFile.GetPropertyByName(dimension)
+	property := s.query.table.PropertyFile().GetPropertyByName(dimension)
 	if property == nil {
 		return fmt.Errorf("skyd.QuerySelection: Property not found: %s", dimension)
 	}
@@ -300,11 +300,11 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 	if outer, ok := inner[dimension].(map[interface{}]interface{}); ok {
 		copy := map[interface{}]interface{}{}
 		for k, v := range outer {
-			if property.DataType == schema.FactorDataType {
+			if property.DataType == core.FactorDataType {
 				// Only process this if it hasn't been defactorized already. Duplicate
 				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
-					stringValue, err := s.query.factors.Defactorize(s.query.table.Name, dimension, uint64(sequence))
+					stringValue, err := s.query.fdb.Defactorize(s.query.table.Name, dimension, uint64(sequence))
 					if err != nil {
 						return err
 					}

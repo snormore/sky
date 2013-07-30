@@ -1,4 +1,4 @@
-package schema
+package core
 
 // A slice of Property objects.
 type PropertyList []*Property

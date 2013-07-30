@@ -1,10 +1,12 @@
-package skyd
+package factors
 
 import (
 	"errors"
 	"fmt"
+	"github.com/skydb/sky/core"
 	"github.com/szferi/gomdb"
 	"os"
+	"reflect"
 	"strconv"
 	"sync"
 )
@@ -15,8 +17,8 @@ import (
 //
 //------------------------------------------------------------------------------
 
-// A Factors object manages the factorization and defactorization of values.
-type Factors struct {
+// A Factors database object manages the factorization and defactorization of values.
+type DB struct {
 	env   *mdb.Env
 	path  string
 	mutex sync.Mutex
@@ -50,9 +52,9 @@ func (e *FactorNotFound) Error() string {
 //
 //------------------------------------------------------------------------------
 
-// NewFactors returns a new Factors object.
-func NewFactors(path string) *Factors {
-	return &Factors{path: path}
+// NewDB returns a new database object.
+func NewDB(path string) *DB {
+	return &DB{path: path}
 }
 
 //------------------------------------------------------------------------------
@@ -62,8 +64,8 @@ func NewFactors(path string) *Factors {
 //------------------------------------------------------------------------------
 
 // The path to the database on disk.
-func (f *Factors) Path() string {
-	return f.path
+func (db *DB) Path() string {
+	return db.path
 }
 
 //------------------------------------------------------------------------------
@@ -77,50 +79,50 @@ func (f *Factors) Path() string {
 //--------------------------------------
 
 // Opens the factors databse.
-func (f *Factors) Open() error {
+func (db *DB) Open() error {
 	var err error
-	if f.IsOpen() {
+	if db.IsOpen() {
 		return errors.New("skyd: Factors database is already open.")
 	}
 
 	// Create the factors directory.
-	if err = os.MkdirAll(f.path, 0700); err != nil {
+	if err = os.MkdirAll(db.path, 0700); err != nil {
 		return err
 	}
 
 	// Create the database environment.
-	if f.env, err = mdb.NewEnv(); err != nil {
+	if db.env, err = mdb.NewEnv(); err != nil {
 		return fmt.Errorf(fmt.Sprintf("skyd: Unable to create factors environment: %v", err))
 	}
 	// Setup max dbs.
-	if err = f.env.SetMaxDBs(4096); err != nil {
-		f.Close()
+	if err = db.env.SetMaxDBs(4096); err != nil {
+		db.Close()
 		return fmt.Errorf("skyd: Unable to set factors max dbs: %v", err)
 	}
 	// Setup map size.
-	if err := f.env.SetMapSize(10 << 30); err != nil {
+	if err := db.env.SetMapSize(10 << 30); err != nil {
 		return fmt.Errorf("skyd: Unable to set factors map size: %v", err)
 	}
 	// Open the database.
-	if err = f.env.Open(f.path, 0, 0664); err != nil {
-		f.Close()
-		return fmt.Errorf("skyd: Cannot open factors database (%s): %s", f.path, err)
+	if err = db.env.Open(db.path, 0, 0664); err != nil {
+		db.Close()
+		return fmt.Errorf("skyd: Cannot open factors database (%s): %s", db.path, err)
 	}
 
 	return nil
 }
 
 // Closes the factors database.
-func (f *Factors) Close() {
-	if f.env != nil {
-		f.env.Close()
-		f.env = nil
+func (db *DB) Close() {
+	if db.env != nil {
+		db.env.Close()
+		db.env = nil
 	}
 }
 
 // Returns whether the factors database is open.
-func (f *Factors) IsOpen() bool {
-	return f.env != nil
+func (db *DB) IsOpen() bool {
+	return db.env != nil
 }
 
 //--------------------------------------
@@ -128,8 +130,8 @@ func (f *Factors) IsOpen() bool {
 //--------------------------------------
 
 // Retrieves the value from the database for a given key.
-func (f *Factors) get(namespace string, key string) (string, bool, error) {
-	txn, err := f.env.BeginTxn(nil, 0)
+func (db *DB) get(namespace string, key string) (string, bool, error) {
+	txn, err := db.env.BeginTxn(nil, 0)
 	if err != nil {
 		return "", false, fmt.Errorf("skyd: Unable to start factors get txn: %s", err)
 	}
@@ -142,7 +144,7 @@ func (f *Factors) get(namespace string, key string) (string, bool, error) {
 	data, err := txn.Get(dbi, []byte(key))
 	if err != nil && err != mdb.NotFound {
 		err = fmt.Errorf("skyd: Unable to get factor: %s", err)
-		warn(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		txn.Abort()
 		return "", false, err
 	}
@@ -152,8 +154,8 @@ func (f *Factors) get(namespace string, key string) (string, bool, error) {
 }
 
 // Sets the value for a given key in the database.
-func (f *Factors) put(namespace string, key string, value string) error {
-	txn, err := f.env.BeginTxn(nil, 0)
+func (db *DB) put(namespace string, key string, value string) error {
+	txn, err := db.env.BeginTxn(nil, 0)
 	if err != nil {
 		return fmt.Errorf("skyd: Unable to start factors put txn: %s", err)
 	}
@@ -165,13 +167,13 @@ func (f *Factors) put(namespace string, key string, value string) error {
 	// Set value for key.
 	if err = txn.Put(dbi, []byte(key), []byte(value), mdb.NODUPDATA); err != nil {
 		err = fmt.Errorf("skyd: Unable to put factor: %s", err)
-		warn(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		txn.Abort()
 		return err
 	}
 	if err = txn.Commit(); err != nil {
 		err = fmt.Errorf("skyd: Unable to commit factor: %s", err)
-		warn(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		txn.Abort()
 		return err
 	}
@@ -184,17 +186,17 @@ func (f *Factors) put(namespace string, key string, value string) error {
 //--------------------------------------
 
 // The key for a given namespace/id/value.
-func (f *Factors) key(id string, value string) string {
+func (db *DB) key(id string, value string) string {
 	return fmt.Sprintf("%x:%s>%s", len(id), id, value)
 }
 
 // The reverse key for a given namespace/id/value.
-func (f *Factors) revkey(id string, value uint64) string {
+func (db *DB) revkey(id string, value uint64) string {
 	return fmt.Sprintf("%x:%s<%d", len(id), id, value)
 }
 
 // The sequence key for a given namespace/id.
-func (f *Factors) seqkey(id string) string {
+func (db *DB) seqkey(id string) string {
 	return fmt.Sprintf("%x:%s!", len(id), id)
 }
 
@@ -203,14 +205,14 @@ func (f *Factors) seqkey(id string) string {
 //--------------------------------------
 
 // Converts the defactorized value for a given id in a given namespace to its internal representation.
-func (f *Factors) Factorize(namespace string, id string, value string, createIfMissing bool) (uint64, error) {
+func (db *DB) Factorize(namespace string, id string, value string, createIfMissing bool) (uint64, error) {
 	// Blank is always zero.
 	if value == "" {
 		return 0, nil
 	}
 
 	// Otherwise find it in the database.
-	data, exists, err := f.get(namespace, f.key(id, value))
+	data, exists, err := db.get(namespace, db.key(id, value))
 	if err != nil {
 		return 0, err
 	}
@@ -221,21 +223,21 @@ func (f *Factors) Factorize(namespace string, id string, value string, createIfM
 
 	// Create a new factor if requested.
 	if createIfMissing {
-		return f.add(namespace, id, value)
+		return db.add(namespace, id, value)
 	}
 
-	err = NewFactorNotFound(fmt.Sprintf("skyd: Factor not found: %v", f.key(id, value)))
+	err = NewFactorNotFound(fmt.Sprintf("skyd: Factor not found: %v", db.key(id, value)))
 	return 0, err
 }
 
 // Adds a new factor to the database if it doesn't exist.
-func (f *Factors) add(namespace string, id string, value string) (uint64, error) {
+func (db *DB) add(namespace string, id string, value string) (uint64, error) {
 	// Lock while adding a new value.
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
 
 	// Retry factorize within the context of the lock.
-	sequence, err := f.Factorize(namespace, id, value, false)
+	sequence, err := db.Factorize(namespace, id, value, false)
 	if err == nil {
 		return sequence, nil
 	} else if _, ok := err.(*FactorNotFound); !ok {
@@ -243,16 +245,16 @@ func (f *Factors) add(namespace string, id string, value string) (uint64, error)
 	}
 
 	// Retrieve next id in sequence.
-	sequence, err = f.inc(namespace, id)
+	sequence, err = db.inc(namespace, id)
 	if err != nil {
 		return 0, err
 	}
 
 	// Save lookup and reverse lookup.
-	if err = f.put(namespace, f.key(id, value), strconv.FormatUint(sequence, 10)); err != nil {
+	if err = db.put(namespace, db.key(id, value), strconv.FormatUint(sequence, 10)); err != nil {
 		return 0, err
 	}
-	if err = f.put(namespace, f.revkey(id, sequence), value); err != nil {
+	if err = db.put(namespace, db.revkey(id, sequence), value); err != nil {
 		return 0, err
 	}
 
@@ -260,33 +262,33 @@ func (f *Factors) add(namespace string, id string, value string) (uint64, error)
 }
 
 // Converts the factorized value for a given id in a given namespace to its internal representation.
-func (f *Factors) Defactorize(namespace string, id string, value uint64) (string, error) {
+func (db *DB) Defactorize(namespace string, id string, value uint64) (string, error) {
 	// Blank is always zero.
 	if value == 0 {
 		return "", nil
 	}
 
 	// Find it in the database.
-	data, exists, err := f.get(namespace, f.revkey(id, value))
+	data, exists, err := db.get(namespace, db.revkey(id, value))
 	if err != nil {
 		return "", err
 	}
 	if !exists {
-		return "", fmt.Errorf("skyd: Factor value does not exist: %v", f.revkey(id, value))
+		return "", fmt.Errorf("skyd: Factor value does not exist: %v", db.revkey(id, value))
 	}
 	return string(data), nil
 }
 
 // Retrieves the next available sequence number within a namespace for an id.
-func (f *Factors) inc(namespace string, id string) (uint64, error) {
-	data, exists, err := f.get(namespace, f.seqkey(id))
+func (db *DB) inc(namespace string, id string) (uint64, error) {
+	data, exists, err := db.get(namespace, db.seqkey(id))
 	if err != nil {
 		return 0, err
 	}
 
 	// Initialize key if it doesn't exist. Otherwise increment it.
 	if !exists {
-		if err := f.put(namespace, f.seqkey(id), "1"); err != nil {
+		if err := db.put(namespace, db.seqkey(id), "1"); err != nil {
 			return 0, err
 		}
 		return 1, nil
@@ -300,8 +302,74 @@ func (f *Factors) inc(namespace string, id string) (uint64, error) {
 
 	// Increment and save the new value.
 	sequence += 1
-	if err = f.put(namespace, f.seqkey(id), strconv.FormatUint(sequence, 10)); err != nil {
+	if err = db.put(namespace, db.seqkey(id), strconv.FormatUint(sequence, 10)); err != nil {
 		return 0, err
 	}
 	return sequence, nil
+}
+
+//--------------------------------------
+// Event Factorization
+//--------------------------------------
+
+// Factorizes the values in an event.
+func (db *DB) FactorizeEvent(event *core.Event, namespace string, propertyFile *core.PropertyFile, createIfMissing bool) error {
+	if event == nil {
+		return nil
+	}
+
+	for k, v := range event.Data {
+		property := propertyFile.GetProperty(k)
+		if property.DataType == core.FactorDataType {
+			if stringValue, ok := v.(string); ok {
+				sequence, err := db.Factorize(namespace, property.Name, stringValue, createIfMissing)
+				if err != nil {
+					return err
+				}
+				event.Data[k] = sequence
+			}
+		}
+	}
+
+	return nil
+}
+
+// Defactorizes the values in an event.
+func (db *DB) DefactorizeEvent(event *core.Event, namespace string, propertyFile *core.PropertyFile) error {
+	if event == nil {
+		return nil
+	}
+
+	for k, v := range event.Data {
+		property := propertyFile.GetProperty(k)
+		if property.DataType == core.FactorDataType {
+			if sequence, ok := castUint64(v); ok {
+				stringValue, err := db.Defactorize(namespace, property.Name, sequence)
+				if err != nil {
+					return err
+				}
+				event.Data[k] = stringValue
+			}
+		}
+	}
+
+	return nil
+}
+
+//--------------------------------------
+// Utility
+//--------------------------------------
+
+// Casts to a uint64 if possible.
+func castUint64(value interface{}) (uint64, bool) {
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return uint64(v.Int()), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return uint64(v.Uint()), true
+	case reflect.Float32, reflect.Float64:
+		return uint64(v.Float()), true
+	}
+	return 0, false
 }

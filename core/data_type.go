@@ -1,4 +1,4 @@
-package schema
+package core
 
 const (
 	FactorDataType  = "factor"

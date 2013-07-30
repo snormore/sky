@@ -1,4 +1,4 @@
-package skyd
+package core
 
 import (
 	"fmt"
@@ -38,4 +38,17 @@ func TestTableCreateProperty(t *testing.T) {
 	if string(content) != "[{\"id\":1,\"name\":\"name\",\"transient\":false,\"dataType\":\"string\"}]\n" {
 		t.Fatalf("Invalid properties file:\n%v", string(content))
 	}
+}
+
+func createTempTable(t *testing.T) *Table {
+	path, err := ioutil.TempDir("", "")
+	os.RemoveAll(path)
+
+	table := NewTable("test", path)
+	err = table.Create()
+	if err != nil {
+		t.Fatalf("Unable to create table: %v", err)
+	}
+
+	return table
 }

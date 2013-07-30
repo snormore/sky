@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/factors"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"io"
@@ -22,10 +24,10 @@ import (
 
 // A Servlet is a small wrapper around a single shard of a LMDB data file.
 type Servlet struct {
-	path    string
-	env     *mdb.Env
-	factors *Factors
-	mutex   sync.Mutex
+	path  string
+	env   *mdb.Env
+	fdb   *factors.DB
+	mutex sync.Mutex
 }
 
 //------------------------------------------------------------------------------
@@ -35,10 +37,10 @@ type Servlet struct {
 //------------------------------------------------------------------------------
 
 // NewServlet returns a new Servlet with a data shard stored at a given path.
-func NewServlet(path string, factors *Factors) *Servlet {
+func NewServlet(path string, fdb *factors.DB) *Servlet {
 	return &Servlet{
-		path:    path,
-		factors: factors,
+		path: path,
+		fdb:  fdb,
 	}
 }
 
@@ -133,12 +135,12 @@ func (s *Servlet) Unlock() {
 //--------------------------------------
 
 // Adds an event for a given object in a table to a servlet.
-func (s *Servlet) PutEvent(table *Table, objectId string, event *Event, replace bool) error {
-	return s.PutEvents(table, objectId, []*Event{event}, replace)
+func (s *Servlet) PutEvent(table *core.Table, objectId string, event *core.Event, replace bool) error {
+	return s.PutEvents(table, objectId, []*core.Event{event}, replace)
 }
 
 // Inserts multiple events for a given object.
-func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, replace bool) error {
+func (s *Servlet) PutEvents(table *core.Table, objectId string, newEvents []*core.Event, replace bool) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -146,13 +148,13 @@ func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, r
 	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
 	}
-	
+
 	if len(newEvents) == 0 {
 		return nil
 	}
 
 	// Sort events in timestamp order.
-	sort.Sort(EventList(newEvents))
+	sort.Sort(core.EventList(newEvents))
 
 	// Check the current state and perform an optimized append if possible.
 	state, data, err := s.GetState(table, objectId)
@@ -176,7 +178,7 @@ func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, r
 	if err != nil {
 		return err
 	}
-	
+
 	// Append all the new events and sort.
 	for _, newEvent := range newEvents {
 		// Merge events with an existing timestamp.
@@ -192,16 +194,16 @@ func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, r
 				break
 			}
 		}
-		
+
 		// If no existing events exist then just append to the end.
 		if !merged {
 			events = append(events, newEvent)
 		}
 	}
-	sort.Sort(EventList(events))
+	sort.Sort(core.EventList(events))
 
 	// Deduplicate permanent state.
-	state = &Event{Data: map[int64]interface{}{}}
+	state = &core.Event{Data: map[int64]interface{}{}}
 	for _, event := range events {
 		state.Timestamp = event.Timestamp
 		event.DedupePermanent(state)
@@ -209,7 +211,7 @@ func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, r
 	}
 
 	// Remove all empty events.
-	events = []*Event(EventList(events).NonEmptyEvents())
+	events = []*core.Event(core.EventList(events).NonEmptyEvents())
 
 	// Write events back to the database.
 	err = s.SetEvents(table, objectId, events, state)
@@ -222,9 +224,9 @@ func (s *Servlet) PutEvents(table *Table, objectId string, newEvents []*Event, r
 
 // Appends events for a given object in a table to a servlet. This should not
 // be called directly but only through PutEvent().
-func (s *Servlet) appendEvents(table *Table, objectId string, events []*Event, state *Event, data []byte) error {
+func (s *Servlet) appendEvents(table *core.Table, objectId string, events []*core.Event, state *core.Event, data []byte) error {
 	if state == nil {
-		state = &Event{Data: map[int64]interface{}{}}
+		state = &core.Event{Data: map[int64]interface{}{}}
 	}
 
 	// Encode the event data to the end of the buffer.
@@ -245,7 +247,7 @@ func (s *Servlet) appendEvents(table *Table, objectId string, events []*Event, s
 }
 
 // Retrieves an event for a given object at a single point in time.
-func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (*Event, error) {
+func (s *Servlet) GetEvent(table *core.Table, objectId string, timestamp time.Time) (*core.Event, error) {
 	// Retrieve all events.
 	events, _, err := s.GetEvents(table, objectId)
 	if err != nil {
@@ -263,7 +265,7 @@ func (s *Servlet) GetEvent(table *Table, objectId string, timestamp time.Time) (
 }
 
 // Removes an event for a given object in a table to a servlet.
-func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time) error {
+func (s *Servlet) DeleteEvent(table *core.Table, objectId string, timestamp time.Time) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -278,8 +280,8 @@ func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time
 		return err
 	}
 	// Remove any event matching the timestamp.
-	state := &Event{Data: map[int64]interface{}{}}
-	events := make([]*Event, 0)
+	state := &core.Event{Data: map[int64]interface{}{}}
+	events := make([]*core.Event, 0)
 	for _, v := range tmp {
 		if !v.Timestamp.Equal(timestamp) {
 			events = append(events, v)
@@ -297,7 +299,7 @@ func (s *Servlet) DeleteEvent(table *Table, objectId string, timestamp time.Time
 }
 
 // Retrieves the state and the remaining serialized event stream for an object.
-func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error) {
+func (s *Servlet) GetState(table *core.Table, objectId string) (*core.Event, []byte, error) {
 	// Make sure the servlet is open.
 	if s.env == nil {
 		return nil, nil, fmt.Errorf("Servlet is not open: %v", s.path)
@@ -335,7 +337,7 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 			return nil, nil, err
 		}
 		if b, ok := raw.(string); ok {
-			state := &Event{}
+			state := &core.Event{}
 			if err = state.DecodeRaw(bytes.NewReader([]byte(b))); err == nil {
 				eventData, _ := ioutil.ReadAll(reader)
 				return state, eventData, nil
@@ -351,18 +353,18 @@ func (s *Servlet) GetState(table *Table, objectId string) (*Event, []byte, error
 }
 
 // Retrieves a list of events and the current state for a given object in a table.
-func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, *Event, error) {
+func (s *Servlet) GetEvents(table *core.Table, objectId string) ([]*core.Event, *core.Event, error) {
 	state, data, err := s.GetState(table, objectId)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	events := make([]*Event, 0)
+	events := make([]*core.Event, 0)
 	if data != nil {
 		reader := bytes.NewReader(data)
 		for {
 			// Decode the event and append it to our list.
-			event := &Event{}
+			event := &core.Event{}
 			err = event.DecodeRaw(reader)
 			if err == io.EOF {
 				err = nil
@@ -379,9 +381,9 @@ func (s *Servlet) GetEvents(table *Table, objectId string) ([]*Event, *Event, er
 }
 
 // Writes a list of events for an object in table.
-func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event, state *Event) error {
+func (s *Servlet) SetEvents(table *core.Table, objectId string, events []*core.Event, state *core.Event) error {
 	// Sort the events.
-	sort.Sort(EventList(events))
+	sort.Sort(core.EventList(events))
 
 	// Ensure state is correct before proceeding.
 	if len(events) > 0 {
@@ -408,7 +410,7 @@ func (s *Servlet) SetEvents(table *Table, objectId string, events []*Event, stat
 }
 
 // Writes a list of events for an object in table.
-func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state *Event) error {
+func (s *Servlet) SetRawEvents(table *core.Table, objectId string, data []byte, state *core.Event) error {
 	var err error
 
 	// Make sure the servlet is open.
@@ -456,7 +458,7 @@ func (s *Servlet) SetRawEvents(table *Table, objectId string, data []byte, state
 }
 
 // Deletes all events for a given object in a table.
-func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
+func (s *Servlet) DeleteEvents(table *core.Table, objectId string) error {
 	// Make sure the servlet is open.
 	if s.env == nil {
 		return fmt.Errorf("Servlet is not open: %v", s.path)
@@ -488,7 +490,7 @@ func (s *Servlet) DeleteEvents(table *Table, objectId string) error {
 //--------------------------------------
 
 // Creates and initializes an execution engine for querying this servlet.
-func (s *Servlet) CreateExecutionEngine(table *Table, prefix string, source string) (*ExecutionEngine, error) {
+func (s *Servlet) CreateExecutionEngine(table *core.Table, prefix string, source string) (*ExecutionEngine, error) {
 	e, err := NewExecutionEngine(table, prefix, source)
 	if err != nil {
 		return nil, err

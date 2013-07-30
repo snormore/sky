@@ -1,4 +1,4 @@
-package skyd
+package core
 
 //------------------------------------------------------------------------------
 //
@@ -38,7 +38,7 @@ func (s EventList) Swap(i, j int) {
 //--------------------------------------
 
 // Returns a list of 
-func (s EventList) NonEmptyEvents() (EventList) {
+func (s EventList) NonEmptyEvents() EventList {
 	events := make([]*Event, 0)
 	for _, event := range s {
 		if len(event.Data) > 0 {
@@ -47,4 +47,3 @@ func (s EventList) NonEmptyEvents() (EventList) {
 	}
 	return EventList(events)
 }
-

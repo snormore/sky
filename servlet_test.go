@@ -1,6 +1,7 @@
 package skyd
 
 import (
+	"github.com/skydb/sky/core"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -24,16 +25,16 @@ func TestServletPutEvent(t *testing.T) {
 	// Setup blank database.
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
-	table := NewTable("test", "/tmp/test")
+	table := core.NewTable("test", "/tmp/test")
 	servlet := NewServlet(path, nil)
 	defer servlet.Close()
 	_ = servlet.Open()
 
 	// Setup source events.
-	input := make([]*Event, 3)
-	input[0] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3: "baz"})
-	input[1] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3: "baz"})
-	input[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3: "baz"})
+	input := make([]*core.Event, 3)
+	input[0] = core.NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3: "baz"})
+	input[1] = core.NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3: "baz"})
+	input[2] = core.NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo", 3: "baz"})
 
 	// Add events.
 	for _, e := range input {
@@ -44,11 +45,11 @@ func TestServletPutEvent(t *testing.T) {
 	}
 
 	// Setup expected events.
-	expected := make([]*Event, len(input))
-	expected[0] = NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3:"baz"})
-	expected[1] = NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo"})
-	expected[2] = NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20})
-	expectedState := NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1: "foo", 2: "bar", 3: "baz"})
+	expected := make([]*core.Event, len(input))
+	expected[0] = core.NewEvent("2012-01-01T00:00:00Z", map[int64]interface{}{-1: 20, 2: "bar", 3: "baz"})
+	expected[1] = core.NewEvent("2012-01-02T00:00:00Z", map[int64]interface{}{-1: 20, 1: "foo"})
+	expected[2] = core.NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{-1: 20})
+	expectedState := core.NewEvent("2012-01-03T00:00:00Z", map[int64]interface{}{1: "foo", 2: "bar", 3: "baz"})
 
 	// Read events out.
 	output, state, err := servlet.GetEvents(table, "bob")

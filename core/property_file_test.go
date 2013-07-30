@@ -1,4 +1,4 @@
-package schema
+package core
 
 import (
 	"bytes"
@@ -101,4 +101,3 @@ func assertProperty(t *testing.T, property *Property, id int64, name string, tra
 		t.Fatalf("Unexpected property data type. Expected %v, got %v", dataType, property.DataType)
 	}
 }
-

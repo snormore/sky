@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/factors"
+	"github.com/skydb/sky/query"
 	"hash/fnv"
 	"io"
 	"io/ioutil"
@@ -31,8 +34,8 @@ type Server struct {
 	path             string
 	listener         net.Listener
 	servlets         []*Servlet
-	tables           map[string]*Table
-	factors          *Factors
+	tables           map[string]*core.Table
+	fdb              *factors.DB
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
@@ -71,7 +74,7 @@ func NewServer(port uint, path string) *Server {
 		router:     r,
 		logger:     log.New(os.Stdout, "", log.LstdFlags),
 		path:       path,
-		tables:     make(map[string]*Table),
+		tables:     make(map[string]*core.Table),
 	}
 
 	s.addHandlers()
@@ -194,8 +197,8 @@ func (s *Server) open() error {
 	}
 
 	// Open factors database.
-	s.factors = NewFactors(s.FactorsPath())
-	err = s.factors.Open()
+	s.fdb = factors.NewDB(s.FactorsPath())
+	err = s.fdb.Open()
 	if err != nil {
 		s.close()
 		return err
@@ -209,7 +212,7 @@ func (s *Server) open() error {
 	for _, info := range infos {
 		match, _ := regexp.MatchString("^\\d$", info.Name())
 		if info.IsDir() && match {
-			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%s", s.DataPath(), info.Name()), s.factors))
+			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%s", s.DataPath(), info.Name()), s.fdb))
 		}
 	}
 
@@ -217,7 +220,7 @@ func (s *Server) open() error {
 	if len(s.servlets) == 0 {
 		cpuCount := runtime.NumCPU()
 		for i := 0; i < cpuCount; i++ {
-			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.factors))
+			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.fdb))
 		}
 	}
 
@@ -244,9 +247,9 @@ func (s *Server) close() {
 	}
 
 	// Close factors database.
-	if s.factors != nil {
-		s.factors.Close()
-		s.factors = nil
+	if s.fdb != nil {
+		s.fdb.Close()
+		s.fdb = nil
 	}
 }
 
@@ -360,7 +363,7 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 //--------------------------------------
 
 // Retrieves the table and servlet reference for a single object.
-func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *Servlet, error) {
+func (s *Server) GetObjectContext(tableName string, objectId string) (*core.Table, *Servlet, error) {
 	// Return an error if the table already exists.
 	table, err := s.OpenTable(tableName)
 	if err != nil {
@@ -375,7 +378,7 @@ func (s *Server) GetObjectContext(tableName string, objectId string) (*Table, *S
 }
 
 // Calculates a tablet index based on the object identifier even hash.
-func (s *Server) GetObjectServletIndex(t *Table, objectId string) uint32 {
+func (s *Server) GetObjectServletIndex(t *core.Table, objectId string) uint32 {
 	h := fnv.New64a()
 	h.Reset()
 	h.Write([]byte(objectId))
@@ -388,7 +391,7 @@ func (s *Server) GetObjectServletIndex(t *Table, objectId string) uint32 {
 //--------------------------------------
 
 // Retrieves a table that has already been opened.
-func (s *Server) GetTable(name string) *Table {
+func (s *Server) GetTable(name string) *core.Table {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return s.tables[name]
@@ -396,17 +399,17 @@ func (s *Server) GetTable(name string) *Table {
 
 // Retrieves a list of all tables in the database but does not open them.
 // Do not use these table references for anything but informational purposes!
-func (s *Server) GetAllTables() ([]*Table, error) {
+func (s *Server) GetAllTables() ([]*core.Table, error) {
 	// Create a table object for each directory in the tables path.
 	infos, err := ioutil.ReadDir(s.TablesPath())
 	if err != nil {
 		return nil, err
 	}
 
-	tables := []*Table{}
+	tables := []*core.Table{}
 	for _, info := range infos {
 		if info.IsDir() {
-			tables = append(tables, NewTable(info.Name(), s.TablePath(info.Name())))
+			tables = append(tables, core.NewTable(info.Name(), s.TablePath(info.Name())))
 		}
 	}
 
@@ -414,7 +417,7 @@ func (s *Server) GetAllTables() ([]*Table, error) {
 }
 
 // Opens a table and returns a reference to it.
-func (s *Server) OpenTable(name string) (*Table, error) {
+func (s *Server) OpenTable(name string) (*core.Table, error) {
 	// If table already exists then use it.
 	table := s.GetTable(name)
 	if table != nil {
@@ -422,7 +425,7 @@ func (s *Server) OpenTable(name string) (*Table, error) {
 	}
 
 	// Otherwise open it and save the reference.
-	table = NewTable(name, s.TablePath(name))
+	table = core.NewTable(name, s.TablePath(name))
 	err := table.Open()
 	if err != nil {
 		table.Close()
@@ -441,7 +444,7 @@ func (s *Server) DeleteTable(name string) error {
 	// Return an error if the table doesn't exist.
 	table := s.GetTable(name)
 	if table == nil {
-		table = NewTable(name, s.TablePath(name))
+		table = core.NewTable(name, s.TablePath(name))
 	}
 	if !table.Exists() {
 		return fmt.Errorf("Table does not exist: %s", name)
@@ -454,7 +457,7 @@ func (s *Server) DeleteTable(name string) error {
 		}
 	}
 
-	// Remove the table from the lookup and remove it's schema.
+	// Remove the table from the lookup and remove it's core.
 	s.mutex.Lock()
 	delete(s.tables, name)
 	defer s.mutex.Unlock()
@@ -467,7 +470,7 @@ func (s *Server) DeleteTable(name string) error {
 //--------------------------------------
 
 // Runs a query against a table.
-func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
+func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error) {
 	var engine *ExecutionEngine
 	engines := make([]*ExecutionEngine, 0)
 
@@ -475,13 +478,13 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	rchannel := make(chan interface{}, len(s.servlets))
 
 	// Generate the query source code.
-	source, err := query.Codegen()
+	source, err := q.Codegen()
 	if err != nil {
 		return nil, err
 	}
 
 	// Create an engine for merging results.
-	engine, err = NewExecutionEngine(table, query.Prefix, source)
+	engine, err = NewExecutionEngine(table, q.Prefix, source)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +496,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 	for index, servlet := range s.servlets {
 		// Create an engine for each servlet. The execution engine is
 		// protected by a mutex so it's safe to destroy it at any time.
-		e, err := servlet.CreateExecutionEngine(table, query.Prefix, source)
+		e, err := servlet.CreateExecutionEngine(table, q.Prefix, source)
 		if err != nil {
 			return nil, err
 		}
@@ -501,7 +504,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 		engines = append(engines, e)
 
 		// Run initialization once if required.
-		if index == 0 && query.RequiresInitialization() {
+		if index == 0 && q.RequiresInitialization() {
 			if data, err = e.Initialize(); err != nil {
 				return nil, err
 			}
@@ -536,7 +539,7 @@ func (s *Server) RunQuery(table *Table, query *Query) (interface{}, error) {
 			servletError = err
 		} else {
 			// Defactorize aggregate results.
-			if err = query.Defactorize(ret); err != nil {
+			if err = q.Defactorize(ret); err != nil {
 				return nil, err
 			}
 

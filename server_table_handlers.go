@@ -3,6 +3,7 @@ package skyd
 import (
 	"errors"
 	"github.com/gorilla/mux"
+	"github.com/skydb/sky/core"
 	"net/http"
 )
 
@@ -47,7 +48,7 @@ func (s *Server) createTableHandler(w http.ResponseWriter, req *http.Request, pa
 	}
 
 	// Otherwise create it.
-	table = NewTable(tableName, s.TablePath(tableName))
+	table = core.NewTable(tableName, s.TablePath(tableName))
 	err = table.Create()
 	if err != nil {
 		return nil, err

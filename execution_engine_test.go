@@ -1,6 +1,9 @@
 package skyd
 
 import (
+	"github.com/skydb/sky/core"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -31,4 +34,17 @@ func TestExecutionEngineExtractPropertyReferences(t *testing.T) {
 	if p, _ := table.GetPropertyByName("salary"); p != l.propertyRefs[2] {
 		t.Fatalf("Expected %v, got %v", p, l.propertyRefs[2])
 	}
+}
+
+func createTempTable(t *testing.T) *core.Table {
+	path, err := ioutil.TempDir("", "")
+	os.RemoveAll(path)
+
+	table := core.NewTable("test", path)
+	err = table.Create()
+	if err != nil {
+		t.Fatalf("Unable to create table: %v", err)
+	}
+
+	return table
 }

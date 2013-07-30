@@ -1,10 +1,11 @@
-package skyd
+package query
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/schema"
+	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/factors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -267,7 +268,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 		}
 
 		// Find the property.
-		property := c.query.table.propertyFile.GetPropertyByName(string(m[1]))
+		property := c.query.table.PropertyFile().GetPropertyByName(string(m[1]))
 		if property == nil {
 			return "", fmt.Errorf("skyd.QueryCondition: Property not found: %v", string(m[1]))
 		}
@@ -275,7 +276,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 		// Validate the expression value.
 		var value string
 		switch property.DataType {
-		case schema.FactorDataType, schema.StringDataType:
+		case core.FactorDataType, core.StringDataType:
 			// Validate string value.
 			var stringValue string
 			if m[3] != nil {
@@ -287,9 +288,9 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 			}
 
 			// Convert factors.
-			if property.DataType == schema.FactorDataType {
-				sequence, err := c.query.factors.Factorize(c.query.table.Name, property.Name, stringValue, false)
-				if _, ok := err.(*FactorNotFound); ok {
+			if property.DataType == core.FactorDataType {
+				sequence, err := c.query.fdb.Factorize(c.query.table.Name, property.Name, stringValue, false)
+				if _, ok := err.(*factors.FactorNotFound); ok {
 					value = "0"
 				} else if err != nil {
 					return "", err
@@ -300,13 +301,13 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 				value = fmt.Sprintf(`"%s"`, stringValue)
 			}
 
-		case schema.IntegerDataType, schema.FloatDataType:
+		case core.IntegerDataType, core.FloatDataType:
 			if m[5] == nil {
 				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a numeric literal for integer and float properties: %v", expression)
 			}
 			value = string(m[5])
 
-		case schema.BooleanDataType:
+		case core.BooleanDataType:
 			if m[6] == nil {
 				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a boolean literal for boolean properties: %v", expression)
 			}

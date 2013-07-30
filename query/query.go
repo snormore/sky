@@ -1,9 +1,11 @@
-package skyd
+package query
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/factors"
 	"io"
 )
 
@@ -15,8 +17,8 @@ import (
 
 // A Query is a structured way of aggregating data in the database.
 type Query struct {
-	table           *Table
-	factors         *Factors
+	table           *core.Table
+	fdb             *factors.DB
 	sequence        int
 	Prefix          string
 	Steps           QueryStepList
@@ -30,11 +32,11 @@ type Query struct {
 //------------------------------------------------------------------------------
 
 // NewQuery returns a new query.
-func NewQuery(table *Table, factors *Factors) *Query {
+func NewQuery(table *core.Table, fdb *factors.DB) *Query {
 	return &Query{
-		table:   table,
-		factors: factors,
-		Steps:   make(QueryStepList, 0),
+		table: table,
+		fdb:   fdb,
+		Steps: make(QueryStepList, 0),
 	}
 }
 
@@ -45,13 +47,13 @@ func NewQuery(table *Table, factors *Factors) *Query {
 //------------------------------------------------------------------------------
 
 // Retrieves the table this query is associated with.
-func (q *Query) Table() *Table {
+func (q *Query) Table() *core.Table {
 	return q.table
 }
 
-// Retrieves the factors this query is associated with.
-func (q *Query) Factors() *Factors {
-	return q.factors
+// Retrieves the factors database this query is associated with.
+func (q *Query) FDB() *factors.DB {
+	return q.fdb
 }
 
 //------------------------------------------------------------------------------
