@@ -1,4 +1,4 @@
-package skyd
+package engine
 
 const LuaHeader = `
 -- SKY GENERATED CODE BEGIN --

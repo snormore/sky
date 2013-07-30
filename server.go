@@ -7,6 +7,7 @@ import (
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
 	"github.com/skydb/sky/query"
+	"github.com/skydb/sky/query/engine"
 	"hash/fnv"
 	"io"
 	"io/ioutil"
@@ -471,8 +472,8 @@ func (s *Server) DeleteTable(name string) error {
 
 // Runs a query against a table.
 func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error) {
-	var engine *ExecutionEngine
-	engines := make([]*ExecutionEngine, 0)
+	var rootEngine *engine.ExecutionEngine
+	engines := make([]*engine.ExecutionEngine, 0)
 
 	// Create a channel to receive aggregate responses.
 	rchannel := make(chan interface{}, len(s.servlets))
@@ -484,11 +485,11 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 	}
 
 	// Create an engine for merging results.
-	engine, err = NewExecutionEngine(table, q.Prefix, source)
+	rootEngine, err = engine.NewExecutionEngine(table, q.Prefix, source)
 	if err != nil {
 		return nil, err
 	}
-	defer engine.Destroy()
+	defer rootEngine.Destroy()
 	//fmt.Println(engine.FullAnnotatedSource())
 
 	// Initialize one execution engine for each servlet.
@@ -496,20 +497,20 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 	for index, servlet := range s.servlets {
 		// Create an engine for each servlet. The execution engine is
 		// protected by a mutex so it's safe to destroy it at any time.
-		e, err := servlet.CreateExecutionEngine(table, q.Prefix, source)
+		subengine, err := servlet.CreateExecutionEngine(table, q.Prefix, source)
 		if err != nil {
 			return nil, err
 		}
-		defer e.Destroy()
-		engines = append(engines, e)
+		defer subengine.Destroy()
+		engines = append(engines, subengine)
 
 		// Run initialization once if required.
 		if index == 0 && q.RequiresInitialization() {
-			if data, err = e.Initialize(); err != nil {
+			if data, err = subengine.Initialize(); err != nil {
 				return nil, err
 			}
 			// Reset the iterator.
-			if err = e.ResetLmdbCursor(); err != nil {
+			if err = subengine.ResetLmdbCursor(); err != nil {
 				return nil, err
 			}
 		}
@@ -545,7 +546,7 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 
 			// Merge results.
 			if ret != nil {
-				if result, err = engine.Merge(result, ret); err != nil {
+				if result, err = rootEngine.Merge(result, ret); err != nil {
 					fmt.Printf("skyd.Server: Merge error: %v", err)
 					servletError = err
 				}

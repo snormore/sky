@@ -1,4 +1,4 @@
-package skyd
+package engine
 
 /*
 #cgo LDFLAGS: -lm

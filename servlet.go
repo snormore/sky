@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
+	"github.com/skydb/sky/query/engine"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"io"
@@ -490,8 +491,8 @@ func (s *Servlet) DeleteEvents(table *core.Table, objectId string) error {
 //--------------------------------------
 
 // Creates and initializes an execution engine for querying this servlet.
-func (s *Servlet) CreateExecutionEngine(table *core.Table, prefix string, source string) (*ExecutionEngine, error) {
-	e, err := NewExecutionEngine(table, prefix, source)
+func (s *Servlet) CreateExecutionEngine(table *core.Table, prefix string, source string) (*engine.ExecutionEngine, error) {
+	e, err := engine.NewExecutionEngine(table, prefix, source)
 	if err != nil {
 		return nil, err
 	}

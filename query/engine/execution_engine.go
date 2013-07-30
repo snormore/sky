@@ -1,4 +1,4 @@
-package skyd
+package engine
 
 /*
 #cgo LDFLAGS: -lluajit-5.1 -llmdb
