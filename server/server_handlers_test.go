@@ -1,6 +1,7 @@
-package skyd
+package server
 
 import (
+	"github.com/skydb/sky"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestServerIndex(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unable to make request: %v", err)
 		}
-		assertResponse(t, resp, 200, `{"sky":"welcome","version":"`+Version+`"}`+"\n", "GET / failed")
+		assertResponse(t, resp, 200, `{"sky":"welcome","version":"`+sky.Version+`"}`+"\n", "GET / failed")
 	})
 }
 

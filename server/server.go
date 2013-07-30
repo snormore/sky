@@ -1,9 +1,10 @@
-package skyd
+package server
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/skydb/sky"
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
 	"github.com/skydb/sky/query"
@@ -152,7 +153,7 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 		s.shutdownFinished <- true
 	}()
 
-	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", Version, s.httpServer.Addr)
+	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", sky.Version, s.httpServer.Addr)
 
 	return nil
 }

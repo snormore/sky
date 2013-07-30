@@ -1,4 +1,4 @@
-package skyd
+package config
 
 import (
 	"github.com/BurntSushi/toml"

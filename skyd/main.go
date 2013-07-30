@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/skydb/sky"
+	"github.com/skydb/sky/server"
+	. "github.com/skydb/sky/skyd/config"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -16,7 +17,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
-var config *skyd.Config
+var config *Config
 var configPath string
 
 //------------------------------------------------------------------------------
@@ -30,7 +31,7 @@ var configPath string
 //--------------------------------------
 
 func init() {
-	config = skyd.NewConfig()
+	config = NewConfig()
 	flag.UintVar(&config.Port, "port", config.Port, "the port to listen on")
 	flag.UintVar(&config.Port, "p", config.Port, "the port to listen on")
 	flag.StringVar(&config.DataPath, "data-path", config.DataPath, "the data directory")
@@ -62,20 +63,20 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Initialize
-	server := skyd.NewServer(config.Port, config.DataPath)
+	s := server.NewServer(config.Port, config.DataPath)
 	writePidFile()
-	setupSignalHandlers(server)
+	setupSignalHandlers(s)
 
 	// Start the server up!
 	c := make(chan bool)
-	err := server.ListenAndServe(c)
+	err := s.ListenAndServe(c)
 	if err != nil {
 		fmt.Printf("%v\n", err)
-		cleanup(server)
+		cleanup(s)
 		return
 	}
 	<-c
-	cleanup(server)
+	cleanup(s)
 }
 
 //--------------------------------------
@@ -83,13 +84,13 @@ func main() {
 //--------------------------------------
 
 // Handles signals received from the OS.
-func setupSignalHandlers(server *skyd.Server) {
+func setupSignalHandlers(s *server.Server) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for _ = range c {
 			fmt.Fprintln(os.Stderr, "Shutting down...")
-			cleanup(server)
+			cleanup(s)
 			fmt.Fprintln(os.Stderr, "Shutdown complete.")
 			os.Exit(1)
 		}
@@ -101,9 +102,9 @@ func setupSignalHandlers(server *skyd.Server) {
 //--------------------------------------
 
 // Shuts down the server socket and closes the database.
-func cleanup(server *skyd.Server) {
-	if server != nil {
-		server.Shutdown()
+func cleanup(s *server.Server) {
+	if s != nil {
+		s.Shutdown()
 	}
 	deletePidFile()
 }

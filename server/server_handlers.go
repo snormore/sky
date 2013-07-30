@@ -1,6 +1,7 @@
-package skyd
+package server
 
 import (
+	"github.com/skydb/sky"
 	"net/http"
 )
 
@@ -20,5 +21,5 @@ func (s *Server) pingHandler(w http.ResponseWriter, req *http.Request, params ma
 
 // GET /
 func (s *Server) indexHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-	return map[string]interface{}{"sky": "welcome", "version": Version}, nil
+	return map[string]interface{}{"sky": "welcome", "version": sky.Version}, nil
 }

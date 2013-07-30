@@ -1,4 +1,4 @@
-package skyd
+package server
 
 import (
 	"bytes"

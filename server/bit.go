@@ -1,4 +1,4 @@
-package skyd
+package server
 
 // Condenses the even bits of a 64-bit integer into 32 bits.
 func CondenseUint64Even(value uint64) uint32 {

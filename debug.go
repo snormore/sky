@@ -1,4 +1,4 @@
-package skyd
+package sky
 
 import (
 	"log"

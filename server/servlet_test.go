@@ -1,4 +1,4 @@
-package skyd
+package server
 
 import (
 	"github.com/skydb/sky/core"
