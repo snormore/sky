@@ -3,6 +3,7 @@ package skyd
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/skydb/sky/schema"
 	"io"
 	"log"
 	"math/rand"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-var PROPERTIES = []Property{
+var PROPERTIES = []schema.Property{
 	{0, "first_name", false, "string"},
 	{0, "last_name", false, "string"},
 	{0, "email", false, "string"},
@@ -53,13 +54,13 @@ func randomString(l int) string {
 	return string(bytes)
 }
 
-func randomValueForProperty(p *Property) interface{} {
+func randomValueForProperty(p *schema.Property) interface{} {
 	switch p.DataType {
-	case StringDataType, FactorDataType:
+	case schema.StringDataType, schema.FactorDataType:
 		return randomString(1 + rand.Int()%10)
-	case IntegerDataType:
+	case schema.IntegerDataType:
 		return rand.Int() % 10000000
-	case FloatDataType:
+	case schema.FloatDataType:
 		return rand.Float64()
 	}
 	return ""

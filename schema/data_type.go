@@ -1,4 +1,4 @@
-package skyd
+package schema
 
 const (
 	FactorDataType  = "factor"

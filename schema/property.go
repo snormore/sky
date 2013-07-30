@@ -1,7 +1,8 @@
-package skyd
+package schema
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 )
 
@@ -65,7 +66,17 @@ func NewProperty(id int64, name string, transient bool, dataType string) (*Prope
 
 // Casts a value into this property's data type.
 func (p *Property) Cast(value interface{}) interface{} {
-	value = normalize(value)
+	// Normalize value into int64 or float.
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		value = v.Int()
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		value = int64(v.Uint())
+	case reflect.Float32, reflect.Float64:
+		value = v.Float()
+	}
+
 	switch p.DataType {
 	case FactorDataType, StringDataType:
 		if str, ok := value.(string); ok {

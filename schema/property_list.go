@@ -1,4 +1,4 @@
-package skyd
+package schema
 
 // A slice of Property objects.
 type PropertyList []*Property

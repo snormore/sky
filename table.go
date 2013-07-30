@@ -3,6 +3,7 @@ package skyd
 import (
 	"errors"
 	"fmt"
+	"github.com/skydb/sky/schema"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,7 +19,7 @@ import (
 type Table struct {
 	Name         string `json:"name"`
 	path         string
-	propertyFile *PropertyFile
+	propertyFile *schema.PropertyFile
 }
 
 //------------------------------------------------------------------------------
@@ -100,7 +101,7 @@ func (t *Table) Open() error {
 	}
 
 	// Load property file.
-	t.propertyFile = NewPropertyFile(fmt.Sprintf("%v/%v", t.path, "properties"))
+	t.propertyFile = schema.NewPropertyFile(fmt.Sprintf("%v/%v", t.path, "properties"))
 	err := t.propertyFile.Open()
 	if err != nil {
 		t.Close()
@@ -136,7 +137,7 @@ func (t *Table) Exists() bool {
 //--------------------------------------
 
 // Adds a property to the table.
-func (t *Table) CreateProperty(name string, transient bool, dataType string) (*Property, error) {
+func (t *Table) CreateProperty(name string, transient bool, dataType string) (*schema.Property, error) {
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
@@ -157,7 +158,7 @@ func (t *Table) CreateProperty(name string, transient bool, dataType string) (*P
 }
 
 // Retrieves a list of all properties on the table.
-func (t *Table) GetProperties() ([]*Property, error) {
+func (t *Table) GetProperties() ([]*schema.Property, error) {
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
@@ -165,7 +166,7 @@ func (t *Table) GetProperties() ([]*Property, error) {
 }
 
 // Retrieves a single property from the table by id.
-func (t *Table) GetProperty(id int64) (*Property, error) {
+func (t *Table) GetProperty(id int64) (*schema.Property, error) {
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
@@ -173,7 +174,7 @@ func (t *Table) GetProperty(id int64) (*Property, error) {
 }
 
 // Retrieves a single property from the table by name.
-func (t *Table) GetPropertyByName(name string) (*Property, error) {
+func (t *Table) GetPropertyByName(name string) (*schema.Property, error) {
 	if !t.IsOpen() {
 		return nil, errors.New("Table is not open")
 	}
@@ -181,7 +182,7 @@ func (t *Table) GetPropertyByName(name string) (*Property, error) {
 }
 
 // Deletes a single property on the table.
-func (t *Table) DeleteProperty(property *Property) error {
+func (t *Table) DeleteProperty(property *schema.Property) error {
 	if !t.IsOpen() {
 		return errors.New("Table is not open")
 	}
@@ -272,7 +273,7 @@ func (t *Table) FactorizeEvent(event *Event, factors *Factors, createIfMissing b
 	propertyFile := t.propertyFile
 	for k, v := range event.Data {
 		property := propertyFile.GetProperty(k)
-		if property.DataType == FactorDataType {
+		if property.DataType == schema.FactorDataType {
 			if stringValue, ok := v.(string); ok {
 				sequence, err := factors.Factorize(t.Name, property.Name, stringValue, createIfMissing)
 				if err != nil {
@@ -295,7 +296,7 @@ func (t *Table) DefactorizeEvent(event *Event, factors *Factors) error {
 	propertyFile := t.propertyFile
 	for k, v := range event.Data {
 		property := propertyFile.GetProperty(k)
-		if property.DataType == FactorDataType {
+		if property.DataType == schema.FactorDataType {
 			if sequence, ok := castUint64(v); ok {
 				stringValue, err := factors.Defactorize(t.Name, property.Name, sequence)
 				if err != nil {

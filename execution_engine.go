@@ -653,6 +653,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+    "github.com/skydb/sky/schema"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"regexp"
@@ -678,8 +679,8 @@ type ExecutionEngine struct {
 	header       string
 	source       string
 	fullSource   string
-	propertyFile *PropertyFile
-	propertyRefs []*Property
+	propertyFile *schema.PropertyFile
+	propertyRefs []*schema.Property
 	mutex        sync.Mutex
 }
 
@@ -1100,10 +1101,10 @@ func (e *ExecutionEngine) generateHeader() error {
 }
 
 // Extracts the property references from the source string.
-func extractPropertyReferences(propertyFile *PropertyFile, source string) ([]*Property, error) {
+func extractPropertyReferences(propertyFile *schema.PropertyFile, source string) ([]*schema.Property, error) {
 	// Create a list of properties.
-	properties := make([]*Property, 0)
-	lookup := make(map[int64]*Property)
+	properties := make([]*schema.Property, 0)
+	lookup := make(map[int64]*schema.Property)
 
 	// Find all the event property references in the script.
 	r, err := regexp.Compile(`\bevent(?:\.|:)(\w+)`)
@@ -1121,22 +1122,22 @@ func extractPropertyReferences(propertyFile *PropertyFile, source string) ([]*Pr
 			lookup[property.Id] = property
 		}
 	}
-	sort.Sort(PropertyList(properties))
+	sort.Sort(schema.PropertyList(properties))
 
 	return properties, nil
 }
 
 func propertyStructDef(args ...interface{}) string {
-	if property, ok := args[0].(*Property); ok && property.Id != 0 {
+	if property, ok := args[0].(*schema.Property); ok && property.Id != 0 {
 		return fmt.Sprintf("%v _%v;", getPropertyCType(property), property.Name)
 	}
 	return ""
 }
 
 func metatypeFunctionDef(args ...interface{}) string {
-	if property, ok := args[0].(*Property); ok && property.Id != 0 {
+	if property, ok := args[0].(*schema.Property); ok && property.Id != 0 {
 		switch property.DataType {
-		case StringDataType:
+		case schema.StringDataType:
 			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", property.Name, property.Name, property.Name)
 		default:
 			return fmt.Sprintf("%v = function(event) return event._%v end,", property.Name, property.Name)
@@ -1146,21 +1147,21 @@ func metatypeFunctionDef(args ...interface{}) string {
 }
 
 func initDescriptorDef(args ...interface{}) string {
-	if property, ok := args[0].(*Property); ok && property.Id != 0 {
+	if property, ok := args[0].(*schema.Property); ok && property.Id != 0 {
 		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", property.Id, property.Name, getPropertyCType(property), property.DataType)
 	}
 	return ""
 }
 
-func getPropertyCType(property *Property) string {
+func getPropertyCType(property *schema.Property) string {
 	switch property.DataType {
-	case StringDataType:
+	case schema.StringDataType:
 		return "sky_string_t"
-	case FactorDataType, IntegerDataType:
+	case schema.FactorDataType, schema.IntegerDataType:
 		return "int32_t"
-	case FloatDataType:
+	case schema.FloatDataType:
 		return "double"
-	case BooleanDataType:
+	case schema.BooleanDataType:
 		return "bool"
 	default:
 		panic(fmt.Sprintf("skyd.ExecutionEngine: Invalid data type: %v", property.DataType))

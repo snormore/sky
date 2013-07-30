@@ -1,4 +1,4 @@
-package skyd
+package schema
 
 import (
 	"bytes"
@@ -86,3 +86,19 @@ func TestPropertyFileDenormalizeMap(t *testing.T) {
 		t.Fatalf("ret[\"purchaseAmount\"]: Expected %q, got %q", 12, ret["purchaseAmount"])
 	}
 }
+
+func assertProperty(t *testing.T, property *Property, id int64, name string, transient bool, dataType string) {
+	if property.Id != id {
+		t.Fatalf("Unexpected property id. Expected %v, got %v", id, property.Id)
+	}
+	if property.Name != name {
+		t.Fatalf("Unexpected property name. Expected %v, got %v", name, property.Name)
+	}
+	if property.Transient != transient {
+		t.Fatalf("Unexpected property transiency. Expected %v, got %v", transient, property.Transient)
+	}
+	if property.DataType != dataType {
+		t.Fatalf("Unexpected property data type. Expected %v, got %v", dataType, property.DataType)
+	}
+}
+

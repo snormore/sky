@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/skydb/sky/schema"
 	"regexp"
 	"strconv"
 	"strings"
@@ -274,7 +275,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 		// Validate the expression value.
 		var value string
 		switch property.DataType {
-		case FactorDataType, StringDataType:
+		case schema.FactorDataType, schema.StringDataType:
 			// Validate string value.
 			var stringValue string
 			if m[3] != nil {
@@ -286,7 +287,7 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 			}
 
 			// Convert factors.
-			if property.DataType == FactorDataType {
+			if property.DataType == schema.FactorDataType {
 				sequence, err := c.query.factors.Factorize(c.query.table.Name, property.Name, stringValue, false)
 				if _, ok := err.(*FactorNotFound); ok {
 					value = "0"
@@ -299,13 +300,13 @@ func (c *QueryCondition) CodegenExpression() (string, error) {
 				value = fmt.Sprintf(`"%s"`, stringValue)
 			}
 
-		case IntegerDataType, FloatDataType:
+		case schema.IntegerDataType, schema.FloatDataType:
 			if m[5] == nil {
 				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a numeric literal for integer and float properties: %v", expression)
 			}
 			value = string(m[5])
 
-		case BooleanDataType:
+		case schema.BooleanDataType:
 			if m[6] == nil {
 				return "", fmt.Errorf("skyd.QueryCondition: Expression value must be a boolean literal for boolean properties: %v", expression)
 			}

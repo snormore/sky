@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/skydb/sky/schema"
 )
 
 //------------------------------------------------------------------------------
@@ -299,7 +300,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 	if outer, ok := inner[dimension].(map[interface{}]interface{}); ok {
 		copy := map[interface{}]interface{}{}
 		for k, v := range outer {
-			if property.DataType == FactorDataType {
+			if property.DataType == schema.FactorDataType {
 				// Only process this if it hasn't been defactorized already. Duplicate
 				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
