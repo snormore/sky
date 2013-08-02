@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/skydb/sky/core"
+	"github.com/snormore/sky/core"
 	"io"
 	"net/http"
 	"time"

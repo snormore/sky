@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/skydb/sky"
-	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
-	"github.com/skydb/sky/query"
-	"github.com/skydb/sky/query/engine"
+	"github.com/snormore/sky"
+	"github.com/snormore/sky/core"
+	"github.com/snormore/sky/factors"
+	"github.com/snormore/sky/query"
+	"github.com/snormore/sky/query/engine"
 	"hash/fnv"
 	"io"
 	"io/ioutil"
@@ -41,6 +41,7 @@ type Server struct {
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
+	dbNoSync         bool
 }
 
 //------------------------------------------------------------------------------
@@ -86,6 +87,18 @@ func NewServer(port uint, path string) *Server {
 	s.addObjectHandlers()
 	s.addQueryHandlers()
 	s.addDebugHandlers()
+
+	// Some option defaults.
+	s.dbNoSync = false
+
+	return s
+}
+
+// NewServerEx returns a new Server, with arguments for more options; dbNoSync.
+func NewServerEx(port uint, path string, dbNoSync bool) *Server {
+	s := NewServer(port, path)
+
+	s.dbNoSync = dbNoSync
 
 	return s
 }
@@ -199,7 +212,7 @@ func (s *Server) open() error {
 	}
 
 	// Open factors database.
-	s.fdb = factors.NewDB(s.FactorsPath())
+	s.fdb = factors.NewDBEx(s.FactorsPath(), s.dbNoSync)
 	err = s.fdb.Open()
 	if err != nil {
 		s.close()

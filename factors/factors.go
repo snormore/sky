@@ -3,7 +3,7 @@ package factors
 import (
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/core"
+	"github.com/snormore/sky/core"
 	"github.com/szferi/gomdb"
 	"os"
 	"reflect"
@@ -19,9 +19,10 @@ import (
 
 // A Factors database object manages the factorization and defactorization of values.
 type DB struct {
-	env   *mdb.Env
-	path  string
-	mutex sync.Mutex
+	env    *mdb.Env
+	path   string
+	mutex  sync.Mutex
+	noSync bool
 }
 
 //------------------------------------------------------------------------------
@@ -57,6 +58,15 @@ func NewDB(path string) *DB {
 	return &DB{path: path}
 }
 
+// NewDBEx returns a new database object, with arguments for more options.
+func NewDBEx(path string, noSync bool) *DB {
+	db := NewDB(path)
+
+	db.noSync = noSync
+
+	return db
+}
+
 //------------------------------------------------------------------------------
 //
 // Accessors
@@ -66,6 +76,15 @@ func NewDB(path string) *DB {
 // The path to the database on disk.
 func (db *DB) Path() string {
 	return db.path
+}
+
+// The uint representing DB options passed to env.Open
+func (db *DB) Options() uint {
+	options := uint(0)
+	if db.noSync {
+		options = mdb.NOSYNC
+	}
+	return options
 }
 
 //------------------------------------------------------------------------------
@@ -104,7 +123,7 @@ func (db *DB) Open() error {
 		return fmt.Errorf("skyd: Unable to set factors map size: %v", err)
 	}
 	// Open the database.
-	if err = db.env.Open(db.path, 0, 0664); err != nil {
+	if err = db.env.Open(db.path, db.Options(), 0664); err != nil {
 		db.Close()
 		return fmt.Errorf("skyd: Cannot open factors database (%s): %s", db.path, err)
 	}

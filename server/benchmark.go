@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/skydb/sky/core"
+	"github.com/snormore/sky/core"
 	"io"
 	"log"
 	"math/rand"

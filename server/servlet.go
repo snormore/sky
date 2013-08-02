@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
-	"github.com/skydb/sky/query/engine"
+	"github.com/snormore/sky/core"
+	"github.com/snormore/sky/factors"
+	"github.com/snormore/sky/query/engine"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"io"
@@ -76,7 +76,7 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB map size: %v", err)
 	}
 	// Open the database.
-	err = s.env.Open(s.path, 0, 0664)
+	err = s.env.Open(s.path, s.fdb.Options(), 0664)
 	if err != nil {
 		return fmt.Errorf("skyd.Servlet: Cannot open servlet: %s", err)
 	}

@@ -2,7 +2,7 @@ package query
 
 import (
 	"bytes"
-	"github.com/skydb/sky/core"
+	"github.com/snormore/sky/core"
 	"io/ioutil"
 	"os"
 	"testing"

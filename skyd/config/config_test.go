@@ -24,5 +24,7 @@ func TestDecode(t *testing.T) {
 		t.Fatalf("Invalid data path: %v", config.DataPath)
 	} else if config.PidPath != "/home/pid" {
 		t.Fatalf("Invalid pid path: v", config.PidPath)
+	} else if config.PidPath != 0 {
+		t.Fatalf("Invalid db nosync option: v", config.DbNoSync)
 	}
 }

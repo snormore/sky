@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/skydb/sky/server"
-	. "github.com/skydb/sky/skyd/config"
+	"github.com/snormore/sky/server"
+	. "github.com/snormore/sky/skyd/config"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -36,6 +36,7 @@ func init() {
 	flag.UintVar(&config.Port, "p", config.Port, "the port to listen on")
 	flag.StringVar(&config.DataPath, "data-path", config.DataPath, "the data directory")
 	flag.StringVar(&config.PidPath, "pid-path", config.PidPath, "the path to the pid file")
+	flag.BoolVar(&config.DbNoSync, "db-nosync", config.DbNoSync, "use mdb.NOSYNC option, or not")
 	flag.StringVar(&configPath, "config", "", "the path to the config file")
 }
 
@@ -63,7 +64,7 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Initialize
-	s := server.NewServer(config.Port, config.DataPath)
+	s := server.NewServerEx(config.Port, config.DataPath, config.DbNoSync)
 	writePidFile()
 	setupSignalHandlers(s)
 

@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/skydb/sky/query"
+	"github.com/snormore/sky/query"
 	"net/http"
 )
 

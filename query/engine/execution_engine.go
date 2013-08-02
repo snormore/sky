@@ -653,7 +653,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/core"
+	"github.com/snormore/sky/core"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"regexp"

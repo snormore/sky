@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
+	"github.com/snormore/sky/core"
+	"github.com/snormore/sky/factors"
 	"io"
 )
 

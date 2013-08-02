@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/core"
+	"github.com/snormore/sky/core"
 )
 
 //------------------------------------------------------------------------------

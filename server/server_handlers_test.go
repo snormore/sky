@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/skydb/sky"
+	"github.com/snormore/sky"
 	"testing"
 )
 
