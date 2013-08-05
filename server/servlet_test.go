@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/snormore/sky/core"
+	"github.com/skydb/sky/core"
 	"io/ioutil"
 	"os"
 	"testing"

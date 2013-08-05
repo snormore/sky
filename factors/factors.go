@@ -3,7 +3,7 @@ package factors
 import (
 	"errors"
 	"fmt"
-	"github.com/snormore/sky/core"
+	"github.com/skydb/sky/core"
 	"github.com/szferi/gomdb"
 	"os"
 	"reflect"

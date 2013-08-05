@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/snormore/sky/server"
-	. "github.com/snormore/sky/skyd/config"
+	"github.com/skydb/sky/server"
+	. "github.com/skydb/sky/skyd/config"
 	"io/ioutil"
 	"os"
 	"os/signal"

@@ -3,7 +3,7 @@ package server
 import (
 	"errors"
 	"github.com/gorilla/mux"
-	"github.com/snormore/sky/core"
+	"github.com/skydb/sky/core"
 	"net/http"
 )
 
