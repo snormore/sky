@@ -40,7 +40,7 @@ func TestFactorization(t *testing.T) {
 }
 
 // Ensure that we can create a new table, using noSync option.
-func TestFactorization(t *testing.T) {
+func TestFactorizationWithNoSync(t *testing.T) {
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 	path = fmt.Sprintf("%v/factors", path)
