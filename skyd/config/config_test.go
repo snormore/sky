@@ -9,6 +9,7 @@ const testConfigFileA = `
 port=9000
 data-path="/home/data"
 pid-path = "/home/pid"
+nosync = true
 `
 
 // Decode a configuration file.
@@ -23,8 +24,8 @@ func TestDecode(t *testing.T) {
 	} else if config.DataPath != "/home/data" {
 		t.Fatalf("Invalid data path: %v", config.DataPath)
 	} else if config.PidPath != "/home/pid" {
-		t.Fatalf("Invalid pid path: v", config.PidPath)
-	} else if config.PidPath != 0 {
-		t.Fatalf("Invalid db nosync option: v", config.DbNoSync)
+		t.Fatalf("Invalid pid path: %v", config.PidPath)
+	} else if config.NoSync != true {
+		t.Fatalf("Invalid nosync option: %v", config.NoSync)
 	}
 }

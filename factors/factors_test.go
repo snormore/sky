@@ -45,7 +45,8 @@ func TestFactorizationWithNoSync(t *testing.T) {
 	defer os.RemoveAll(path)
 	path = fmt.Sprintf("%v/factors", path)
 
-	db := NewDBEx(path, true)
+	db := NewDB(path)
+	db.noSync = true
 	defer db.Close()
 	err = db.Open()
 	if err != nil {

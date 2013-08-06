@@ -84,6 +84,13 @@ func (s *Servlet) Open() error {
 	return nil
 }
 
+// The uint representing DB options passed to env.Open
+func (s *Servlet) Options() uint {
+	options := uint(0)
+	options = options | s.fdb.Options()
+	return options
+}
+
 // Closes the underlying database.
 func (s *Servlet) Close() {
 	if s.env != nil {

@@ -58,15 +58,6 @@ func NewDB(path string) *DB {
 	return &DB{path: path}
 }
 
-// NewDBEx returns a new database object, with arguments for more options.
-func NewDBEx(path string, noSync bool) *DB {
-	db := NewDB(path)
-
-	db.noSync = noSync
-
-	return db
-}
-
 //------------------------------------------------------------------------------
 //
 // Accessors
@@ -142,6 +133,11 @@ func (db *DB) Close() {
 // Returns whether the factors database is open.
 func (db *DB) IsOpen() bool {
 	return db.env != nil
+}
+
+// Set the mdb.NOSYNC option.
+func (db *DB) SetNoSync(noSync bool) {
+	db.noSync = noSync
 }
 
 //--------------------------------------

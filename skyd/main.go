@@ -36,7 +36,7 @@ func init() {
 	flag.UintVar(&config.Port, "p", config.Port, "the port to listen on")
 	flag.StringVar(&config.DataPath, "data-path", config.DataPath, "the data directory")
 	flag.StringVar(&config.PidPath, "pid-path", config.PidPath, "the path to the pid file")
-	flag.BoolVar(&config.DbNoSync, "db-nosync", config.DbNoSync, "use mdb.NOSYNC option, or not")
+	flag.BoolVar(&config.NoSync, "nosync", config.NoSync, "use mdb.NOSYNC option, or not")
 	flag.StringVar(&configPath, "config", "", "the path to the config file")
 }
 
@@ -64,7 +64,8 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// Initialize
-	s := server.NewServerEx(config.Port, config.DataPath, config.DbNoSync)
+	s := server.NewServer(config.Port, config.DataPath)
+	s.SetNoSync(config.NoSync)
 	writePidFile()
 	setupSignalHandlers(s)
 

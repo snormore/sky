@@ -41,7 +41,7 @@ type Server struct {
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
-	dbNoSync         bool
+	noSync           bool
 }
 
 //------------------------------------------------------------------------------
@@ -87,18 +87,6 @@ func NewServer(port uint, path string) *Server {
 	s.addObjectHandlers()
 	s.addQueryHandlers()
 	s.addDebugHandlers()
-
-	// Some option defaults.
-	s.dbNoSync = false
-
-	return s
-}
-
-// NewServerEx returns a new Server, with arguments for more options; dbNoSync.
-func NewServerEx(port uint, path string, dbNoSync bool) *Server {
-	s := NewServer(port, path)
-
-	s.dbNoSync = dbNoSync
 
 	return s
 }
@@ -212,7 +200,8 @@ func (s *Server) open() error {
 	}
 
 	// Open factors database.
-	s.fdb = factors.NewDBEx(s.FactorsPath(), s.dbNoSync)
+	s.fdb = factors.NewDB(s.FactorsPath())
+	// s.fdb.noSync = s.noSync
 	err = s.fdb.Open()
 	if err != nil {
 		s.close()
@@ -478,6 +467,11 @@ func (s *Server) DeleteTable(name string) error {
 	defer s.mutex.Unlock()
 
 	return table.Delete()
+}
+
+// Set the mdb.NOSYNC option.
+func (s *Server) SetNoSync(noSync bool) {
+	s.noSync = noSync
 }
 
 //--------------------------------------
