@@ -16,11 +16,13 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 )
+
+var defaultServletCount = runtime.NumCPU()
 
 //------------------------------------------------------------------------------
 //
@@ -206,24 +208,25 @@ func (s *Server) open() error {
 		return err
 	}
 
-	// Create servlets from child directories with numeric names.
+	// Determine the servlet count from the directory listing.
 	infos, err := ioutil.ReadDir(s.DataPath())
 	if err != nil {
 		return err
 	}
+	servletCount := 0
 	for _, info := range infos {
-		match, _ := regexp.MatchString("^\\d$", info.Name())
-		if info.IsDir() && match {
-			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%s", s.DataPath(), info.Name()), s.fdb))
+		index, err := strconv.Atoi(info.Name())
+		if info.IsDir() && err == nil && (index+1) > servletCount {
+			servletCount = index+1
 		}
 	}
 
 	// If none exist then build them based on the number of logical CPUs available.
-	if len(s.servlets) == 0 {
-		cpuCount := runtime.NumCPU()
-		for i := 0; i < cpuCount; i++ {
-			s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.fdb))
-		}
+	if servletCount == 0 {
+		servletCount = defaultServletCount
+	}
+	for i := 0; i < servletCount; i++ {
+		s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.fdb))
 	}
 
 	// Open servlets.
