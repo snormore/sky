@@ -9,7 +9,6 @@ import (
 	"github.com/skydb/sky/factors"
 	"github.com/skydb/sky/query"
 	"github.com/skydb/sky/query/engine"
-	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"log"
@@ -22,6 +21,8 @@ import (
 	"time"
 )
 
+// The number of servlets created on startup defaults to the number
+// of logical cores on a machine.
 var defaultServletCount = runtime.NumCPU()
 
 //------------------------------------------------------------------------------
@@ -384,11 +385,7 @@ func (s *Server) GetObjectContext(tableName string, objectId string) (*core.Tabl
 
 // Calculates a tablet index based on the object identifier even hash.
 func (s *Server) GetObjectServletIndex(t *core.Table, objectId string) uint32 {
-	h := fnv.New64a()
-	h.Reset()
-	h.Write([]byte(objectId))
-	hashcode := h.Sum64()
-	return CondenseUint64Even(hashcode) % uint32(len(s.servlets))
+	return core.ObjectLocalHash(objectId) % uint32(len(s.servlets))
 }
 
 //--------------------------------------
