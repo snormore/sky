@@ -15,6 +15,7 @@ const (
 	DefaultPort     = 8585
 	DefaultDataPath = "/var/lib/sky"
 	DefaultPidPath  = "/var/run/skyd.pid"
+	DefaultNoSync   = false
 )
 
 //------------------------------------------------------------------------------
@@ -28,6 +29,7 @@ type Config struct {
 	Port     uint   `toml:"port"`
 	DataPath string `toml:"data-path"`
 	PidPath  string `toml:"pid-path"`
+	NoSync   bool   `toml:"nosync"`
 }
 
 //------------------------------------------------------------------------------
@@ -42,6 +44,7 @@ func NewConfig() *Config {
 		Port:     DefaultPort,
 		DataPath: DefaultDataPath,
 		PidPath:  DefaultPidPath,
+		NoSync:   DefaultNoSync,
 	}
 }
 

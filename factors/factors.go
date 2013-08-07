@@ -19,9 +19,10 @@ import (
 
 // A Factors database object manages the factorization and defactorization of values.
 type DB struct {
-	env   *mdb.Env
-	path  string
-	mutex sync.Mutex
+	env    *mdb.Env
+	path   string
+	mutex  sync.Mutex
+	noSync bool
 }
 
 //------------------------------------------------------------------------------
@@ -68,6 +69,15 @@ func (db *DB) Path() string {
 	return db.path
 }
 
+// The uint representing DB options passed to env.Open
+func (db *DB) Options() uint {
+	options := uint(0)
+	if db.noSync {
+		options = mdb.NOSYNC
+	}
+	return options
+}
+
 //------------------------------------------------------------------------------
 //
 // Methods
@@ -104,7 +114,7 @@ func (db *DB) Open() error {
 		return fmt.Errorf("skyd: Unable to set factors map size: %v", err)
 	}
 	// Open the database.
-	if err = db.env.Open(db.path, 0, 0664); err != nil {
+	if err = db.env.Open(db.path, db.Options(), 0664); err != nil {
 		db.Close()
 		return fmt.Errorf("skyd: Cannot open factors database (%s): %s", db.path, err)
 	}
@@ -123,6 +133,11 @@ func (db *DB) Close() {
 // Returns whether the factors database is open.
 func (db *DB) IsOpen() bool {
 	return db.env != nil
+}
+
+// Set the mdb.NOSYNC option.
+func (db *DB) SetNoSync(noSync bool) {
+	db.noSync = noSync
 }
 
 //--------------------------------------

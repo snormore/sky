@@ -44,6 +44,7 @@ type Server struct {
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
+	noSync           bool
 }
 
 //------------------------------------------------------------------------------
@@ -203,6 +204,7 @@ func (s *Server) open() error {
 
 	// Open factors database.
 	s.fdb = factors.NewDB(s.FactorsPath())
+	// s.fdb.noSync = s.noSync
 	err = s.fdb.Open()
 	if err != nil {
 		s.close()
@@ -465,6 +467,11 @@ func (s *Server) DeleteTable(name string) error {
 	defer s.mutex.Unlock()
 
 	return table.Delete()
+}
+
+// Set the mdb.NOSYNC option.
+func (s *Server) SetNoSync(noSync bool) {
+	s.noSync = noSync
 }
 
 //--------------------------------------
