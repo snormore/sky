@@ -20,9 +20,9 @@ type Query struct {
 	table           *core.Table
 	fdb             *factors.DB
 	sequence        int
-	Prefix          string
-	Steps           QueryStepList
-	SessionIdleTime int
+	Prefix          string        `json:"prefix"`
+	Steps           QueryStepList `json:"steps"`
+	SessionIdleTime int           `json:"sessionIdleTime"`
 }
 
 //------------------------------------------------------------------------------

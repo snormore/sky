@@ -12,16 +12,59 @@ import (
 
 %union{
     token int
-    buf []byte
+    str string
+    query *Query
+    statement QueryStep
+    statements QueryStepList
+    selection *QuerySelection
 }
 
-%token TSELECT
-%token TIDENT
-%token TSEMICOLON
+%token <token> TSELECT
+%token <token> TSEMICOLON
+%token <str> TIDENT
+
+%type <statement> select
+%type <statement> statement
+%type <statements> statements
+
 
 %%
 
-select: TSELECT TIDENT TSEMICOLON
+query :
+    statements
+    {
+        l := yylex.(*yylexer)
+        l.query.Steps = $1
+    }
+;
+
+statements :
+/* empty */
+    {
+        $$ = make(QueryStepList, 0)
+    }
+|   statement TSEMICOLON
+    {
+        $$ = make(QueryStepList, 0)
+        $$ = append($$, $1)
+    }
+|   statements TSEMICOLON statement
+    {
+        $$ = append($1, $3)
+    }
+;
+
+statement : select
+;
+
+select :
+    TSELECT TIDENT
+    {
+        l := yylex.(*yylexer)
+        s := NewQuerySelection(l.query)
+        s.Name = $2
+        $$ = s
+    }
 ;
 
 %%
@@ -33,11 +76,13 @@ func NewParser() *Parser {
     return &Parser{}
 }
 
-func (p *Parser) Parse(r io.Reader) {
-    yyParse(newLexer(bufio.NewReader(r)))
+func (p *Parser) Parse(r io.Reader) *Query {
+    l := newLexer(bufio.NewReader(r))
+    yyParse(l)
+    return l.query
 }
 
-func (p *Parser) ParseString(s string) {
-    p.Parse(bytes.NewBufferString(s))
+func (p *Parser) ParseString(s string) *Query {
+    return p.Parse(bytes.NewBufferString(s))
 }
 

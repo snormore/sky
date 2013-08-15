@@ -12,19 +12,23 @@ import (
 
 //line parser.y:13
 type yySymType struct {
-	yys   int
-	token int
-	buf   []byte
+	yys        int
+	token      int
+	str        string
+	query      *Query
+	statement  QueryStep
+	statements QueryStepList
+	selection  *QuerySelection
 }
 
 const TSELECT = 57346
-const TIDENT = 57347
-const TSEMICOLON = 57348
+const TSEMICOLON = 57347
+const TIDENT = 57348
 
 var yyToknames = []string{
 	"TSELECT",
-	"TIDENT",
 	"TSEMICOLON",
+	"TIDENT",
 }
 var yyStatenames = []string{}
 
@@ -32,7 +36,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:27
+//line parser.y:69
 
 type Parser struct {
 }
@@ -41,12 +45,14 @@ func NewParser() *Parser {
 	return &Parser{}
 }
 
-func (p *Parser) Parse(r io.Reader) {
-	yyParse(newLexer(bufio.NewReader(r)))
+func (p *Parser) Parse(r io.Reader) *Query {
+	l := newLexer(bufio.NewReader(r))
+	yyParse(l)
+	return l.query
 }
 
-func (p *Parser) ParseString(s string) {
-	p.Parse(bytes.NewBufferString(s))
+func (p *Parser) ParseString(s string) *Query {
+	return p.Parse(bytes.NewBufferString(s))
 }
 
 //line yacctab:1
@@ -56,41 +62,41 @@ var yyExca = []int{
 	-2, 0,
 }
 
-const yyNprod = 2
+const yyNprod = 7
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 4
+const yyLast = 9
 
 var yyAct = []int{
 
-	4, 3, 2, 1,
+	3, 8, 7, 6, 5, 1, 2, 9, 4,
 }
 var yyPact = []int{
 
-	-2, -1000, -4, -6, -1000,
+	0, -1000, -2, -3, -1000, -5, 0, -1000, -1000, -1000,
 }
 var yyPgo = []int{
 
-	0, 3,
+	0, 8, 0, 6, 5,
 }
 var yyR1 = []int{
 
-	0, 1,
+	0, 4, 3, 3, 3, 2, 1,
 }
 var yyR2 = []int{
 
-	0, 3,
+	0, 1, 0, 2, 3, 1, 2,
 }
 var yyChk = []int{
 
-	-1000, -1, 4, 5, 6,
+	-1000, -4, -3, -2, -1, 4, 5, 5, 6, -2,
 }
 var yyDef = []int{
 
-	0, -2, 0, 0, 1,
+	2, -2, 1, 0, 5, 0, 0, 3, 6, 4,
 }
 var yyTok1 = []int{
 
@@ -329,6 +335,38 @@ yydefault:
 	// dummy call; replaced with literal code
 	switch yynt {
 
+	case 1:
+		//line parser.y:34
+		{
+			l := yylex.(*yylexer)
+			l.query.Steps = yyS[yypt-0].statements
+		}
+	case 2:
+		//line parser.y:42
+		{
+			yyVAL.statements = make(QueryStepList, 0)
+		}
+	case 3:
+		//line parser.y:46
+		{
+			yyVAL.statements = make(QueryStepList, 0)
+			yyVAL.statements = append(yyVAL.statements, yyS[yypt-1].statement)
+		}
+	case 4:
+		//line parser.y:51
+		{
+			yyVAL.statements = append(yyS[yypt-2].statements, yyS[yypt-0].statement)
+		}
+	case 5:
+		yyVAL.statement = yyS[yypt-0].statement
+	case 6:
+		//line parser.y:61
+		{
+			l := yylex.(*yylexer)
+			s := NewQuerySelection(l.query)
+			s.Name = yyS[yypt-0].str
+			yyVAL.statement = s
+		}
 	}
 	goto yystack /* stack new state and value */
 }

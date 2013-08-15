@@ -1,11 +1,15 @@
 package query
 
 import (
+	"encoding/json"
 	"testing"
 )
 
-func TestParser(t *testing.T) {
+func TestParserSelection(t *testing.T) {
 	str := `SELECT xyz;`
-	parser := NewParser()
-	parser.ParseString(str)
+	query := NewParser().ParseString(str)
+	expected := ``
+	if b, _ := json.Marshal(query); string(b) != expected {
+		t.Fatal("Unexpected:", string(b))
+	}
 }

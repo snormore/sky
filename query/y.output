@@ -1,48 +1,87 @@
 
 state 0
-	$accept: .select $end 
+	$accept: .query $end 
+	statements: .    (2)
 
-	TSELECT  shift 2
-	.  error
+	TSELECT  shift 5
+	.  reduce 2 (src line 40)
 
-	select  goto 1
+	select  goto 4
+	statement  goto 3
+	statements  goto 2
+	query  goto 1
 
 state 1
-	$accept:  select.$end 
+	$accept:  query.$end 
 
 	$end  accept
 	.  error
 
 
 state 2
-	select:  TSELECT.TIDENT TSEMICOLON 
+	query:  statements.    (1)
+	statements:  statements.TSEMICOLON statement 
 
-	TIDENT  shift 3
-	.  error
+	TSEMICOLON  shift 6
+	.  reduce 1 (src line 33)
 
 
 state 3
-	select:  TSELECT TIDENT.TSEMICOLON 
+	statements:  statement.TSEMICOLON 
 
-	TSEMICOLON  shift 4
+	TSEMICOLON  shift 7
 	.  error
 
 
 state 4
-	select:  TSELECT TIDENT TSEMICOLON.    (1)
+	statement:  select.    (5)
 
-	.  reduce 1 (src line 24)
+	.  reduce 5 (src line 56)
 
 
-6 terminals, 2 nonterminals
-2 grammar rules, 5/2000 states
+state 5
+	select:  TSELECT.TIDENT 
+
+	TIDENT  shift 8
+	.  error
+
+
+state 6
+	statements:  statements TSEMICOLON.statement 
+
+	TSELECT  shift 5
+	.  error
+
+	select  goto 4
+	statement  goto 9
+
+state 7
+	statements:  statement TSEMICOLON.    (3)
+
+	.  reduce 3 (src line 45)
+
+
+state 8
+	select:  TSELECT TIDENT.    (6)
+
+	.  reduce 6 (src line 59)
+
+
+state 9
+	statements:  statements TSEMICOLON statement.    (4)
+
+	.  reduce 4 (src line 50)
+
+
+6 terminals, 5 nonterminals
+7 grammar rules, 10/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-51 working sets used
-memory: parser 0/30000
-0 extra closures
-3 shift entries, 1 exceptions
-1 goto entries
-0 entries saved by goto default
-Optimizer space used: output 4/30000
-4 table entries, 0 zero
+54 working sets used
+memory: parser 5/30000
+3 extra closures
+5 shift entries, 1 exceptions
+5 goto entries
+1 entries saved by goto default
+Optimizer space used: output 9/30000
+9 table entries, 0 zero
 maximum spread: 6, maximum offset: 6

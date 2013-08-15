@@ -13,24 +13,22 @@ type yylexer struct{
     empty   bool
     current byte
     index   int
+    query   *Query
 }
 
-func newLexer(src *bufio.Reader) (y *yylexer) {
-    y = &yylexer{src: src}
-    if b, err := src.ReadByte(); err == nil {
-        y.current = b
-    }
-    return
+func newLexer(src *bufio.Reader) *yylexer {
+    y := &yylexer{src: src, query:&Query{}}
+    y.current, _ = src.ReadByte()
+    return y
 }
 
 func (y *yylexer) getc() byte {
+    var err error
     if y.current != 0 {
         y.buf = append(y.buf, y.current)
     }
     
-    var err error
-    y.current, err = y.src.ReadByte()
-    if err == nil {
+    if y.current, err = y.src.ReadByte(); err == nil {
         y.index++
     }
     return y.current
@@ -72,6 +70,6 @@ func (y *yylexer) token(yylval *yySymType, tok int) int {
 // Saves the string in the buffer and the token to the parser value
 // and returns the token.
 func (y *yylexer) strtoken(yylval *yySymType, tok int) int {
-    yylval.buf = y.buf
+    yylval.str = string(y.buf)
     return y.token(yylval, tok)
 }
