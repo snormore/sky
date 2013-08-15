@@ -1,0 +1,34 @@
+
+state 0
+	$accept: .select $end 
+
+	TSELECT  shift 2
+	.  error
+
+	select  goto 1
+
+state 1
+	$accept:  select.$end 
+
+	$end  accept
+	.  error
+
+
+state 2
+	select:  TSELECT.    (1)
+
+	.  reduce 1 (src line 21)
+
+
+4 terminals, 2 nonterminals
+2 grammar rules, 3/2000 states
+0 shift/reduce, 0 reduce/reduce conflicts reported
+51 working sets used
+memory: parser 0/30000
+0 extra closures
+1 shift entries, 1 exceptions
+1 goto entries
+0 entries saved by goto default
+Optimizer space used: output 2/30000
+2 table entries, 0 zero
+maximum spread: 4, maximum offset: 4
