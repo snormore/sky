@@ -13,13 +13,18 @@ import (
 //line parser.y:13
 type yySymType struct {
 	yys   int
-	value float64
+	token int
+	buf   []byte
 }
 
 const TSELECT = 57346
+const TIDENT = 57347
+const TSEMICOLON = 57348
 
 var yyToknames = []string{
 	"TSELECT",
+	"TIDENT",
+	"TSEMICOLON",
 }
 var yyStatenames = []string{}
 
@@ -27,7 +32,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:24
+//line parser.y:27
 
 type Parser struct {
 }
@@ -57,19 +62,19 @@ const yyPrivate = 57344
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 2
+const yyLast = 4
 
 var yyAct = []int{
 
-	2, 1,
+	4, 3, 2, 1,
 }
 var yyPact = []int{
 
-	-4, -1000, -1000,
+	-2, -1000, -4, -6, -1000,
 }
 var yyPgo = []int{
 
-	0, 1,
+	0, 3,
 }
 var yyR1 = []int{
 
@@ -77,15 +82,15 @@ var yyR1 = []int{
 }
 var yyR2 = []int{
 
-	0, 1,
+	0, 3,
 }
 var yyChk = []int{
 
-	-1000, -1, 4,
+	-1000, -1, 4, 5, 6,
 }
 var yyDef = []int{
 
-	0, -2, 1,
+	0, -2, 0, 0, 1,
 }
 var yyTok1 = []int{
 
@@ -93,7 +98,7 @@ var yyTok1 = []int{
 }
 var yyTok2 = []int{
 
-	2, 3, 4,
+	2, 3, 4, 5, 6,
 }
 var yyTok3 = []int{
 	0,

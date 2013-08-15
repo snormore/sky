@@ -3,6 +3,7 @@ package query
 
 import (
     "bufio"
+    "fmt"
     "log"
 )
 
@@ -11,6 +12,7 @@ type yylexer struct{
     buf     []byte
     empty   bool
     current byte
+    index   int
 }
 
 func newLexer(src *bufio.Reader) (y *yylexer) {
@@ -25,15 +27,17 @@ func (y *yylexer) getc() byte {
     if y.current != 0 {
         y.buf = append(y.buf, y.current)
     }
-    y.current = 0
-    if b, err := y.src.ReadByte(); err == nil {
-        y.current = b
+    
+    var err error
+    y.current, err = y.src.ReadByte()
+    if err == nil {
+        y.index++
     }
     return y.current
 }
 
 func (y yylexer) Error(e string) {
-    log.Fatal(e)
+    log.Fatal(fmt.Sprintf("[%d] %s", y.index, e))
 }
 
 func (y *yylexer) Lex(yylval *yySymType) int {
@@ -49,10 +53,25 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 %%
     y.buf = y.buf[:0]
 
-"SELECT"  return TSELECT;
+"SELECT"                   return y.token(yylval, TSELECT);
+[a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
+";"                        return y.token(yylval, TSEMICOLON);
 [ \t\n\r]+
 
 %%
     y.empty = true
     return int(c)
+}
+
+// Saves the token to the parser value and returns the token.
+func (y *yylexer) token(yylval *yySymType, tok int) int {
+    yylval.token = tok
+    return tok
+}
+
+// Saves the string in the buffer and the token to the parser value
+// and returns the token.
+func (y *yylexer) strtoken(yylval *yySymType, tok int) int {
+    yylval.buf = y.buf
+    return y.token(yylval, tok)
 }

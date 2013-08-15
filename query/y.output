@@ -15,20 +15,34 @@ state 1
 
 
 state 2
-	select:  TSELECT.    (1)
+	select:  TSELECT.TIDENT TSEMICOLON 
 
-	.  reduce 1 (src line 21)
+	TIDENT  shift 3
+	.  error
 
 
-4 terminals, 2 nonterminals
-2 grammar rules, 3/2000 states
+state 3
+	select:  TSELECT TIDENT.TSEMICOLON 
+
+	TSEMICOLON  shift 4
+	.  error
+
+
+state 4
+	select:  TSELECT TIDENT TSEMICOLON.    (1)
+
+	.  reduce 1 (src line 24)
+
+
+6 terminals, 2 nonterminals
+2 grammar rules, 5/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
 51 working sets used
 memory: parser 0/30000
 0 extra closures
-1 shift entries, 1 exceptions
+3 shift entries, 1 exceptions
 1 goto entries
 0 entries saved by goto default
-Optimizer space used: output 2/30000
-2 table entries, 0 zero
-maximum spread: 4, maximum offset: 4
+Optimizer space used: output 4/30000
+4 table entries, 0 zero
+maximum spread: 6, maximum offset: 6

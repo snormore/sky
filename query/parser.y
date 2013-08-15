@@ -11,14 +11,17 @@ import (
 %}
 
 %union{
-    value float64
+    token int
+    buf []byte
 }
 
-%token  TSELECT
+%token TSELECT
+%token TIDENT
+%token TSEMICOLON
 
 %%
 
-select: TSELECT
+select: TSELECT TIDENT TSEMICOLON
 ;
 
 %%

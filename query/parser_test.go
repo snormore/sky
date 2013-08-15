@@ -5,7 +5,7 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	str := `SELECT`
+	str := `SELECT xyz;`
 	parser := NewParser()
 	parser.ParseString(str)
 }
