@@ -24,7 +24,7 @@ import (
 
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN
-%token <str> TIDENT
+%token <str> TIDENT, TSTRING
 
 %type <selection> selection
 %type <statement> statement
@@ -130,7 +130,7 @@ selection_name :
     {
         $$ = ""
     }
-|   TINTO TIDENT
+|   TINTO TSTRING
     {
         $$ = $2
     }

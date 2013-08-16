@@ -355,7 +355,7 @@ func (s *Selection) String() string {
 		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
 	}
 	if s.Name != "" {
-		str += " INTO " + s.Name
+		str += " INTO \"" + s.Name + "\""
 	}
 	str += ";"
 	return str

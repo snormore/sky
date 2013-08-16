@@ -33,6 +33,7 @@ const TCOMMA = 57351
 const TLPAREN = 57352
 const TRPAREN = 57353
 const TIDENT = 57354
+const TSTRING = 57355
 
 var yyToknames = []string{
 	"TSELECT",
@@ -44,6 +45,7 @@ var yyToknames = []string{
 	"TLPAREN",
 	"TRPAREN",
 	"TIDENT",
+	"TSTRING",
 }
 var yyStatenames = []string{}
 
@@ -52,7 +54,6 @@ const yyErrCode = 2
 const yyMaxDepth = 200
 
 //line parser.y:139
-
 type Parser struct {
 }
 
@@ -87,15 +88,15 @@ const yyLast = 27
 
 var yyAct = []int{
 
-	9, 20, 21, 27, 24, 22, 10, 25, 15, 14,
+	9, 22, 20, 21, 27, 24, 10, 25, 15, 14,
 	26, 7, 17, 13, 18, 6, 3, 19, 5, 1,
 	16, 23, 12, 11, 8, 2, 4,
 }
 var yyPact = []int{
 
 	14, -1000, 7, 3, -1000, -6, 14, -1000, 4, -1000,
-	-2, -1000, 5, -6, 11, -10, -1000, -7, -1000, -8,
-	-1000, -4, -1000, 1, -1000, -1000, -9, -1000,
+	-2, -1000, 5, -6, 11, -9, -1000, -12, -1000, -7,
+	-1000, -4, -1000, 1, -1000, -1000, -8, -1000,
 }
 var yyPgo = []int{
 
@@ -115,7 +116,7 @@ var yyChk = []int{
 
 	-1000, -9, -3, -2, -1, 4, 8, 8, -5, -4,
 	12, -2, -6, 9, 5, 10, -8, 7, -4, 6,
-	11, 12, 12, -7, 12, 11, 9, 12,
+	11, 12, 13, -7, 12, 11, 9, 12,
 }
 var yyDef = []int{
 
@@ -130,7 +131,7 @@ var yyTok1 = []int{
 var yyTok2 = []int{
 
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12,
+	12, 13,
 }
 var yyTok3 = []int{
 	0,

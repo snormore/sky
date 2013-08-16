@@ -51,6 +51,8 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 %%
     y.buf = y.buf[:0]
 
+\"(\\.|[^\\"])*\"          return y.quotedstrtoken(yylval, TSTRING);
+
 "SELECT"                   return y.token(yylval, TSELECT);
 "GROUP"                    return y.token(yylval, TGROUP);
 "BY"                       return y.token(yylval, TBY);
@@ -79,3 +81,12 @@ func (y *yylexer) strtoken(yylval *yySymType, tok int) int {
     yylval.str = string(y.buf)
     return y.token(yylval, tok)
 }
+
+// Saves the quoted string in the buffer and the token to the parser value
+// and returns the token.
+func (y *yylexer) quotedstrtoken(yylval *yySymType, tok int) int {
+    str := string(y.buf)
+    yylval.str = str[1:len(str)-1]
+    return y.token(yylval, tok)
+}
+

@@ -135,9 +135,9 @@ state 16
 
 
 state 17
-	selection_name:  TINTO.TIDENT 
+	selection_name:  TINTO.TSTRING 
 
-	TIDENT  shift 22
+	TSTRING  shift 22
 	.  error
 
 
@@ -169,7 +169,7 @@ state 21
 
 
 state 22
-	selection_name:  TINTO TIDENT.    (17)
+	selection_name:  TINTO TSTRING.    (17)
 
 	.  reduce 17 (src line 133)
 
@@ -207,7 +207,7 @@ state 27
 	.  reduce 15 (src line 122)
 
 
-12 terminals, 10 nonterminals
+13 terminals, 10 nonterminals
 18 grammar rules, 28/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
 59 working sets used
@@ -218,4 +218,4 @@ memory: parser 11/30000
 1 entries saved by goto default
 Optimizer space used: output 27/30000
 27 table entries, 0 zero
-maximum spread: 12, maximum offset: 13
+maximum spread: 13, maximum offset: 13
