@@ -64,9 +64,14 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "THEN"                     return y.token(yylval, TTHEN);
 "END"                      return y.token(yylval, TEND);
 (STEPS|SESSIONS)           return y.strtoken(yylval, TWITHINUNITS);
+"=="                       return y.token(yylval, TEQUALS);
+"!="                       return y.token(yylval, TNOTEQUALS);
+"<="                       return y.token(yylval,  TLTE);
+"<"                        return y.token(yylval,  TLT);
+">="                       return y.token(yylval,  TGTE);
+">"                        return y.token(yylval,  TGT);
 "&&"                       return y.token(yylval, TAND);
 "||"                       return y.token(yylval, TOR);
-"=="                       return y.token(yylval, TEQUALS);
 ".."                       return y.token(yylval, TRANGE);
 [a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
 ";"                        return y.token(yylval, TSEMICOLON);

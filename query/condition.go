@@ -11,23 +11,11 @@ import (
 	"strings"
 )
 
-//------------------------------------------------------------------------------
-//
-// Constants
-//
-//------------------------------------------------------------------------------
-
 const (
 	UnitSteps    = "steps"
 	UnitSessions = "sessions"
 	UnitSeconds  = "seconds"
 )
-
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
 
 // A condition statement made within a query.
 type Condition struct {
@@ -40,12 +28,6 @@ type Condition struct {
 	Statements       Statements
 }
 
-//------------------------------------------------------------------------------
-//
-// Constructors
-//
-//------------------------------------------------------------------------------
-
 // Creates a new condition.
 func NewCondition(query *Query) *Condition {
 	return &Condition{
@@ -56,12 +38,6 @@ func NewCondition(query *Query) *Condition {
 		WithinUnits:      UnitSteps,
 	}
 }
-
-//------------------------------------------------------------------------------
-//
-// Accessors
-//
-//------------------------------------------------------------------------------
 
 // Retrieves the query this condition is associated with.
 func (c *Condition) Query() *Query {
@@ -85,12 +61,6 @@ func (c *Condition) MergeFunctionName() string {
 func (c *Condition) GetStatements() Statements {
 	return c.Statements
 }
-
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
 
 //--------------------------------------
 // Serialization

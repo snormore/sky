@@ -23,12 +23,17 @@ import (
     selection_fields []*SelectionField
     condition *Condition
     condition_within *within
+    expr Expression
+    var_ref *VarRef
+    integer_literal *IntegerLiteral
+    string_literal *StringLiteral
 }
 
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
-%token <token> TEQUALS, TAND, TOR
+%token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
+%token <token> TAND, TOR
 %token <str> TIDENT, TSTRING, TWITHINUNITS
 %token <integer> TINT
 
@@ -41,8 +46,18 @@ import (
 %type <str> selection_name
 
 %type <condition> condition
-%type <str> conditionals conditional
 %type <condition_within> condition_within
+
+%type <expr> expr
+%type <integer_literal> integer_literal
+%type <string_literal> string_literal
+%type <var_ref> var_ref
+
+%left TOR
+%left TAND
+%left TEQUALS TNOTEQUALS
+%left TLT TLTE
+%left TGT TGTE
 
 %%
 
@@ -149,37 +164,15 @@ selection_name :
 ;
 
 condition :
-    TWHEN conditionals condition_within TTHEN statements TEND
+    TWHEN expr condition_within TTHEN statements TEND
     {
         l := yylex.(*yylexer)
         $$ = NewCondition(l.query)
-        $$.Expression = $2
+        $$.Expression = $2.String()
         $$.WithinRangeStart = $3.start
         $$.WithinRangeEnd = $3.end
         $$.WithinUnits = $3.units
         $$.Statements = $5
-    }
-;
-
-conditionals :
-    /* empty */
-    {
-        $$ = ""
-    }
-|   conditional
-    {
-        $$ = $1
-    }
-|   conditionals TAND conditional
-    {
-        $$ = $1 + " && " + $3
-    }
-;
-
-conditional :
-    TIDENT TEQUALS TSTRING
-    {
-        $$ = $1 + " == \"" + $3 + "\""
     }
 ;
 
@@ -191,6 +184,42 @@ condition_within :
 |   TWITHIN TINT TRANGE TINT TWITHINUNITS
     {
         $$ = &within{start:$2, end:$4, units:$5}
+    }
+;
+
+expr :
+    expr TEQUALS expr     { $$ = &BinaryExpression{op:OpEquals, lhs:$1, rhs:$3} }
+|   expr TNOTEQUALS expr  { $$ = &BinaryExpression{op:OpNotEquals, lhs:$1, rhs:$3} }
+|   expr TLT expr         { $$ = &BinaryExpression{op:OpLessThan, lhs:$1, rhs:$3} }
+|   expr TLTE expr        { $$ = &BinaryExpression{op:OpLessThanOrEqualTo, lhs:$1, rhs:$3} }
+|   expr TGT expr         { $$ = &BinaryExpression{op:OpGreaterThan, lhs:$1, rhs:$3} }
+|   expr TGTE expr        { $$ = &BinaryExpression{op:OpGreaterThanOrEqualTo, lhs:$1, rhs:$3} }
+|   expr TAND expr        { $$ = &BinaryExpression{op:OpAnd, lhs:$1, rhs:$3} }
+|   expr TOR expr         { $$ = &BinaryExpression{op:OpOr, lhs:$1, rhs:$3} }
+|   var_ref               { $$ = Expression($1) }
+|   integer_literal       { $$ = Expression($1) }
+|   string_literal        { $$ = Expression($1) }
+|   TLPAREN expr TRPAREN { $$ = $2 }
+;
+
+var_ref :
+    TIDENT
+    {
+        $$ = &VarRef{value:$1}
+    }
+;
+
+integer_literal :
+    TINT
+    {
+        $$ = &IntegerLiteral{value:$1}
+    }
+;
+
+string_literal :
+    TSTRING
+    {
+        $$ = &StringLiteral{value:$1}
     }
 ;
 

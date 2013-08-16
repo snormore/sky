@@ -25,6 +25,10 @@ type yySymType struct {
 	selection_fields []*SelectionField
 	condition        *Condition
 	condition_within *within
+	expr             Expression
+	var_ref          *VarRef
+	integer_literal  *IntegerLiteral
+	string_literal   *StringLiteral
 }
 
 const TSELECT = 57346
@@ -41,12 +45,17 @@ const TLPAREN = 57356
 const TRPAREN = 57357
 const TRANGE = 57358
 const TEQUALS = 57359
-const TAND = 57360
-const TOR = 57361
-const TIDENT = 57362
-const TSTRING = 57363
-const TWITHINUNITS = 57364
-const TINT = 57365
+const TNOTEQUALS = 57360
+const TLT = 57361
+const TLTE = 57362
+const TGT = 57363
+const TGTE = 57364
+const TAND = 57365
+const TOR = 57366
+const TIDENT = 57367
+const TSTRING = 57368
+const TWITHINUNITS = 57369
+const TINT = 57370
 
 var yyToknames = []string{
 	"TSELECT",
@@ -63,6 +72,11 @@ var yyToknames = []string{
 	"TRPAREN",
 	"TRANGE",
 	"TEQUALS",
+	"TNOTEQUALS",
+	"TLT",
+	"TLTE",
+	"TGT",
+	"TGTE",
 	"TAND",
 	"TOR",
 	"TIDENT",
@@ -76,7 +90,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:197
+//line parser.y:226
 
 type Parser struct {
 }
@@ -108,62 +122,75 @@ var yyExca = []int{
 	-2, 0,
 }
 
-const yyNprod = 25
+const yyNprod = 36
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 45
+const yyLast = 91
 
 var yyAct = []int{
 
-	2, 41, 30, 43, 33, 31, 26, 42, 35, 13,
-	10, 27, 12, 20, 21, 38, 36, 9, 16, 17,
-	6, 39, 19, 32, 7, 28, 15, 40, 23, 37,
-	6, 25, 29, 24, 7, 1, 18, 11, 5, 22,
-	34, 14, 8, 3, 4,
+	2, 11, 50, 60, 24, 25, 26, 27, 28, 29,
+	30, 31, 49, 62, 52, 38, 61, 33, 24, 25,
+	26, 27, 28, 29, 15, 39, 41, 42, 43, 44,
+	45, 46, 47, 48, 32, 16, 18, 54, 17, 10,
+	57, 56, 24, 25, 26, 27, 28, 29, 30, 31,
+	24, 25, 26, 27, 28, 29, 30, 26, 27, 28,
+	29, 28, 29, 9, 55, 22, 21, 58, 6, 51,
+	40, 37, 7, 6, 20, 59, 1, 7, 35, 12,
+	14, 13, 23, 5, 36, 34, 53, 19, 8, 3,
+	4,
 }
 var yyPact = []int{
 
-	-1000, -1000, 26, -1000, -1000, -1000, -10, -11, 13, -1000,
-	5, 4, -1000, -3, 21, -10, 25, -9, 15, -11,
-	-21, -16, 11, -17, -1000, -12, -1000, 1, -1000, -1000,
-	-1, -1000, -1000, -1000, 8, -1000, -1000, 16, -22, -13,
-	-1000, -19, -1000, -1000,
+	-1000, -1000, 69, -1000, -1000, -1000, 14, 10, 61, -1000,
+	51, 25, -1000, -1000, -1000, 10, -1000, -1000, -1000, 71,
+	14, 65, 0, 60, 10, 10, 10, 10, 10, 10,
+	10, 10, -16, -13, 57, -12, -1000, 12, -1000, 49,
+	-1000, 38, 38, 40, 40, -1000, -1000, 1, 33, 24,
+	-1000, -1000, -1000, 54, -1000, -1000, 64, -25, -9, -1000,
+	-14, -1000, -1000,
 }
 var yyPgo = []int{
 
-	0, 44, 43, 0, 17, 42, 41, 40, 39, 38,
-	37, 12, 36, 35,
+	0, 90, 89, 0, 63, 88, 87, 86, 85, 83,
+	82, 1, 81, 80, 79, 76,
 }
 var yyR1 = []int{
 
-	0, 13, 3, 3, 2, 2, 1, 5, 5, 5,
+	0, 15, 3, 3, 2, 2, 1, 5, 5, 5,
 	4, 4, 6, 6, 7, 7, 8, 8, 9, 10,
-	10, 10, 11, 12, 12,
+	10, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+	11, 11, 11, 14, 12, 13,
 }
 var yyR2 = []int{
 
 	0, 1, 0, 2, 1, 1, 5, 0, 1, 3,
 	3, 4, 0, 3, 1, 3, 0, 2, 6, 0,
-	1, 3, 3, 0, 5,
+	5, 3, 3, 3, 3, 3, 3, 3, 3, 1,
+	1, 1, 3, 1, 1, 1,
 }
 var yyChk = []int{
 
-	-1000, -13, -3, -2, -1, -9, 4, 8, -5, -4,
-	20, -10, -11, 20, -6, 13, 5, 14, -12, 18,
-	9, 17, -8, 7, -4, 6, 15, 20, 10, -11,
-	23, 21, 12, 21, -7, 20, 15, -3, 16, 13,
-	11, 23, 20, 22,
+	-1000, -15, -3, -2, -1, -9, 4, 8, -5, -4,
+	25, -11, -14, -12, -13, 14, 25, 28, 26, -6,
+	13, 5, 14, -10, 17, 18, 19, 20, 21, 22,
+	23, 24, 9, -11, -8, 7, -4, 6, 15, 25,
+	10, -11, -11, -11, -11, -11, -11, -11, -11, 28,
+	15, 12, 26, -7, 25, 15, -3, 16, 13, 11,
+	28, 25, 27,
 }
 var yyDef = []int{
 
-	2, -2, 1, 3, 4, 5, 7, 19, 12, 8,
-	0, 23, 20, 0, 16, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 9, 0, 10, 0, 2, 21,
-	0, 22, 6, 17, 13, 14, 11, 0, 0, 0,
-	18, 0, 15, 24,
+	2, -2, 1, 3, 4, 5, 7, 0, 12, 8,
+	0, 19, 29, 30, 31, 0, 33, 34, 35, 16,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 9, 0, 10, 0,
+	2, 21, 22, 23, 24, 25, 26, 27, 28, 0,
+	32, 6, 17, 13, 14, 11, 0, 0, 0, 18,
+	0, 15, 20,
 }
 var yyTok1 = []int{
 
@@ -173,7 +200,7 @@ var yyTok2 = []int{
 
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-	22, 23,
+	22, 23, 24, 25, 26, 27, 28,
 }
 var yyTok3 = []int{
 	0,
@@ -405,33 +432,33 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		//line parser.y:51
+		//line parser.y:66
 		{
 			l := yylex.(*yylexer)
 			l.query.Statements = yyS[yypt-0].statements
 		}
 	case 2:
-		//line parser.y:59
+		//line parser.y:74
 		{
 			yyVAL.statements = make(Statements, 0)
 		}
 	case 3:
-		//line parser.y:63
+		//line parser.y:78
 		{
 			yyVAL.statements = append(yyS[yypt-1].statements, yyS[yypt-0].statement)
 		}
 	case 4:
-		//line parser.y:70
+		//line parser.y:85
 		{
 			yyVAL.statement = Statement(yyS[yypt-0].selection)
 		}
 	case 5:
-		//line parser.y:74
+		//line parser.y:89
 		{
 			yyVAL.statement = Statement(yyS[yypt-0].condition)
 		}
 	case 6:
-		//line parser.y:81
+		//line parser.y:96
 		{
 			l := yylex.(*yylexer)
 			yyVAL.selection = NewSelection(l.query)
@@ -440,102 +467,157 @@ yydefault:
 			yyVAL.selection.Name = yyS[yypt-1].str
 		}
 	case 7:
-		//line parser.y:92
+		//line parser.y:107
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 		}
 	case 8:
-		//line parser.y:96
+		//line parser.y:111
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 			yyVAL.selection_fields = append(yyVAL.selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 9:
-		//line parser.y:101
+		//line parser.y:116
 		{
 			yyVAL.selection_fields = append(yyS[yypt-2].selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 10:
-		//line parser.y:108
+		//line parser.y:123
 		{
 			yyVAL.selection_field = NewSelectionField("", yyS[yypt-2].str)
 		}
 	case 11:
-		//line parser.y:112
+		//line parser.y:127
 		{
 			yyVAL.selection_field = NewSelectionField(yyS[yypt-1].str, yyS[yypt-3].str)
 		}
 	case 12:
-		//line parser.y:119
+		//line parser.y:134
 		{
 			yyVAL.strs = make([]string, 0)
 		}
 	case 13:
-		//line parser.y:123
+		//line parser.y:138
 		{
 			yyVAL.strs = yyS[yypt-0].strs
 		}
 	case 14:
-		//line parser.y:130
+		//line parser.y:145
 		{
 			yyVAL.strs = make([]string, 0)
 			yyVAL.strs = append(yyVAL.strs, yyS[yypt-0].str)
 		}
 	case 15:
-		//line parser.y:135
+		//line parser.y:150
 		{
 			yyVAL.strs = append(yyS[yypt-2].strs, yyS[yypt-0].str)
 		}
 	case 16:
-		//line parser.y:142
+		//line parser.y:157
 		{
 			yyVAL.str = ""
 		}
 	case 17:
-		//line parser.y:146
+		//line parser.y:161
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 18:
-		//line parser.y:153
+		//line parser.y:168
 		{
 			l := yylex.(*yylexer)
 			yyVAL.condition = NewCondition(l.query)
-			yyVAL.condition.Expression = yyS[yypt-4].str
+			yyVAL.condition.Expression = yyS[yypt-4].expr.String()
 			yyVAL.condition.WithinRangeStart = yyS[yypt-3].condition_within.start
 			yyVAL.condition.WithinRangeEnd = yyS[yypt-3].condition_within.end
 			yyVAL.condition.WithinUnits = yyS[yypt-3].condition_within.units
 			yyVAL.condition.Statements = yyS[yypt-1].statements
 		}
 	case 19:
-		//line parser.y:166
-		{
-			yyVAL.str = ""
-		}
-	case 20:
-		//line parser.y:170
-		{
-			yyVAL.str = yyS[yypt-0].str
-		}
-	case 21:
-		//line parser.y:174
-		{
-			yyVAL.str = yyS[yypt-2].str + " && " + yyS[yypt-0].str
-		}
-	case 22:
 		//line parser.y:181
-		{
-			yyVAL.str = yyS[yypt-2].str + " == \"" + yyS[yypt-0].str + "\""
-		}
-	case 23:
-		//line parser.y:188
 		{
 			yyVAL.condition_within = &within{start: 0, end: 0, units: "steps"}
 		}
-	case 24:
-		//line parser.y:192
+	case 20:
+		//line parser.y:185
 		{
 			yyVAL.condition_within = &within{start: yyS[yypt-3].integer, end: yyS[yypt-1].integer, units: yyS[yypt-0].str}
+		}
+	case 21:
+		//line parser.y:191
+		{
+			yyVAL.expr = &BinaryExpression{op: OpEquals, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 22:
+		//line parser.y:192
+		{
+			yyVAL.expr = &BinaryExpression{op: OpNotEquals, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 23:
+		//line parser.y:193
+		{
+			yyVAL.expr = &BinaryExpression{op: OpLessThan, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 24:
+		//line parser.y:194
+		{
+			yyVAL.expr = &BinaryExpression{op: OpLessThanOrEqualTo, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 25:
+		//line parser.y:195
+		{
+			yyVAL.expr = &BinaryExpression{op: OpGreaterThan, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 26:
+		//line parser.y:196
+		{
+			yyVAL.expr = &BinaryExpression{op: OpGreaterThanOrEqualTo, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 27:
+		//line parser.y:197
+		{
+			yyVAL.expr = &BinaryExpression{op: OpAnd, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 28:
+		//line parser.y:198
+		{
+			yyVAL.expr = &BinaryExpression{op: OpOr, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+		}
+	case 29:
+		//line parser.y:199
+		{
+			yyVAL.expr = Expression(yyS[yypt-0].var_ref)
+		}
+	case 30:
+		//line parser.y:200
+		{
+			yyVAL.expr = Expression(yyS[yypt-0].integer_literal)
+		}
+	case 31:
+		//line parser.y:201
+		{
+			yyVAL.expr = Expression(yyS[yypt-0].string_literal)
+		}
+	case 32:
+		//line parser.y:202
+		{
+			yyVAL.expr = yyS[yypt-1].expr
+		}
+	case 33:
+		//line parser.y:207
+		{
+			yyVAL.var_ref = &VarRef{value: yyS[yypt-0].str}
+		}
+	case 34:
+		//line parser.y:214
+		{
+			yyVAL.integer_literal = &IntegerLiteral{value: yyS[yypt-0].integer}
+		}
+	case 35:
+		//line parser.y:221
+		{
+			yyVAL.string_literal = &StringLiteral{value: yyS[yypt-0].str}
 		}
 	}
 	goto yystack /* stack new state and value */
