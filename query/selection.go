@@ -14,12 +14,12 @@ import (
 //------------------------------------------------------------------------------
 
 // A selection step aggregates data in a query.
-type QuerySelection struct {
+type Selection struct {
 	query      *Query
 	id         int
 	Name       string
 	Dimensions []string
-	Fields     []*QuerySelectionField
+	Fields     []*SelectionField
 }
 
 //------------------------------------------------------------------------------
@@ -29,8 +29,8 @@ type QuerySelection struct {
 //------------------------------------------------------------------------------
 
 // Creates a new selection.
-func NewQuerySelection(query *Query) *QuerySelection {
-	return &QuerySelection{
+func NewSelection(query *Query) *Selection {
+	return &Selection{
 		query: query,
 		id:    query.NextIdentifier(),
 	}
@@ -43,12 +43,12 @@ func NewQuerySelection(query *Query) *QuerySelection {
 //------------------------------------------------------------------------------
 
 // Retrieves the query this selection is associated with.
-func (s *QuerySelection) Query() *Query {
+func (s *Selection) Query() *Query {
 	return s.query
 }
 
 // Retrieves the function name used during codegen.
-func (s *QuerySelection) FunctionName(init bool) string {
+func (s *Selection) FunctionName(init bool) string {
 	if init {
 		return fmt.Sprintf("i%d", s.id)
 	}
@@ -56,12 +56,12 @@ func (s *QuerySelection) FunctionName(init bool) string {
 }
 
 // Retrieves the merge function name used during codegen.
-func (s *QuerySelection) MergeFunctionName() string {
+func (s *Selection) MergeFunctionName() string {
 	return fmt.Sprintf("m%d", s.id)
 }
 
 // Retrieves the child steps.
-func (s *QuerySelection) GetSteps() QueryStepList {
+func (s *Selection) GetSteps() QueryStepList {
 	return []QueryStep{}
 }
 
@@ -76,7 +76,7 @@ func (s *QuerySelection) GetSteps() QueryStepList {
 //--------------------------------------
 
 // Encodes a query selection into an untyped map.
-func (s *QuerySelection) Serialize() map[string]interface{} {
+func (s *Selection) Serialize() map[string]interface{} {
 	fields := []interface{}{}
 	for _, field := range s.Fields {
 		fields = append(fields, field.Serialize())
@@ -92,12 +92,12 @@ func (s *QuerySelection) Serialize() map[string]interface{} {
 }
 
 // Decodes a query selection from an untyped map.
-func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
+func (s *Selection) Deserialize(obj map[string]interface{}) error {
 	if obj == nil {
-		return errors.New("skyd.QuerySelection: Unable to deserialize nil.")
+		return errors.New("Selection: Unable to deserialize nil.")
 	}
 	if obj["type"] != QueryStepTypeSelection {
-		return fmt.Errorf("skyd.QuerySelection: Invalid step type: %v", obj["type"])
+		return fmt.Errorf("Selection: Invalid step type: %v", obj["type"])
 	}
 
 	// Deserialize "name".
@@ -106,7 +106,7 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	} else if obj["name"] == nil {
 		s.Name = ""
 	} else {
-		return fmt.Errorf("skyd.QuerySelection: Invalid name: %v", obj["name"])
+		return fmt.Errorf("Selection: Invalid name: %v", obj["name"])
 	}
 
 	// Deserialize "dimensions".
@@ -116,34 +116,34 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 			if str, ok := dimension.(string); ok {
 				s.Dimensions = append(s.Dimensions, str)
 			} else {
-				return fmt.Errorf("skyd.QuerySelection: Invalid dimension: %v", dimension)
+				return fmt.Errorf("Selection: Invalid dimension: %v", dimension)
 			}
 		}
 	} else {
 		if obj["dimension"] == nil {
 			s.Dimensions = []string{}
 		} else {
-			return fmt.Errorf("skyd.QuerySelection: Invalid dimensions: %v", obj["dimensions"])
+			return fmt.Errorf("Selection: Invalid dimensions: %v", obj["dimensions"])
 		}
 	}
 
 	// Deserialize "fields".
 	if fields, ok := obj["fields"].([]interface{}); ok {
-		s.Fields = []*QuerySelectionField{}
+		s.Fields = []*SelectionField{}
 		for _, field := range fields {
 			if fieldMap, ok := field.(map[string]interface{}); ok {
-				f := NewQuerySelectionField("", "")
+				f := NewSelectionField("", "")
 				f.Deserialize(fieldMap)
 				s.Fields = append(s.Fields, f)
 			} else {
-				return fmt.Errorf("skyd.QuerySelection: Invalid field: %v", field)
+				return fmt.Errorf("Selection: Invalid field: %v", field)
 			}
 		}
 	} else {
 		if obj["field"] == nil {
-			s.Fields = []*QuerySelectionField{}
+			s.Fields = []*SelectionField{}
 		} else {
-			return fmt.Errorf("skyd.QuerySelection: Invalid fields: %v", obj["fields"])
+			return fmt.Errorf("Selection: Invalid fields: %v", obj["fields"])
 		}
 	}
 
@@ -155,7 +155,7 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 //--------------------------------------
 
 // Generates Lua code for the selection aggregation.
-func (s *QuerySelection) CodegenAggregateFunction(init bool) (string, error) {
+func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate main function.
@@ -191,7 +191,7 @@ func (s *QuerySelection) CodegenAggregateFunction(init bool) (string, error) {
 }
 
 // Generates Lua code for the selection merge.
-func (s *QuerySelection) CodegenMergeFunction() (string, error) {
+func (s *Selection) CodegenMergeFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate nested functions first.
@@ -216,7 +216,7 @@ func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 }
 
 // Generates Lua code for the inner merge.
-func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
+func (s *Selection) CodegenInnerMergeFunction(index int) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate next nested function first.
@@ -260,7 +260,7 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 //--------------------------------------
 
 // Converts factorized fields back to their original strings.
-func (s *QuerySelection) Defactorize(data interface{}) error {
+func (s *Selection) Defactorize(data interface{}) error {
 	if m, ok := data.(map[interface{}]interface{}); ok {
 		// If this is a named selection then drill in first.
 		if s.Name != "" {
@@ -279,7 +279,7 @@ func (s *QuerySelection) Defactorize(data interface{}) error {
 }
 
 // Recursively defactorizes dimensions.
-func (s *QuerySelection) defactorize(data interface{}, index int) error {
+func (s *Selection) defactorize(data interface{}, index int) error {
 	if index >= len(s.Dimensions) {
 		return nil
 	}
@@ -293,7 +293,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 	dimension := s.Dimensions[index]
 	property := s.query.table.PropertyFile().GetPropertyByName(dimension)
 	if property == nil {
-		return fmt.Errorf("skyd.QuerySelection: Property not found: %s", dimension)
+		return fmt.Errorf("Selection: Property not found: %s", dimension)
 	}
 
 	// Defactorize.
@@ -331,7 +331,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 
 // Checks if any of the selection fields require initialization before
 // performing aggregation.
-func (s *QuerySelection) RequiresInitialization() bool {
+func (s *Selection) RequiresInitialization() bool {
 	for _, field := range s.Fields {
 		if field.RequiresInitialization() {
 			return true

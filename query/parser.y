@@ -16,9 +16,9 @@ import (
     query *Query
     statement QueryStep
     statements QueryStepList
-    selection *QuerySelection
-    selection_field *QuerySelectionField
-    selection_fields []*QuerySelectionField
+    selection *Selection
+    selection_field *SelectionField
+    selection_fields []*SelectionField
 }
 
 %token <token> TSELECT
@@ -66,7 +66,7 @@ selection :
     TSELECT selection_fields
     {
         l := yylex.(*yylexer)
-        $$ = NewQuerySelection(l.query)
+        $$ = NewSelection(l.query)
         $$.Fields = $2
     }
 ;
@@ -74,11 +74,11 @@ selection :
 selection_fields :
     /* empty */
     {
-        $$ = make([]*QuerySelectionField, 0)
+        $$ = make([]*SelectionField, 0)
     }
 |   selection_field
     {
-        $$ = make([]*QuerySelectionField, 0)
+        $$ = make([]*SelectionField, 0)
         $$ = append($$, $1)
     }
 |   selection_fields TCOMMA selection_field
@@ -90,11 +90,11 @@ selection_fields :
 selection_field :
     TIDENT TLPAREN TRPAREN
     {
-        $$ = NewQuerySelectionField("", $1)
+        $$ = NewSelectionField("", $1)
     }
 |   TIDENT TLPAREN TIDENT TRPAREN
     {
-        $$ = NewQuerySelectionField($3, $1)
+        $$ = NewSelectionField($3, $1)
     }
 ;
 

@@ -64,9 +64,9 @@ func DeserializeQueryStepList(obj interface{}, q *Query) (QueryStepList, error) 
 				var step QueryStep
 				switch s["type"] {
 				case QueryStepTypeCondition:
-					step = NewQueryCondition(q)
+					step = NewCondition(q)
 				case QueryStepTypeSelection:
-					step = NewQuerySelection(q)
+					step = NewSelection(q)
 				default:
 					return nil, fmt.Errorf("Invalid query step type: %v", s["type"])
 				}

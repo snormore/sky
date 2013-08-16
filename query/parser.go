@@ -18,9 +18,9 @@ type yySymType struct {
 	query            *Query
 	statement        QueryStep
 	statements       QueryStepList
-	selection        *QuerySelection
-	selection_field  *QuerySelectionField
-	selection_fields []*QuerySelectionField
+	selection        *Selection
+	selection_field  *SelectionField
+	selection_fields []*SelectionField
 }
 
 const TSELECT = 57346
@@ -380,18 +380,18 @@ yydefault:
 		//line parser.y:67
 		{
 			l := yylex.(*yylexer)
-			yyVAL.selection = NewQuerySelection(l.query)
+			yyVAL.selection = NewSelection(l.query)
 			yyVAL.selection.Fields = yyS[yypt-0].selection_fields
 		}
 	case 7:
 		//line parser.y:76
 		{
-			yyVAL.selection_fields = make([]*QuerySelectionField, 0)
+			yyVAL.selection_fields = make([]*SelectionField, 0)
 		}
 	case 8:
 		//line parser.y:80
 		{
-			yyVAL.selection_fields = make([]*QuerySelectionField, 0)
+			yyVAL.selection_fields = make([]*SelectionField, 0)
 			yyVAL.selection_fields = append(yyVAL.selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 9:
@@ -402,12 +402,12 @@ yydefault:
 	case 10:
 		//line parser.y:92
 		{
-			yyVAL.selection_field = NewQuerySelectionField("", yyS[yypt-2].str)
+			yyVAL.selection_field = NewSelectionField("", yyS[yypt-2].str)
 		}
 	case 11:
 		//line parser.y:96
 		{
-			yyVAL.selection_field = NewQuerySelectionField(yyS[yypt-1].str, yyS[yypt-3].str)
+			yyVAL.selection_field = NewSelectionField(yyS[yypt-1].str, yyS[yypt-3].str)
 		}
 	}
 	goto yystack /* stack new state and value */
