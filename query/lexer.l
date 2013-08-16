@@ -5,6 +5,7 @@ import (
     "bufio"
     "fmt"
     "log"
+    "strconv"
 )
 
 type yylexer struct{
@@ -52,17 +53,21 @@ func (y *yylexer) Lex(yylval *yySymType) int {
     y.buf = y.buf[:0]
 
 \"(\\.|[^\\"])*\"          return y.quotedstrtoken(yylval, TSTRING);
+[0-9]+                     return y.inttoken(yylval, TINT);
 
 "SELECT"                   return y.token(yylval, TSELECT);
 "GROUP"                    return y.token(yylval, TGROUP);
 "BY"                       return y.token(yylval, TBY);
 "INTO"                     return y.token(yylval, TINTO);
 "WHEN"                     return y.token(yylval, TWHEN);
+"WITHIN"                   return y.token(yylval, TWITHIN);
 "THEN"                     return y.token(yylval, TTHEN);
 "END"                      return y.token(yylval, TEND);
+(STEPS|SESSIONS)           return y.strtoken(yylval, TWITHINUNITS);
 "&&"                       return y.token(yylval, TAND);
 "||"                       return y.token(yylval, TOR);
 "=="                       return y.token(yylval, TEQUALS);
+".."                       return y.token(yylval, TRANGE);
 [a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
 ";"                        return y.token(yylval, TSEMICOLON);
 ","                        return y.token(yylval, TCOMMA);
@@ -96,3 +101,12 @@ func (y *yylexer) quotedstrtoken(yylval *yySymType, tok int) int {
     return y.token(yylval, tok)
 }
 
+// Saves the integer in the buffer and the token to the parser value
+// and returns the token.
+func (y *yylexer) inttoken(yylval *yySymType, tok int) int {
+    var err error
+    if yylval.integer, err = strconv.Atoi(string(y.buf)); err != nil {
+        panic("strconv failed: " + string(y.buf))
+    }
+    return y.token(yylval, tok)
+}

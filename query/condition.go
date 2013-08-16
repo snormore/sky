@@ -355,6 +355,9 @@ func (c *Condition) String() string {
 	if str != "" {
 		str += " " + c.Expression
 	}
+	if c.WithinRangeStart != 0 || c.WithinRangeStart != 0 || c.WithinUnits != UnitSteps {
+		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, c.WithinUnits)
+	}
 	str += " THEN\n"
 	str += regexp.MustCompile(`^`).ReplaceAllString(c.Statements.String(), "  ") + "\n"
 	str += "END"

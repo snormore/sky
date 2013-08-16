@@ -12,6 +12,7 @@ import (
 
 %union{
     token int
+    integer int
     str string
     strs []string
     query *Query
@@ -21,13 +22,15 @@ import (
     selection_field *SelectionField
     selection_fields []*SelectionField
     condition *Condition
+    condition_within *within
 }
 
 %token <token> TSELECT, TGROUP, TBY, TINTO
-%token <token> TWHEN, TTHEN, TEND
-%token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN
+%token <token> TWHEN, TWITHIN, TTHEN, TEND
+%token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TAND, TOR
-%token <str> TIDENT, TSTRING
+%token <str> TIDENT, TSTRING, TWITHINUNITS
+%token <integer> TINT
 
 %type <selection> selection
 %type <statement> statement
@@ -39,6 +42,7 @@ import (
 
 %type <condition> condition
 %type <str> conditionals conditional
+%type <condition_within> condition_within
 
 %%
 
@@ -145,12 +149,15 @@ selection_name :
 ;
 
 condition :
-    TWHEN conditionals TTHEN statements TEND
+    TWHEN conditionals condition_within TTHEN statements TEND
     {
         l := yylex.(*yylexer)
         $$ = NewCondition(l.query)
         $$.Expression = $2
-        $$.Statements = $4
+        $$.WithinRangeStart = $3.start
+        $$.WithinRangeEnd = $3.end
+        $$.WithinUnits = $3.units
+        $$.Statements = $5
     }
 ;
 
@@ -176,6 +183,17 @@ conditional :
     }
 ;
 
+condition_within :
+    /* empty */
+    {
+        $$ = &within{start:0, end:0, units:"steps"}
+    }
+|   TWITHIN TINT TRANGE TINT TWITHINUNITS
+    {
+        $$ = &within{start:$2, end:$4, units:$5}
+    }
+;
+
 %%
 
 type Parser struct {
@@ -195,3 +213,8 @@ func (p *Parser) ParseString(s string) *Query {
     return p.Parse(bytes.NewBufferString(s))
 }
 
+type within struct {
+    start int
+    end int
+    units string
+}
