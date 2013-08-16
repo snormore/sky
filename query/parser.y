@@ -17,15 +17,19 @@ import (
     statement QueryStep
     statements QueryStepList
     selection *QuerySelection
+    selection_field *QuerySelectionField
+    selection_fields []*QuerySelectionField
 }
 
 %token <token> TSELECT
-%token <token> TSEMICOLON
+%token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN
 %token <str> TIDENT
 
-%type <statement> select
+%type <selection> selection
 %type <statement> statement
 %type <statements> statements
+%type <selection_field> selection_field
+%type <selection_fields> selection_fields
 
 
 %%
@@ -39,7 +43,7 @@ query :
 ;
 
 statements :
-/* empty */
+    /* empty */
     {
         $$ = make(QueryStepList, 0)
     }
@@ -54,16 +58,43 @@ statements :
     }
 ;
 
-statement : select
+statement :
+    selection  { $$ = QueryStep($1) }
 ;
 
-select :
-    TSELECT TIDENT
+selection :
+    TSELECT selection_fields
     {
         l := yylex.(*yylexer)
-        s := NewQuerySelection(l.query)
-        s.Name = $2
-        $$ = s
+        $$ = NewQuerySelection(l.query)
+        $$.Fields = $2
+    }
+;
+
+selection_fields :
+    /* empty */
+    {
+        $$ = make([]*QuerySelectionField, 0)
+    }
+|   selection_field
+    {
+        $$ = make([]*QuerySelectionField, 0)
+        $$ = append($$, $1)
+    }
+|   selection_fields TCOMMA selection_field
+    {
+        $$ = append($1, $3)
+    }
+;
+
+selection_field :
+    TIDENT TLPAREN TRPAREN
+    {
+        $$ = NewQuerySelectionField("", $1)
+    }
+|   TIDENT TLPAREN TIDENT TRPAREN
+    {
+        $$ = NewQuerySelectionField($3, $1)
     }
 ;
 

@@ -4,9 +4,9 @@ state 0
 	statements: .    (2)
 
 	TSELECT  shift 5
-	.  reduce 2 (src line 40)
+	.  reduce 2 (src line 45)
 
-	select  goto 4
+	selection  goto 4
 	statement  goto 3
 	statements  goto 2
 	query  goto 1
@@ -23,7 +23,7 @@ state 2
 	statements:  statements.TSEMICOLON statement 
 
 	TSEMICOLON  shift 6
-	.  reduce 1 (src line 33)
+	.  reduce 1 (src line 37)
 
 
 state 3
@@ -34,17 +34,20 @@ state 3
 
 
 state 4
-	statement:  select.    (5)
+	statement:  selection.    (5)
 
-	.  reduce 5 (src line 56)
+	.  reduce 5 (src line 61)
 
 
 state 5
-	select:  TSELECT.TIDENT 
+	selection:  TSELECT.selection_fields 
+	selection_fields: .    (7)
 
-	TIDENT  shift 8
-	.  error
+	TIDENT  shift 10
+	.  reduce 7 (src line 74)
 
+	selection_field  goto 9
+	selection_fields  goto 8
 
 state 6
 	statements:  statements TSEMICOLON.statement 
@@ -52,36 +55,94 @@ state 6
 	TSELECT  shift 5
 	.  error
 
-	select  goto 4
-	statement  goto 9
+	selection  goto 4
+	statement  goto 11
 
 state 7
 	statements:  statement TSEMICOLON.    (3)
 
-	.  reduce 3 (src line 45)
+	.  reduce 3 (src line 50)
 
 
 state 8
-	select:  TSELECT TIDENT.    (6)
+	selection:  TSELECT selection_fields.    (6)
+	selection_fields:  selection_fields.TCOMMA selection_field 
 
-	.  reduce 6 (src line 59)
+	TCOMMA  shift 12
+	.  reduce 6 (src line 65)
 
 
 state 9
+	selection_fields:  selection_field.    (8)
+
+	.  reduce 8 (src line 79)
+
+
+state 10
+	selection_field:  TIDENT.TLPAREN TRPAREN 
+	selection_field:  TIDENT.TLPAREN TIDENT TRPAREN 
+
+	TLPAREN  shift 13
+	.  error
+
+
+state 11
 	statements:  statements TSEMICOLON statement.    (4)
 
-	.  reduce 4 (src line 50)
+	.  reduce 4 (src line 55)
 
 
-6 terminals, 5 nonterminals
-7 grammar rules, 10/2000 states
+state 12
+	selection_fields:  selection_fields TCOMMA.selection_field 
+
+	TIDENT  shift 10
+	.  error
+
+	selection_field  goto 14
+
+state 13
+	selection_field:  TIDENT TLPAREN.TRPAREN 
+	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
+
+	TRPAREN  shift 15
+	TIDENT  shift 16
+	.  error
+
+
+state 14
+	selection_fields:  selection_fields TCOMMA selection_field.    (9)
+
+	.  reduce 9 (src line 84)
+
+
+state 15
+	selection_field:  TIDENT TLPAREN TRPAREN.    (10)
+
+	.  reduce 10 (src line 90)
+
+
+state 16
+	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
+
+	TRPAREN  shift 17
+	.  error
+
+
+state 17
+	selection_field:  TIDENT TLPAREN TIDENT TRPAREN.    (11)
+
+	.  reduce 11 (src line 95)
+
+
+9 terminals, 7 nonterminals
+12 grammar rules, 18/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-54 working sets used
-memory: parser 5/30000
-3 extra closures
-5 shift entries, 1 exceptions
-5 goto entries
+56 working sets used
+memory: parser 8/30000
+11 extra closures
+11 shift entries, 1 exceptions
+8 goto entries
 1 entries saved by goto default
-Optimizer space used: output 9/30000
-9 table entries, 0 zero
-maximum spread: 6, maximum offset: 6
+Optimizer space used: output 17/30000
+17 table entries, 0 zero
+maximum spread: 9, maximum offset: 12

@@ -54,6 +54,9 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "SELECT"                   return y.token(yylval, TSELECT);
 [a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
 ";"                        return y.token(yylval, TSEMICOLON);
+","                        return y.token(yylval, TCOMMA);
+"("                        return y.token(yylval, TLPAREN);
+")"                        return y.token(yylval, TRPAREN);
 [ \t\n\r]+
 
 %%

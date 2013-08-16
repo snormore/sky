@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestParserSelection(t *testing.T) {
-	str := `SELECT xyz;`
+func TestParserSelectCount(t *testing.T) {
+	str := `SELECT count();`
 	query := NewParser().ParseString(str)
 	expected := ``
 	if b, _ := json.Marshal(query); string(b) != expected {
