@@ -27,16 +27,18 @@ type yySymType struct {
 const TSELECT = 57346
 const TGROUP = 57347
 const TBY = 57348
-const TSEMICOLON = 57349
-const TCOMMA = 57350
-const TLPAREN = 57351
-const TRPAREN = 57352
-const TIDENT = 57353
+const TINTO = 57349
+const TSEMICOLON = 57350
+const TCOMMA = 57351
+const TLPAREN = 57352
+const TRPAREN = 57353
+const TIDENT = 57354
 
 var yyToknames = []string{
 	"TSELECT",
 	"TGROUP",
 	"TBY",
+	"TINTO",
 	"TSEMICOLON",
 	"TCOMMA",
 	"TLPAREN",
@@ -49,7 +51,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line parser.y:126
+//line parser.y:139
 
 type Parser struct {
 }
@@ -75,51 +77,51 @@ var yyExca = []int{
 	-2, 0,
 }
 
-const yyNprod = 16
+const yyNprod = 18
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 24
+const yyLast = 27
 
 var yyAct = []int{
 
-	9, 18, 19, 24, 21, 10, 22, 15, 14, 23,
-	3, 13, 7, 6, 16, 17, 5, 11, 1, 20,
-	12, 8, 2, 4,
+	9, 20, 21, 27, 24, 22, 10, 25, 15, 14,
+	26, 7, 17, 13, 18, 6, 3, 19, 5, 1,
+	16, 23, 12, 11, 8, 2, 4,
 }
 var yyPact = []int{
 
-	12, -1000, 6, 5, -1000, -6, 12, -1000, 3, -1000,
-	-2, -1000, -1000, -6, 9, -9, -1000, -7, -1000, -4,
-	1, -1000, -1000, -8, -1000,
+	14, -1000, 7, 3, -1000, -6, 14, -1000, 4, -1000,
+	-2, -1000, 5, -6, 11, -10, -1000, -7, -1000, -8,
+	-1000, -4, -1000, 1, -1000, -1000, -9, -1000,
 }
 var yyPgo = []int{
 
-	0, 23, 10, 22, 0, 21, 20, 19, 18,
+	0, 26, 16, 25, 0, 24, 22, 21, 20, 19,
 }
 var yyR1 = []int{
 
-	0, 8, 3, 3, 3, 2, 1, 5, 5, 5,
-	4, 4, 6, 6, 7, 7,
+	0, 9, 3, 3, 3, 2, 1, 5, 5, 5,
+	4, 4, 6, 6, 7, 7, 8, 8,
 }
 var yyR2 = []int{
 
-	0, 1, 0, 2, 3, 1, 3, 0, 1, 3,
-	3, 4, 0, 3, 1, 3,
+	0, 1, 0, 2, 3, 1, 4, 0, 1, 3,
+	3, 4, 0, 3, 1, 3, 0, 2,
 }
 var yyChk = []int{
 
-	-1000, -8, -3, -2, -1, 4, 7, 7, -5, -4,
-	11, -2, -6, 8, 5, 9, -4, 6, 10, 11,
-	-7, 11, 10, 8, 11,
+	-1000, -9, -3, -2, -1, 4, 8, 8, -5, -4,
+	12, -2, -6, 9, 5, 10, -8, 7, -4, 6,
+	11, 12, 12, -7, 12, 11, 9, 12,
 }
 var yyDef = []int{
 
 	2, -2, 1, 0, 5, 7, 0, 3, 12, 8,
-	0, 4, 6, 0, 0, 0, 9, 0, 10, 0,
-	13, 14, 11, 0, 15,
+	0, 4, 16, 0, 0, 0, 6, 0, 9, 0,
+	10, 0, 17, 13, 14, 11, 0, 15,
 }
 var yyTok1 = []int{
 
@@ -128,6 +130,7 @@ var yyTok1 = []int{
 var yyTok2 = []int{
 
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+	12,
 }
 var yyTok3 = []int{
 	0,
@@ -359,86 +362,97 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		//line parser.y:40
+		//line parser.y:41
 		{
 			l := yylex.(*yylexer)
 			l.query.Statements = yyS[yypt-0].statements
 		}
 	case 2:
-		//line parser.y:48
+		//line parser.y:49
 		{
 			yyVAL.statements = make(Statements, 0)
 		}
 	case 3:
-		//line parser.y:52
+		//line parser.y:53
 		{
 			yyVAL.statements = make(Statements, 0)
 			yyVAL.statements = append(yyVAL.statements, yyS[yypt-1].statement)
 		}
 	case 4:
-		//line parser.y:57
+		//line parser.y:58
 		{
 			yyVAL.statements = append(yyS[yypt-2].statements, yyS[yypt-0].statement)
 		}
 	case 5:
-		//line parser.y:63
+		//line parser.y:64
 		{
 			yyVAL.statement = Statement(yyS[yypt-0].selection)
 		}
 	case 6:
-		//line parser.y:68
+		//line parser.y:69
 		{
 			l := yylex.(*yylexer)
 			yyVAL.selection = NewSelection(l.query)
-			yyVAL.selection.Fields = yyS[yypt-1].selection_fields
-			yyVAL.selection.Dimensions = yyS[yypt-0].strs
+			yyVAL.selection.Fields = yyS[yypt-2].selection_fields
+			yyVAL.selection.Dimensions = yyS[yypt-1].strs
+			yyVAL.selection.Name = yyS[yypt-0].str
 		}
 	case 7:
-		//line parser.y:78
+		//line parser.y:80
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 		}
 	case 8:
-		//line parser.y:82
+		//line parser.y:84
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 			yyVAL.selection_fields = append(yyVAL.selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 9:
-		//line parser.y:87
+		//line parser.y:89
 		{
 			yyVAL.selection_fields = append(yyS[yypt-2].selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 10:
-		//line parser.y:94
+		//line parser.y:96
 		{
 			yyVAL.selection_field = NewSelectionField("", yyS[yypt-2].str)
 		}
 	case 11:
-		//line parser.y:98
+		//line parser.y:100
 		{
 			yyVAL.selection_field = NewSelectionField(yyS[yypt-1].str, yyS[yypt-3].str)
 		}
 	case 12:
-		//line parser.y:105
+		//line parser.y:107
 		{
 			yyVAL.strs = make([]string, 0)
 		}
 	case 13:
-		//line parser.y:109
+		//line parser.y:111
 		{
 			yyVAL.strs = yyS[yypt-0].strs
 		}
 	case 14:
-		//line parser.y:116
+		//line parser.y:118
 		{
 			yyVAL.strs = make([]string, 0)
 			yyVAL.strs = append(yyVAL.strs, yyS[yypt-0].str)
 		}
 	case 15:
-		//line parser.y:121
+		//line parser.y:123
 		{
 			yyVAL.strs = append(yyS[yypt-2].strs, yyS[yypt-0].str)
+		}
+	case 16:
+		//line parser.y:130
+		{
+			yyVAL.str = ""
+		}
+	case 17:
+		//line parser.y:134
+		{
+			yyVAL.str = yyS[yypt-0].str
 		}
 	}
 	goto yystack /* stack new state and value */

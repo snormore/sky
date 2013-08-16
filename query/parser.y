@@ -22,7 +22,7 @@ import (
     selection_fields []*SelectionField
 }
 
-%token <token> TSELECT, TGROUP, TBY
+%token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN
 %token <str> TIDENT
 
@@ -32,6 +32,7 @@ import (
 %type <selection_field> selection_field
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
+%type <str> selection_name
 
 %%
 
@@ -64,12 +65,13 @@ statement :
 ;
 
 selection :
-    TSELECT selection_fields selection_group_by
+    TSELECT selection_fields selection_group_by selection_name
     {
         l := yylex.(*yylexer)
         $$ = NewSelection(l.query)
         $$.Fields = $2
         $$.Dimensions = $3
+        $$.Name = $4
     }
 ;
 
@@ -120,6 +122,17 @@ selection_dimensions :
 |   selection_dimensions TCOMMA TIDENT
     {
         $$ = append($1, $3)
+    }
+;
+
+selection_name :
+    /* empty */
+    {
+        $$ = ""
+    }
+|   TINTO TIDENT
+    {
+        $$ = $2
     }
 ;
 

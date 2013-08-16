@@ -354,6 +354,9 @@ func (s *Selection) String() string {
 	if len(s.Dimensions) > 0 {
 		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
 	}
+	if s.Name != "" {
+		str += " INTO " + s.Name
+	}
 	str += ";"
 	return str
 }
