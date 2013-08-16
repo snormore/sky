@@ -3,11 +3,8 @@ state 0
 	$accept: .query $end 
 	statements: .    (2)
 
-	TSELECT  shift 5
-	.  reduce 2 (src line 47)
+	.  reduce 2 (src line 53)
 
-	selection  goto 4
-	statement  goto 3
 	statements  goto 2
 	query  goto 1
 
@@ -20,202 +17,283 @@ state 1
 
 state 2
 	query:  statements.    (1)
-	statements:  statements.TSEMICOLON statement 
+	statements:  statements.statement 
 
-	TSEMICOLON  shift 6
-	.  reduce 1 (src line 39)
+	TSELECT  shift 6
+	TWHEN  shift 7
+	.  reduce 1 (src line 45)
 
+	selection  goto 4
+	statement  goto 3
+	condition  goto 5
 
 state 3
-	statements:  statement.TSEMICOLON 
+	statements:  statements statement.    (3)
 
-	TSEMICOLON  shift 7
-	.  error
+	.  reduce 3 (src line 58)
 
 
 state 4
-	statement:  selection.    (5)
+	statement:  selection.    (4)
 
-	.  reduce 5 (src line 63)
+	.  reduce 4 (src line 64)
 
 
 state 5
-	selection:  TSELECT.selection_fields selection_group_by selection_name 
+	statement:  condition.    (5)
+
+	.  reduce 5 (src line 69)
+
+
+state 6
+	selection:  TSELECT.selection_fields selection_group_by selection_name TSEMICOLON 
 	selection_fields: .    (7)
 
 	TIDENT  shift 10
-	.  reduce 7 (src line 78)
+	.  reduce 7 (src line 86)
 
 	selection_field  goto 9
 	selection_fields  goto 8
 
-state 6
-	statements:  statements TSEMICOLON.statement 
-
-	TSELECT  shift 5
-	.  error
-
-	selection  goto 4
-	statement  goto 11
-
 state 7
-	statements:  statement TSEMICOLON.    (3)
+	condition:  TWHEN.conditionals TTHEN statements TEND 
+	conditionals: .    (19)
 
-	.  reduce 3 (src line 52)
+	TIDENT  shift 13
+	.  reduce 19 (src line 157)
 
+	conditionals  goto 11
+	conditional  goto 12
 
 state 8
-	selection:  TSELECT selection_fields.selection_group_by selection_name 
+	selection:  TSELECT selection_fields.selection_group_by selection_name TSEMICOLON 
 	selection_fields:  selection_fields.TCOMMA selection_field 
 	selection_group_by: .    (12)
 
-	TGROUP  shift 14
-	TCOMMA  shift 13
-	.  reduce 12 (src line 105)
+	TGROUP  shift 16
+	TCOMMA  shift 15
+	.  reduce 12 (src line 113)
 
-	selection_group_by  goto 12
+	selection_group_by  goto 14
 
 state 9
 	selection_fields:  selection_field.    (8)
 
-	.  reduce 8 (src line 83)
+	.  reduce 8 (src line 91)
 
 
 state 10
 	selection_field:  TIDENT.TLPAREN TRPAREN 
 	selection_field:  TIDENT.TLPAREN TIDENT TRPAREN 
 
-	TLPAREN  shift 15
+	TLPAREN  shift 17
 	.  error
 
 
 state 11
-	statements:  statements TSEMICOLON statement.    (4)
+	condition:  TWHEN conditionals.TTHEN statements TEND 
+	conditionals:  conditionals.TAND conditional 
 
-	.  reduce 4 (src line 57)
+	TTHEN  shift 18
+	TAND  shift 19
+	.  error
 
 
 state 12
-	selection:  TSELECT selection_fields selection_group_by.selection_name 
-	selection_name: .    (16)
+	conditionals:  conditional.    (20)
 
-	TINTO  shift 17
-	.  reduce 16 (src line 128)
+	.  reduce 20 (src line 162)
 
-	selection_name  goto 16
 
 state 13
+	conditional:  TIDENT.TEQUALS TSTRING 
+
+	TEQUALS  shift 20
+	.  error
+
+
+state 14
+	selection:  TSELECT selection_fields selection_group_by.selection_name TSEMICOLON 
+	selection_name: .    (16)
+
+	TINTO  shift 22
+	.  reduce 16 (src line 136)
+
+	selection_name  goto 21
+
+state 15
 	selection_fields:  selection_fields TCOMMA.selection_field 
 
 	TIDENT  shift 10
 	.  error
 
-	selection_field  goto 18
-
-state 14
-	selection_group_by:  TGROUP.TBY selection_dimensions 
-
-	TBY  shift 19
-	.  error
-
-
-state 15
-	selection_field:  TIDENT TLPAREN.TRPAREN 
-	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
-
-	TRPAREN  shift 20
-	TIDENT  shift 21
-	.  error
-
+	selection_field  goto 23
 
 state 16
-	selection:  TSELECT selection_fields selection_group_by selection_name.    (6)
+	selection_group_by:  TGROUP.TBY selection_dimensions 
 
-	.  reduce 6 (src line 67)
+	TBY  shift 24
+	.  error
 
 
 state 17
-	selection_name:  TINTO.TSTRING 
+	selection_field:  TIDENT TLPAREN.TRPAREN 
+	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
 
-	TSTRING  shift 22
+	TRPAREN  shift 25
+	TIDENT  shift 26
 	.  error
 
 
 state 18
-	selection_fields:  selection_fields TCOMMA selection_field.    (9)
+	condition:  TWHEN conditionals TTHEN.statements TEND 
+	statements: .    (2)
 
-	.  reduce 9 (src line 88)
+	.  reduce 2 (src line 53)
 
+	statements  goto 27
 
 state 19
-	selection_group_by:  TGROUP TBY.selection_dimensions 
+	conditionals:  conditionals TAND.conditional 
 
-	TIDENT  shift 24
+	TIDENT  shift 13
 	.  error
 
-	selection_dimensions  goto 23
+	conditional  goto 28
 
 state 20
-	selection_field:  TIDENT TLPAREN TRPAREN.    (10)
+	conditional:  TIDENT TEQUALS.TSTRING 
 
-	.  reduce 10 (src line 94)
+	TSTRING  shift 29
+	.  error
 
 
 state 21
-	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
+	selection:  TSELECT selection_fields selection_group_by selection_name.TSEMICOLON 
 
-	TRPAREN  shift 25
+	TSEMICOLON  shift 30
 	.  error
 
 
 state 22
-	selection_name:  TINTO TSTRING.    (17)
+	selection_name:  TINTO.TSTRING 
 
-	.  reduce 17 (src line 133)
+	TSTRING  shift 31
+	.  error
 
 
 state 23
-	selection_group_by:  TGROUP TBY selection_dimensions.    (13)
-	selection_dimensions:  selection_dimensions.TCOMMA TIDENT 
+	selection_fields:  selection_fields TCOMMA selection_field.    (9)
 
-	TCOMMA  shift 26
-	.  reduce 13 (src line 110)
+	.  reduce 9 (src line 96)
 
 
 state 24
-	selection_dimensions:  TIDENT.    (14)
+	selection_group_by:  TGROUP TBY.selection_dimensions 
 
-	.  reduce 14 (src line 116)
+	TIDENT  shift 33
+	.  error
 
+	selection_dimensions  goto 32
 
 state 25
-	selection_field:  TIDENT TLPAREN TIDENT TRPAREN.    (11)
+	selection_field:  TIDENT TLPAREN TRPAREN.    (10)
 
-	.  reduce 11 (src line 99)
+	.  reduce 10 (src line 102)
 
 
 state 26
-	selection_dimensions:  selection_dimensions TCOMMA.TIDENT 
+	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
 
-	TIDENT  shift 27
+	TRPAREN  shift 34
 	.  error
 
 
 state 27
+	statements:  statements.statement 
+	condition:  TWHEN conditionals TTHEN statements.TEND 
+
+	TSELECT  shift 6
+	TWHEN  shift 7
+	TEND  shift 35
+	.  error
+
+	selection  goto 4
+	statement  goto 3
+	condition  goto 5
+
+state 28
+	conditionals:  conditionals TAND conditional.    (21)
+
+	.  reduce 21 (src line 166)
+
+
+state 29
+	conditional:  TIDENT TEQUALS TSTRING.    (22)
+
+	.  reduce 22 (src line 172)
+
+
+state 30
+	selection:  TSELECT selection_fields selection_group_by selection_name TSEMICOLON.    (6)
+
+	.  reduce 6 (src line 75)
+
+
+state 31
+	selection_name:  TINTO TSTRING.    (17)
+
+	.  reduce 17 (src line 141)
+
+
+state 32
+	selection_group_by:  TGROUP TBY selection_dimensions.    (13)
+	selection_dimensions:  selection_dimensions.TCOMMA TIDENT 
+
+	TCOMMA  shift 36
+	.  reduce 13 (src line 118)
+
+
+state 33
+	selection_dimensions:  TIDENT.    (14)
+
+	.  reduce 14 (src line 124)
+
+
+state 34
+	selection_field:  TIDENT TLPAREN TIDENT TRPAREN.    (11)
+
+	.  reduce 11 (src line 107)
+
+
+state 35
+	condition:  TWHEN conditionals TTHEN statements TEND.    (18)
+
+	.  reduce 18 (src line 147)
+
+
+state 36
+	selection_dimensions:  selection_dimensions TCOMMA.TIDENT 
+
+	TIDENT  shift 37
+	.  error
+
+
+state 37
 	selection_dimensions:  selection_dimensions TCOMMA TIDENT.    (15)
 
-	.  reduce 15 (src line 122)
+	.  reduce 15 (src line 130)
 
 
-13 terminals, 10 nonterminals
-18 grammar rules, 28/2000 states
+19 terminals, 13 nonterminals
+23 grammar rules, 38/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-59 working sets used
-memory: parser 11/30000
-21 extra closures
-18 shift entries, 1 exceptions
-11 goto entries
-1 entries saved by goto default
-Optimizer space used: output 27/30000
-27 table entries, 0 zero
-maximum spread: 13, maximum offset: 13
+62 working sets used
+memory: parser 14/30000
+13 extra closures
+26 shift entries, 1 exceptions
+15 goto entries
+3 entries saved by goto default
+Optimizer space used: output 39/30000
+39 table entries, 0 zero
+maximum spread: 19, maximum offset: 19

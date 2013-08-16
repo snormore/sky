@@ -351,5 +351,12 @@ func (c *Condition) RequiresInitialization() bool {
 
 // Converts the condition to a string-based representation.
 func (c *Condition) String() string {
-	return ""
+	str := "WHEN"
+	if str != "" {
+		str += " " + c.Expression
+	}
+	str += " THEN\n"
+	str += regexp.MustCompile(`^`).ReplaceAllString(c.Statements.String(), "  ") + "\n"
+	str += "END"
+	return str
 }

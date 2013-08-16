@@ -20,10 +20,13 @@ import (
     selection *Selection
     selection_field *SelectionField
     selection_fields []*SelectionField
+    condition *Condition
 }
 
 %token <token> TSELECT, TGROUP, TBY, TINTO
+%token <token> TWHEN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN
+%token <token> TEQUALS, TAND, TOR
 %token <str> TIDENT, TSTRING
 
 %type <selection> selection
@@ -33,6 +36,9 @@ import (
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
 %type <str> selection_name
+
+%type <condition> condition
+%type <str> conditionals conditional
 
 %%
 
@@ -49,23 +55,25 @@ statements :
     {
         $$ = make(Statements, 0)
     }
-|   statement TSEMICOLON
+|   statements statement
     {
-        $$ = make(Statements, 0)
-        $$ = append($$, $1)
-    }
-|   statements TSEMICOLON statement
-    {
-        $$ = append($1, $3)
+        $$ = append($1, $2)
     }
 ;
 
 statement :
-    selection  { $$ = Statement($1) }
+    selection
+    {
+        $$ = Statement($1)
+    }
+|   condition
+    {
+        $$ = Statement($1)
+    }
 ;
 
 selection :
-    TSELECT selection_fields selection_group_by selection_name
+    TSELECT selection_fields selection_group_by selection_name TSEMICOLON
     {
         l := yylex.(*yylexer)
         $$ = NewSelection(l.query)
@@ -133,6 +141,38 @@ selection_name :
 |   TINTO TSTRING
     {
         $$ = $2
+    }
+;
+
+condition :
+    TWHEN conditionals TTHEN statements TEND
+    {
+        l := yylex.(*yylexer)
+        $$ = NewCondition(l.query)
+        $$.Expression = $2
+        $$.Statements = $4
+    }
+;
+
+conditionals :
+    /* empty */
+    {
+        $$ = ""
+    }
+|   conditional
+    {
+        $$ = $1
+    }
+|   conditionals TAND conditional
+    {
+        $$ = $1 + " && " + $3
+    }
+;
+
+conditional :
+    TIDENT TEQUALS TSTRING
+    {
+        $$ = $1 + " == \"" + $3 + "\""
     }
 ;
 

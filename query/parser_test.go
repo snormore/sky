@@ -27,3 +27,11 @@ func TestParserSelectInto(t *testing.T) {
 		t.Fatal("Unexpected:", "'"+query.String()+"'")
 	}
 }
+
+func TestParserCondition(t *testing.T) {
+	str := `WHEN action == "signup" THEN` + "\n" + `  SELECT count();` + "\n" + `END`
+	query := NewParser().ParseString(str)
+	if query.String() != str {
+		t.Fatal("Unexpected:", "'"+query.String()+"'")
+	}
+}
