@@ -4,7 +4,7 @@ state 0
 	statements: .    (2)
 
 	TSELECT  shift 5
-	.  reduce 2 (src line 45)
+	.  reduce 2 (src line 46)
 
 	selection  goto 4
 	statement  goto 3
@@ -23,7 +23,7 @@ state 2
 	statements:  statements.TSEMICOLON statement 
 
 	TSEMICOLON  shift 6
-	.  reduce 1 (src line 37)
+	.  reduce 1 (src line 38)
 
 
 state 3
@@ -36,15 +36,15 @@ state 3
 state 4
 	statement:  selection.    (5)
 
-	.  reduce 5 (src line 61)
+	.  reduce 5 (src line 62)
 
 
 state 5
-	selection:  TSELECT.selection_fields 
+	selection:  TSELECT.selection_fields selection_group_by 
 	selection_fields: .    (7)
 
 	TIDENT  shift 10
-	.  reduce 7 (src line 74)
+	.  reduce 7 (src line 76)
 
 	selection_field  goto 9
 	selection_fields  goto 8
@@ -61,88 +61,139 @@ state 6
 state 7
 	statements:  statement TSEMICOLON.    (3)
 
-	.  reduce 3 (src line 50)
+	.  reduce 3 (src line 51)
 
 
 state 8
-	selection:  TSELECT selection_fields.    (6)
+	selection:  TSELECT selection_fields.selection_group_by 
 	selection_fields:  selection_fields.TCOMMA selection_field 
+	selection_group_by: .    (12)
 
-	TCOMMA  shift 12
-	.  reduce 6 (src line 65)
+	TGROUP  shift 14
+	TCOMMA  shift 13
+	.  reduce 12 (src line 103)
 
+	selection_group_by  goto 12
 
 state 9
 	selection_fields:  selection_field.    (8)
 
-	.  reduce 8 (src line 79)
+	.  reduce 8 (src line 81)
 
 
 state 10
 	selection_field:  TIDENT.TLPAREN TRPAREN 
 	selection_field:  TIDENT.TLPAREN TIDENT TRPAREN 
 
-	TLPAREN  shift 13
+	TLPAREN  shift 15
 	.  error
 
 
 state 11
 	statements:  statements TSEMICOLON statement.    (4)
 
-	.  reduce 4 (src line 55)
+	.  reduce 4 (src line 56)
 
 
 state 12
+	selection:  TSELECT selection_fields selection_group_by.    (6)
+
+	.  reduce 6 (src line 66)
+
+
+state 13
 	selection_fields:  selection_fields TCOMMA.selection_field 
 
 	TIDENT  shift 10
 	.  error
 
-	selection_field  goto 14
-
-state 13
-	selection_field:  TIDENT TLPAREN.TRPAREN 
-	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
-
-	TRPAREN  shift 15
-	TIDENT  shift 16
-	.  error
-
+	selection_field  goto 16
 
 state 14
-	selection_fields:  selection_fields TCOMMA selection_field.    (9)
+	selection_group_by:  TGROUP.TBY selection_dimensions 
 
-	.  reduce 9 (src line 84)
+	TBY  shift 17
+	.  error
 
 
 state 15
-	selection_field:  TIDENT TLPAREN TRPAREN.    (10)
+	selection_field:  TIDENT TLPAREN.TRPAREN 
+	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
 
-	.  reduce 10 (src line 90)
-
-
-state 16
-	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
-
-	TRPAREN  shift 17
+	TRPAREN  shift 18
+	TIDENT  shift 19
 	.  error
 
 
+state 16
+	selection_fields:  selection_fields TCOMMA selection_field.    (9)
+
+	.  reduce 9 (src line 86)
+
+
 state 17
+	selection_group_by:  TGROUP TBY.selection_dimensions 
+
+	TIDENT  shift 21
+	.  error
+
+	selection_dimensions  goto 20
+
+state 18
+	selection_field:  TIDENT TLPAREN TRPAREN.    (10)
+
+	.  reduce 10 (src line 92)
+
+
+state 19
+	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
+
+	TRPAREN  shift 22
+	.  error
+
+
+state 20
+	selection_group_by:  TGROUP TBY selection_dimensions.    (13)
+	selection_dimensions:  selection_dimensions.TCOMMA TIDENT 
+
+	TCOMMA  shift 23
+	.  reduce 13 (src line 108)
+
+
+state 21
+	selection_dimensions:  TIDENT.    (14)
+
+	.  reduce 14 (src line 114)
+
+
+state 22
 	selection_field:  TIDENT TLPAREN TIDENT TRPAREN.    (11)
 
-	.  reduce 11 (src line 95)
+	.  reduce 11 (src line 97)
 
 
-9 terminals, 7 nonterminals
-12 grammar rules, 18/2000 states
+state 23
+	selection_dimensions:  selection_dimensions TCOMMA.TIDENT 
+
+	TIDENT  shift 24
+	.  error
+
+
+state 24
+	selection_dimensions:  selection_dimensions TCOMMA TIDENT.    (15)
+
+	.  reduce 15 (src line 120)
+
+
+11 terminals, 9 nonterminals
+16 grammar rules, 25/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-56 working sets used
-memory: parser 8/30000
-11 extra closures
-11 shift entries, 1 exceptions
-8 goto entries
+58 working sets used
+memory: parser 10/30000
+18 extra closures
+16 shift entries, 1 exceptions
+10 goto entries
 1 entries saved by goto default
-Optimizer space used: output 17/30000
-17 table entries, 0 zero
-maximum spread: 9, maximum offset: 12
+Optimizer space used: output 24/30000
+24 table entries, 0 zero
+maximum spread: 11, maximum offset: 13

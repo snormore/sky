@@ -17,4 +17,3 @@ type Statement interface {
 	RequiresInitialization() bool
 	String() string
 }
-

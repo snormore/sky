@@ -13,6 +13,7 @@ import (
 %union{
     token int
     str string
+    strs []string
     query *Query
     statement Statement
     statements Statements
@@ -21,7 +22,7 @@ import (
     selection_fields []*SelectionField
 }
 
-%token <token> TSELECT
+%token <token> TSELECT, TGROUP, TBY
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN
 %token <str> TIDENT
 
@@ -30,7 +31,7 @@ import (
 %type <statements> statements
 %type <selection_field> selection_field
 %type <selection_fields> selection_fields
-
+%type <strs> selection_group_by, selection_dimensions
 
 %%
 
@@ -63,11 +64,12 @@ statement :
 ;
 
 selection :
-    TSELECT selection_fields
+    TSELECT selection_fields selection_group_by
     {
         l := yylex.(*yylexer)
         $$ = NewSelection(l.query)
         $$.Fields = $2
+        $$.Dimensions = $3
     }
 ;
 
@@ -95,6 +97,29 @@ selection_field :
 |   TIDENT TLPAREN TIDENT TRPAREN
     {
         $$ = NewSelectionField($3, $1)
+    }
+;
+
+selection_group_by :
+    /* empty */
+    {
+        $$ = make([]string, 0)
+    }
+|   TGROUP TBY selection_dimensions
+    {
+        $$ = $3
+    }
+;
+
+selection_dimensions :
+    TIDENT
+    {
+        $$ = make([]string, 0)
+        $$ = append($$, $1)
+    }
+|   selection_dimensions TCOMMA TIDENT
+    {
+        $$ = append($1, $3)
     }
 ;
 
