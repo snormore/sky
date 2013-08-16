@@ -16,8 +16,8 @@ type yySymType struct {
 	token            int
 	str              string
 	query            *Query
-	statement        QueryStep
-	statements       QueryStepList
+	statement        Statement
+	statements       Statements
 	selection        *Selection
 	selection_field  *SelectionField
 	selection_fields []*SelectionField
@@ -353,17 +353,17 @@ yydefault:
 		//line parser.y:39
 		{
 			l := yylex.(*yylexer)
-			l.query.Steps = yyS[yypt-0].statements
+			l.query.Statements = yyS[yypt-0].statements
 		}
 	case 2:
 		//line parser.y:47
 		{
-			yyVAL.statements = make(QueryStepList, 0)
+			yyVAL.statements = make(Statements, 0)
 		}
 	case 3:
 		//line parser.y:51
 		{
-			yyVAL.statements = make(QueryStepList, 0)
+			yyVAL.statements = make(Statements, 0)
 			yyVAL.statements = append(yyVAL.statements, yyS[yypt-1].statement)
 		}
 	case 4:
@@ -374,7 +374,7 @@ yydefault:
 	case 5:
 		//line parser.y:62
 		{
-			yyVAL.statement = QueryStep(yyS[yypt-0].selection)
+			yyVAL.statement = Statement(yyS[yypt-0].selection)
 		}
 	case 6:
 		//line parser.y:67

@@ -18,9 +18,9 @@ import (
 //------------------------------------------------------------------------------
 
 const (
-	Steps    = "steps"
-	Sessions = "sessions"
-	Seconds  = "seconds"
+	UnitSteps    = "steps"
+	UnitSessions = "sessions"
+	UnitSeconds  = "seconds"
 )
 
 //------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ const (
 //
 //------------------------------------------------------------------------------
 
-// A condition step made within a query.
+// A condition statement made within a query.
 type Condition struct {
 	query            *Query
 	id               int
@@ -37,7 +37,7 @@ type Condition struct {
 	WithinRangeStart int
 	WithinRangeEnd   int
 	WithinUnits      string
-	Steps            QueryStepList
+	Statements       Statements
 }
 
 //------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ func NewCondition(query *Query) *Condition {
 		id:               query.NextIdentifier(),
 		WithinRangeStart: 0,
 		WithinRangeEnd:   0,
-		WithinUnits:      Steps,
+		WithinUnits:      UnitSteps,
 	}
 }
 
@@ -81,9 +81,9 @@ func (c *Condition) MergeFunctionName() string {
 	return ""
 }
 
-// Retrieves the child steps.
-func (c *Condition) GetSteps() QueryStepList {
-	return c.Steps
+// Retrieves the child statements.
+func (c *Condition) GetStatements() Statements {
+	return c.Statements
 }
 
 //------------------------------------------------------------------------------
@@ -99,11 +99,11 @@ func (c *Condition) GetSteps() QueryStepList {
 // Encodes a query condition into an untyped map.
 func (c *Condition) Serialize() map[string]interface{} {
 	return map[string]interface{}{
-		"type":        QueryStepTypeCondition,
+		"type":        TypeCondition,
 		"expression":  c.Expression,
 		"within":      []int{c.WithinRangeStart, c.WithinRangeEnd},
 		"withinUnits": c.WithinUnits,
-		"steps":       c.Steps.Serialize(),
+		"statements":  c.Statements.Serialize(),
 	}
 }
 
@@ -112,8 +112,8 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 	if obj == nil {
 		return errors.New("Condition: Unable to deserialize nil.")
 	}
-	if obj["type"] != QueryStepTypeCondition {
-		return fmt.Errorf("Condition: Invalid step type: %v", obj["type"])
+	if obj["type"] != TypeCondition {
+		return fmt.Errorf("Condition: Invalid statement type: %v", obj["type"])
 	}
 
 	// Deserialize "expression".
@@ -151,22 +151,22 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 	// Deserialize "within units".
 	if withinUnits, ok := obj["withinUnits"].(string); ok {
 		switch withinUnits {
-		case Steps, Sessions, Seconds:
+		case UnitSteps, UnitSessions, UnitSeconds:
 			c.WithinUnits = withinUnits
 		default:
 			return fmt.Errorf("Invalid 'within units': %v", withinUnits)
 		}
 	} else {
 		if obj["withinUnits"] == nil {
-			c.WithinUnits = Steps
+			c.WithinUnits = UnitSteps
 		} else {
 			return fmt.Errorf("Invalid 'within units': %v", obj["withinUnits"])
 		}
 	}
 
-	// Deserialize steps.
+	// Deserialize statements.
 	var err error
-	c.Steps, err = DeserializeQueryStepList(obj["steps"], c.query)
+	c.Statements, err = DeserializeStatements(obj["statements"], c.query)
 	if err != nil {
 		return err
 	}
@@ -187,8 +187,8 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 		return "", fmt.Errorf("Condition: Invalid 'within' range: %d..%d", c.WithinRangeStart, c.WithinRangeEnd)
 	}
 
-	// Generate child step functions.
-	str, err := c.Steps.CodegenAggregateFunctions(init)
+	// Generate child statement functions.
+	str, err := c.Statements.CodegenAggregateFunctions(init)
 	if err != nil {
 		return "", err
 	}
@@ -199,11 +199,11 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	if c.WithinRangeStart > 0 {
 		fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
 	}
-	if c.WithinUnits == Steps {
+	if c.WithinUnits == UnitSteps {
 		fmt.Fprintf(buffer, "  index = 0\n")
 	}
 	fmt.Fprintf(buffer, "  repeat\n")
-	if c.WithinUnits == Steps {
+	if c.WithinUnits == UnitSteps {
 		fmt.Fprintf(buffer, "    if index >= %d and index <= %d then\n", c.WithinRangeStart, c.WithinRangeEnd)
 	}
 
@@ -214,15 +214,15 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	}
 	fmt.Fprintf(buffer, "      if %s then\n", expressionCode)
 
-	// Call each step function.
-	for _, step := range c.Steps {
-		fmt.Fprintf(buffer, "        %s(cursor, data)\n", step.FunctionName(init))
+	// Call each statement function.
+	for _, statement := range c.Statements {
+		fmt.Fprintf(buffer, "        %s(cursor, data)\n", statement.FunctionName(init))
 	}
 
 	fmt.Fprintf(buffer, "        return true\n")
 	fmt.Fprintf(buffer, "      end\n")
 	fmt.Fprintf(buffer, "    end\n")
-	if c.WithinUnits == Steps {
+	if c.WithinUnits == UnitSteps {
 		fmt.Fprintf(buffer, "    if index >= %d then break end\n", c.WithinRangeEnd)
 		fmt.Fprintf(buffer, "    index = index + 1\n")
 	}
@@ -239,8 +239,8 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 func (c *Condition) CodegenMergeFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
-	// Generate child step functions.
-	str, err := c.Steps.CodegenMergeFunctions()
+	// Generate child statement functions.
+	str, err := c.Statements.CodegenMergeFunctions()
 	if err != nil {
 		return "", err
 	}
@@ -331,7 +331,7 @@ func (c *Condition) CodegenExpression() (string, error) {
 
 // Converts factorized fields back to their original strings.
 func (c *Condition) Defactorize(data interface{}) error {
-	return c.Steps.Defactorize(data)
+	return c.Statements.Defactorize(data)
 }
 
 //--------------------------------------
@@ -340,7 +340,7 @@ func (c *Condition) Defactorize(data interface{}) error {
 
 // Checks if this condition requires a data structure to be initialized before
 // performing aggregation. This function returns true if any nested query
-// steps require initialization.
+// statements require initialization.
 func (c *Condition) RequiresInitialization() bool {
-	return c.Steps.RequiresInitialization()
+	return c.Statements.RequiresInitialization()
 }

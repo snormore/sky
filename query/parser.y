@@ -14,8 +14,8 @@ import (
     token int
     str string
     query *Query
-    statement QueryStep
-    statements QueryStepList
+    statement Statement
+    statements Statements
     selection *Selection
     selection_field *SelectionField
     selection_fields []*SelectionField
@@ -38,18 +38,18 @@ query :
     statements
     {
         l := yylex.(*yylexer)
-        l.query.Steps = $1
+        l.query.Statements = $1
     }
 ;
 
 statements :
     /* empty */
     {
-        $$ = make(QueryStepList, 0)
+        $$ = make(Statements, 0)
     }
 |   statement TSEMICOLON
     {
-        $$ = make(QueryStepList, 0)
+        $$ = make(Statements, 0)
         $$ = append($$, $1)
     }
 |   statements TSEMICOLON statement
@@ -59,7 +59,7 @@ statements :
 ;
 
 statement :
-    selection  { $$ = QueryStep($1) }
+    selection  { $$ = Statement($1) }
 ;
 
 selection :

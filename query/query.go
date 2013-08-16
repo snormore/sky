@@ -20,9 +20,9 @@ type Query struct {
 	table           *core.Table
 	fdb             *factors.DB
 	sequence        int
-	Prefix          string        `json:"prefix"`
-	Steps           QueryStepList `json:"steps"`
-	SessionIdleTime int           `json:"sessionIdleTime"`
+	Prefix          string     `json:"prefix"`
+	Statements      Statements `json:"statements"`
+	SessionIdleTime int        `json:"sessionIdleTime"`
 }
 
 //------------------------------------------------------------------------------
@@ -34,9 +34,9 @@ type Query struct {
 // NewQuery returns a new query.
 func NewQuery(table *core.Table, fdb *factors.DB) *Query {
 	return &Query{
-		table: table,
-		fdb:   fdb,
-		Steps: make(QueryStepList, 0),
+		table:      table,
+		fdb:        fdb,
+		Statements: make(Statements, 0),
 	}
 }
 
@@ -71,7 +71,7 @@ func (q *Query) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"sessionIdleTime": q.SessionIdleTime,
 		"prefix":          q.Prefix,
-		"steps":           q.Steps.Serialize(),
+		"statements":      q.Statements.Serialize(),
 	}
 	return obj
 }
@@ -94,7 +94,7 @@ func (q *Query) Deserialize(obj map[string]interface{}) error {
 		return fmt.Errorf("Invalid 'sessionIdleTime': %v", obj["sessionIdleTime"])
 	}
 
-	q.Steps, err = DeserializeQueryStepList(obj["steps"], q)
+	q.Statements, err = DeserializeStatements(obj["statements"], q)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (q *Query) Encode(writer io.Writer) error {
 // Decodes a query from JSON.
 func (q *Query) Decode(reader io.Reader) error {
 	// Decode into an untyped object first since we need to determine the
-	// type of steps to create.
+	// type of statements to create.
 	var obj map[string]interface{}
 	decoder := json.NewDecoder(reader)
 	err := decoder.Decode(&obj)
@@ -136,7 +136,7 @@ func (q *Query) Codegen() (string, error) {
 
 	// Generate initialization functions (if necessary).
 	if q.RequiresInitialization() {
-		str, err := q.Steps.CodegenAggregateFunctions(true)
+		str, err := q.Statements.CodegenAggregateFunctions(true)
 		if err != nil {
 			return "", err
 		}
@@ -145,7 +145,7 @@ func (q *Query) Codegen() (string, error) {
 	}
 
 	// Generate aggregation functions.
-	str, err := q.Steps.CodegenAggregateFunctions(false)
+	str, err := q.Statements.CodegenAggregateFunctions(false)
 	if err != nil {
 		return "", err
 	}
@@ -153,7 +153,7 @@ func (q *Query) Codegen() (string, error) {
 	buffer.WriteString(q.CodegenAggregateFunction(false))
 
 	// Generate merge functions.
-	str, err = q.Steps.CodegenMergeFunctions()
+	str, err = q.Statements.CodegenMergeFunctions()
 	if err != nil {
 		return "", err
 	}
@@ -186,9 +186,9 @@ func (q *Query) CodegenAggregateFunction(init bool) string {
 	fmt.Fprintln(buffer, "  while cursor:next_session() do")
 	fmt.Fprintln(buffer, "    while cursor:next() do")
 
-	// Call each step function.
-	for _, step := range q.Steps {
-		fmt.Fprintf(buffer, "      %s(cursor, data)\n", step.FunctionName(init))
+	// Call each statement function.
+	for _, statement := range q.Statements {
+		fmt.Fprintf(buffer, "      %s(cursor, data)\n", statement.FunctionName(init))
 	}
 
 	// End cursor loop.
@@ -208,8 +208,8 @@ func (q *Query) CodegenMergeFunction() string {
 	// Generate the function definition.
 	fmt.Fprintln(buffer, "function merge(results, data)")
 
-	// Call each step function if it has a merge function.
-	fmt.Fprintf(buffer, q.Steps.CodegenMergeInvoke())
+	// Call each statement function if it has a merge function.
+	fmt.Fprintf(buffer, q.Statements.CodegenMergeInvoke())
 
 	// End function.
 	fmt.Fprintln(buffer, "end\n")
@@ -230,7 +230,7 @@ func (q *Query) NextIdentifier() int {
 // Converts factorized results from the aggregate function results to use
 // the appropriate strings.
 func (q *Query) Defactorize(data interface{}) error {
-	return q.Steps.Defactorize(data)
+	return q.Statements.Defactorize(data)
 }
 
 //--------------------------------------
@@ -239,7 +239,7 @@ func (q *Query) Defactorize(data interface{}) error {
 
 // Checks if this query requires a data structure to be initialized before
 // performing aggregation. This function returns true if any nested query
-// steps require initialization.
+// statements require initialization.
 func (q *Query) RequiresInitialization() bool {
-	return q.Steps.RequiresInitialization()
+	return q.Statements.RequiresInitialization()
 }

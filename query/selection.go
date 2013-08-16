@@ -13,7 +13,7 @@ import (
 //
 //------------------------------------------------------------------------------
 
-// A selection step aggregates data in a query.
+// A selection statement aggregates data in a query.
 type Selection struct {
 	query      *Query
 	id         int
@@ -60,9 +60,9 @@ func (s *Selection) MergeFunctionName() string {
 	return fmt.Sprintf("m%d", s.id)
 }
 
-// Retrieves the child steps.
-func (s *Selection) GetSteps() QueryStepList {
-	return []QueryStep{}
+// Retrieves the child statements.
+func (s *Selection) GetStatements() Statements {
+	return []Statement{}
 }
 
 //------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ func (s *Selection) Serialize() map[string]interface{} {
 	}
 
 	obj := map[string]interface{}{
-		"type":       QueryStepTypeSelection,
+		"type":       TypeSelection,
 		"name":       s.Name,
 		"dimensions": s.Dimensions,
 		"fields":     fields,
@@ -96,8 +96,8 @@ func (s *Selection) Deserialize(obj map[string]interface{}) error {
 	if obj == nil {
 		return errors.New("Selection: Unable to deserialize nil.")
 	}
-	if obj["type"] != QueryStepTypeSelection {
-		return fmt.Errorf("Selection: Invalid step type: %v", obj["type"])
+	if obj["type"] != TypeSelection {
+		return fmt.Errorf("Selection: Invalid statement type: %v", obj["type"])
 	}
 
 	// Deserialize "name".
