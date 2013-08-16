@@ -167,3 +167,12 @@ func (f *SelectionField) RequiresInitialization() bool {
 	}
 	return false
 }
+
+//--------------------------------------
+// String
+//--------------------------------------
+
+// Converts the field to a string-based representation.
+func (f *SelectionField) String() string {
+	return fmt.Sprintf("%s(%s)", f.Expression, f.Name)
+}

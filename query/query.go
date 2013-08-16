@@ -243,3 +243,14 @@ func (q *Query) Defactorize(data interface{}) error {
 func (q *Query) RequiresInitialization() bool {
 	return q.Statements.RequiresInitialization()
 }
+
+//--------------------------------------
+// String
+//--------------------------------------
+
+// Convert the query to a string-based representation.
+func (q *Query) String() string {
+	var str string
+	str += q.Statements.String()
+	return str
+}

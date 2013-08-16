@@ -344,3 +344,12 @@ func (c *Condition) Defactorize(data interface{}) error {
 func (c *Condition) RequiresInitialization() bool {
 	return c.Statements.RequiresInitialization()
 }
+
+//--------------------------------------
+// String
+//--------------------------------------
+
+// Converts the condition to a string-based representation.
+func (c *Condition) String() string {
+	return ""
+}

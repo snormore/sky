@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
+	"strings"
 )
 
 //------------------------------------------------------------------------------
@@ -338,4 +339,21 @@ func (s *Selection) RequiresInitialization() bool {
 		}
 	}
 	return false
+}
+
+//--------------------------------------
+// String
+//--------------------------------------
+
+// Converts the statements to a string-based representation.
+func (s *Selection) String() string {
+	str := "SELECT "
+	for _, field := range s.Fields {
+		str += field.String()
+	}
+	if len(s.Dimensions) > 0 {
+		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
+	}
+	str += ";"
+	return str
 }
