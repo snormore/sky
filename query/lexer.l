@@ -65,6 +65,7 @@ func (y *yylexer) Lex(yylval *yySymType) int {
     y.buf = y.buf[:0]
 
 \"(\\.|[^\\"])*\"          return y.quotedstrtoken(yylval, TSTRING);
+\'(\\.|[^\\'])*\'          return y.quotedstrtoken(yylval, TSTRING);
 [0-9]+                     return y.inttoken(yylval, TINT);
 
 "SELECT"                   return y.token(yylval, TSELECT);

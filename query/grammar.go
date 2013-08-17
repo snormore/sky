@@ -104,7 +104,6 @@ const yyErrCode = 2
 const yyMaxDepth = 200
 
 //line grammar.y:264
-
 type within struct {
 	start int
 	end   int
