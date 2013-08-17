@@ -2,12 +2,6 @@
 
 package query
 
-import (
-    "bufio"
-    "bytes"
-    "io"
-)
-
 %}
 
 %union{
@@ -29,14 +23,16 @@ import (
     string_literal *StringLiteral
 }
 
+%token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTEXPRESSION
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
-%token <token> TAND, TOR
+%token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV
 %token <str> TIDENT, TSTRING, TWITHINUNITS
 %token <integer> TINT
 
+%type <query> query
 %type <selection> selection
 %type <statement> statement
 %type <statements> statements
@@ -58,14 +54,37 @@ import (
 %left TEQUALS TNOTEQUALS
 %left TLT TLTE
 %left TGT TGTE
+%left TPLUS TMINUS
+%left TMUL TDIV
+
+%start start
 
 %%
+
+start :
+    TSTARTQUERY query
+    {
+        l := yylex.(*yylexer)
+        l.query = $2
+    }
+|   TSTARTSTATEMENT statement
+    {
+        l := yylex.(*yylexer)
+        l.statement = $2
+    }
+|   TSTARTEXPRESSION expr
+    {
+        l := yylex.(*yylexer)
+        l.expression = $2
+    }
+;
 
 query :
     statements
     {
         l := yylex.(*yylexer)
         l.query.Statements = $1
+        $$ = l.query
     }
 ;
 
@@ -196,6 +215,10 @@ expr :
 |   expr TGTE expr        { $$ = &BinaryExpression{op:OpGreaterThanOrEqualTo, lhs:$1, rhs:$3} }
 |   expr TAND expr        { $$ = &BinaryExpression{op:OpAnd, lhs:$1, rhs:$3} }
 |   expr TOR expr         { $$ = &BinaryExpression{op:OpOr, lhs:$1, rhs:$3} }
+|   expr TPLUS expr       { $$ = &BinaryExpression{op:OpPlus, lhs:$1, rhs:$3} }
+|   expr TMINUS expr      { $$ = &BinaryExpression{op:OpMinus, lhs:$1, rhs:$3} }
+|   expr TMUL expr        { $$ = &BinaryExpression{op:OpMultiply, lhs:$1, rhs:$3} }
+|   expr TDIV expr        { $$ = &BinaryExpression{op:OpDivide, lhs:$1, rhs:$3} }
 |   var_ref               { $$ = Expression($1) }
 |   integer_literal       { $$ = Expression($1) }
 |   string_literal        { $$ = Expression($1) }
@@ -224,23 +247,6 @@ string_literal :
 ;
 
 %%
-
-type Parser struct {
-}
-
-func NewParser() *Parser {
-    return &Parser{}
-}
-
-func (p *Parser) Parse(r io.Reader) *Query {
-    l := newLexer(bufio.NewReader(r))
-    yyParse(l)
-    return l.query
-}
-
-func (p *Parser) ParseString(s string) *Query {
-    return p.Parse(bytes.NewBufferString(s))
-}
 
 type within struct {
     start int

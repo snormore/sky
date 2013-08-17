@@ -48,6 +48,14 @@ func (l *BinaryExpression) String() string {
 		str += " && "
 	case OpOr:
 		str += " || "
+	case OpPlus:
+		str += " + "
+	case OpMinus:
+		str += " - "
+	case OpMultiply:
+		str += " * "
+	case OpDivide:
+		str += " / "
 	default:
 		str += " <missing> "
 	}

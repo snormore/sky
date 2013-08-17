@@ -14,11 +14,18 @@ type yylexer struct{
     empty   bool
     current byte
     index   int
+    startToken int
     query   *Query
+    statement Statement
+    expression Expression
 }
 
-func newLexer(src *bufio.Reader) *yylexer {
-    y := &yylexer{src: src, query:&Query{}}
+func newLexer(src *bufio.Reader, startToken int) *yylexer {
+    y := &yylexer{
+        src: src,
+        startToken:startToken,
+        query: &Query{},
+    }
     y.current, _ = src.ReadByte()
     return y
 }
@@ -36,10 +43,15 @@ func (y *yylexer) getc() byte {
 }
 
 func (y yylexer) Error(e string) {
-    log.Fatal(fmt.Sprintf("[%d] %s", y.index, e))
+    log.Fatal(fmt.Sprintf("[%d] Unexpected: '%c', %s", y.index, y.current, e))
 }
 
 func (y *yylexer) Lex(yylval *yySymType) int {
+    if y.startToken != 0 {
+        token := y.startToken
+        y.startToken = 0
+        return token
+    }
     c := y.current
     if y.empty {
         c, y.empty = y.getc(), false
@@ -72,6 +84,10 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 ">"                        return y.token(yylval,  TGT);
 "&&"                       return y.token(yylval, TAND);
 "||"                       return y.token(yylval, TOR);
+"+"                        return y.token(yylval, TPLUS);
+"-"                        return y.token(yylval, TMINUS);
+"*"                        return y.token(yylval, TMUL);
+"/"                        return y.token(yylval, TDIV);
 ".."                       return y.token(yylval, TRANGE);
 [a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
 ";"                        return y.token(yylval, TSEMICOLON);

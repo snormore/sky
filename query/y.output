@@ -1,100 +1,227 @@
 
 state 0
-	$accept: .query $end 
-	statements: .    (2)
+	$accept: .start $end 
 
-	.  reduce 2 (src line 72)
+	TSTARTQUERY  shift 2
+	TSTARTSTATEMENT  shift 3
+	TSTARTEXPRESSION  shift 4
+	.  error
 
-	statements  goto 2
-	query  goto 1
+	start  goto 1
 
 state 1
-	$accept:  query.$end 
+	$accept:  start.$end 
 
 	$end  accept
 	.  error
 
 
 state 2
-	query:  statements.    (1)
-	statements:  statements.statement 
+	start:  TSTARTQUERY.query 
+	statements: .    (5)
 
-	TSELECT  shift 6
-	TWHEN  shift 7
-	.  reduce 1 (src line 64)
+	.  reduce 5 (src line 91)
 
-	selection  goto 4
-	statement  goto 3
-	condition  goto 5
+	query  goto 5
+	statements  goto 6
 
 state 3
-	statements:  statements statement.    (3)
+	start:  TSTARTSTATEMENT.statement 
 
-	.  reduce 3 (src line 77)
+	TSELECT  shift 10
+	TWHEN  shift 11
+	.  error
 
+	selection  goto 8
+	statement  goto 7
+	condition  goto 9
 
 state 4
-	statement:  selection.    (4)
+	start:  TSTARTEXPRESSION.expr 
 
-	.  reduce 4 (src line 83)
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
+	.  error
 
+	expr  goto 12
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 5
-	statement:  condition.    (5)
+	start:  TSTARTQUERY query.    (1)
 
-	.  reduce 5 (src line 88)
+	.  reduce 1 (src line 64)
 
 
 state 6
-	selection:  TSELECT.selection_fields selection_group_by selection_name TSEMICOLON 
-	selection_fields: .    (7)
+	query:  statements.    (4)
+	statements:  statements.statement 
 
-	TIDENT  shift 10
-	.  reduce 7 (src line 105)
+	TSELECT  shift 10
+	TWHEN  shift 11
+	.  reduce 4 (src line 82)
 
-	selection_field  goto 9
-	selection_fields  goto 8
+	selection  goto 8
+	statement  goto 20
+	condition  goto 9
 
 state 7
-	condition:  TWHEN.expr condition_within TTHEN statements TEND 
+	start:  TSTARTSTATEMENT statement.    (2)
 
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
-	.  error
+	.  reduce 2 (src line 70)
 
-	expr  goto 11
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
 
 state 8
-	selection:  TSELECT selection_fields.selection_group_by selection_name TSEMICOLON 
-	selection_fields:  selection_fields.TCOMMA selection_field 
-	selection_group_by: .    (12)
+	statement:  selection.    (7)
 
-	TGROUP  shift 21
-	TCOMMA  shift 20
-	.  reduce 12 (src line 132)
+	.  reduce 7 (src line 102)
 
-	selection_group_by  goto 19
 
 state 9
-	selection_fields:  selection_field.    (8)
+	statement:  condition.    (8)
 
-	.  reduce 8 (src line 110)
+	.  reduce 8 (src line 107)
 
 
 state 10
+	selection:  TSELECT.selection_fields selection_group_by selection_name TSEMICOLON 
+	selection_fields: .    (10)
+
+	TIDENT  shift 23
+	.  reduce 10 (src line 124)
+
+	selection_field  goto 22
+	selection_fields  goto 21
+
+state 11
+	condition:  TWHEN.expr condition_within TTHEN statements TEND 
+
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
+	.  error
+
+	expr  goto 24
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
+
+state 12
+	start:  TSTARTEXPRESSION expr.    (3)
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
+
+	TEQUALS  shift 25
+	TNOTEQUALS  shift 26
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TAND  shift 31
+	TOR  shift 32
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 3 (src line 75)
+
+
+state 13
+	expr:  var_ref.    (36)
+
+	.  reduce 36 (src line 222)
+
+
+state 14
+	expr:  integer_literal.    (37)
+
+	.  reduce 37 (src line 223)
+
+
+state 15
+	expr:  string_literal.    (38)
+
+	.  reduce 38 (src line 224)
+
+
+state 16
+	expr:  TLPAREN.expr TRPAREN 
+
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
+	.  error
+
+	expr  goto 37
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
+
+state 17
+	var_ref:  TIDENT.    (40)
+
+	.  reduce 40 (src line 228)
+
+
+state 18
+	integer_literal:  TINT.    (41)
+
+	.  reduce 41 (src line 235)
+
+
+state 19
+	string_literal:  TSTRING.    (42)
+
+	.  reduce 42 (src line 242)
+
+
+state 20
+	statements:  statements statement.    (6)
+
+	.  reduce 6 (src line 96)
+
+
+state 21
+	selection:  TSELECT selection_fields.selection_group_by selection_name TSEMICOLON 
+	selection_fields:  selection_fields.TCOMMA selection_field 
+	selection_group_by: .    (15)
+
+	TGROUP  shift 40
+	TCOMMA  shift 39
+	.  reduce 15 (src line 151)
+
+	selection_group_by  goto 38
+
+state 22
+	selection_fields:  selection_field.    (11)
+
+	.  reduce 11 (src line 129)
+
+
+state 23
 	selection_field:  TIDENT.TLPAREN TRPAREN 
 	selection_field:  TIDENT.TLPAREN TIDENT TRPAREN 
 
-	TLPAREN  shift 22
+	TLPAREN  shift 41
 	.  error
 
 
-state 11
+state 24
 	condition:  TWHEN expr.condition_within TTHEN statements TEND 
 	expr:  expr.TEQUALS expr 
 	expr:  expr.TNOTEQUALS expr 
@@ -104,305 +231,199 @@ state 11
 	expr:  expr.TGTE expr 
 	expr:  expr.TAND expr 
 	expr:  expr.TOR expr 
-	condition_within: .    (19)
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
+	condition_within: .    (22)
 
-	TWITHIN  shift 32
-	TEQUALS  shift 24
-	TNOTEQUALS  shift 25
-	TLT  shift 26
-	TLTE  shift 27
-	TGT  shift 28
-	TGTE  shift 29
-	TAND  shift 30
-	TOR  shift 31
-	.  reduce 19 (src line 179)
+	TWITHIN  shift 43
+	TEQUALS  shift 25
+	TNOTEQUALS  shift 26
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TAND  shift 31
+	TOR  shift 32
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 22 (src line 198)
 
-	condition_within  goto 23
-
-state 12
-	expr:  var_ref.    (29)
-
-	.  reduce 29 (src line 199)
-
-
-state 13
-	expr:  integer_literal.    (30)
-
-	.  reduce 30 (src line 200)
-
-
-state 14
-	expr:  string_literal.    (31)
-
-	.  reduce 31 (src line 201)
-
-
-state 15
-	expr:  TLPAREN.expr TRPAREN 
-
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
-	.  error
-
-	expr  goto 33
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
-
-state 16
-	var_ref:  TIDENT.    (33)
-
-	.  reduce 33 (src line 205)
-
-
-state 17
-	integer_literal:  TINT.    (34)
-
-	.  reduce 34 (src line 212)
-
-
-state 18
-	string_literal:  TSTRING.    (35)
-
-	.  reduce 35 (src line 219)
-
-
-state 19
-	selection:  TSELECT selection_fields selection_group_by.selection_name TSEMICOLON 
-	selection_name: .    (16)
-
-	TINTO  shift 35
-	.  reduce 16 (src line 155)
-
-	selection_name  goto 34
-
-state 20
-	selection_fields:  selection_fields TCOMMA.selection_field 
-
-	TIDENT  shift 10
-	.  error
-
-	selection_field  goto 36
-
-state 21
-	selection_group_by:  TGROUP.TBY selection_dimensions 
-
-	TBY  shift 37
-	.  error
-
-
-state 22
-	selection_field:  TIDENT TLPAREN.TRPAREN 
-	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
-
-	TRPAREN  shift 38
-	TIDENT  shift 39
-	.  error
-
-
-state 23
-	condition:  TWHEN expr condition_within.TTHEN statements TEND 
-
-	TTHEN  shift 40
-	.  error
-
-
-state 24
-	expr:  expr TEQUALS.expr 
-
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
-	.  error
-
-	expr  goto 41
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
+	condition_within  goto 42
 
 state 25
-	expr:  expr TNOTEQUALS.expr 
+	expr:  expr TEQUALS.expr 
 
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
-	.  error
-
-	expr  goto 42
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
-
-state 26
-	expr:  expr TLT.expr 
-
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
-	.  error
-
-	expr  goto 43
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
-
-state 27
-	expr:  expr TLTE.expr 
-
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
 	expr  goto 44
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
-state 28
-	expr:  expr TGT.expr 
+state 26
+	expr:  expr TNOTEQUALS.expr 
 
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
 	expr  goto 45
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
-state 29
-	expr:  expr TGTE.expr 
+state 27
+	expr:  expr TLT.expr 
 
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
 	expr  goto 46
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
-state 30
-	expr:  expr TAND.expr 
+state 28
+	expr:  expr TLTE.expr 
 
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
 	expr  goto 47
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
-state 31
-	expr:  expr TOR.expr 
+state 29
+	expr:  expr TGT.expr 
 
-	TLPAREN  shift 15
-	TIDENT  shift 16
-	TSTRING  shift 18
-	TINT  shift 17
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
 	expr  goto 48
-	integer_literal  goto 13
-	string_literal  goto 14
-	var_ref  goto 12
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
+
+state 30
+	expr:  expr TGTE.expr 
+
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
+	.  error
+
+	expr  goto 49
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
+
+state 31
+	expr:  expr TAND.expr 
+
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
+	.  error
+
+	expr  goto 50
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 32
-	condition_within:  TWITHIN.TINT TRANGE TINT TWITHINUNITS 
+	expr:  expr TOR.expr 
 
-	TINT  shift 49
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
+	expr  goto 51
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 33
-	expr:  expr.TEQUALS expr 
-	expr:  expr.TNOTEQUALS expr 
-	expr:  expr.TLT expr 
-	expr:  expr.TLTE expr 
-	expr:  expr.TGT expr 
-	expr:  expr.TGTE expr 
-	expr:  expr.TAND expr 
-	expr:  expr.TOR expr 
-	expr:  TLPAREN expr.TRPAREN 
+	expr:  expr TPLUS.expr 
 
-	TRPAREN  shift 50
-	TEQUALS  shift 24
-	TNOTEQUALS  shift 25
-	TLT  shift 26
-	TLTE  shift 27
-	TGT  shift 28
-	TGTE  shift 29
-	TAND  shift 30
-	TOR  shift 31
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
+	expr  goto 52
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 34
-	selection:  TSELECT selection_fields selection_group_by selection_name.TSEMICOLON 
+	expr:  expr TMINUS.expr 
 
-	TSEMICOLON  shift 51
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
+	expr  goto 53
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 35
-	selection_name:  TINTO.TSTRING 
+	expr:  expr TMUL.expr 
 
-	TSTRING  shift 52
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
 	.  error
 
+	expr  goto 54
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 36
-	selection_fields:  selection_fields TCOMMA selection_field.    (9)
+	expr:  expr TDIV.expr 
 
-	.  reduce 9 (src line 115)
+	TLPAREN  shift 16
+	TIDENT  shift 17
+	TSTRING  shift 19
+	TINT  shift 18
+	.  error
 
+	expr  goto 55
+	integer_literal  goto 14
+	string_literal  goto 15
+	var_ref  goto 13
 
 state 37
-	selection_group_by:  TGROUP TBY.selection_dimensions 
-
-	TIDENT  shift 54
-	.  error
-
-	selection_dimensions  goto 53
-
-state 38
-	selection_field:  TIDENT TLPAREN TRPAREN.    (10)
-
-	.  reduce 10 (src line 121)
-
-
-state 39
-	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
-
-	TRPAREN  shift 55
-	.  error
-
-
-state 40
-	condition:  TWHEN expr condition_within TTHEN.statements TEND 
-	statements: .    (2)
-
-	.  reduce 2 (src line 72)
-
-	statements  goto 56
-
-state 41
 	expr:  expr.TEQUALS expr 
-	expr:  expr TEQUALS expr.    (21)
 	expr:  expr.TNOTEQUALS expr 
 	expr:  expr.TLT expr 
 	expr:  expr.TLTE expr 
@@ -410,90 +431,149 @@ state 41
 	expr:  expr.TGTE expr 
 	expr:  expr.TAND expr 
 	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
+	expr:  TLPAREN expr.TRPAREN 
 
-	TLT  shift 26
-	TLTE  shift 27
-	TGT  shift 28
-	TGTE  shift 29
-	.  reduce 21 (src line 190)
+	TRPAREN  shift 56
+	TEQUALS  shift 25
+	TNOTEQUALS  shift 26
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TAND  shift 31
+	TOR  shift 32
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  error
+
+
+state 38
+	selection:  TSELECT selection_fields selection_group_by.selection_name TSEMICOLON 
+	selection_name: .    (19)
+
+	TINTO  shift 58
+	.  reduce 19 (src line 174)
+
+	selection_name  goto 57
+
+state 39
+	selection_fields:  selection_fields TCOMMA.selection_field 
+
+	TIDENT  shift 23
+	.  error
+
+	selection_field  goto 59
+
+state 40
+	selection_group_by:  TGROUP.TBY selection_dimensions 
+
+	TBY  shift 60
+	.  error
+
+
+state 41
+	selection_field:  TIDENT TLPAREN.TRPAREN 
+	selection_field:  TIDENT TLPAREN.TIDENT TRPAREN 
+
+	TRPAREN  shift 61
+	TIDENT  shift 62
+	.  error
 
 
 state 42
-	expr:  expr.TEQUALS expr 
-	expr:  expr.TNOTEQUALS expr 
-	expr:  expr TNOTEQUALS expr.    (22)
-	expr:  expr.TLT expr 
-	expr:  expr.TLTE expr 
-	expr:  expr.TGT expr 
-	expr:  expr.TGTE expr 
-	expr:  expr.TAND expr 
-	expr:  expr.TOR expr 
+	condition:  TWHEN expr condition_within.TTHEN statements TEND 
 
-	TLT  shift 26
-	TLTE  shift 27
-	TGT  shift 28
-	TGTE  shift 29
-	.  reduce 22 (src line 192)
+	TTHEN  shift 63
+	.  error
 
 
 state 43
-	expr:  expr.TEQUALS expr 
-	expr:  expr.TNOTEQUALS expr 
-	expr:  expr.TLT expr 
-	expr:  expr TLT expr.    (23)
-	expr:  expr.TLTE expr 
-	expr:  expr.TGT expr 
-	expr:  expr.TGTE expr 
-	expr:  expr.TAND expr 
-	expr:  expr.TOR expr 
+	condition_within:  TWITHIN.TINT TRANGE TINT TWITHINUNITS 
 
-	TGT  shift 28
-	TGTE  shift 29
-	.  reduce 23 (src line 193)
+	TINT  shift 64
+	.  error
 
 
 state 44
 	expr:  expr.TEQUALS expr 
+	expr:  expr TEQUALS expr.    (24)
 	expr:  expr.TNOTEQUALS expr 
 	expr:  expr.TLT expr 
 	expr:  expr.TLTE expr 
-	expr:  expr TLTE expr.    (24)
 	expr:  expr.TGT expr 
 	expr:  expr.TGTE expr 
 	expr:  expr.TAND expr 
 	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	TGT  shift 28
-	TGTE  shift 29
-	.  reduce 24 (src line 194)
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 24 (src line 209)
 
 
 state 45
 	expr:  expr.TEQUALS expr 
 	expr:  expr.TNOTEQUALS expr 
+	expr:  expr TNOTEQUALS expr.    (25)
 	expr:  expr.TLT expr 
 	expr:  expr.TLTE expr 
 	expr:  expr.TGT expr 
-	expr:  expr TGT expr.    (25)
 	expr:  expr.TGTE expr 
 	expr:  expr.TAND expr 
 	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	.  reduce 25 (src line 195)
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 25 (src line 211)
 
 
 state 46
 	expr:  expr.TEQUALS expr 
 	expr:  expr.TNOTEQUALS expr 
 	expr:  expr.TLT expr 
+	expr:  expr TLT expr.    (26)
 	expr:  expr.TLTE expr 
 	expr:  expr.TGT expr 
 	expr:  expr.TGTE expr 
-	expr:  expr TGTE expr.    (26)
 	expr:  expr.TAND expr 
 	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	.  reduce 26 (src line 196)
+	TGT  shift 29
+	TGTE  shift 30
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 26 (src line 212)
 
 
 state 47
@@ -501,19 +581,23 @@ state 47
 	expr:  expr.TNOTEQUALS expr 
 	expr:  expr.TLT expr 
 	expr:  expr.TLTE expr 
+	expr:  expr TLTE expr.    (27)
 	expr:  expr.TGT expr 
 	expr:  expr.TGTE expr 
 	expr:  expr.TAND expr 
-	expr:  expr TAND expr.    (27)
 	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	TEQUALS  shift 24
-	TNOTEQUALS  shift 25
-	TLT  shift 26
-	TLTE  shift 27
-	TGT  shift 28
-	TGTE  shift 29
-	.  reduce 27 (src line 197)
+	TGT  shift 29
+	TGTE  shift 30
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 27 (src line 213)
 
 
 state 48
@@ -522,127 +606,332 @@ state 48
 	expr:  expr.TLT expr 
 	expr:  expr.TLTE expr 
 	expr:  expr.TGT expr 
+	expr:  expr TGT expr.    (28)
 	expr:  expr.TGTE expr 
 	expr:  expr.TAND expr 
 	expr:  expr.TOR expr 
-	expr:  expr TOR expr.    (28)
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	TEQUALS  shift 24
-	TNOTEQUALS  shift 25
-	TLT  shift 26
-	TLTE  shift 27
-	TGT  shift 28
-	TGTE  shift 29
-	TAND  shift 30
-	.  reduce 28 (src line 198)
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 28 (src line 214)
 
 
 state 49
-	condition_within:  TWITHIN TINT.TRANGE TINT TWITHINUNITS 
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr TGTE expr.    (29)
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	TRANGE  shift 57
-	.  error
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 29 (src line 215)
 
 
 state 50
-	expr:  TLPAREN expr TRPAREN.    (32)
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr TAND expr.    (30)
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	.  reduce 32 (src line 202)
+	TEQUALS  shift 25
+	TNOTEQUALS  shift 26
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 30 (src line 216)
 
 
 state 51
-	selection:  TSELECT selection_fields selection_group_by selection_name TSEMICOLON.    (6)
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr TOR expr.    (31)
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	.  reduce 6 (src line 94)
+	TEQUALS  shift 25
+	TNOTEQUALS  shift 26
+	TLT  shift 27
+	TLTE  shift 28
+	TGT  shift 29
+	TGTE  shift 30
+	TAND  shift 31
+	TPLUS  shift 33
+	TMINUS  shift 34
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 31 (src line 217)
 
 
 state 52
-	selection_name:  TINTO TSTRING.    (17)
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr TPLUS expr.    (32)
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	.  reduce 17 (src line 160)
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 32 (src line 218)
 
 
 state 53
-	selection_group_by:  TGROUP TBY selection_dimensions.    (13)
-	selection_dimensions:  selection_dimensions.TCOMMA TIDENT 
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr TMINUS expr.    (33)
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
 
-	TCOMMA  shift 58
-	.  reduce 13 (src line 137)
+	TMUL  shift 35
+	TDIV  shift 36
+	.  reduce 33 (src line 219)
 
 
 state 54
-	selection_dimensions:  TIDENT.    (14)
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr TMUL expr.    (34)
+	expr:  expr.TDIV expr 
 
-	.  reduce 14 (src line 143)
+	.  reduce 34 (src line 220)
 
 
 state 55
-	selection_field:  TIDENT TLPAREN TIDENT TRPAREN.    (11)
+	expr:  expr.TEQUALS expr 
+	expr:  expr.TNOTEQUALS expr 
+	expr:  expr.TLT expr 
+	expr:  expr.TLTE expr 
+	expr:  expr.TGT expr 
+	expr:  expr.TGTE expr 
+	expr:  expr.TAND expr 
+	expr:  expr.TOR expr 
+	expr:  expr.TPLUS expr 
+	expr:  expr.TMINUS expr 
+	expr:  expr.TMUL expr 
+	expr:  expr.TDIV expr 
+	expr:  expr TDIV expr.    (35)
 
-	.  reduce 11 (src line 126)
+	.  reduce 35 (src line 221)
 
 
 state 56
-	statements:  statements.statement 
-	condition:  TWHEN expr condition_within TTHEN statements.TEND 
+	expr:  TLPAREN expr TRPAREN.    (39)
 
-	TSELECT  shift 6
-	TWHEN  shift 7
-	TEND  shift 59
-	.  error
+	.  reduce 39 (src line 225)
 
-	selection  goto 4
-	statement  goto 3
-	condition  goto 5
 
 state 57
-	condition_within:  TWITHIN TINT TRANGE.TINT TWITHINUNITS 
+	selection:  TSELECT selection_fields selection_group_by selection_name.TSEMICOLON 
 
-	TINT  shift 60
+	TSEMICOLON  shift 65
 	.  error
 
 
 state 58
-	selection_dimensions:  selection_dimensions TCOMMA.TIDENT 
+	selection_name:  TINTO.TSTRING 
 
-	TIDENT  shift 61
+	TSTRING  shift 66
 	.  error
 
 
 state 59
-	condition:  TWHEN expr condition_within TTHEN statements TEND.    (18)
+	selection_fields:  selection_fields TCOMMA selection_field.    (12)
 
-	.  reduce 18 (src line 166)
+	.  reduce 12 (src line 134)
 
 
 state 60
-	condition_within:  TWITHIN TINT TRANGE TINT.TWITHINUNITS 
+	selection_group_by:  TGROUP TBY.selection_dimensions 
 
-	TWITHINUNITS  shift 62
+	TIDENT  shift 68
 	.  error
 
+	selection_dimensions  goto 67
 
 state 61
-	selection_dimensions:  selection_dimensions TCOMMA TIDENT.    (15)
+	selection_field:  TIDENT TLPAREN TRPAREN.    (13)
 
-	.  reduce 15 (src line 149)
+	.  reduce 13 (src line 140)
 
 
 state 62
-	condition_within:  TWITHIN TINT TRANGE TINT TWITHINUNITS.    (20)
+	selection_field:  TIDENT TLPAREN TIDENT.TRPAREN 
 
-	.  reduce 20 (src line 184)
+	TRPAREN  shift 69
+	.  error
 
 
-28 terminals, 16 nonterminals
-36 grammar rules, 63/2000 states
+state 63
+	condition:  TWHEN expr condition_within TTHEN.statements TEND 
+	statements: .    (5)
+
+	.  reduce 5 (src line 91)
+
+	statements  goto 70
+
+state 64
+	condition_within:  TWITHIN TINT.TRANGE TINT TWITHINUNITS 
+
+	TRANGE  shift 71
+	.  error
+
+
+state 65
+	selection:  TSELECT selection_fields selection_group_by selection_name TSEMICOLON.    (9)
+
+	.  reduce 9 (src line 113)
+
+
+state 66
+	selection_name:  TINTO TSTRING.    (20)
+
+	.  reduce 20 (src line 179)
+
+
+state 67
+	selection_group_by:  TGROUP TBY selection_dimensions.    (16)
+	selection_dimensions:  selection_dimensions.TCOMMA TIDENT 
+
+	TCOMMA  shift 72
+	.  reduce 16 (src line 156)
+
+
+state 68
+	selection_dimensions:  TIDENT.    (17)
+
+	.  reduce 17 (src line 162)
+
+
+state 69
+	selection_field:  TIDENT TLPAREN TIDENT TRPAREN.    (14)
+
+	.  reduce 14 (src line 145)
+
+
+state 70
+	statements:  statements.statement 
+	condition:  TWHEN expr condition_within TTHEN statements.TEND 
+
+	TSELECT  shift 10
+	TWHEN  shift 11
+	TEND  shift 73
+	.  error
+
+	selection  goto 8
+	statement  goto 20
+	condition  goto 9
+
+state 71
+	condition_within:  TWITHIN TINT TRANGE.TINT TWITHINUNITS 
+
+	TINT  shift 74
+	.  error
+
+
+state 72
+	selection_dimensions:  selection_dimensions TCOMMA.TIDENT 
+
+	TIDENT  shift 75
+	.  error
+
+
+state 73
+	condition:  TWHEN expr condition_within TTHEN statements TEND.    (21)
+
+	.  reduce 21 (src line 185)
+
+
+state 74
+	condition_within:  TWITHIN TINT TRANGE TINT.TWITHINUNITS 
+
+	TWITHINUNITS  shift 76
+	.  error
+
+
+state 75
+	selection_dimensions:  selection_dimensions TCOMMA TIDENT.    (18)
+
+	.  reduce 18 (src line 168)
+
+
+state 76
+	condition_within:  TWITHIN TINT TRANGE TINT TWITHINUNITS.    (23)
+
+	.  reduce 23 (src line 203)
+
+
+35 terminals, 17 nonterminals
+43 grammar rules, 77/2000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-65 working sets used
-memory: parser 52/30000
-36 extra closures
-108 shift entries, 1 exceptions
-26 goto entries
-30 entries saved by goto default
-Optimizer space used: output 91/30000
-91 table entries, 0 zero
-maximum spread: 28, maximum offset: 40
+66 working sets used
+memory: parser 76/30000
+44 extra closures
+189 shift entries, 1 exceptions
+33 goto entries
+47 entries saved by goto default
+Optimizer space used: output 143/30000
+143 table entries, 0 zero
+maximum spread: 35, maximum offset: 63
