@@ -76,6 +76,8 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "THEN"                     return y.token(yylval, TTHEN);
 "END"                      return y.token(yylval, TEND);
 (STEPS|SESSIONS)           return y.strtoken(yylval, TWITHINUNITS);
+"true"                     return y.token(yylval, TTRUE);
+"false"                    return y.token(yylval, TFALSE);
 "=="                       return y.token(yylval, TEQUALS);
 "!="                       return y.token(yylval, TNOTEQUALS);
 "<="                       return y.token(yylval,  TLTE);

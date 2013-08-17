@@ -20,6 +20,7 @@ package query
     expr Expression
     var_ref *VarRef
     integer_literal *IntegerLiteral
+    boolean_literal *BooleanLiteral
     string_literal *StringLiteral
 }
 
@@ -29,6 +30,7 @@ package query
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
 %token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV
+%token <token> TTRUE, TFALSE
 %token <str> TIDENT, TSTRING, TWITHINUNITS
 %token <integer> TINT
 
@@ -46,6 +48,7 @@ package query
 
 %type <expr> expr
 %type <integer_literal> integer_literal
+%type <boolean_literal> boolean_literal
 %type <string_literal> string_literal
 %type <var_ref> var_ref
 
@@ -187,7 +190,7 @@ condition :
     {
         l := yylex.(*yylexer)
         $$ = NewCondition(l.query)
-        $$.Expression = $2.String()
+        $$.Expression = $2
         $$.WithinRangeStart = $3.start
         $$.WithinRangeEnd = $3.end
         $$.WithinUnits = $3.units
@@ -221,6 +224,7 @@ expr :
 |   expr TDIV expr        { $$ = &BinaryExpression{op:OpDivide, lhs:$1, rhs:$3} }
 |   var_ref               { $$ = Expression($1) }
 |   integer_literal       { $$ = Expression($1) }
+|   boolean_literal       { $$ = Expression($1) }
 |   string_literal        { $$ = Expression($1) }
 |   TLPAREN expr TRPAREN { $$ = $2 }
 ;
@@ -236,6 +240,17 @@ integer_literal :
     TINT
     {
         $$ = &IntegerLiteral{value:$1}
+    }
+;
+
+boolean_literal :
+    TTRUE
+    {
+        $$ = &BooleanLiteral{value:true}
+    }
+|   TFALSE
+    {
+        $$ = &BooleanLiteral{value:false}
     }
 ;
 

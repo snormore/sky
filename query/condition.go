@@ -21,7 +21,7 @@ const (
 type Condition struct {
 	query            *Query
 	id               int
-	Expression       string
+	Expression       Expression
 	WithinRangeStart int
 	WithinRangeEnd   int
 	WithinUnits      string
@@ -70,7 +70,7 @@ func (c *Condition) GetStatements() Statements {
 func (c *Condition) Serialize() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        TypeCondition,
-		"expression":  c.Expression,
+		"expression":  c.Expression.String(),
 		"within":      []int{c.WithinRangeStart, c.WithinRangeEnd},
 		"withinUnits": c.WithinUnits,
 		"statements":  c.Statements.Serialize(),
@@ -88,10 +88,11 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 
 	// Deserialize "expression".
 	if expression, ok := obj["expression"].(string); ok {
-		c.Expression = expression
+		parser := NewExpressionParser()
+		c.Expression = parser.ParseString(c.query, expression)
 	} else {
 		if obj["expression"] == nil {
-			c.Expression = "true"
+			c.Expression = &BooleanLiteral{value: true}
 		} else {
 			return fmt.Errorf("Invalid 'expression': %v", obj["expression"])
 		}
@@ -221,14 +222,16 @@ func (c *Condition) CodegenMergeFunction() (string, error) {
 
 // Generates Lua code for the expression.
 func (c *Condition) CodegenExpression() (string, error) {
+	str := c.Expression.String()
+
 	// Do not transform simple booleans.
-	if c.Expression == "true" || c.Expression == "false" {
-		return c.Expression, nil
+	if str == "true" || str == "false" {
+		return str, nil
 	}
 
 	// Split out multiple expressions.
 	output := []string{}
-	expressions := strings.Split(c.Expression, "&&")
+	expressions := strings.Split(str, "&&")
 	for _, expression := range expressions {
 		// Full expressions should be prepended with cursor's event reference.
 		r, _ := regexp.Compile(`^ *(\w+) *(==|>|>=|<|<=|!=) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
@@ -323,7 +326,7 @@ func (c *Condition) RequiresInitialization() bool {
 func (c *Condition) String() string {
 	str := "WHEN"
 	if str != "" {
-		str += " " + c.Expression
+		str += " " + c.Expression.String()
 	}
 	if c.WithinRangeStart != 0 || c.WithinRangeStart != 0 || c.WithinUnits != UnitSteps {
 		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, c.WithinUnits)
