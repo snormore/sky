@@ -30,10 +30,10 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 
 	// Run a simple count query.
 	q := query.NewQuery(table, s.fdb)
-	selection := query.NewQuerySelection(q)
-	selection.Fields = append(selection.Fields, query.NewQuerySelectionField("count", "count()"))
+	selection := query.NewSelection(q)
+	selection.Fields = append(selection.Fields, query.NewSelectionField("count", "count()"))
 	q.Prefix = req.FormValue("prefix")
-	q.Steps = append(q.Steps, selection)
+	q.Statements = append(q.Statements, selection)
 
 	return s.RunQuery(table, q)
 }

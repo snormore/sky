@@ -26,7 +26,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
+			"statements":[
 				{"type":"selection","dimensions":[],"fields":[{"name":"count","expression":"count()"}]}
 			]
 		}`
@@ -53,7 +53,7 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
+			"statements":[
 				{"type":"selection","dimensions":["fruit"],"fields":[{"name":"count","expression":"count()"}]}
 			]
 		}`
@@ -84,7 +84,7 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
+			"statements":[
 				{"type":"selection","name":"s1","dimensions":["gender","state"],"fields":[
 					{"name":"count","expression":"count()"},
 					{"name":"sum","expression":"sum(price)"}
@@ -127,9 +127,9 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
-				{"type":"condition","expression":"action == 'A0'","steps":[
-					{"type":"condition","expression":"action == 'A1'","within":[1,2],"steps":[
+			"statements":[
+				{"type":"condition","expression":"action == 'A0'","statements":[
+					{"type":"condition","expression":"action == 'A1'","within":[1,2],"statements":[
 						{"type":"selection","dimensions":["action"],"fields":[{"name":"count","expression":"count()"}]}
 					]}
 				]}
@@ -151,7 +151,7 @@ func TestServerFactorizeOverlappingQueries(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
+			"statements":[
 				{"type":"selection","name":"q","dimensions":["action"],"fields":[{"name":"count1","expression":"count()"}]},
 				{"type":"selection","name":"q","dimensions":["action"],"fields":[{"name":"count2","expression":"count()"}]}
 			]
@@ -178,9 +178,9 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"sessionIdleTime":7200,
-			"steps":[
-				{"type":"condition","expression":"action == 'A0'","steps":[
-					{"type":"condition","expression":"action == 'A1'","within":[1,1],"steps":[
+			"statements":[
+				{"type":"condition","expression":"action == 'A0'","statements":[
+					{"type":"condition","expression":"action == 'A1'","within":[1,1],"statements":[
 						{"type":"selection","dimensions":["action"],"fields":[{"name":"count","expression":"count()"}]}
 					]}
 				]}
@@ -209,8 +209,8 @@ func TestServerTimestampQuery(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
-				{"type":"condition","expression":"timestamp >= 2 && timestamp < 6","steps":[
+			"statements":[
+				{"type":"condition","expression":"timestamp >= 2 && timestamp < 6","statements":[
 					{"type":"selection","dimensions":["action"],"fields":[
 						{"name":"count","expression":"count()"},
 						{"name":"tsSum","expression":"sum(timestamp)"}
@@ -245,7 +245,7 @@ func TestServerHistogramQuery(t *testing.T) {
 
 		// Run query.
 		query := `{
-			"steps":[
+			"statements":[
 				{"type":"selection","dimensions":[],"fields":[{"name":"hist","expression":"histogram(val)"}]}
 			]
 		}`
@@ -270,7 +270,7 @@ func TestServerPrefixQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"prefix":"001",
-			"steps":[
+			"statements":[
 				{"type":"selection","dimensions":[],"fields":[{"name":"totalPrice","expression":"sum(price)"}]}
 			]
 		}`

@@ -220,7 +220,7 @@ func (s *Server) open() error {
 	for _, info := range infos {
 		index, err := strconv.Atoi(info.Name())
 		if info.IsDir() && err == nil && (index+1) > servletCount {
-			servletCount = index+1
+			servletCount = index + 1
 		}
 	}
 
