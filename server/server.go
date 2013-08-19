@@ -220,7 +220,7 @@ func (s *Server) open() error {
 	for _, info := range infos {
 		index, err := strconv.Atoi(info.Name())
 		if info.IsDir() && err == nil && (index+1) > servletCount {
-			servletCount = index+1
+			servletCount = index + 1
 		}
 	}
 
@@ -370,7 +370,7 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 // Servlet Management
 //--------------------------------------
 
-func (s *Server) GetServlet(table *core.Table, objectId string) (*Servlet) {
+func (s *Server) GetServlet(table *core.Table, objectId string) *Servlet {
 	// Determine servlet index.
 	index := s.GetObjectServletIndex(table, objectId)
 	return s.servlets[index]
@@ -378,12 +378,12 @@ func (s *Server) GetServlet(table *core.Table, objectId string) (*Servlet) {
 
 // Retrieves the table and servlet reference for a single object.
 func (s *Server) GetObjectContext(tableName string, objectId string) (*core.Table, *Servlet, error) {
-  table, err := s.OpenTable(tableName)
-  if err != nil {
-    return nil, nil, err
-  }
+	table, err := s.OpenTable(tableName)
+	if err != nil {
+		return nil, nil, err
+	}
 
-  servlet := s.GetServlet(table, objectId)
+	servlet := s.GetServlet(table, objectId)
 
 	return table, servlet, nil
 }

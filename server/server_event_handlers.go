@@ -157,14 +157,14 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 	vars := mux.Vars(req)
 	t0 := time.Now()
 
-  table, err := s.OpenTable(vars["name"])
-  if err != nil {
+	table, err := s.OpenTable(vars["name"])
+	if err != nil {
 		s.logger.Printf("ERR %v", err)
 		fmt.Fprintf(w, `{"message":"%v"}`, err)
-    return
-  }
+		return
+	}
 
-  queue := make(map[*Servlet]map[string][]*core.Event)
+	queue := make(map[*Servlet]map[string][]*core.Event)
 
 	events_written := 0
 	err = func() error {
@@ -199,34 +199,34 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 				return fmt.Errorf("Cannot factorize: %v", err)
 			}
 
-      if queue[servlet] == nil {
-        queue[servlet] = make(map[string][]*core.Event)
-      }
-      queue[servlet][objectId] = append(queue[servlet][objectId], event)
+			if queue[servlet] == nil {
+				queue[servlet] = make(map[string][]*core.Event)
+			}
+			queue[servlet][objectId] = append(queue[servlet][objectId], event)
 		}
 
 		return nil
 	}()
 
-  if err == nil {
-    err = func() error {
-      count := 0
-      for servlet, objects := range queue {
-        if count, err = servlet.PutObjects(table, objects, false); err != nil {
-          return fmt.Errorf("Cannot put event: %v", err)
-        }
-        events_written += count
-      }
-      return nil
-    }()
-  }
+	if err == nil {
+		err = func() error {
+			count := 0
+			for servlet, objects := range queue {
+				if count, err = servlet.PutObjects(table, objects, false); err != nil {
+					return fmt.Errorf("Cannot put event: %v", err)
+				}
+				events_written += count
+			}
+			return nil
+		}()
+	}
 
 	if err != nil {
 		s.logger.Printf("ERR %v", err)
 		fmt.Fprintf(w, `{"message":"%v"}`, err)
 	}
 
-  fmt.Fprintf(w, `{"events_written":%u}`, events_written)
+	fmt.Fprintf(w, `{"events_written":%v}`, events_written)
 
 	s.logger.Printf("%s \"%s %s %s %d events OK\" %0.3f", req.RemoteAddr, req.Method, req.URL.Path, req.Proto, events_written, time.Since(t0).Seconds())
 }

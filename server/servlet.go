@@ -143,18 +143,18 @@ func (s *Servlet) Unlock() {
 //--------------------------------------
 
 // Adds many events, in many objects, into a table
-func (s *Servlet) PutObjects(table *core.Table, objects map[string][]*core.Event, replace bool) (int,error) {
-  s.Lock()
-  defer s.Unlock()
-  count := 0
-  for objectId, events := range objects {
-    err := s.PutEvents(table, objectId, events, replace, true)
-    if err != nil {
-      return 0, err
-    }
-    count += len(events)
-  }
-  return count, nil
+func (s *Servlet) PutObjects(table *core.Table, objects map[string][]*core.Event, replace bool) (int, error) {
+	s.Lock()
+	defer s.Unlock()
+	count := 0
+	for objectId, events := range objects {
+		err := s.PutEvents(table, objectId, events, replace, true)
+		if err != nil {
+			return 0, err
+		}
+		count += len(events)
+	}
+	return count, nil
 }
 
 // Adds an event for a given object in a table to a servlet.
@@ -164,10 +164,10 @@ func (s *Servlet) PutEvent(table *core.Table, objectId string, event *core.Event
 
 // Inserts multiple events for a given object.
 func (s *Servlet) PutEvents(table *core.Table, objectId string, newEvents []*core.Event, replace bool, already_locked bool) error {
-  if already_locked == false {
-  	s.Lock()
-  	defer s.Unlock()
-  }
+	if already_locked == false {
+		s.Lock()
+		defer s.Unlock()
+	}
 
 	// Make sure the servlet is open.
 	if s.env == nil {
