@@ -175,5 +175,5 @@ func (f *SelectionField) RequiresInitialization() bool {
 
 // Converts the field to a string-based representation.
 func (f *SelectionField) String() string {
-	return fmt.Sprintf("%s(%s)", f.Expression, f.Name)
+	return fmt.Sprintf("%s AS %s", f.Expression, f.Name)
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -104,7 +105,11 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 	// Deserialize "expression".
 	if expression, ok := obj["expression"].(string); ok {
 		parser := NewExpressionParser()
-		c.SetExpression(parser.ParseString(expression))
+		expr, err := parser.ParseString(expression)
+		if err != nil {
+			return err
+		}
+		c.SetExpression(expr)
 	} else {
 		if obj["expression"] == nil {
 			c.SetExpression(&BooleanLiteral{value: true})
@@ -266,7 +271,7 @@ func (c *Condition) String() string {
 		str += " " + c.expression.String()
 	}
 	if c.WithinRangeStart != 0 || c.WithinRangeStart != 0 || c.WithinUnits != UnitSteps {
-		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, c.WithinUnits)
+		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, strings.ToUpper(c.WithinUnits))
 	}
 	str += " THEN\n"
 	str += regexp.MustCompile(`^`).ReplaceAllString(c.statements.String(), "  ") + "\n"

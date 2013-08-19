@@ -13,13 +13,12 @@ func NewStatementParser() *StatementParser {
 	return &StatementParser{}
 }
 
-func (p *StatementParser) Parse(query *Query, r io.Reader) Statement {
+func (p *StatementParser) Parse(r io.Reader) (Statement, error) {
 	l := newLexer(bufio.NewReader(r), TSTARTSTATEMENT)
-	l.query = query
 	yyParse(l)
-	return l.statement
+	return l.statement, l.err
 }
 
-func (p *StatementParser) ParseString(query *Query, s string) Statement {
-	return p.Parse(query, bytes.NewBufferString(s))
+func (p *StatementParser) ParseString(s string) (Statement, error) {
+	return p.Parse(bytes.NewBufferString(s))
 }

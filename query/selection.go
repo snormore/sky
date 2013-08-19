@@ -328,9 +328,13 @@ func (s *Selection) RequiresInitialization() bool {
 // Converts the statements to a string-based representation.
 func (s *Selection) String() string {
 	str := "SELECT "
+
+	arr := []string{}
 	for _, field := range s.fields {
-		str += field.String()
+		arr = append(arr, field.String())
 	}
+	str += strings.Join(arr, ", ")
+
 	if len(s.Dimensions) > 0 {
 		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
 	}

@@ -25,7 +25,7 @@ package query
 }
 
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTEXPRESSION
-%token <token> TSELECT, TGROUP, TBY, TINTO
+%token <token> TSELECT, TGROUP, TBY, TINTO, TAS
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
@@ -85,9 +85,8 @@ start :
 query :
     statements
     {
-        l := yylex.(*yylexer)
-        l.query.SetStatements($1)
-        $$ = l.query
+        $$ = &Query{}
+        $$.SetStatements($1)
     }
 ;
 
@@ -140,13 +139,13 @@ selection_fields :
 ;
 
 selection_field :
-    TIDENT TLPAREN TRPAREN
+    TIDENT TLPAREN TRPAREN TAS TIDENT
     {
-        $$ = NewSelectionField("", $1)
+        $$ = NewSelectionField($5, $1 + "()")
     }
-|   TIDENT TLPAREN TIDENT TRPAREN
+|   TIDENT TLPAREN TIDENT TRPAREN TAS TIDENT
     {
-        $$ = NewSelectionField($3, $1)
+        $$ = NewSelectionField($6, $1 + "(" + $3 + ")")
     }
 ;
 
@@ -199,11 +198,19 @@ condition :
 condition_within :
     /* empty */
     {
-        $$ = &within{start:0, end:0, units:"steps"}
+        $$ = &within{start:0, end:0, units:UnitSteps}
     }
 |   TWITHIN TINT TRANGE TINT TWITHINUNITS
     {
-        $$ = &within{start:$2, end:$4, units:$5}
+        $$ = &within{start:$2, end:$4}
+        switch $5 {
+        case "STEPS":
+            $$.units = UnitSteps
+        case "SESSIONS":
+            $$.units = UnitSessions
+        case "SECONDS":
+            $$.units = UnitSeconds
+        }
     }
 ;
 
@@ -266,3 +273,4 @@ type within struct {
     end int
     units string
 }
+

@@ -29,12 +29,10 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 	}
 
 	// Run a simple count query.
-	q := query.NewQuery(table, s.fdb)
-	selection := query.NewSelection()
-	selection.SetParent(q)
-	selection.SetFields([]*query.SelectionField{query.NewSelectionField("count", "count()")})
+	q, _ := query.NewParser().ParseString("SELECT count() AS count;")
 	q.Prefix = req.FormValue("prefix")
-	q.SetStatements([]query.Statement{selection})
+	q.SetTable(table)
+	q.SetFdb(s.fdb)
 
 	return s.RunQuery(table, q)
 }
@@ -50,11 +48,12 @@ func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params m
 	}
 
 	// Deserialize the query.
-	q := query.NewQuery(table, s.fdb)
-	err = q.Deserialize(params)
-	if err != nil {
+	q := query.NewQuery()
+	if err = q.Deserialize(params); err != nil {
 		return nil, err
 	}
+	q.SetTable(table)
+	q.SetFdb(s.fdb)
 
 	return s.RunQuery(table, q)
 }
@@ -63,8 +62,6 @@ func (s *Server) queryHandler(w http.ResponseWriter, req *http.Request, params m
 func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
 
-	// Retrieve table and codegen query.
-	var source string
 	// Return an error if the table already exists.
 	table, err := s.OpenTable(vars["name"])
 	if err != nil {
@@ -72,15 +69,15 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 	}
 
 	// Deserialize the query.
-	q := query.NewQuery(table, s.fdb)
-	err = q.Deserialize(params)
-	if err != nil {
+	q := query.NewQuery()
+	if err = q.Deserialize(params); err != nil {
 		return nil, err
 	}
+	q.SetTable(table)
+	q.SetFdb(s.fdb)
 
 	// Generate the query source code.
-	source, err = q.Codegen()
-	//fmt.Println(source)
-
+	source, err := q.Codegen()
 	return source, &TextPlainContentTypeError{}
 }
+

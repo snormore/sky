@@ -25,11 +25,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"selection","dimensions":[],"fields":[{"name":"count","expression":"count()"}]}
-			]
-		}`
+		query := `{"content":"SELECT count() AS count;"}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"count":5}`+"\n", "POST /tables/:name/query failed.")
 		resp, _ = sendTestHttpRequest("POST", "http://localhost:8586/tables/bar/query", "application/json", query)
@@ -52,11 +48,7 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"selection","dimensions":["fruit"],"fields":[{"name":"count","expression":"count()"}]}
-			]
-		}`
+		query := `{"content":"SELECT count() AS count GROUP BY fruit;"}`
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"fruit":{"":{"count":1},"apple":{"count":2},"grape":{"count":1},"orange":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
@@ -83,18 +75,10 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"selection","name":"s1","dimensions":["gender","state"],"fields":[
-					{"name":"count","expression":"count()"},
-					{"name":"sum","expression":"sum(price)"}
-				]},
-				{"type":"selection","dimensions":["gender","state"],"fields":[
-					{"name":"minimum","expression":"min(price)"},
-					{"name":"maximum","expression":"max(price)"}
-				]}
-			]
-		}`
+		query := `{"content":"`+
+					`SELECT count() AS count, sum(price) AS sum GROUP BY gender, state INTO \"s1\"; `+
+					`SELECT min(price) AS minimum, max(price) AS maximum GROUP BY gender, state;`+
+				 `"}`
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
@@ -126,15 +110,13 @@ func TestServerFunnelAnalysisQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"condition","expression":"action == 'A0'","statements":[
-					{"type":"condition","expression":"action == 'A1'","within":[1,2],"statements":[
-						{"type":"selection","dimensions":["action"],"fields":[{"name":"count","expression":"count()"}]}
-					]}
-				]}
-			]
-		}`
+		query := `{"content":"`+
+			`WHEN action == 'A0' THEN `+
+			`  WHEN action == 'A1' WITHIN 1..2 STEPS THEN `+
+			`    SELECT count() AS count GROUP BY action; `+
+			`  END `+
+			`END` +
+			`"}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":3}}}`+"\n", "POST /tables/:name/query failed.")
 	})
@@ -150,12 +132,10 @@ func TestServerFactorizeOverlappingQueries(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"selection","name":"q","dimensions":["action"],"fields":[{"name":"count1","expression":"count()"}]},
-				{"type":"selection","name":"q","dimensions":["action"],"fields":[{"name":"count2","expression":"count()"}]}
-			]
-		}`
+		query := `{"content":"`+
+			`SELECT count() AS count1 GROUP BY action INTO \"q\"; `+
+			`SELECT count() AS count2 GROUP BY action INTO \"q\"; `+
+			`"}`
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"q":{"action":{"A0":{"count1":1,"count2":1}}}}`+"\n", "POST /tables/:name/query failed.")
@@ -178,14 +158,13 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"sessionIdleTime":7200,
-			"statements":[
-				{"type":"condition","expression":"action == 'A0'","statements":[
-					{"type":"condition","expression":"action == 'A1'","within":[1,1],"statements":[
-						{"type":"selection","dimensions":["action"],"fields":[{"name":"count","expression":"count()"}]}
-					]}
-				]}
-			]
-		}`
+			"content":"`+
+			`WHEN action == \"A0\" THEN `+
+			`  WHEN action == \"A1\" WITHIN 1..1 STEPS THEN `+
+			`    SELECT count() AS count GROUP BY action; `+
+			`  END `+
+			`END`+
+			`"}`
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
@@ -208,16 +187,11 @@ func TestServerTimestampQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"condition","expression":"timestamp >= 2 && timestamp < 6","statements":[
-					{"type":"selection","dimensions":["action"],"fields":[
-						{"name":"count","expression":"count()"},
-						{"name":"tsSum","expression":"sum(timestamp)"}
-					]}
-				]}
-			]
-		}`
+		query := `{"content":"`+
+			`WHEN timestamp >= 2 && timestamp < 6 THEN `+
+			`  SELECT count() AS count, sum(timestamp) AS tsSum GROUP BY action; `+
+			`END`+
+			`"}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A2":{"count":1,"tsSum":4},"A5":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
 	})
@@ -244,11 +218,7 @@ func TestServerHistogramQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{
-			"statements":[
-				{"type":"selection","dimensions":[],"fields":[{"name":"hist","expression":"histogram(val)"}]}
-			]
-		}`
+		query := `{"content":"SELECT histogram(val) AS hist;"}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"hist":{"__histogram__":true,"bins":{"0":3,"1":1,"2":5},"count":3,"max":4,"min":0,"width":1.3333333333333333}}`+"\n", "POST /tables/:name/query failed.")
 	})
@@ -270,9 +240,7 @@ func TestServerPrefixQuery(t *testing.T) {
 		// Run query.
 		query := `{
 			"prefix":"001",
-			"statements":[
-				{"type":"selection","dimensions":[],"fields":[{"name":"totalPrice","expression":"sum(price)"}]}
-			]
+			"content":"SELECT sum(price) AS totalPrice;"
 		}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"totalPrice":300}`+"\n", "POST /tables/:name/query failed.")

@@ -20,12 +20,8 @@ type Query struct {
 }
 
 // NewQuery returns a new query.
-func NewQuery(table *core.Table, fdb *factors.DB) *Query {
-	return &Query{
-		table:      table,
-		fdb:        fdb,
-		statements: make(Statements, 0),
-	}
+func NewQuery() *Query {
+	return &Query{statements: make(Statements, 0)}
 }
 
 // Retrieves the table this query is associated with.
@@ -33,9 +29,17 @@ func (q *Query) Table() *core.Table {
 	return q.table
 }
 
+func (q *Query) SetTable(table *core.Table) {
+	q.table = table
+}
+
 // Retrieves the factors database this query is associated with.
-func (q *Query) FDB() *factors.DB {
+func (q *Query) Fdb() *factors.DB {
 	return q.fdb
+}
+
+func (q *Query) SetFdb(fdb *factors.DB) {
+	q.fdb = fdb
 }
 
 // Returns the top-level statements of the query.
@@ -89,8 +93,6 @@ func (q *Query) Serialize() map[string]interface{} {
 
 // Decodes a query from an untyped map.
 func (q *Query) Deserialize(obj map[string]interface{}) error {
-	var err error
-
 	// Deserialize "prefix".
 	if prefix, ok := obj["prefix"].(string); ok || obj["prefix"] == nil {
 		q.Prefix = prefix
@@ -105,11 +107,23 @@ func (q *Query) Deserialize(obj map[string]interface{}) error {
 		return fmt.Errorf("Invalid 'sessionIdleTime': %v", obj["sessionIdleTime"])
 	}
 
-	statements, err := DeserializeStatements(obj["statements"])
-	if err != nil {
-		return err
+	// Parse the string-based query if it's passed in.
+	q.SetStatements(Statements{})
+	if content, ok := obj["content"].(string); ok && len(content) > 0 {
+		tmp, err := NewParser().ParseString(content)
+		if err != nil {
+			return err
+		}
+		q.SetStatements(tmp.Statements())
 	}
-	q.SetStatements(statements)
+
+	if len(q.statements) == 0 {
+		statements, err := DeserializeStatements(obj["statements"])
+		if err != nil {
+			return err
+		}
+		q.SetStatements(statements)
+	}
 
 	return nil
 }

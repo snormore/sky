@@ -4,19 +4,19 @@ package query
 import (
     "bufio"
     "fmt"
-    "log"
     "strconv"
 )
 
 type yylexer struct{
-    src     *bufio.Reader
-    buf     []byte
-    empty   bool
-    current byte
-    index   int
+    src        *bufio.Reader
+    buf        []byte
+    empty      bool
+    current    byte
+    index      int
     startToken int
-    query   *Query
-    statement Statement
+    err        error
+    query      *Query
+    statement  Statement
     expression Expression
 }
 
@@ -24,7 +24,6 @@ func newLexer(src *bufio.Reader, startToken int) *yylexer {
     y := &yylexer{
         src: src,
         startToken:startToken,
-        query: &Query{},
     }
     y.current, _ = src.ReadByte()
     return y
@@ -42,8 +41,8 @@ func (y *yylexer) getc() byte {
     return y.current
 }
 
-func (y yylexer) Error(e string) {
-    log.Fatal(fmt.Sprintf("[%d] Unexpected: '%c', %s", y.index, y.current, e))
+func (y *yylexer) Error(e string) {
+    y.err = fmt.Errorf("Unexpected '%c' at character %d, %s", y.current, y.index, e)
 }
 
 func (y *yylexer) Lex(yylval *yySymType) int {
@@ -72,6 +71,7 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "GROUP"                    return y.token(yylval, TGROUP);
 "BY"                       return y.token(yylval, TBY);
 "INTO"                     return y.token(yylval, TINTO);
+"AS"                       return y.token(yylval, TAS);
 "WHEN"                     return y.token(yylval, TWHEN);
 "WITHIN"                   return y.token(yylval, TWITHIN);
 "THEN"                     return y.token(yylval, TTHEN);

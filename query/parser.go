@@ -13,12 +13,12 @@ func NewParser() *Parser {
 	return &Parser{}
 }
 
-func (p *Parser) Parse(r io.Reader) *Query {
+func (p *Parser) Parse(r io.Reader) (*Query, error) {
 	l := newLexer(bufio.NewReader(r), TSTARTQUERY)
 	yyParse(l)
-	return l.query
+	return l.query, l.err
 }
 
-func (p *Parser) ParseString(s string) *Query {
+func (p *Parser) ParseString(s string) (*Query, error) {
 	return p.Parse(bytes.NewBufferString(s))
 }
