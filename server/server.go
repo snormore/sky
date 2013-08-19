@@ -370,17 +370,20 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 // Servlet Management
 //--------------------------------------
 
-// Retrieves the table and servlet reference for a single object.
-func (s *Server) GetObjectContext(tableName string, objectId string) (*core.Table, *Servlet, error) {
-	// Return an error if the table already exists.
-	table, err := s.OpenTable(tableName)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func (s *Server) GetServlet(table *core.Table, objectId string) (*Servlet) {
 	// Determine servlet index.
 	index := s.GetObjectServletIndex(table, objectId)
-	servlet := s.servlets[index]
+	return s.servlets[index]
+}
+
+// Retrieves the table and servlet reference for a single object.
+func (s *Server) GetObjectContext(tableName string, objectId string) (*core.Table, *Servlet, error) {
+  table, err := s.OpenTable(tableName)
+  if err != nil {
+    return nil, nil, err
+  }
+
+  servlet := s.GetServlet(table, objectId)
 
 	return table, servlet, nil
 }
