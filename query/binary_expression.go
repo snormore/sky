@@ -15,6 +15,11 @@ const (
 	OpOr
 )
 
+const (
+	queryMode = "query"
+	luaMode   = "lua"
+)
+
 type BinaryExpression struct {
 	queryElementImpl
 	op  int
@@ -62,6 +67,41 @@ func (e *BinaryExpression) SetRhs(expression Expression) {
 	}
 }
 
+// Returns a Lua representation of the expression.
+func (e *BinaryExpression) Codegen() (string, error) {
+	var str string
+
+	// Codegen the left-hand side.
+	expr, err := e.lhs.Codegen()
+	if err != nil {
+		return "", err
+	}
+
+	switch e.lhs.(type) {
+	case *BinaryExpression:
+		str += "(" + expr + ")"
+	default:
+		str += expr
+	}
+
+	str += " " + e.stringifyOperator(luaMode) + " "
+
+	// Codegen the right-hand side.
+	expr, err = e.rhs.Codegen()
+	if err != nil {
+		return "", err
+	}
+
+	switch e.rhs.(type) {
+	case *BinaryExpression:
+		str += "(" + expr + ")"
+	default:
+		str += expr
+	}
+
+	return str, nil
+}
+
 // Returns a string representation of the expression.
 func (e *BinaryExpression) String() string {
 	var str string
@@ -73,34 +113,7 @@ func (e *BinaryExpression) String() string {
 		str += e.lhs.String()
 	}
 
-	switch e.op {
-	case OpEquals:
-		str += " == "
-	case OpNotEquals:
-		str += " != "
-	case OpLessThan:
-		str += " < "
-	case OpLessThanOrEqualTo:
-		str += " <= "
-	case OpGreaterThan:
-		str += " > "
-	case OpGreaterThanOrEqualTo:
-		str += " >= "
-	case OpAnd:
-		str += " && "
-	case OpOr:
-		str += " || "
-	case OpPlus:
-		str += " + "
-	case OpMinus:
-		str += " - "
-	case OpMultiply:
-		str += " * "
-	case OpDivide:
-		str += " / "
-	default:
-		str += " <missing> "
-	}
+	str += " " + e.stringifyOperator(queryMode) + " "
 
 	switch e.rhs.(type) {
 	case *BinaryExpression:
@@ -110,4 +123,48 @@ func (e *BinaryExpression) String() string {
 	}
 
 	return str
+}
+
+// Converts the binary expression's operator to a query or Lua string.
+func (e *BinaryExpression) stringifyOperator(mode string) string {
+	switch e.op {
+	case OpEquals:
+		return "=="
+	case OpNotEquals:
+		if mode == luaMode {
+			return "~="
+		} else {
+			return "!="
+		}
+	case OpLessThan:
+		return "<"
+	case OpLessThanOrEqualTo:
+		return "<="
+	case OpGreaterThan:
+		return ">"
+	case OpGreaterThanOrEqualTo:
+		return ">="
+	case OpAnd:
+		if mode == luaMode {
+			return "and"
+		} else {
+			return "&&"
+		}
+	case OpOr:
+		if mode == luaMode {
+			return "or"
+		} else {
+			return "||"
+		}
+	case OpPlus:
+		return "+"
+	case OpMinus:
+		return "-"
+	case OpMultiply:
+		return "*"
+	case OpDivide:
+		return "/"
+	}
+
+	return "<missing>"
 }

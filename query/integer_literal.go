@@ -7,6 +7,10 @@ type IntegerLiteral struct {
 	value int
 }
 
+func (l *IntegerLiteral) Codegen() (string, error) {
+	return l.String(), nil
+}
+
 func (l *IntegerLiteral) String() string {
 	return strconv.Itoa(l.value)
 }

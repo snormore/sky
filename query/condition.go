@@ -4,11 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
 	"regexp"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -198,7 +194,7 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	}
 
 	// Generate conditional expression.
-	expressionCode, err := c.CodegenExpression()
+	expressionCode, err := c.expression.Codegen()
 	if err != nil {
 		return "", err
 	}
@@ -237,85 +233,6 @@ func (c *Condition) CodegenMergeFunction() (string, error) {
 	buffer.WriteString(str)
 
 	return buffer.String(), nil
-}
-
-// Generates Lua code for the expression.
-func (c *Condition) CodegenExpression() (string, error) {
-	query := c.Query()
-	str := c.expression.String()
-
-	// Do not transform simple booleans.
-	if str == "true" || str == "false" {
-		return str, nil
-	}
-
-	// Split out multiple expressions.
-	output := []string{}
-	expressions := strings.Split(str, "&&")
-	for _, expression := range expressions {
-		// Full expressions should be prepended with cursor's event reference.
-		r, _ := regexp.Compile(`^ *(\w+) *(==|>|>=|<|<=|!=) *(?:"([^"]*)"|'([^']*)'|(\d+(?:\.\d+)?)|(true|false)) *$`)
-		m := r.FindSubmatch([]byte(expression))
-		if m == nil {
-			return "", fmt.Errorf("Condition: Invalid expression: %v", expression)
-		}
-
-		// Find the property.
-		property := query.table.PropertyFile().GetPropertyByName(string(m[1]))
-		if property == nil {
-			return "", fmt.Errorf("Condition: Property not found: %v", string(m[1]))
-		}
-
-		// Validate the expression value.
-		var value string
-		switch property.DataType {
-		case core.FactorDataType, core.StringDataType:
-			// Validate string value.
-			var stringValue string
-			if m[3] != nil {
-				stringValue = string(m[3])
-			} else if m[4] != nil {
-				stringValue = string(m[4])
-			} else {
-				return "", fmt.Errorf("Condition: Expression value must be a string literal for string and factor properties: %v", expression)
-			}
-
-			// Convert factors.
-			if property.DataType == core.FactorDataType {
-				sequence, err := query.fdb.Factorize(query.table.Name, property.Name, stringValue, false)
-				if _, ok := err.(*factors.FactorNotFound); ok {
-					value = "0"
-				} else if err != nil {
-					return "", err
-				} else {
-					value = strconv.FormatUint(sequence, 10)
-				}
-			} else {
-				value = fmt.Sprintf(`"%s"`, stringValue)
-			}
-
-		case core.IntegerDataType, core.FloatDataType:
-			if m[5] == nil {
-				return "", fmt.Errorf("Condition: Expression value must be a numeric literal for integer and float properties: %v", expression)
-			}
-			value = string(m[5])
-
-		case core.BooleanDataType:
-			if m[6] == nil {
-				return "", fmt.Errorf("Condition: Expression value must be a boolean literal for boolean properties: %v", expression)
-			}
-			value = string(m[6])
-		}
-
-		// Convert "not equals" into Lua style.
-		if string(m[2]) == "!=" {
-			m[2] = []byte("~=")
-		}
-
-		output = append(output, fmt.Sprintf("cursor.event:%s() %s %s", m[1], m[2], value))
-	}
-
-	return strings.Join(output, " and "), nil
 }
 
 //--------------------------------------
