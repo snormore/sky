@@ -1,6 +1,7 @@
 package query
 
 type BooleanLiteral struct {
+	queryElementImpl
 	value bool
 }
 

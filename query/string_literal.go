@@ -1,10 +1,12 @@
 package query
 
+import "strconv"
+
 type StringLiteral struct {
+	queryElementImpl
 	value string
 }
 
 func (l *StringLiteral) String() string {
-	// TODO: Escape string.
-	return "\"" + l.value + "\""
+	return strconv.Quote(l.value)
 }

@@ -9,42 +9,24 @@ import (
 	"io"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
 // A Query is a structured way of aggregating data in the database.
 type Query struct {
 	table           *core.Table
 	fdb             *factors.DB
 	sequence        int
-	Prefix          string     `json:"prefix"`
-	Statements      Statements `json:"statements"`
-	SessionIdleTime int        `json:"sessionIdleTime"`
+	Prefix          string
+	statements      Statements
+	SessionIdleTime int
 }
-
-//------------------------------------------------------------------------------
-//
-// Constructors
-//
-//------------------------------------------------------------------------------
 
 // NewQuery returns a new query.
 func NewQuery(table *core.Table, fdb *factors.DB) *Query {
 	return &Query{
 		table:      table,
 		fdb:        fdb,
-		Statements: make(Statements, 0),
+		statements: make(Statements, 0),
 	}
 }
-
-//------------------------------------------------------------------------------
-//
-// Accessors
-//
-//------------------------------------------------------------------------------
 
 // Retrieves the table this query is associated with.
 func (q *Query) Table() *core.Table {
@@ -56,11 +38,40 @@ func (q *Query) FDB() *factors.DB {
 	return q.fdb
 }
 
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
+// Returns the top-level statements of the query.
+func (q *Query) Statements() Statements {
+	return q.statements
+}
+
+// Sets the condition's statements.
+func (q *Query) SetStatements(statements Statements) {
+	for _, s := range q.statements {
+		s.SetParent(nil)
+	}
+	q.statements = statements
+	for _, s := range q.statements {
+		s.SetParent(q)
+	}
+}
+
+//--------------------------------------
+// QueryElement interface
+//--------------------------------------
+
+func (q *Query) Parent() QueryElement {
+	return nil
+}
+
+func (q *Query) SetParent(e QueryElement) {
+}
+
+func (q *Query) Query() *Query {
+	return q
+}
+
+func (q *Query) ElementId() int {
+	return 0
+}
 
 //--------------------------------------
 // Serialization
@@ -71,7 +82,7 @@ func (q *Query) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"sessionIdleTime": q.SessionIdleTime,
 		"prefix":          q.Prefix,
-		"statements":      q.Statements.Serialize(),
+		"statements":      q.statements.Serialize(),
 	}
 	return obj
 }
@@ -94,10 +105,12 @@ func (q *Query) Deserialize(obj map[string]interface{}) error {
 		return fmt.Errorf("Invalid 'sessionIdleTime': %v", obj["sessionIdleTime"])
 	}
 
-	q.Statements, err = DeserializeStatements(obj["statements"], q)
+	statements, err := DeserializeStatements(obj["statements"])
 	if err != nil {
 		return err
 	}
+	q.SetStatements(statements)
+
 	return nil
 }
 
@@ -136,7 +149,7 @@ func (q *Query) Codegen() (string, error) {
 
 	// Generate initialization functions (if necessary).
 	if q.RequiresInitialization() {
-		str, err := q.Statements.CodegenAggregateFunctions(true)
+		str, err := q.statements.CodegenAggregateFunctions(true)
 		if err != nil {
 			return "", err
 		}
@@ -145,7 +158,7 @@ func (q *Query) Codegen() (string, error) {
 	}
 
 	// Generate aggregation functions.
-	str, err := q.Statements.CodegenAggregateFunctions(false)
+	str, err := q.statements.CodegenAggregateFunctions(false)
 	if err != nil {
 		return "", err
 	}
@@ -153,7 +166,7 @@ func (q *Query) Codegen() (string, error) {
 	buffer.WriteString(q.CodegenAggregateFunction(false))
 
 	// Generate merge functions.
-	str, err = q.Statements.CodegenMergeFunctions()
+	str, err = q.statements.CodegenMergeFunctions()
 	if err != nil {
 		return "", err
 	}
@@ -187,7 +200,7 @@ func (q *Query) CodegenAggregateFunction(init bool) string {
 	fmt.Fprintln(buffer, "    while cursor:next() do")
 
 	// Call each statement function.
-	for _, statement := range q.Statements {
+	for _, statement := range q.statements {
 		fmt.Fprintf(buffer, "      %s(cursor, data)\n", statement.FunctionName(init))
 	}
 
@@ -209,7 +222,7 @@ func (q *Query) CodegenMergeFunction() string {
 	fmt.Fprintln(buffer, "function merge(results, data)")
 
 	// Call each statement function if it has a merge function.
-	fmt.Fprintf(buffer, q.Statements.CodegenMergeInvoke())
+	fmt.Fprintf(buffer, q.statements.CodegenMergeInvoke())
 
 	// End function.
 	fmt.Fprintln(buffer, "end\n")
@@ -230,7 +243,7 @@ func (q *Query) NextIdentifier() int {
 // Converts factorized results from the aggregate function results to use
 // the appropriate strings.
 func (q *Query) Defactorize(data interface{}) error {
-	return q.Statements.Defactorize(data)
+	return q.statements.Defactorize(data)
 }
 
 //--------------------------------------
@@ -241,7 +254,7 @@ func (q *Query) Defactorize(data interface{}) error {
 // performing aggregation. This function returns true if any nested query
 // statements require initialization.
 func (q *Query) RequiresInitialization() bool {
-	return q.Statements.RequiresInitialization()
+	return q.statements.RequiresInitialization()
 }
 
 //--------------------------------------
@@ -251,6 +264,6 @@ func (q *Query) RequiresInitialization() bool {
 // Convert the query to a string-based representation.
 func (q *Query) String() string {
 	var str string
-	str += q.Statements.String()
+	str += q.statements.String()
 	return str
 }

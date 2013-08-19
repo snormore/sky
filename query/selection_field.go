@@ -13,6 +13,7 @@ import (
 //------------------------------------------------------------------------------
 
 type SelectionField struct {
+	queryElementImpl
 	Name       string
 	Expression string
 }

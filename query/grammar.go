@@ -103,8 +103,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line grammar.y:264
-
+//line grammar.y:262
 type within struct {
 	start int
 	end   int
@@ -460,7 +459,7 @@ yydefault:
 		//line grammar.y:87
 		{
 			l := yylex.(*yylexer)
-			l.query.Statements = yyS[yypt-0].statements
+			l.query.SetStatements(yyS[yypt-0].statements)
 			yyVAL.query = l.query
 		}
 	case 5:
@@ -486,197 +485,195 @@ yydefault:
 	case 9:
 		//line grammar.y:118
 		{
-			l := yylex.(*yylexer)
-			yyVAL.selection = NewSelection(l.query)
-			yyVAL.selection.Fields = yyS[yypt-3].selection_fields
+			yyVAL.selection = NewSelection()
+			yyVAL.selection.SetFields(yyS[yypt-3].selection_fields)
 			yyVAL.selection.Dimensions = yyS[yypt-2].strs
 			yyVAL.selection.Name = yyS[yypt-1].str
 		}
 	case 10:
-		//line grammar.y:129
+		//line grammar.y:128
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 		}
 	case 11:
-		//line grammar.y:133
+		//line grammar.y:132
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 			yyVAL.selection_fields = append(yyVAL.selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 12:
-		//line grammar.y:138
+		//line grammar.y:137
 		{
 			yyVAL.selection_fields = append(yyS[yypt-2].selection_fields, yyS[yypt-0].selection_field)
 		}
 	case 13:
-		//line grammar.y:145
+		//line grammar.y:144
 		{
 			yyVAL.selection_field = NewSelectionField("", yyS[yypt-2].str)
 		}
 	case 14:
-		//line grammar.y:149
+		//line grammar.y:148
 		{
 			yyVAL.selection_field = NewSelectionField(yyS[yypt-1].str, yyS[yypt-3].str)
 		}
 	case 15:
-		//line grammar.y:156
+		//line grammar.y:155
 		{
 			yyVAL.strs = make([]string, 0)
 		}
 	case 16:
-		//line grammar.y:160
+		//line grammar.y:159
 		{
 			yyVAL.strs = yyS[yypt-0].strs
 		}
 	case 17:
-		//line grammar.y:167
+		//line grammar.y:166
 		{
 			yyVAL.strs = make([]string, 0)
 			yyVAL.strs = append(yyVAL.strs, yyS[yypt-0].str)
 		}
 	case 18:
-		//line grammar.y:172
+		//line grammar.y:171
 		{
 			yyVAL.strs = append(yyS[yypt-2].strs, yyS[yypt-0].str)
 		}
 	case 19:
-		//line grammar.y:179
+		//line grammar.y:178
 		{
 			yyVAL.str = ""
 		}
 	case 20:
-		//line grammar.y:183
+		//line grammar.y:182
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 21:
-		//line grammar.y:190
+		//line grammar.y:189
 		{
-			l := yylex.(*yylexer)
-			yyVAL.condition = NewCondition(l.query)
-			yyVAL.condition.Expression = yyS[yypt-4].expr
+			yyVAL.condition = NewCondition()
+			yyVAL.condition.SetExpression(yyS[yypt-4].expr)
 			yyVAL.condition.WithinRangeStart = yyS[yypt-3].condition_within.start
 			yyVAL.condition.WithinRangeEnd = yyS[yypt-3].condition_within.end
 			yyVAL.condition.WithinUnits = yyS[yypt-3].condition_within.units
-			yyVAL.condition.Statements = yyS[yypt-1].statements
+			yyVAL.condition.SetStatements(yyS[yypt-1].statements)
 		}
 	case 22:
-		//line grammar.y:203
+		//line grammar.y:201
 		{
 			yyVAL.condition_within = &within{start: 0, end: 0, units: "steps"}
 		}
 	case 23:
-		//line grammar.y:207
+		//line grammar.y:205
 		{
 			yyVAL.condition_within = &within{start: yyS[yypt-3].integer, end: yyS[yypt-1].integer, units: yyS[yypt-0].str}
 		}
 	case 24:
-		//line grammar.y:213
+		//line grammar.y:211
 		{
-			yyVAL.expr = &BinaryExpression{op: OpEquals, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 25:
-		//line grammar.y:214
+		//line grammar.y:212
 		{
-			yyVAL.expr = &BinaryExpression{op: OpNotEquals, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpNotEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 26:
-		//line grammar.y:215
+		//line grammar.y:213
 		{
-			yyVAL.expr = &BinaryExpression{op: OpLessThan, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpLessThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 27:
-		//line grammar.y:216
+		//line grammar.y:214
 		{
-			yyVAL.expr = &BinaryExpression{op: OpLessThanOrEqualTo, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpLessThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 28:
-		//line grammar.y:217
+		//line grammar.y:215
 		{
-			yyVAL.expr = &BinaryExpression{op: OpGreaterThan, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpGreaterThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 29:
-		//line grammar.y:218
+		//line grammar.y:216
 		{
-			yyVAL.expr = &BinaryExpression{op: OpGreaterThanOrEqualTo, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpGreaterThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 30:
-		//line grammar.y:219
+		//line grammar.y:217
 		{
-			yyVAL.expr = &BinaryExpression{op: OpAnd, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpAnd, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 31:
-		//line grammar.y:220
+		//line grammar.y:218
 		{
-			yyVAL.expr = &BinaryExpression{op: OpOr, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpOr, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 32:
-		//line grammar.y:221
+		//line grammar.y:219
 		{
-			yyVAL.expr = &BinaryExpression{op: OpPlus, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpPlus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 33:
-		//line grammar.y:222
+		//line grammar.y:220
 		{
-			yyVAL.expr = &BinaryExpression{op: OpMinus, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpMinus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 34:
-		//line grammar.y:223
+		//line grammar.y:221
 		{
-			yyVAL.expr = &BinaryExpression{op: OpMultiply, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpMultiply, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 35:
-		//line grammar.y:224
+		//line grammar.y:222
 		{
-			yyVAL.expr = &BinaryExpression{op: OpDivide, lhs: yyS[yypt-2].expr, rhs: yyS[yypt-0].expr}
+			yyVAL.expr = NewBinaryExpression(OpDivide, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 36:
-		//line grammar.y:225
+		//line grammar.y:223
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].var_ref)
 		}
 	case 37:
-		//line grammar.y:226
+		//line grammar.y:224
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].integer_literal)
 		}
 	case 38:
-		//line grammar.y:227
+		//line grammar.y:225
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].boolean_literal)
 		}
 	case 39:
-		//line grammar.y:228
+		//line grammar.y:226
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].string_literal)
 		}
 	case 40:
-		//line grammar.y:229
+		//line grammar.y:227
 		{
 			yyVAL.expr = yyS[yypt-1].expr
 		}
 	case 41:
-		//line grammar.y:234
+		//line grammar.y:232
 		{
 			yyVAL.var_ref = &VarRef{value: yyS[yypt-0].str}
 		}
 	case 42:
-		//line grammar.y:241
+		//line grammar.y:239
 		{
 			yyVAL.integer_literal = &IntegerLiteral{value: yyS[yypt-0].integer}
 		}
 	case 43:
-		//line grammar.y:248
+		//line grammar.y:246
 		{
 			yyVAL.boolean_literal = &BooleanLiteral{value: true}
 		}
 	case 44:
-		//line grammar.y:252
+		//line grammar.y:250
 		{
 			yyVAL.boolean_literal = &BooleanLiteral{value: false}
 		}
 	case 45:
-		//line grammar.y:259
+		//line grammar.y:257
 		{
 			yyVAL.string_literal = &StringLiteral{value: yyS[yypt-0].str}
 		}

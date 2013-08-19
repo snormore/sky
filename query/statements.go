@@ -22,7 +22,7 @@ func (s Statements) Serialize() []interface{} {
 }
 
 // Decodes a list of query statements from an untyped slice.
-func DeserializeStatements(obj interface{}, q *Query) (Statements, error) {
+func DeserializeStatements(obj interface{}) (Statements, error) {
 	l := make(Statements, 0)
 	if statements, ok := obj.([]interface{}); ok {
 		for _, _s := range statements {
@@ -30,9 +30,9 @@ func DeserializeStatements(obj interface{}, q *Query) (Statements, error) {
 				var statement Statement
 				switch s["type"] {
 				case TypeCondition:
-					statement = NewCondition(q)
+					statement = NewCondition()
 				case TypeSelection:
-					statement = NewSelection(q)
+					statement = NewSelection()
 				default:
 					return nil, fmt.Errorf("Invalid query statement type: %v", s["type"])
 				}
@@ -91,9 +91,11 @@ func (s Statements) CodegenMergeInvoke() string {
 		}
 
 		// Recursively generate child statement invocations.
-		code := statement.GetStatements().CodegenMergeInvoke()
-		if code != "" {
-			fmt.Fprintf(buffer, code)
+		if block_statement, ok := statement.(BlockStatement); ok {
+			code := block_statement.Statements().CodegenMergeInvoke()
+			if code != "" {
+				fmt.Fprintf(buffer, code)
+			}
 		}
 	}
 	return buffer.String()

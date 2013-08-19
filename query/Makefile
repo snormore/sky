@@ -1,4 +1,7 @@
-all: lexer.go grammar.go
+all: lexer.go grammar.go fmt
+
+fmt:
+	go fmt
 
 test: all
 	go test -v

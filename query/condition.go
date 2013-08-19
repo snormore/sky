@@ -19,37 +19,29 @@ const (
 
 // A condition statement made within a query.
 type Condition struct {
-	query            *Query
-	id               int
-	Expression       Expression
+	queryElementImpl
+	expression       Expression
 	WithinRangeStart int
 	WithinRangeEnd   int
 	WithinUnits      string
-	Statements       Statements
+	statements       Statements
 }
 
 // Creates a new condition.
-func NewCondition(query *Query) *Condition {
+func NewCondition() *Condition {
 	return &Condition{
-		query:            query,
-		id:               query.NextIdentifier(),
 		WithinRangeStart: 0,
 		WithinRangeEnd:   0,
 		WithinUnits:      UnitSteps,
 	}
 }
 
-// Retrieves the query this condition is associated with.
-func (c *Condition) Query() *Query {
-	return c.query
-}
-
 // Retrieves the function name used during codegen.
 func (c *Condition) FunctionName(init bool) string {
 	if init {
-		return fmt.Sprintf("i%d", c.id)
+		return fmt.Sprintf("i%d", c.ElementId())
 	}
-	return fmt.Sprintf("a%d", c.id)
+	return fmt.Sprintf("a%d", c.ElementId())
 }
 
 // Retrieves the merge function name used during codegen.
@@ -57,9 +49,36 @@ func (c *Condition) MergeFunctionName() string {
 	return ""
 }
 
-// Retrieves the child statements.
-func (c *Condition) GetStatements() Statements {
-	return c.Statements
+// Returns the expression evaluated for truth by the condition.
+func (c *Condition) Expression() Expression {
+	return c.expression
+}
+
+// Sets the expression.
+func (c *Condition) SetExpression(expression Expression) {
+	if c.expression != nil {
+		c.expression.SetParent(nil)
+	}
+	c.expression = expression
+	if c.expression != nil {
+		c.expression.SetParent(c)
+	}
+}
+
+// Returns the statements executed if the condition expression is true.
+func (c *Condition) Statements() Statements {
+	return c.statements
+}
+
+// Sets the condition's statements.
+func (c *Condition) SetStatements(statements Statements) {
+	for _, s := range c.statements {
+		s.SetParent(nil)
+	}
+	c.statements = statements
+	for _, s := range c.statements {
+		s.SetParent(c)
+	}
 }
 
 //--------------------------------------
@@ -70,10 +89,10 @@ func (c *Condition) GetStatements() Statements {
 func (c *Condition) Serialize() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        TypeCondition,
-		"expression":  c.Expression.String(),
+		"expression":  c.expression.String(),
 		"within":      []int{c.WithinRangeStart, c.WithinRangeEnd},
 		"withinUnits": c.WithinUnits,
-		"statements":  c.Statements.Serialize(),
+		"statements":  c.statements.Serialize(),
 	}
 }
 
@@ -89,10 +108,10 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 	// Deserialize "expression".
 	if expression, ok := obj["expression"].(string); ok {
 		parser := NewExpressionParser()
-		c.Expression = parser.ParseString(c.query, expression)
+		c.SetExpression(parser.ParseString(expression))
 	} else {
 		if obj["expression"] == nil {
-			c.Expression = &BooleanLiteral{value: true}
+			c.SetExpression(&BooleanLiteral{value: true})
 		} else {
 			return fmt.Errorf("Invalid 'expression': %v", obj["expression"])
 		}
@@ -136,11 +155,11 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 	}
 
 	// Deserialize statements.
-	var err error
-	c.Statements, err = DeserializeStatements(obj["statements"], c.query)
+	statements, err := DeserializeStatements(obj["statements"])
 	if err != nil {
 		return err
 	}
+	c.SetStatements(statements)
 
 	return nil
 }
@@ -159,7 +178,7 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	}
 
 	// Generate child statement functions.
-	str, err := c.Statements.CodegenAggregateFunctions(init)
+	str, err := c.statements.CodegenAggregateFunctions(init)
 	if err != nil {
 		return "", err
 	}
@@ -186,7 +205,7 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	fmt.Fprintf(buffer, "      if %s then\n", expressionCode)
 
 	// Call each statement function.
-	for _, statement := range c.Statements {
+	for _, statement := range c.statements {
 		fmt.Fprintf(buffer, "        %s(cursor, data)\n", statement.FunctionName(init))
 	}
 
@@ -211,7 +230,7 @@ func (c *Condition) CodegenMergeFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate child statement functions.
-	str, err := c.Statements.CodegenMergeFunctions()
+	str, err := c.statements.CodegenMergeFunctions()
 	if err != nil {
 		return "", err
 	}
@@ -222,7 +241,8 @@ func (c *Condition) CodegenMergeFunction() (string, error) {
 
 // Generates Lua code for the expression.
 func (c *Condition) CodegenExpression() (string, error) {
-	str := c.Expression.String()
+	query := c.Query()
+	str := c.expression.String()
 
 	// Do not transform simple booleans.
 	if str == "true" || str == "false" {
@@ -241,7 +261,7 @@ func (c *Condition) CodegenExpression() (string, error) {
 		}
 
 		// Find the property.
-		property := c.query.table.PropertyFile().GetPropertyByName(string(m[1]))
+		property := query.table.PropertyFile().GetPropertyByName(string(m[1]))
 		if property == nil {
 			return "", fmt.Errorf("Condition: Property not found: %v", string(m[1]))
 		}
@@ -262,7 +282,7 @@ func (c *Condition) CodegenExpression() (string, error) {
 
 			// Convert factors.
 			if property.DataType == core.FactorDataType {
-				sequence, err := c.query.fdb.Factorize(c.query.table.Name, property.Name, stringValue, false)
+				sequence, err := query.fdb.Factorize(query.table.Name, property.Name, stringValue, false)
 				if _, ok := err.(*factors.FactorNotFound); ok {
 					value = "0"
 				} else if err != nil {
@@ -304,7 +324,7 @@ func (c *Condition) CodegenExpression() (string, error) {
 
 // Converts factorized fields back to their original strings.
 func (c *Condition) Defactorize(data interface{}) error {
-	return c.Statements.Defactorize(data)
+	return c.statements.Defactorize(data)
 }
 
 //--------------------------------------
@@ -315,7 +335,7 @@ func (c *Condition) Defactorize(data interface{}) error {
 // performing aggregation. This function returns true if any nested query
 // statements require initialization.
 func (c *Condition) RequiresInitialization() bool {
-	return c.Statements.RequiresInitialization()
+	return c.statements.RequiresInitialization()
 }
 
 //--------------------------------------
@@ -326,13 +346,13 @@ func (c *Condition) RequiresInitialization() bool {
 func (c *Condition) String() string {
 	str := "WHEN"
 	if str != "" {
-		str += " " + c.Expression.String()
+		str += " " + c.expression.String()
 	}
 	if c.WithinRangeStart != 0 || c.WithinRangeStart != 0 || c.WithinUnits != UnitSteps {
 		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, c.WithinUnits)
 	}
 	str += " THEN\n"
-	str += regexp.MustCompile(`^`).ReplaceAllString(c.Statements.String(), "  ") + "\n"
+	str += regexp.MustCompile(`^`).ReplaceAllString(c.statements.String(), "  ") + "\n"
 	str += "END"
 	return str
 }

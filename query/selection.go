@@ -8,69 +8,47 @@ import (
 	"strings"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
 // A selection statement aggregates data in a query.
 type Selection struct {
-	query      *Query
-	id         int
+	queryElementImpl
 	Name       string
 	Dimensions []string
-	Fields     []*SelectionField
+	fields     []*SelectionField
 }
-
-//------------------------------------------------------------------------------
-//
-// Constructors
-//
-//------------------------------------------------------------------------------
 
 // Creates a new selection.
-func NewSelection(query *Query) *Selection {
-	return &Selection{
-		query: query,
-		id:    query.NextIdentifier(),
-	}
-}
-
-//------------------------------------------------------------------------------
-//
-// Accessors
-//
-//------------------------------------------------------------------------------
-
-// Retrieves the query this selection is associated with.
-func (s *Selection) Query() *Query {
-	return s.query
+func NewSelection() *Selection {
+	return &Selection{}
 }
 
 // Retrieves the function name used during codegen.
 func (s *Selection) FunctionName(init bool) string {
 	if init {
-		return fmt.Sprintf("i%d", s.id)
+		return fmt.Sprintf("i%d", s.ElementId())
 	}
-	return fmt.Sprintf("a%d", s.id)
+	return fmt.Sprintf("a%d", s.ElementId())
 }
 
 // Retrieves the merge function name used during codegen.
 func (s *Selection) MergeFunctionName() string {
-	return fmt.Sprintf("m%d", s.id)
+	return fmt.Sprintf("m%d", s.ElementId())
 }
 
-// Retrieves the child statements.
-func (s *Selection) GetStatements() Statements {
-	return []Statement{}
+func (s *Selection) Fields() []*SelectionField {
+	return s.fields
 }
 
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
+func (s *Selection) SetFields(fields []*SelectionField) {
+	for _, f := range s.fields {
+		f.SetParent(nil)
+	}
+
+	s.fields = fields
+
+	for _, f := range s.fields {
+		f.SetParent(s)
+	}
+}
 
 //--------------------------------------
 // Serialization
@@ -79,7 +57,7 @@ func (s *Selection) GetStatements() Statements {
 // Encodes a query selection into an untyped map.
 func (s *Selection) Serialize() map[string]interface{} {
 	fields := []interface{}{}
-	for _, field := range s.Fields {
+	for _, field := range s.fields {
 		fields = append(fields, field.Serialize())
 	}
 
@@ -129,20 +107,21 @@ func (s *Selection) Deserialize(obj map[string]interface{}) error {
 	}
 
 	// Deserialize "fields".
-	if fields, ok := obj["fields"].([]interface{}); ok {
-		s.Fields = []*SelectionField{}
-		for _, field := range fields {
+	if arr, ok := obj["fields"].([]interface{}); ok {
+		fields := []*SelectionField{}
+		for _, field := range arr {
 			if fieldMap, ok := field.(map[string]interface{}); ok {
 				f := NewSelectionField("", "")
 				f.Deserialize(fieldMap)
-				s.Fields = append(s.Fields, f)
+				fields = append(fields, f)
 			} else {
 				return fmt.Errorf("Selection: Invalid field: %v", field)
 			}
 		}
+		s.SetFields(fields)
 	} else {
 		if obj["field"] == nil {
-			s.Fields = []*SelectionField{}
+			s.SetFields([]*SelectionField{})
 		} else {
 			return fmt.Errorf("Selection: Invalid fields: %v", obj["fields"])
 		}
@@ -177,7 +156,7 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 	}
 
 	// Select fields.
-	for _, field := range s.Fields {
+	for _, field := range s.fields {
 		exp, err := field.CodegenExpression(init)
 		if err != nil {
 			return "", err
@@ -243,7 +222,7 @@ func (s *Selection) CodegenInnerMergeFunction(index int) (string, error) {
 		fmt.Fprintf(buffer, "  end\n")
 	} else {
 		// Merge fields.
-		for _, field := range s.Fields {
+		for _, field := range s.fields {
 			exp, err := field.CodegenMergeExpression()
 			if err != nil {
 				return "", err
@@ -281,6 +260,7 @@ func (s *Selection) Defactorize(data interface{}) error {
 
 // Recursively defactorizes dimensions.
 func (s *Selection) defactorize(data interface{}, index int) error {
+	query := s.Query()
 	if index >= len(s.Dimensions) {
 		return nil
 	}
@@ -292,7 +272,7 @@ func (s *Selection) defactorize(data interface{}, index int) error {
 
 	// Retrieve property.
 	dimension := s.Dimensions[index]
-	property := s.query.table.PropertyFile().GetPropertyByName(dimension)
+	property := query.table.PropertyFile().GetPropertyByName(dimension)
 	if property == nil {
 		return fmt.Errorf("Selection: Property not found: %s", dimension)
 	}
@@ -305,7 +285,7 @@ func (s *Selection) defactorize(data interface{}, index int) error {
 				// Only process this if it hasn't been defactorized already. Duplicate
 				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
-					stringValue, err := s.query.fdb.Defactorize(s.query.table.Name, dimension, uint64(sequence))
+					stringValue, err := query.fdb.Defactorize(query.table.Name, dimension, uint64(sequence))
 					if err != nil {
 						return err
 					}
@@ -333,7 +313,7 @@ func (s *Selection) defactorize(data interface{}, index int) error {
 // Checks if any of the selection fields require initialization before
 // performing aggregation.
 func (s *Selection) RequiresInitialization() bool {
-	for _, field := range s.Fields {
+	for _, field := range s.fields {
 		if field.RequiresInitialization() {
 			return true
 		}
@@ -348,7 +328,7 @@ func (s *Selection) RequiresInitialization() bool {
 // Converts the statements to a string-based representation.
 func (s *Selection) String() string {
 	str := "SELECT "
-	for _, field := range s.Fields {
+	for _, field := range s.fields {
 		str += field.String()
 	}
 	if len(s.Dimensions) > 0 {

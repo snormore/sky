@@ -86,7 +86,7 @@ query :
     statements
     {
         l := yylex.(*yylexer)
-        l.query.Statements = $1
+        l.query.SetStatements($1)
         $$ = l.query
     }
 ;
@@ -116,9 +116,8 @@ statement :
 selection :
     TSELECT selection_fields selection_group_by selection_name TSEMICOLON
     {
-        l := yylex.(*yylexer)
-        $$ = NewSelection(l.query)
-        $$.Fields = $2
+        $$ = NewSelection()
+        $$.SetFields($2)
         $$.Dimensions = $3
         $$.Name = $4
     }
@@ -188,13 +187,12 @@ selection_name :
 condition :
     TWHEN expr condition_within TTHEN statements TEND
     {
-        l := yylex.(*yylexer)
-        $$ = NewCondition(l.query)
-        $$.Expression = $2
+        $$ = NewCondition()
+        $$.SetExpression($2)
         $$.WithinRangeStart = $3.start
         $$.WithinRangeEnd = $3.end
         $$.WithinUnits = $3.units
-        $$.Statements = $5
+        $$.SetStatements($5)
     }
 ;
 
@@ -210,23 +208,23 @@ condition_within :
 ;
 
 expr :
-    expr TEQUALS expr     { $$ = &BinaryExpression{op:OpEquals, lhs:$1, rhs:$3} }
-|   expr TNOTEQUALS expr  { $$ = &BinaryExpression{op:OpNotEquals, lhs:$1, rhs:$3} }
-|   expr TLT expr         { $$ = &BinaryExpression{op:OpLessThan, lhs:$1, rhs:$3} }
-|   expr TLTE expr        { $$ = &BinaryExpression{op:OpLessThanOrEqualTo, lhs:$1, rhs:$3} }
-|   expr TGT expr         { $$ = &BinaryExpression{op:OpGreaterThan, lhs:$1, rhs:$3} }
-|   expr TGTE expr        { $$ = &BinaryExpression{op:OpGreaterThanOrEqualTo, lhs:$1, rhs:$3} }
-|   expr TAND expr        { $$ = &BinaryExpression{op:OpAnd, lhs:$1, rhs:$3} }
-|   expr TOR expr         { $$ = &BinaryExpression{op:OpOr, lhs:$1, rhs:$3} }
-|   expr TPLUS expr       { $$ = &BinaryExpression{op:OpPlus, lhs:$1, rhs:$3} }
-|   expr TMINUS expr      { $$ = &BinaryExpression{op:OpMinus, lhs:$1, rhs:$3} }
-|   expr TMUL expr        { $$ = &BinaryExpression{op:OpMultiply, lhs:$1, rhs:$3} }
-|   expr TDIV expr        { $$ = &BinaryExpression{op:OpDivide, lhs:$1, rhs:$3} }
+    expr TEQUALS expr     { $$ = NewBinaryExpression(OpEquals, $1, $3) }
+|   expr TNOTEQUALS expr  { $$ = NewBinaryExpression(OpNotEquals, $1, $3) }
+|   expr TLT expr         { $$ = NewBinaryExpression(OpLessThan, $1, $3) }
+|   expr TLTE expr        { $$ = NewBinaryExpression(OpLessThanOrEqualTo, $1, $3) }
+|   expr TGT expr         { $$ = NewBinaryExpression(OpGreaterThan, $1, $3) }
+|   expr TGTE expr        { $$ = NewBinaryExpression(OpGreaterThanOrEqualTo, $1, $3) }
+|   expr TAND expr        { $$ = NewBinaryExpression(OpAnd, $1, $3) }
+|   expr TOR expr         { $$ = NewBinaryExpression(OpOr, $1, $3) }
+|   expr TPLUS expr       { $$ = NewBinaryExpression(OpPlus, $1, $3) }
+|   expr TMINUS expr      { $$ = NewBinaryExpression(OpMinus, $1, $3) }
+|   expr TMUL expr        { $$ = NewBinaryExpression(OpMultiply, $1, $3) }
+|   expr TDIV expr        { $$ = NewBinaryExpression(OpDivide, $1, $3) }
 |   var_ref               { $$ = Expression($1) }
 |   integer_literal       { $$ = Expression($1) }
 |   boolean_literal       { $$ = Expression($1) }
 |   string_literal        { $$ = Expression($1) }
-|   TLPAREN expr TRPAREN { $$ = $2 }
+|   TLPAREN expr TRPAREN  { $$ = $2 }
 ;
 
 var_ref :

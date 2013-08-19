@@ -3,6 +3,7 @@ package query
 import "strconv"
 
 type IntegerLiteral struct {
+	queryElementImpl
 	value int
 }
 

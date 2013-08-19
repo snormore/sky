@@ -16,22 +16,64 @@ const (
 )
 
 type BinaryExpression struct {
+	queryElementImpl
 	op  int
 	lhs Expression
 	rhs Expression
 }
 
-func (l *BinaryExpression) String() string {
+// Creates a new binary expression.
+func NewBinaryExpression(op int, lhs Expression, rhs Expression) *BinaryExpression {
+	e := &BinaryExpression{op: op}
+	e.SetLhs(lhs)
+	e.SetRhs(rhs)
+	return e
+}
+
+// Returns the left-hand side expression.
+func (e *BinaryExpression) Lhs() Expression {
+	return e.lhs
+}
+
+// Sets the left-hand side expression.
+func (e *BinaryExpression) SetLhs(expression Expression) {
+	if e.lhs != nil {
+		e.lhs.SetParent(nil)
+	}
+	e.lhs = expression
+	if e.lhs != nil {
+		e.lhs.SetParent(e)
+	}
+}
+
+// Returns the right-hand side expression.
+func (e *BinaryExpression) Rhs() Expression {
+	return e.rhs
+}
+
+// Sets the right-hand side expression.
+func (e *BinaryExpression) SetRhs(expression Expression) {
+	if e.rhs != nil {
+		e.rhs.SetParent(nil)
+	}
+	e.rhs = expression
+	if e.rhs != nil {
+		e.rhs.SetParent(e)
+	}
+}
+
+// Returns a string representation of the expression.
+func (e *BinaryExpression) String() string {
 	var str string
 
-	switch l.lhs.(type) {
+	switch e.lhs.(type) {
 	case *BinaryExpression:
-		str += "(" + l.lhs.String() + ")"
+		str += "(" + e.lhs.String() + ")"
 	default:
-		str += l.lhs.String()
+		str += e.lhs.String()
 	}
 
-	switch l.op {
+	switch e.op {
 	case OpEquals:
 		str += " == "
 	case OpNotEquals:
@@ -60,11 +102,11 @@ func (l *BinaryExpression) String() string {
 		str += " <missing> "
 	}
 
-	switch l.rhs.(type) {
+	switch e.rhs.(type) {
 	case *BinaryExpression:
-		str += "(" + l.rhs.String() + ")"
+		str += "(" + e.rhs.String() + ")"
 	default:
-		str += l.rhs.String()
+		str += e.rhs.String()
 	}
 
 	return str

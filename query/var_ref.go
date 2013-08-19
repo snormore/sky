@@ -1,6 +1,7 @@
 package query
 
 type VarRef struct {
+	queryElementImpl
 	value string
 }
 

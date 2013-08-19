@@ -6,9 +6,9 @@ const (
 )
 
 type Statement interface {
+	QueryElement
 	FunctionName(init bool) string
 	MergeFunctionName() string
-	GetStatements() Statements
 	Serialize() map[string]interface{}
 	Deserialize(map[string]interface{}) error
 	CodegenAggregateFunction(init bool) (string, error)
