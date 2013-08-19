@@ -42,7 +42,7 @@ func (s *Server) mergeObjectHandler(w http.ResponseWriter, req *http.Request, pa
 		if err != nil {
 			return nil, err
 		}
-		if err = destServlet.PutEvents(destTable, destObjectId, srcEvents, true); err != nil {
+		if err = destServlet.PutEvents(destTable, destObjectId, srcEvents, true, false); err != nil {
 			return nil, err
 		}
 
