@@ -24,7 +24,7 @@ package query
     string_literal *StringLiteral
 }
 
-%token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTEXPRESSION
+%token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
 %token <token> TSELECT, TGROUP, TBY, TINTO, TAS
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
@@ -69,6 +69,11 @@ start :
     {
         l := yylex.(*yylexer)
         l.query = $2
+    }
+|   TSTARTSTATEMENTS statements
+    {
+        l := yylex.(*yylexer)
+        l.statements = $2
     }
 |   TSTARTSTATEMENT statement
     {

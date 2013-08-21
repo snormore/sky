@@ -95,6 +95,8 @@ func (c *Condition) Serialize() map[string]interface{} {
 
 // Decodes a query condition from an untyped map.
 func (c *Condition) Deserialize(obj map[string]interface{}) error {
+	var err error
+
 	if obj == nil {
 		return errors.New("Condition: Unable to deserialize nil.")
 	}
@@ -155,10 +157,22 @@ func (c *Condition) Deserialize(obj map[string]interface{}) error {
 		}
 	}
 
-	// Deserialize statements.
-	statements, err := DeserializeStatements(obj["statements"])
-	if err != nil {
-		return err
+	// DEPRECATED: Statements can be passed in as "steps".
+	val := obj["steps"]
+	if val == nil {
+		val = obj["statements"]
+	}
+
+	// Parse statements as string or as map.
+	var statements Statements
+	if strval, ok := val.(string); ok && len(strval) > 0 {
+		if statements, err = NewStatementsParser().ParseString(strval); err != nil {
+			return err
+		}
+	} else {
+		if statements, err = DeserializeStatements(val); err != nil {
+			return err
+		}
 	}
 	c.SetStatements(statements)
 

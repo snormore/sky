@@ -16,6 +16,7 @@ type yylexer struct {
 	err        error
 	query      *Query
 	statement  Statement
+	statements Statements
 	expression Expression
 }
 

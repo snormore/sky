@@ -93,6 +93,8 @@ func (q *Query) Serialize() map[string]interface{} {
 
 // Decodes a query from an untyped map.
 func (q *Query) Deserialize(obj map[string]interface{}) error {
+	var err error
+
 	// Deserialize "prefix".
 	if prefix, ok := obj["prefix"].(string); ok || obj["prefix"] == nil {
 		q.Prefix = prefix
@@ -107,23 +109,24 @@ func (q *Query) Deserialize(obj map[string]interface{}) error {
 		return fmt.Errorf("Invalid 'sessionIdleTime': %v", obj["sessionIdleTime"])
 	}
 
-	// Parse the string-based query if it's passed in.
-	q.SetStatements(Statements{})
-	if content, ok := obj["content"].(string); ok && len(content) > 0 {
-		tmp, err := NewParser().ParseString(content)
-		if err != nil {
-			return err
-		}
-		q.SetStatements(tmp.Statements())
+	// DEPRECATED: Statements can be passed in as "steps".
+	val := obj["steps"]
+	if val == nil {
+		val = obj["statements"]
 	}
 
-	if len(q.statements) == 0 {
-		statements, err := DeserializeStatements(obj["statements"])
-		if err != nil {
+	// Parse statements as string or as map.
+	var statements Statements
+	if strval, ok := val.(string); ok && len(strval) > 0 {
+		if statements, err = NewStatementsParser().ParseString(strval); err != nil {
 			return err
 		}
-		q.SetStatements(statements)
+	} else {
+		if statements, err = DeserializeStatements(val); err != nil {
+			return err
+		}
 	}
+	q.SetStatements(statements)
 
 	return nil
 }
