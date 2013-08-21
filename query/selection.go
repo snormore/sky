@@ -5,85 +5,64 @@ import (
 	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
+	"strings"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-// A selection step aggregates data in a query.
-type QuerySelection struct {
-	query      *Query
-	id         int
+// A selection statement aggregates data in a query.
+type Selection struct {
+	queryElementImpl
 	Name       string
 	Dimensions []string
-	Fields     []*QuerySelectionField
+	fields     []*SelectionField
 }
-
-//------------------------------------------------------------------------------
-//
-// Constructors
-//
-//------------------------------------------------------------------------------
 
 // Creates a new selection.
-func NewQuerySelection(query *Query) *QuerySelection {
-	return &QuerySelection{
-		query: query,
-		id:    query.NextIdentifier(),
-	}
-}
-
-//------------------------------------------------------------------------------
-//
-// Accessors
-//
-//------------------------------------------------------------------------------
-
-// Retrieves the query this selection is associated with.
-func (s *QuerySelection) Query() *Query {
-	return s.query
+func NewSelection() *Selection {
+	return &Selection{}
 }
 
 // Retrieves the function name used during codegen.
-func (s *QuerySelection) FunctionName(init bool) string {
+func (s *Selection) FunctionName(init bool) string {
 	if init {
-		return fmt.Sprintf("i%d", s.id)
+		return fmt.Sprintf("i%d", s.ElementId())
 	}
-	return fmt.Sprintf("a%d", s.id)
+	return fmt.Sprintf("a%d", s.ElementId())
 }
 
 // Retrieves the merge function name used during codegen.
-func (s *QuerySelection) MergeFunctionName() string {
-	return fmt.Sprintf("m%d", s.id)
+func (s *Selection) MergeFunctionName() string {
+	return fmt.Sprintf("m%d", s.ElementId())
 }
 
-// Retrieves the child steps.
-func (s *QuerySelection) GetSteps() QueryStepList {
-	return []QueryStep{}
+func (s *Selection) Fields() []*SelectionField {
+	return s.fields
 }
 
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
+func (s *Selection) SetFields(fields []*SelectionField) {
+	for _, f := range s.fields {
+		f.SetParent(nil)
+	}
+
+	s.fields = fields
+
+	for _, f := range s.fields {
+		f.SetParent(s)
+	}
+}
 
 //--------------------------------------
 // Serialization
 //--------------------------------------
 
 // Encodes a query selection into an untyped map.
-func (s *QuerySelection) Serialize() map[string]interface{} {
+func (s *Selection) Serialize() map[string]interface{} {
 	fields := []interface{}{}
-	for _, field := range s.Fields {
+	for _, field := range s.fields {
 		fields = append(fields, field.Serialize())
 	}
 
 	obj := map[string]interface{}{
-		"type":       QueryStepTypeSelection,
+		"type":       TypeSelection,
 		"name":       s.Name,
 		"dimensions": s.Dimensions,
 		"fields":     fields,
@@ -92,12 +71,12 @@ func (s *QuerySelection) Serialize() map[string]interface{} {
 }
 
 // Decodes a query selection from an untyped map.
-func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
+func (s *Selection) Deserialize(obj map[string]interface{}) error {
 	if obj == nil {
-		return errors.New("skyd.QuerySelection: Unable to deserialize nil.")
+		return errors.New("Selection: Unable to deserialize nil.")
 	}
-	if obj["type"] != QueryStepTypeSelection {
-		return fmt.Errorf("skyd.QuerySelection: Invalid step type: %v", obj["type"])
+	if obj["type"] != TypeSelection {
+		return fmt.Errorf("Selection: Invalid statement type: %v", obj["type"])
 	}
 
 	// Deserialize "name".
@@ -106,7 +85,7 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 	} else if obj["name"] == nil {
 		s.Name = ""
 	} else {
-		return fmt.Errorf("skyd.QuerySelection: Invalid name: %v", obj["name"])
+		return fmt.Errorf("Selection: Invalid name: %v", obj["name"])
 	}
 
 	// Deserialize "dimensions".
@@ -116,34 +95,35 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 			if str, ok := dimension.(string); ok {
 				s.Dimensions = append(s.Dimensions, str)
 			} else {
-				return fmt.Errorf("skyd.QuerySelection: Invalid dimension: %v", dimension)
+				return fmt.Errorf("Selection: Invalid dimension: %v", dimension)
 			}
 		}
 	} else {
 		if obj["dimension"] == nil {
 			s.Dimensions = []string{}
 		} else {
-			return fmt.Errorf("skyd.QuerySelection: Invalid dimensions: %v", obj["dimensions"])
+			return fmt.Errorf("Selection: Invalid dimensions: %v", obj["dimensions"])
 		}
 	}
 
 	// Deserialize "fields".
-	if fields, ok := obj["fields"].([]interface{}); ok {
-		s.Fields = []*QuerySelectionField{}
-		for _, field := range fields {
+	if arr, ok := obj["fields"].([]interface{}); ok {
+		fields := []*SelectionField{}
+		for _, field := range arr {
 			if fieldMap, ok := field.(map[string]interface{}); ok {
-				f := NewQuerySelectionField("", "")
+				f := NewSelectionField("", "")
 				f.Deserialize(fieldMap)
-				s.Fields = append(s.Fields, f)
+				fields = append(fields, f)
 			} else {
-				return fmt.Errorf("skyd.QuerySelection: Invalid field: %v", field)
+				return fmt.Errorf("Selection: Invalid field: %v", field)
 			}
 		}
+		s.SetFields(fields)
 	} else {
 		if obj["field"] == nil {
-			s.Fields = []*QuerySelectionField{}
+			s.SetFields([]*SelectionField{})
 		} else {
-			return fmt.Errorf("skyd.QuerySelection: Invalid fields: %v", obj["fields"])
+			return fmt.Errorf("Selection: Invalid fields: %v", obj["fields"])
 		}
 	}
 
@@ -155,7 +135,7 @@ func (s *QuerySelection) Deserialize(obj map[string]interface{}) error {
 //--------------------------------------
 
 // Generates Lua code for the selection aggregation.
-func (s *QuerySelection) CodegenAggregateFunction(init bool) (string, error) {
+func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate main function.
@@ -176,7 +156,7 @@ func (s *QuerySelection) CodegenAggregateFunction(init bool) (string, error) {
 	}
 
 	// Select fields.
-	for _, field := range s.Fields {
+	for _, field := range s.fields {
 		exp, err := field.CodegenExpression(init)
 		if err != nil {
 			return "", err
@@ -191,7 +171,7 @@ func (s *QuerySelection) CodegenAggregateFunction(init bool) (string, error) {
 }
 
 // Generates Lua code for the selection merge.
-func (s *QuerySelection) CodegenMergeFunction() (string, error) {
+func (s *Selection) CodegenMergeFunction() (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate nested functions first.
@@ -216,7 +196,7 @@ func (s *QuerySelection) CodegenMergeFunction() (string, error) {
 }
 
 // Generates Lua code for the inner merge.
-func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
+func (s *Selection) CodegenInnerMergeFunction(index int) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate next nested function first.
@@ -242,7 +222,7 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 		fmt.Fprintf(buffer, "  end\n")
 	} else {
 		// Merge fields.
-		for _, field := range s.Fields {
+		for _, field := range s.fields {
 			exp, err := field.CodegenMergeExpression()
 			if err != nil {
 				return "", err
@@ -260,7 +240,7 @@ func (s *QuerySelection) CodegenInnerMergeFunction(index int) (string, error) {
 //--------------------------------------
 
 // Converts factorized fields back to their original strings.
-func (s *QuerySelection) Defactorize(data interface{}) error {
+func (s *Selection) Defactorize(data interface{}) error {
 	if m, ok := data.(map[interface{}]interface{}); ok {
 		// If this is a named selection then drill in first.
 		if s.Name != "" {
@@ -279,7 +259,8 @@ func (s *QuerySelection) Defactorize(data interface{}) error {
 }
 
 // Recursively defactorizes dimensions.
-func (s *QuerySelection) defactorize(data interface{}, index int) error {
+func (s *Selection) defactorize(data interface{}, index int) error {
+	query := s.Query()
 	if index >= len(s.Dimensions) {
 		return nil
 	}
@@ -291,9 +272,9 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 
 	// Retrieve property.
 	dimension := s.Dimensions[index]
-	property := s.query.table.PropertyFile().GetPropertyByName(dimension)
+	property := query.table.PropertyFile().GetPropertyByName(dimension)
 	if property == nil {
-		return fmt.Errorf("skyd.QuerySelection: Property not found: %s", dimension)
+		return fmt.Errorf("Selection: Property not found: %s", dimension)
 	}
 
 	// Defactorize.
@@ -304,7 +285,7 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 				// Only process this if it hasn't been defactorized already. Duplicate
 				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
-					stringValue, err := s.query.fdb.Defactorize(s.query.table.Name, dimension, uint64(sequence))
+					stringValue, err := query.fdb.Defactorize(query.table.Name, dimension, uint64(sequence))
 					if err != nil {
 						return err
 					}
@@ -331,11 +312,35 @@ func (s *QuerySelection) defactorize(data interface{}, index int) error {
 
 // Checks if any of the selection fields require initialization before
 // performing aggregation.
-func (s *QuerySelection) RequiresInitialization() bool {
-	for _, field := range s.Fields {
+func (s *Selection) RequiresInitialization() bool {
+	for _, field := range s.fields {
 		if field.RequiresInitialization() {
 			return true
 		}
 	}
 	return false
+}
+
+//--------------------------------------
+// String
+//--------------------------------------
+
+// Converts the statements to a string-based representation.
+func (s *Selection) String() string {
+	str := "SELECT "
+
+	arr := []string{}
+	for _, field := range s.fields {
+		arr = append(arr, field.String())
+	}
+	str += strings.Join(arr, ", ")
+
+	if len(s.Dimensions) > 0 {
+		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
+	}
+	if s.Name != "" {
+		str += " INTO \"" + s.Name + "\""
+	}
+	str += ";"
+	return str
 }

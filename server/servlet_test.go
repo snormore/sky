@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/factors"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -12,7 +13,7 @@ func TestOpen(t *testing.T) {
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 
-	servlet := NewServlet(path, nil)
+	servlet := NewServlet(path, factors.NewDB(""))
 	defer servlet.Close()
 	err = servlet.Open()
 	if err != nil {
@@ -26,7 +27,7 @@ func TestServletPutEvent(t *testing.T) {
 	path, err := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 	table := core.NewTable("test", "/tmp/test")
-	servlet := NewServlet(path, nil)
+	servlet := NewServlet(path, factors.NewDB(""))
 	defer servlet.Close()
 	_ = servlet.Open()
 

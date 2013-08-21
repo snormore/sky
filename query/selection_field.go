@@ -12,7 +12,8 @@ import (
 //
 //------------------------------------------------------------------------------
 
-type QuerySelectionField struct {
+type SelectionField struct {
+	queryElementImpl
 	Name       string
 	Expression string
 }
@@ -24,8 +25,8 @@ type QuerySelectionField struct {
 //------------------------------------------------------------------------------
 
 // Creates a new selection field.
-func NewQuerySelectionField(name string, expression string) *QuerySelectionField {
-	return &QuerySelectionField{Name: name, Expression: expression}
+func NewSelectionField(name string, expression string) *SelectionField {
+	return &SelectionField{Name: name, Expression: expression}
 }
 
 //------------------------------------------------------------------------------
@@ -39,7 +40,7 @@ func NewQuerySelectionField(name string, expression string) *QuerySelectionField
 //--------------------------------------
 
 // Encodes a query selection into an untyped map.
-func (f *QuerySelectionField) Serialize() map[string]interface{} {
+func (f *SelectionField) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"name":       f.Name,
 		"expression": f.Expression,
@@ -48,23 +49,23 @@ func (f *QuerySelectionField) Serialize() map[string]interface{} {
 }
 
 // Decodes a query selection from an untyped map.
-func (f *QuerySelectionField) Deserialize(obj map[string]interface{}) error {
+func (f *SelectionField) Deserialize(obj map[string]interface{}) error {
 	if obj == nil {
-		return errors.New("skyd.QuerySelectionField: Unable to deserialize nil.")
+		return errors.New("SelectionField: Unable to deserialize nil.")
 	}
 
 	// Deserialize "expression".
 	if expression, ok := obj["expression"].(string); ok && len(expression) > 0 {
 		f.Expression = expression
 	} else {
-		return fmt.Errorf("skyd.QuerySelectionField: Invalid expression: %v", obj["expression"])
+		return fmt.Errorf("SelectionField: Invalid expression: %v", obj["expression"])
 	}
 
 	// Deserialize "name".
 	if name, ok := obj["name"].(string); ok && len(name) > 0 {
 		f.Name = name
 	} else {
-		return fmt.Errorf("skyd.QuerySelectionField: Invalid name: %v", obj["name"])
+		return fmt.Errorf("SelectionField: Invalid name: %v", obj["name"])
 	}
 
 	return nil
@@ -76,7 +77,7 @@ func (f *QuerySelectionField) Deserialize(obj map[string]interface{}) error {
 
 // Extracts the parts of the expression. Returns the aggregate function name
 // and the aggregate field name.
-func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
+func (f *SelectionField) ExpressionParts() (string, string, error) {
 	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max|histogram)\((\w+)\)|(\w+)) *$`)
 	if m := r.FindStringSubmatch(f.Expression); m != nil {
 		if len(m[1]) > 0 { // sum()/min()/max()
@@ -84,7 +85,7 @@ func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
 			case "sum", "min", "max", "histogram":
 				return m[1], m[2], nil
 			}
-			return "", "", fmt.Errorf("skyd.QuerySelectionField: Invalid aggregate function: %q", f.Expression)
+			return "", "", fmt.Errorf("SelectionField: Invalid aggregate function: %q", f.Expression)
 		} else if len(m[3]) > 0 { // assignment
 			return "", m[3], nil
 		} else { // count()
@@ -92,7 +93,7 @@ func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
 		}
 	}
 
-	return "", "", fmt.Errorf("skyd.QuerySelectionField: Invalid expression: %q", f.Expression)
+	return "", "", fmt.Errorf("SelectionField: Invalid expression: %q", f.Expression)
 }
 
 //--------------------------------------
@@ -100,7 +101,7 @@ func (f *QuerySelectionField) ExpressionParts() (string, string, error) {
 //--------------------------------------
 
 // Generates Lua code for the expression.
-func (f *QuerySelectionField) CodegenExpression(init bool) (string, error) {
+func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 	functionName, fieldName, err := f.ExpressionParts()
 	if err != nil {
 		return "", err
@@ -125,11 +126,11 @@ func (f *QuerySelectionField) CodegenExpression(init bool) (string, error) {
 		return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, fieldName), nil
 	}
 
-	return "", fmt.Errorf("skyd.QuerySelectionField: Unexpected codegen error: %q", f.Expression)
+	return "", fmt.Errorf("SelectionField: Unexpected codegen error: %q", f.Expression)
 }
 
 // Generates Lua code for the merge expression.
-func (f *QuerySelectionField) CodegenMergeExpression() (string, error) {
+func (f *SelectionField) CodegenMergeExpression() (string, error) {
 	functionName, _, err := f.ExpressionParts()
 	if err != nil {
 		return "", err
@@ -150,7 +151,7 @@ func (f *QuerySelectionField) CodegenMergeExpression() (string, error) {
 		return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
 	}
 
-	return "", fmt.Errorf("skyd.QuerySelectionField: Unexpected merge codegen error: %q", f.Expression)
+	return "", fmt.Errorf("SelectionField: Unexpected merge codegen error: %q", f.Expression)
 }
 
 //--------------------------------------
@@ -160,10 +161,19 @@ func (f *QuerySelectionField) CodegenMergeExpression() (string, error) {
 // Checks if the field requires the data structure to be initialized before
 // aggregation. This will occur when computing histograms since all servlets
 // need to insert into the same bins.
-func (f *QuerySelectionField) RequiresInitialization() bool {
+func (f *SelectionField) RequiresInitialization() bool {
 	functionName, _, _ := f.ExpressionParts()
 	if functionName == "histogram" {
 		return true
 	}
 	return false
+}
+
+//--------------------------------------
+// String
+//--------------------------------------
+
+// Converts the field to a string-based representation.
+func (f *SelectionField) String() string {
+	return fmt.Sprintf("%s AS %s", f.Expression, f.Name)
 }
