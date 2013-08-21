@@ -18,6 +18,7 @@ import (
     variables []*Variable
     statement Statement
     statements Statements
+    assignment *Assignment
     selection *Selection
     selection_field *SelectionField
     selection_fields []*SelectionField
@@ -32,12 +33,12 @@ import (
 
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
 %token <token> TFACTOR, TSTRING, TINTEGER, TFLOAT, TBOOLEAN
-%token <token> TDECLARE, TAS
+%token <token> TDECLARE, TAS, TSET
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
-%token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV
+%token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV, TASSIGN
 %token <token> TTRUE, TFALSE
 %token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS
 %token <integer> TINT
@@ -45,6 +46,7 @@ import (
 %type <query> query
 %type <variables> variables
 %type <variable> variable
+%type <assignment> assignment
 %type <selection> selection
 %type <statement> statement
 %type <statements> statements
@@ -63,6 +65,7 @@ import (
 %type <string_literal> string_literal
 %type <var_ref> var_ref
 
+%left TASSIGN
 %left TOR
 %left TAND
 %left TEQUALS TNOTEQUALS
@@ -102,7 +105,7 @@ query :
     variables statements
     {
         $$ = &Query{}
-        $$.SetVariables($1)
+        $$.SetDeclaredVariables($1)
         $$.SetStatements($2)
     }
 ;
@@ -119,7 +122,11 @@ statements :
 ;
 
 statement :
-    selection
+    assignment
+    {
+        $$ = Statement($1)
+    }
+|   selection
     {
         $$ = Statement($1)
     }
@@ -153,6 +160,15 @@ data_type :
 |   TINTEGER { $$ = core.IntegerDataType }
 |   TFLOAT   { $$ = core.FloatDataType }
 |   TBOOLEAN { $$ = core.BooleanDataType }
+;
+
+assignment :
+    TSET var_ref TASSIGN expr
+    {
+        $$ = NewAssignment()
+        $$.SetTarget($2)
+        $$.SetExpression($4)
+    }
 ;
 
 selection :

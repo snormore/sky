@@ -275,8 +275,16 @@ func (c *Condition) RequiresInitialization() bool {
 }
 
 //--------------------------------------
-// String
+// Utility
 //--------------------------------------
+
+// Returns a list of variable references within this condition.
+func (c *Condition) VarRefs() []*VarRef {
+	refs := []*VarRef{}
+	refs = append(refs, c.expression.VarRefs()...)
+	refs = append(refs, c.statements.VarRefs()...)
+	return refs
+}
 
 // Converts the condition to a string-based representation.
 func (c *Condition) String() string {

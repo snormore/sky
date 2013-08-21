@@ -20,6 +20,7 @@ type yySymType struct {
 	variables        []*Variable
 	statement        Statement
 	statements       Statements
+	assignment       *Assignment
 	selection        *Selection
 	selection_field  *SelectionField
 	selection_fields []*SelectionField
@@ -43,37 +44,39 @@ const TFLOAT = 57353
 const TBOOLEAN = 57354
 const TDECLARE = 57355
 const TAS = 57356
-const TSELECT = 57357
-const TGROUP = 57358
-const TBY = 57359
-const TINTO = 57360
-const TWHEN = 57361
-const TWITHIN = 57362
-const TTHEN = 57363
-const TEND = 57364
-const TSEMICOLON = 57365
-const TCOMMA = 57366
-const TLPAREN = 57367
-const TRPAREN = 57368
-const TRANGE = 57369
-const TEQUALS = 57370
-const TNOTEQUALS = 57371
-const TLT = 57372
-const TLTE = 57373
-const TGT = 57374
-const TGTE = 57375
-const TAND = 57376
-const TOR = 57377
-const TPLUS = 57378
-const TMINUS = 57379
-const TMUL = 57380
-const TDIV = 57381
-const TTRUE = 57382
-const TFALSE = 57383
-const TIDENT = 57384
-const TQUOTEDSTRING = 57385
-const TWITHINUNITS = 57386
-const TINT = 57387
+const TSET = 57357
+const TSELECT = 57358
+const TGROUP = 57359
+const TBY = 57360
+const TINTO = 57361
+const TWHEN = 57362
+const TWITHIN = 57363
+const TTHEN = 57364
+const TEND = 57365
+const TSEMICOLON = 57366
+const TCOMMA = 57367
+const TLPAREN = 57368
+const TRPAREN = 57369
+const TRANGE = 57370
+const TEQUALS = 57371
+const TNOTEQUALS = 57372
+const TLT = 57373
+const TLTE = 57374
+const TGT = 57375
+const TGTE = 57376
+const TAND = 57377
+const TOR = 57378
+const TPLUS = 57379
+const TMINUS = 57380
+const TMUL = 57381
+const TDIV = 57382
+const TASSIGN = 57383
+const TTRUE = 57384
+const TFALSE = 57385
+const TIDENT = 57386
+const TQUOTEDSTRING = 57387
+const TWITHINUNITS = 57388
+const TINT = 57389
 
 var yyToknames = []string{
 	"TSTARTQUERY",
@@ -87,6 +90,7 @@ var yyToknames = []string{
 	"TBOOLEAN",
 	"TDECLARE",
 	"TAS",
+	"TSET",
 	"TSELECT",
 	"TGROUP",
 	"TBY",
@@ -112,6 +116,7 @@ var yyToknames = []string{
 	"TMINUS",
 	"TMUL",
 	"TDIV",
+	"TASSIGN",
 	"TTRUE",
 	"TFALSE",
 	"TIDENT",
@@ -125,7 +130,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line grammar.y:312
+//line grammar.y:328
 type within struct {
 	start int
 	end   int
@@ -139,96 +144,99 @@ var yyExca = []int{
 	-2, 0,
 }
 
-const yyNprod = 55
+const yyNprod = 57
 const yyPrivate = 57344
 
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 163
+const yyLast = 170
 
 var yyAct = []int{
 
-	8, 14, 93, 74, 30, 96, 82, 95, 25, 94,
-	35, 36, 37, 38, 90, 32, 41, 42, 43, 44,
-	65, 45, 33, 34, 35, 36, 37, 38, 39, 40,
-	41, 42, 43, 44, 19, 53, 54, 55, 56, 57,
-	58, 59, 60, 61, 62, 63, 64, 52, 84, 22,
-	23, 20, 24, 69, 21, 33, 34, 35, 36, 37,
-	38, 39, 40, 41, 42, 43, 44, 41, 42, 43,
-	44, 31, 46, 88, 87, 33, 34, 35, 36, 37,
-	38, 39, 40, 41, 42, 43, 44, 33, 34, 35,
-	36, 37, 38, 39, 86, 41, 42, 43, 44, 33,
-	34, 35, 36, 37, 38, 89, 71, 41, 42, 43,
-	44, 37, 38, 43, 44, 41, 42, 43, 44, 50,
-	49, 81, 72, 12, 73, 12, 70, 13, 48, 13,
-	92, 68, 76, 77, 78, 79, 80, 91, 1, 85,
-	66, 27, 2, 4, 3, 5, 28, 15, 18, 17,
-	16, 9, 51, 11, 75, 67, 83, 47, 29, 10,
-	26, 7, 6,
+	8, 16, 33, 21, 98, 79, 101, 87, 27, 40,
+	41, 100, 99, 44, 45, 46, 47, 35, 56, 24,
+	25, 22, 26, 48, 23, 95, 36, 37, 38, 39,
+	40, 41, 42, 43, 44, 45, 46, 47, 57, 58,
+	59, 60, 61, 62, 63, 64, 65, 66, 67, 68,
+	89, 34, 71, 49, 69, 74, 36, 37, 38, 39,
+	40, 41, 42, 43, 44, 45, 46, 47, 38, 39,
+	40, 41, 22, 50, 44, 45, 46, 47, 93, 92,
+	36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+	46, 47, 36, 37, 38, 39, 40, 41, 42, 76,
+	44, 45, 46, 47, 36, 37, 38, 39, 40, 41,
+	46, 47, 44, 45, 46, 47, 77, 44, 45, 46,
+	47, 91, 13, 14, 54, 53, 94, 15, 86, 73,
+	97, 78, 75, 52, 13, 14, 96, 90, 70, 15,
+	81, 82, 83, 84, 85, 17, 29, 2, 4, 3,
+	5, 30, 1, 20, 19, 18, 9, 55, 12, 31,
+	80, 72, 88, 51, 32, 11, 10, 28, 7, 6,
 }
 var yyPact = []int{
 
-	138, -1000, -1000, -1000, 110, 9, -1000, 128, 110, -1000,
-	-1000, -1000, 29, 9, 47, -1000, -1000, -1000, -1000, 9,
-	-1000, -1000, -1000, -1000, -1000, 110, -1000, 30, -1000, 104,
-	-1000, 94, 27, 9, 9, 9, 9, 9, 9, 9,
-	9, 9, 9, 9, 9, -6, 126, 113, 29, 109,
-	80, 103, -42, -20, -20, 79, 79, 31, 31, 71,
-	59, 75, 75, -1000, -1000, -1000, 124, 98, -37, -1000,
-	6, 125, 68, -1000, 46, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, 81, -1000, -28, 123, 108, -43, -33,
-	-1000, -35, -1000, -39, -1000, -1000, -1000,
+	143, -1000, -1000, -1000, 119, -23, -1000, 133, 119, -1000,
+	-1000, -1000, -1000, 28, 7, -23, 51, -1000, -1000, -1000,
+	-1000, -23, -1000, -1000, -1000, -1000, -1000, 119, -1000, 9,
+	-1000, 32, 108, -1000, 98, -3, -23, -23, -23, -23,
+	-23, -23, -23, -23, -23, -23, -23, -23, 27, 124,
+	-23, 110, 7, 114, 72, 109, -42, 37, 37, -24,
+	-24, 80, 80, 75, 63, 71, 71, -1000, -1000, -1000,
+	132, 51, 104, -38, -1000, 6, 123, 94, -1000, 50,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, 101, -1000,
+	-19, 122, 107, -43, -32, -1000, -33, -1000, -40, -1000,
+	-1000, -1000,
 }
 var yyPgo = []int{
 
-	0, 162, 161, 160, 159, 146, 0, 4, 158, 157,
-	156, 155, 154, 153, 152, 1, 150, 149, 148, 147,
-	138,
+	0, 169, 168, 167, 166, 165, 151, 0, 2, 164,
+	163, 162, 161, 160, 158, 157, 1, 155, 154, 153,
+	145, 152,
 }
 var yyR1 = []int{
 
-	0, 20, 20, 20, 20, 1, 6, 6, 5, 5,
-	2, 2, 3, 12, 12, 12, 12, 12, 4, 8,
-	8, 8, 7, 7, 9, 9, 10, 10, 11, 11,
-	13, 14, 14, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-	19, 16, 17, 17, 18,
+	0, 21, 21, 21, 21, 1, 7, 7, 6, 6,
+	6, 2, 2, 3, 13, 13, 13, 13, 13, 4,
+	5, 9, 9, 9, 8, 8, 10, 10, 11, 11,
+	12, 12, 14, 15, 15, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 20, 17, 18, 18, 19,
 }
 var yyR2 = []int{
 
 	0, 2, 2, 2, 2, 2, 0, 2, 1, 1,
-	0, 2, 4, 1, 1, 1, 1, 1, 5, 0,
-	1, 3, 5, 6, 0, 3, 1, 3, 0, 2,
-	6, 0, 5, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 1, 1, 1, 1, 3,
-	1, 1, 1, 1, 1,
+	1, 0, 2, 4, 1, 1, 1, 1, 1, 4,
+	5, 0, 1, 3, 5, 6, 0, 3, 1, 3,
+	0, 2, 6, 0, 5, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 1, 1, 1,
+	1, 3, 1, 1, 1, 1, 1,
 }
 var yyChk = []int{
 
-	-1000, -20, 4, 6, 5, 7, -1, -2, -6, -5,
-	-4, -13, 15, 19, -15, -19, -16, -17, -18, 25,
-	42, 45, 40, 41, 43, -6, -3, 13, -5, -8,
-	-7, 42, -15, 28, 29, 30, 31, 32, 33, 34,
-	35, 36, 37, 38, 39, -15, 42, -9, 24, 16,
-	25, -14, 20, -15, -15, -15, -15, -15, -15, -15,
-	-15, -15, -15, -15, -15, 26, 14, -11, 18, -7,
-	17, 26, 42, 21, 45, -12, 8, 9, 10, 11,
-	12, 23, 43, -10, 42, 14, 26, -6, 27, 24,
-	42, 14, 22, 45, 42, 42, 44,
+	-1000, -21, 4, 6, 5, 7, -1, -2, -7, -6,
+	-4, -5, -14, 15, 16, 20, -16, -20, -17, -18,
+	-19, 26, 44, 47, 42, 43, 45, -7, -3, 13,
+	-6, -20, -9, -8, 44, -16, 29, 30, 31, 32,
+	33, 34, 35, 36, 37, 38, 39, 40, -16, 44,
+	41, -10, 25, 17, 26, -15, 21, -16, -16, -16,
+	-16, -16, -16, -16, -16, -16, -16, -16, -16, 27,
+	14, -16, -12, 19, -8, 18, 27, 44, 22, 47,
+	-13, 8, 9, 10, 11, 12, 24, 45, -11, 44,
+	14, 27, -7, 28, 25, 44, 14, 23, 47, 44,
+	44, 46,
 }
 var yyDef = []int{
 
-	0, -2, 10, 6, 0, 0, 1, 6, 2, 3,
-	8, 9, 19, 0, 4, 45, 46, 47, 48, 0,
-	50, 51, 52, 53, 54, 5, 11, 0, 7, 24,
-	20, 0, 31, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 28, 0, 0,
-	0, 0, 0, 33, 34, 35, 36, 37, 38, 39,
-	40, 41, 42, 43, 44, 49, 0, 0, 0, 21,
-	0, 0, 0, 6, 0, 12, 13, 14, 15, 16,
-	17, 18, 29, 25, 26, 0, 0, 0, 0, 0,
-	22, 0, 30, 0, 27, 23, 32,
+	0, -2, 11, 6, 0, 0, 1, 6, 2, 3,
+	8, 9, 10, 0, 21, 0, 4, 47, 48, 49,
+	50, 0, 52, 53, 54, 55, 56, 5, 12, 0,
+	7, 0, 26, 22, 0, 33, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 30, 0, 0, 0, 0, 0, 35, 36, 37,
+	38, 39, 40, 41, 42, 43, 44, 45, 46, 51,
+	0, 19, 0, 0, 23, 0, 0, 0, 6, 0,
+	13, 14, 15, 16, 17, 18, 20, 31, 27, 28,
+	0, 0, 0, 0, 0, 24, 0, 32, 0, 29,
+	25, 34,
 }
 var yyTok1 = []int{
 
@@ -240,7 +248,7 @@ var yyTok2 = []int{
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
 	32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
-	42, 43, 44, 45,
+	42, 43, 44, 45, 46, 47,
 }
 var yyTok3 = []int{
 	0,
@@ -472,163 +480,175 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		//line grammar.y:80
+		//line grammar.y:83
 		{
 			l := yylex.(*yylexer)
 			l.query = yyS[yypt-0].query
 		}
 	case 2:
-		//line grammar.y:85
+		//line grammar.y:88
 		{
 			l := yylex.(*yylexer)
 			l.statements = yyS[yypt-0].statements
 		}
 	case 3:
-		//line grammar.y:90
+		//line grammar.y:93
 		{
 			l := yylex.(*yylexer)
 			l.statement = yyS[yypt-0].statement
 		}
 	case 4:
-		//line grammar.y:95
+		//line grammar.y:98
 		{
 			l := yylex.(*yylexer)
 			l.expression = yyS[yypt-0].expr
 		}
 	case 5:
-		//line grammar.y:103
+		//line grammar.y:106
 		{
 			yyVAL.query = &Query{}
-			yyVAL.query.SetVariables(yyS[yypt-1].variables)
+			yyVAL.query.SetDeclaredVariables(yyS[yypt-1].variables)
 			yyVAL.query.SetStatements(yyS[yypt-0].statements)
 		}
 	case 6:
-		//line grammar.y:112
+		//line grammar.y:115
 		{
 			yyVAL.statements = make(Statements, 0)
 		}
 	case 7:
-		//line grammar.y:116
+		//line grammar.y:119
 		{
 			yyVAL.statements = append(yyS[yypt-1].statements, yyS[yypt-0].statement)
 		}
 	case 8:
-		//line grammar.y:123
+		//line grammar.y:126
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].selection)
+			yyVAL.statement = Statement(yyS[yypt-0].assignment)
 		}
 	case 9:
-		//line grammar.y:127
+		//line grammar.y:130
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].condition)
+			yyVAL.statement = Statement(yyS[yypt-0].selection)
 		}
 	case 10:
 		//line grammar.y:134
 		{
-			yyVAL.variables = make([]*Variable, 0)
+			yyVAL.statement = Statement(yyS[yypt-0].condition)
 		}
 	case 11:
-		//line grammar.y:138
+		//line grammar.y:141
 		{
-			yyVAL.variables = append(yyS[yypt-1].variables, yyS[yypt-0].variable)
+			yyVAL.variables = make([]*Variable, 0)
 		}
 	case 12:
 		//line grammar.y:145
 		{
-			yyVAL.variable = NewVariable(yyS[yypt-2].str, yyS[yypt-0].str)
+			yyVAL.variables = append(yyS[yypt-1].variables, yyS[yypt-0].variable)
 		}
 	case 13:
-		//line grammar.y:151
+		//line grammar.y:152
+		{
+			yyVAL.variable = NewVariable(yyS[yypt-2].str, yyS[yypt-0].str)
+		}
+	case 14:
+		//line grammar.y:158
 		{
 			yyVAL.str = core.FactorDataType
 		}
-	case 14:
-		//line grammar.y:152
+	case 15:
+		//line grammar.y:159
 		{
 			yyVAL.str = core.StringDataType
 		}
-	case 15:
-		//line grammar.y:153
+	case 16:
+		//line grammar.y:160
 		{
 			yyVAL.str = core.IntegerDataType
 		}
-	case 16:
-		//line grammar.y:154
+	case 17:
+		//line grammar.y:161
 		{
 			yyVAL.str = core.FloatDataType
 		}
-	case 17:
-		//line grammar.y:155
+	case 18:
+		//line grammar.y:162
 		{
 			yyVAL.str = core.BooleanDataType
 		}
-	case 18:
-		//line grammar.y:160
+	case 19:
+		//line grammar.y:167
+		{
+			yyVAL.assignment = NewAssignment()
+			yyVAL.assignment.SetTarget(yyS[yypt-2].var_ref)
+			yyVAL.assignment.SetExpression(yyS[yypt-0].expr)
+		}
+	case 20:
+		//line grammar.y:176
 		{
 			yyVAL.selection = NewSelection()
 			yyVAL.selection.SetFields(yyS[yypt-3].selection_fields)
 			yyVAL.selection.Dimensions = yyS[yypt-2].strs
 			yyVAL.selection.Name = yyS[yypt-1].str
 		}
-	case 19:
-		//line grammar.y:170
+	case 21:
+		//line grammar.y:186
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 		}
-	case 20:
-		//line grammar.y:174
+	case 22:
+		//line grammar.y:190
 		{
 			yyVAL.selection_fields = make([]*SelectionField, 0)
 			yyVAL.selection_fields = append(yyVAL.selection_fields, yyS[yypt-0].selection_field)
 		}
-	case 21:
-		//line grammar.y:179
+	case 23:
+		//line grammar.y:195
 		{
 			yyVAL.selection_fields = append(yyS[yypt-2].selection_fields, yyS[yypt-0].selection_field)
 		}
-	case 22:
-		//line grammar.y:186
+	case 24:
+		//line grammar.y:202
 		{
 			yyVAL.selection_field = NewSelectionField(yyS[yypt-0].str, yyS[yypt-4].str+"()")
 		}
-	case 23:
-		//line grammar.y:190
+	case 25:
+		//line grammar.y:206
 		{
 			yyVAL.selection_field = NewSelectionField(yyS[yypt-0].str, yyS[yypt-5].str+"("+yyS[yypt-3].str+")")
 		}
-	case 24:
-		//line grammar.y:197
+	case 26:
+		//line grammar.y:213
 		{
 			yyVAL.strs = make([]string, 0)
 		}
-	case 25:
-		//line grammar.y:201
+	case 27:
+		//line grammar.y:217
 		{
 			yyVAL.strs = yyS[yypt-0].strs
 		}
-	case 26:
-		//line grammar.y:208
+	case 28:
+		//line grammar.y:224
 		{
 			yyVAL.strs = make([]string, 0)
 			yyVAL.strs = append(yyVAL.strs, yyS[yypt-0].str)
 		}
-	case 27:
-		//line grammar.y:213
+	case 29:
+		//line grammar.y:229
 		{
 			yyVAL.strs = append(yyS[yypt-2].strs, yyS[yypt-0].str)
 		}
-	case 28:
-		//line grammar.y:220
+	case 30:
+		//line grammar.y:236
 		{
 			yyVAL.str = ""
 		}
-	case 29:
-		//line grammar.y:224
+	case 31:
+		//line grammar.y:240
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
-	case 30:
-		//line grammar.y:231
+	case 32:
+		//line grammar.y:247
 		{
 			yyVAL.condition = NewCondition()
 			yyVAL.condition.SetExpression(yyS[yypt-4].expr)
@@ -637,13 +657,13 @@ yydefault:
 			yyVAL.condition.WithinUnits = yyS[yypt-3].condition_within.units
 			yyVAL.condition.SetStatements(yyS[yypt-1].statements)
 		}
-	case 31:
-		//line grammar.y:243
+	case 33:
+		//line grammar.y:259
 		{
 			yyVAL.condition_within = &within{start: 0, end: 0, units: UnitSteps}
 		}
-	case 32:
-		//line grammar.y:247
+	case 34:
+		//line grammar.y:263
 		{
 			yyVAL.condition_within = &within{start: yyS[yypt-3].integer, end: yyS[yypt-1].integer}
 			switch yyS[yypt-0].str {
@@ -655,113 +675,113 @@ yydefault:
 				yyVAL.condition_within.units = UnitSeconds
 			}
 		}
-	case 33:
-		//line grammar.y:261
+	case 35:
+		//line grammar.y:277
 		{
 			yyVAL.expr = NewBinaryExpression(OpEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 34:
-		//line grammar.y:262
+	case 36:
+		//line grammar.y:278
 		{
 			yyVAL.expr = NewBinaryExpression(OpNotEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 35:
-		//line grammar.y:263
+	case 37:
+		//line grammar.y:279
 		{
 			yyVAL.expr = NewBinaryExpression(OpLessThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 36:
-		//line grammar.y:264
+	case 38:
+		//line grammar.y:280
 		{
 			yyVAL.expr = NewBinaryExpression(OpLessThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 37:
-		//line grammar.y:265
+	case 39:
+		//line grammar.y:281
 		{
 			yyVAL.expr = NewBinaryExpression(OpGreaterThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 38:
-		//line grammar.y:266
+	case 40:
+		//line grammar.y:282
 		{
 			yyVAL.expr = NewBinaryExpression(OpGreaterThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 39:
-		//line grammar.y:267
+	case 41:
+		//line grammar.y:283
 		{
 			yyVAL.expr = NewBinaryExpression(OpAnd, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 40:
-		//line grammar.y:268
+	case 42:
+		//line grammar.y:284
 		{
 			yyVAL.expr = NewBinaryExpression(OpOr, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 41:
-		//line grammar.y:269
+	case 43:
+		//line grammar.y:285
 		{
 			yyVAL.expr = NewBinaryExpression(OpPlus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 42:
-		//line grammar.y:270
+	case 44:
+		//line grammar.y:286
 		{
 			yyVAL.expr = NewBinaryExpression(OpMinus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 43:
-		//line grammar.y:271
+	case 45:
+		//line grammar.y:287
 		{
 			yyVAL.expr = NewBinaryExpression(OpMultiply, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 44:
-		//line grammar.y:272
+	case 46:
+		//line grammar.y:288
 		{
 			yyVAL.expr = NewBinaryExpression(OpDivide, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 45:
-		//line grammar.y:273
+	case 47:
+		//line grammar.y:289
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].var_ref)
 		}
-	case 46:
-		//line grammar.y:274
+	case 48:
+		//line grammar.y:290
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].integer_literal)
 		}
-	case 47:
-		//line grammar.y:275
+	case 49:
+		//line grammar.y:291
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].boolean_literal)
 		}
-	case 48:
-		//line grammar.y:276
+	case 50:
+		//line grammar.y:292
 		{
 			yyVAL.expr = Expression(yyS[yypt-0].string_literal)
 		}
-	case 49:
-		//line grammar.y:277
+	case 51:
+		//line grammar.y:293
 		{
 			yyVAL.expr = yyS[yypt-1].expr
 		}
-	case 50:
-		//line grammar.y:282
+	case 52:
+		//line grammar.y:298
 		{
 			yyVAL.var_ref = &VarRef{value: yyS[yypt-0].str}
 		}
-	case 51:
-		//line grammar.y:289
+	case 53:
+		//line grammar.y:305
 		{
 			yyVAL.integer_literal = &IntegerLiteral{value: yyS[yypt-0].integer}
 		}
-	case 52:
-		//line grammar.y:296
+	case 54:
+		//line grammar.y:312
 		{
 			yyVAL.boolean_literal = &BooleanLiteral{value: true}
 		}
-	case 53:
-		//line grammar.y:300
+	case 55:
+		//line grammar.y:316
 		{
 			yyVAL.boolean_literal = &BooleanLiteral{value: false}
 		}
-	case 54:
-		//line grammar.y:307
+	case 56:
+		//line grammar.y:323
 		{
 			yyVAL.string_literal = &StringLiteral{value: yyS[yypt-0].str}
 		}

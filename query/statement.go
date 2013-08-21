@@ -1,8 +1,9 @@
 package query
 
 const (
-	TypeCondition = "condition"
-	TypeSelection = "selection"
+	TypeAssignment = "assignment"
+	TypeCondition  = "condition"
+	TypeSelection  = "selection"
 )
 
 type Statement interface {

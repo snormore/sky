@@ -81,6 +81,7 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 [0-9]+                     return y.inttoken(yylval, TINT);
 
 "DECLARE"                  return y.token(yylval, TDECLARE);
+"SET"                      return y.token(yylval, TSET);
 "SELECT"                   return y.token(yylval, TSELECT);
 "GROUP"                    return y.token(yylval, TGROUP);
 "BY"                       return y.token(yylval, TBY);
@@ -115,6 +116,7 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 ","                        return y.token(yylval, TCOMMA);
 "("                        return y.token(yylval, TLPAREN);
 ")"                        return y.token(yylval, TRPAREN);
+"="                        return y.token(yylval, TASSIGN);
 
 [a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
 [ \t\n\r]+

@@ -170,8 +170,17 @@ func (f *SelectionField) RequiresInitialization() bool {
 }
 
 //--------------------------------------
-// String
+// Utility
 //--------------------------------------
+
+// Retrieves a list of variables referenced by this field.
+func (f *SelectionField) VarRefs() []*VarRef {
+	refs := []*VarRef{}
+	if _, fieldName, _ := f.ExpressionParts(); fieldName != "" {
+		refs = append(refs, &VarRef{value: fieldName})
+	}
+	return refs
+}
 
 // Converts the field to a string-based representation.
 func (f *SelectionField) String() string {

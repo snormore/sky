@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
-	"github.com/skydb/sky/query/engine"
+	"github.com/skydb/sky/query"
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"io"
@@ -515,14 +515,14 @@ func (s *Servlet) DeleteEvents(table *core.Table, objectId string) error {
 //--------------------------------------
 
 // Creates and initializes an execution engine for querying this servlet.
-func (s *Servlet) CreateExecutionEngine(table *core.Table, prefix string, source string) (*engine.ExecutionEngine, error) {
-	e, err := engine.NewExecutionEngine(table, prefix, source)
+func (s *Servlet) CreateExecutionEngine(q *query.Query) (*query.ExecutionEngine, error) {
+	e, err := query.NewExecutionEngine(q)
 	if err != nil {
 		return nil, err
 	}
 
 	// Begin a transaction.
-	txn, dbi, err := s.mdbTxnBegin(table.Name, false)
+	txn, dbi, err := s.mdbTxnBegin(q.Table().Name, false)
 	if err != nil {
 		return nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for execution engine: %s", err)
 	}

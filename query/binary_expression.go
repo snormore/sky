@@ -67,6 +67,14 @@ func (e *BinaryExpression) SetRhs(expression Expression) {
 	}
 }
 
+// Returns a list of variable references within this expression.
+func (e *BinaryExpression) VarRefs() []*VarRef {
+	refs := []*VarRef{}
+	refs = append(refs, e.lhs.VarRefs()...)
+	refs = append(refs, e.rhs.VarRefs()...)
+	return refs
+}
+
 // Returns a Lua representation of the expression.
 func (e *BinaryExpression) Codegen() (string, error) {
 	var str string

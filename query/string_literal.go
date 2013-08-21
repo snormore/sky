@@ -11,6 +11,10 @@ type StringLiteral struct {
 	value string
 }
 
+func (l *StringLiteral) VarRefs() []*VarRef {
+	return []*VarRef{}
+}
+
 func (l *StringLiteral) Codegen() (string, error) {
 	// Retrieve the opposite side of the binary expression this literal is a part of.
 	var opposite Expression
@@ -27,12 +31,12 @@ func (l *StringLiteral) Codegen() (string, error) {
 	// a factor.
 	if ref, ok := opposite.(*VarRef); ok {
 		query := l.Query()
-		property, err := ref.Property()
+		variable, err := ref.Variable()
 		if err != nil {
 			return "", err
 		}
-		if property.DataType == core.FactorDataType {
-			sequence, err := query.fdb.Factorize(query.table.Name, property.Name, l.value, false)
+		if variable.DataType == core.FactorDataType {
+			sequence, err := query.fdb.Factorize(query.table.Name, variable.Name, l.value, false)
 			if _, ok := err.(*factors.FactorNotFound); ok {
 				return "0", nil
 			} else if err != nil {

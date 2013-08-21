@@ -60,7 +60,10 @@ func TestParserConditionWithin(t *testing.T) {
 }
 
 func TestParserVariable(t *testing.T) {
-	str := `DECLARE foo AS FLOAT` + "\n" + `SELECT sum(foo) AS total;`
+	str := `DECLARE foo AS FLOAT` + "\n"
+	str += `SET foo = 12` + "\n"
+	str += `SELECT sum(foo) AS total;`
+
 	query, err := NewParser().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)

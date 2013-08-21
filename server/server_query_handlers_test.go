@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -194,6 +195,45 @@ func TestServerTimestampQuery(t *testing.T) {
 			`"}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1,"tsSum":2},"A2":{"count":1,"tsSum":4},"A5":{"count":2,"tsSum":4}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
+// Ensure that we can use declared variables.
+func TestServerFSMQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", true, "factor")
+		setupTestData(t, "foo", [][]string{
+			[]string{"00", "1970-01-01T00:00:00Z", `{"data":{"action":"home"}}`},
+			[]string{"00", "1970-01-01T00:00:02Z", `{"data":{"action":"signup"}}`},
+			[]string{"00", "1970-01-01T00:00:03Z", `{"data":{"action":"signed_up"}}`},
+			[]string{"00", "1970-01-01T00:00:04Z", `{"data":{"action":"pricing"}}`},
+			[]string{"00", "1970-01-02T00:00:00Z", `{"data":{"action":"cancel"}}`},
+			[]string{"00", "1970-01-03T00:00:00Z", `{"data":{"action":"home"}}`},
+
+			[]string{"01", "1970-01-01T00:00:00Z", `{"data":{"action":"home"}}`},
+			[]string{"01", "1970-01-01T00:00:02Z", `{"data":{"action":"cancel"}}`},
+		})
+
+		// Run query.
+		query := `
+			DECLARE state AS INTEGER
+			WHEN state == 0 THEN
+				SET state = 1
+				SELECT count() AS count INTO "visited";
+			END
+			WHEN state == 1 && action == "signed_up" THEN
+				SET state = 2
+				SELECT count() AS count INTO "registered";
+			END
+			WHEN state == 2 && action == "cancel" THEN
+				SET state = 3
+				SELECT count() AS count INTO "cancelled";
+			END
+		`
+		q, _ := json.Marshal(query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{"cancelled":{"count":1},"registered":{"count":1},"visited":{"count":2}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
 

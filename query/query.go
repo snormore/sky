@@ -7,18 +7,21 @@ import (
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
 	"io"
+	"sort"
 	"strings"
 )
 
 // A Query is a structured way of aggregating data in the database.
 type Query struct {
-	table           *core.Table
-	fdb             *factors.DB
-	sequence        int
-	Prefix          string
-	SessionIdleTime int
-	variables       []*Variable
-	statements      Statements
+	table             *core.Table
+	fdb               *factors.DB
+	source            string
+	refs              []*VarRef
+	sequence          int
+	Prefix            string
+	SessionIdleTime   int
+	declaredVariables []*Variable
+	statements        Statements
 }
 
 // NewQuery returns a new query.
@@ -60,20 +63,80 @@ func (q *Query) SetStatements(statements Statements) {
 	}
 }
 
+//--------------------------------------
+// Variables
+//--------------------------------------
+
 // Returns the variables declared for this query.
-func (q *Query) Variables() []*Variable {
-	return q.variables
+func (q *Query) DeclaredVariables() []*Variable {
+	return q.declaredVariables
 }
 
 // Sets the variables declared on this query.
-func (q *Query) SetVariables(variables []*Variable) {
-	for _, v := range q.variables {
+func (q *Query) SetDeclaredVariables(variables []*Variable) {
+	for _, v := range q.declaredVariables {
 		v.SetParent(nil)
 	}
-	q.variables = variables
-	for _, v := range q.variables {
+	q.declaredVariables = variables
+	for _, v := range q.declaredVariables {
 		v.SetParent(q)
 	}
+}
+
+// Retrieves the variable with a given name.
+func (q *Query) GetVariable(name string) *Variable {
+	// Try to find variable from schema first.
+	if q.Table() != nil && q.Table().PropertyFile() != nil {
+		p := q.Table().PropertyFile().GetPropertyByName(name)
+		if p != nil {
+			return &Variable{
+				Name:       p.Name,
+				DataType:   p.DataType,
+				PropertyId: p.Id,
+			}
+		}
+	}
+
+	// Otherwise check if the variable was declared.
+	for _, v := range q.declaredVariables {
+		if v.Name == name {
+			return v
+		}
+	}
+
+	return nil
+}
+
+// Returns a list of all variables explicitly declared or implicitly
+// declared through the table schema.
+func (q *Query) Variables() []*Variable {
+	variables := []*Variable{}
+	lookup := map[string]bool{}
+
+	for _, ref := range q.VarRefs() {
+		if !lookup[ref.value] {
+			if v := q.GetVariable(ref.value); v != nil {
+				variables = append(variables, v)
+				lookup[ref.value] = true
+			}
+		}
+	}
+
+	sort.Sort(Variables(variables))
+
+	return variables
+}
+
+// Retrieves a list of variables references by the query. This list is
+// cached so it is only generated the first time it's called.
+func (q *Query) VarRefs() []*VarRef {
+	if q.refs == nil {
+		q.refs = []*VarRef{}
+		for _, s := range q.statements {
+			q.refs = append(q.refs, s.VarRefs()...)
+		}
+	}
+	return q.refs
 }
 
 //--------------------------------------
@@ -178,37 +241,42 @@ func (q *Query) Decode(reader io.Reader) error {
 // Code Generation
 //--------------------------------------
 
-// Generates Lua code for the query.
+// Generates Lua code for the query. Code can only generated once for the
+// query and then it is cached.
 func (q *Query) Codegen() (string, error) {
-	buffer := new(bytes.Buffer)
+	if len(q.source) == 0 {
+		buffer := new(bytes.Buffer)
 
-	// Generate initialization functions (if necessary).
-	if q.RequiresInitialization() {
-		str, err := q.statements.CodegenAggregateFunctions(true)
+		// Generate initialization functions (if necessary).
+		if q.RequiresInitialization() {
+			str, err := q.statements.CodegenAggregateFunctions(true)
+			if err != nil {
+				return "", err
+			}
+			buffer.WriteString(str)
+			buffer.WriteString(q.CodegenAggregateFunction(true))
+		}
+
+		// Generate aggregation functions.
+		str, err := q.statements.CodegenAggregateFunctions(false)
 		if err != nil {
 			return "", err
 		}
 		buffer.WriteString(str)
-		buffer.WriteString(q.CodegenAggregateFunction(true))
+		buffer.WriteString(q.CodegenAggregateFunction(false))
+
+		// Generate merge functions.
+		str, err = q.statements.CodegenMergeFunctions()
+		if err != nil {
+			return "", err
+		}
+		buffer.WriteString(str)
+		buffer.WriteString(q.CodegenMergeFunction())
+
+		q.source = buffer.String()
 	}
 
-	// Generate aggregation functions.
-	str, err := q.statements.CodegenAggregateFunctions(false)
-	if err != nil {
-		return "", err
-	}
-	buffer.WriteString(str)
-	buffer.WriteString(q.CodegenAggregateFunction(false))
-
-	// Generate merge functions.
-	str, err = q.statements.CodegenMergeFunctions()
-	if err != nil {
-		return "", err
-	}
-	buffer.WriteString(str)
-	buffer.WriteString(q.CodegenMergeFunction())
-
-	return buffer.String(), nil
+	return q.source, nil
 }
 
 // Generates the 'aggregate()' function. If the "init" flag is specified then
@@ -282,6 +350,17 @@ func (q *Query) Defactorize(data interface{}) error {
 }
 
 //--------------------------------------
+// Properties
+//--------------------------------------
+
+// Determines the minimum and maximum property identifiers that are used
+// in this query.
+func (q *Query) PropertyIdentifierRange() (int64, int64) {
+	maxPropertyId, minPropertyId := q.Table().PropertyFile().NextIdentifiers()
+	return minPropertyId, maxPropertyId
+}
+
+//--------------------------------------
 // Initialization
 //--------------------------------------
 
@@ -299,7 +378,7 @@ func (q *Query) RequiresInitialization() bool {
 // Convert the query to a string-based representation.
 func (q *Query) String() string {
 	arr := []string{}
-	for _, v := range q.variables {
+	for _, v := range q.declaredVariables {
 		arr = append(arr, v.String())
 	}
 	arr = append(arr, q.statements.String())

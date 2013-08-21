@@ -10,12 +10,28 @@ import (
 // referenced like any other property on the database.
 type Variable struct {
 	queryElementImpl
-	Name     string
-	DataType string
+	Name       string
+	DataType   string
+	PropertyId int64
 }
 
 func NewVariable(name string, dataType string) *Variable {
 	return &Variable{Name: name, DataType: dataType}
+}
+
+// Returns the C data type used by this variable.
+func (v *Variable) cType() string {
+	switch v.DataType {
+	case core.StringDataType:
+		return "sky_string_t"
+	case core.FactorDataType, core.IntegerDataType:
+		return "int32_t"
+	case core.FloatDataType:
+		return "double"
+	case core.BooleanDataType:
+		return "bool"
+	}
+	panic(fmt.Sprintf("Invalid data type: %v", v.DataType))
 }
 
 func (v *Variable) Codegen() (string, error) {

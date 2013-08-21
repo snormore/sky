@@ -7,6 +7,10 @@ type IntegerLiteral struct {
 	value int
 }
 
+func (l *IntegerLiteral) VarRefs() []*VarRef {
+	return []*VarRef{}
+}
+
 func (l *IntegerLiteral) Codegen() (string, error) {
 	return l.String(), nil
 }

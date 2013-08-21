@@ -270,18 +270,18 @@ func (s *Selection) defactorize(data interface{}, index int) error {
 		return nil
 	}
 
-	// Retrieve property.
+	// Retrieve variable.
 	dimension := s.Dimensions[index]
-	property := query.table.PropertyFile().GetPropertyByName(dimension)
-	if property == nil {
-		return fmt.Errorf("Selection: Property not found: %s", dimension)
+	variable := query.GetVariable(dimension)
+	if variable == nil {
+		return fmt.Errorf("Selection: Variable not found: %s", dimension)
 	}
 
 	// Defactorize.
 	if outer, ok := inner[dimension].(map[interface{}]interface{}); ok {
 		copy := map[interface{}]interface{}{}
 		for k, v := range outer {
-			if property.DataType == core.FactorDataType {
+			if variable.DataType == core.FactorDataType {
 				// Only process this if it hasn't been defactorized already. Duplicate
 				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
@@ -322,8 +322,20 @@ func (s *Selection) RequiresInitialization() bool {
 }
 
 //--------------------------------------
-// String
+// Utility
 //--------------------------------------
+
+// Returns a list of variable references used by this selection.
+func (s *Selection) VarRefs() []*VarRef {
+	refs := []*VarRef{}
+	for _, dimension := range s.Dimensions {
+		refs = append(refs, &VarRef{value: dimension})
+	}
+	for _, field := range s.fields {
+		refs = append(refs, field.VarRefs()...)
+	}
+	return refs
+}
 
 // Converts the statements to a string-based representation.
 func (s *Selection) String() string {

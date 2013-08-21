@@ -1,4 +1,4 @@
-package engine
+package query
 
 /*
 #cgo LDFLAGS: -lluajit-5.1 -llmdb
@@ -32,8 +32,6 @@ int mp_unpack(lua_State *L);
 
 // The number of bits that seconds are shifted over in a timestamp.
 #define SECONDS_BIT_OFFSET  20
-
-#define SKY_PROPERTY_DESCRIPTOR_PADDING  32
 
 
 //==============================================================================
@@ -107,6 +105,9 @@ struct sky_cursor {
     void *data;
     uint32_t data_sz;
     uint32_t action_data_sz;
+
+    int32_t min_property_id;
+    int32_t max_property_id;
 
     int32_t session_event_index;
     void *startptr;
@@ -221,8 +222,6 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
     if(cursor == NULL) debug("[malloc] Unable to allocate cursor.");
 
     // Add one property to account for the zero descriptor.
-    min_property_id -= SKY_PROPERTY_DESCRIPTOR_PADDING;
-    max_property_id += SKY_PROPERTY_DESCRIPTOR_PADDING;
     int32_t property_count = (max_property_id - min_property_id) + 1;
 
     // Allocate memory for the descriptors.
@@ -230,6 +229,9 @@ sky_cursor *sky_cursor_new(int32_t min_property_id,
     if(cursor->property_descriptors == NULL) debug("[malloc] Unable to allocate property descriptors.");
     cursor->property_count = property_count;
     cursor->property_zero_descriptor = NULL;
+
+    cursor->min_property_id = min_property_id;
+    cursor->max_property_id = max_property_id;
 
     // Initialize all property descriptors to noop.
     int32_t i;
@@ -272,8 +274,12 @@ void sky_cursor_free(sky_cursor *cursor)
 void sky_cursor_set_value(sky_cursor *cursor, void *target,
                           int64_t property_id, void *ptr, size_t *sz)
 {
-    sky_property_descriptor *property_descriptor = &cursor->property_zero_descriptor[property_id];
-    property_descriptor->set_func(target + property_descriptor->offset, ptr, sz);
+    if(property_id >= cursor->min_property_id && property_id <= cursor->max_property_id) {
+        sky_property_descriptor *property_descriptor = &cursor->property_zero_descriptor[property_id];
+        property_descriptor->set_func(target + property_descriptor->offset, ptr, sz);
+    } else {
+        sky_set_noop(NULL, ptr, sz);
+    }
 }
 
 
@@ -657,7 +663,6 @@ import (
 	"github.com/szferi/gomdb"
 	"github.com/ugorji/go/codec"
 	"regexp"
-	"sort"
 	"sync"
 	"text/template"
 	"unsafe"
@@ -671,17 +676,14 @@ import (
 
 // An ExecutionEngine is used to iterate over a series of objects.
 type ExecutionEngine struct {
-	tableName    string
-	lmdbCursor   *mdb.Cursor
-	cursor       *C.sky_cursor
-	state        *C.lua_State
-	prefix       string
-	header       string
-	source       string
-	fullSource   string
-	propertyFile *core.PropertyFile
-	propertyRefs []*core.Property
-	mutex        sync.Mutex
+	query      *Query
+	lmdbCursor *mdb.Cursor
+	cursor     *C.sky_cursor
+	state      *C.lua_State
+	header     string
+	source     string
+	fullSource string
+	mutex      sync.Mutex
 }
 
 //------------------------------------------------------------------------------
@@ -690,28 +692,15 @@ type ExecutionEngine struct {
 //
 //------------------------------------------------------------------------------
 
-func NewExecutionEngine(table *core.Table, prefix string, source string) (*ExecutionEngine, error) {
-	if table == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Table required")
-	}
-	propertyFile := table.PropertyFile()
-	if propertyFile == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Property file required")
-	}
-
-	// Find a list of all references properties.
-	propertyRefs, err := extractPropertyReferences(propertyFile, source)
+func NewExecutionEngine(q *Query) (*ExecutionEngine, error) {
+	// Generate Lua code from query.
+	source, err := q.Codegen()
 	if err != nil {
 		return nil, err
 	}
 
 	// Create the engine.
-	e := &ExecutionEngine{
-		tableName:    table.Name,
-		propertyFile: propertyFile,
-		source:       source,
-		propertyRefs: propertyRefs,
-	}
+	e := &ExecutionEngine{query: q, source: source}
 
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -724,7 +713,7 @@ func NewExecutionEngine(table *core.Table, prefix string, source string) (*Execu
 	}
 
 	// Set the prefix.
-	if err = e.setPrefix(prefix); err != nil {
+	if err = e.setPrefix(e.query.Prefix); err != nil {
 		e.destroy()
 		return nil, err
 	}
@@ -793,12 +782,13 @@ func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
 		e.cursor.lmdb_cursor = e.lmdbCursor.MdbCursor()
 
 		// Move the cursor to the prefix start.
-		if len(e.prefix) > 0 {
-			if _, _, err := e.lmdbCursor.Get([]byte(e.prefix), mdb.SET_RANGE); err != nil && err != mdb.NotFound {
-				return fmt.Errorf("skyd.ExecutionEngine: Unable to set lmdb range [%v]: %v", e.prefix, err)
+		prefix := e.query.Prefix
+		if len(prefix) > 0 {
+			if _, _, err := e.lmdbCursor.Get([]byte(prefix), mdb.SET_RANGE); err != nil && err != mdb.NotFound {
+				return fmt.Errorf("skyd.ExecutionEngine: Unable to set lmdb range [%v]: %v", prefix, err)
 			} else if err == nil {
 				if _, _, err := e.lmdbCursor.Get(nil, mdb.PREV); err != nil && err != mdb.NotFound {
-					return fmt.Errorf("skyd.ExecutionEngine: Unable to init lmdb range: %v", e.prefix, err)
+					return fmt.Errorf("skyd.ExecutionEngine: Unable to init lmdb range: %v", prefix, err)
 				}
 			}
 		}
@@ -837,6 +827,8 @@ func (e *ExecutionEngine) init() error {
 
 	// Generate the script.
 	e.fullSource = fmt.Sprintf("%v\n%v", e.header, e.source)
+	// fmt.Println(e.fullSource)
+
 	source := C.CString(e.fullSource)
 	if source == nil {
 		return errors.New("skyd.ExecutionEngine: Unable to allocate full source")
@@ -869,7 +861,7 @@ func (e *ExecutionEngine) init() error {
 // Initializes the cursor used by the script.
 func (e *ExecutionEngine) initCursor() error {
 	// Create the cursor.
-	minPropertyId, maxPropertyId := e.propertyFile.NextIdentifiers()
+	minPropertyId, maxPropertyId := e.query.PropertyIdentifierRange()
 	if e.cursor = C.sky_cursor_new((C.int32_t)(minPropertyId), (C.int32_t)(maxPropertyId)); e.cursor == nil {
 		return errors.New("skyd.ExecutionEngine: Unable to allocate cursor")
 	}
@@ -939,7 +931,6 @@ func (e *ExecutionEngine) setPrefix(prefix string) error {
 		}
 	}
 	e.cursor.key_prefix_sz = C.uint32_t(len(prefix))
-	e.prefix = prefix
 
 	return nil
 }
@@ -1083,14 +1074,14 @@ func (e *ExecutionEngine) decodeResult() (interface{}, error) {
 func (e *ExecutionEngine) generateHeader() error {
 	// Parse the header template.
 	t := template.New("header.lua")
-	t.Funcs(template.FuncMap{"structdef": propertyStructDef, "metatypedef": metatypeFunctionDef, "initdescriptor": initDescriptorDef})
-	if _, err := t.Parse(LuaHeader); err != nil {
+	t.Funcs(template.FuncMap{"structdef": variableStructDef, "metatypedef": metatypeFunctionDef, "initdescriptor": initDescriptorDef})
+	if _, err := t.Parse(luaHeader); err != nil {
 		return err
 	}
 
 	// Generate the template from the property references.
 	var buffer bytes.Buffer
-	if err := t.Execute(&buffer, e.propertyRefs); err != nil {
+	if err := t.Execute(&buffer, e.query.Variables()); err != nil {
 		return err
 	}
 
@@ -1100,71 +1091,28 @@ func (e *ExecutionEngine) generateHeader() error {
 	return nil
 }
 
-// Extracts the property references from the source string.
-func extractPropertyReferences(propertyFile *core.PropertyFile, source string) ([]*core.Property, error) {
-	// Create a list of properties.
-	properties := make([]*core.Property, 0)
-	lookup := make(map[int64]*core.Property)
-
-	// Find all the event property references in the script.
-	r, err := regexp.Compile(`\bevent(?:\.|:)(\w+)`)
-	if err != nil {
-		return nil, err
-	}
-	for _, match := range r.FindAllStringSubmatch(source, -1) {
-		name := match[1]
-		property := propertyFile.GetPropertyByName(name)
-		if property == nil {
-			return nil, fmt.Errorf("Property not found: '%v'", name)
-		}
-		if lookup[property.Id] == nil {
-			properties = append(properties, property)
-			lookup[property.Id] = property
-		}
-	}
-	sort.Sort(core.PropertyList(properties))
-
-	return properties, nil
-}
-
-func propertyStructDef(args ...interface{}) string {
-	if property, ok := args[0].(*core.Property); ok && property.Id != 0 {
-		return fmt.Sprintf("%v _%v;", getPropertyCType(property), property.Name)
+func variableStructDef(args ...interface{}) string {
+	if variable, ok := args[0].(*Variable); ok {
+		return fmt.Sprintf("%v _%v;", variable.cType(), variable.Name)
 	}
 	return ""
 }
 
 func metatypeFunctionDef(args ...interface{}) string {
-	if property, ok := args[0].(*core.Property); ok && property.Id != 0 {
-		switch property.DataType {
+	if variable, ok := args[0].(*Variable); ok {
+		switch variable.DataType {
 		case core.StringDataType:
-			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", property.Name, property.Name, property.Name)
+			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", variable.Name, variable.Name, variable.Name)
 		default:
-			return fmt.Sprintf("%v = function(event) return event._%v end,", property.Name, property.Name)
+			return fmt.Sprintf("%v = function(event) return event._%v end,", variable.Name, variable.Name)
 		}
 	}
 	return ""
 }
 
 func initDescriptorDef(args ...interface{}) string {
-	if property, ok := args[0].(*core.Property); ok && property.Id != 0 {
-		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", property.Id, property.Name, getPropertyCType(property), property.DataType)
-	}
-	return ""
-}
-
-func getPropertyCType(property *core.Property) string {
-	switch property.DataType {
-	case core.StringDataType:
-		return "sky_string_t"
-	case core.FactorDataType, core.IntegerDataType:
-		return "int32_t"
-	case core.FloatDataType:
-		return "double"
-	case core.BooleanDataType:
-		return "bool"
-	default:
-		panic(fmt.Sprintf("skyd.ExecutionEngine: Invalid data type: %v", property.DataType))
+	if variable, ok := args[0].(*Variable); ok && variable.PropertyId != 0 {
+		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", variable.PropertyId, variable.Name, variable.cType(), variable.DataType)
 	}
 	return ""
 }
