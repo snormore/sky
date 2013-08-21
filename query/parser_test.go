@@ -59,9 +59,20 @@ func TestParserConditionWithin(t *testing.T) {
 	}
 }
 
+func TestParserVariable(t *testing.T) {
+	str := `DECLARE foo AS FLOAT` + "\n" + `SELECT sum(foo) AS total;`
+	query, err := NewParser().ParseString(str)
+	if err != nil {
+		t.Fatal("Parse error:", err)
+	}
+	if query.String() != str {
+		t.Fatal("Unexpected:", "'"+query.String()+"'")
+	}
+}
+
 func TestParserError(t *testing.T) {
-	_, err := NewParser().ParseString(`SELEC count();`)
-	if err == nil || err.Error() != "Unexpected ' ' at character 5, syntax error" {
+	_, err := NewParser().ParseString(`SELECT count() AS` + "\n" + `count GRP BY action;`)
+	if err == nil || err.Error() != "Unexpected 'GRP' at line 2, char 8, syntax error" {
 		t.Fatal("Unexpected parse error: ", err)
 	}
 }

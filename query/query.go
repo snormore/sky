@@ -7,6 +7,7 @@ import (
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
 	"io"
+	"strings"
 )
 
 // A Query is a structured way of aggregating data in the database.
@@ -15,8 +16,9 @@ type Query struct {
 	fdb             *factors.DB
 	sequence        int
 	Prefix          string
-	statements      Statements
 	SessionIdleTime int
+	variables       []*Variable
+	statements      Statements
 }
 
 // NewQuery returns a new query.
@@ -47,7 +49,7 @@ func (q *Query) Statements() Statements {
 	return q.statements
 }
 
-// Sets the condition's statements.
+// Sets the query's statements.
 func (q *Query) SetStatements(statements Statements) {
 	for _, s := range q.statements {
 		s.SetParent(nil)
@@ -55,6 +57,22 @@ func (q *Query) SetStatements(statements Statements) {
 	q.statements = statements
 	for _, s := range q.statements {
 		s.SetParent(q)
+	}
+}
+
+// Returns the variables declared for this query.
+func (q *Query) Variables() []*Variable {
+	return q.variables
+}
+
+// Sets the variables declared on this query.
+func (q *Query) SetVariables(variables []*Variable) {
+	for _, v := range q.variables {
+		v.SetParent(nil)
+	}
+	q.variables = variables
+	for _, v := range q.variables {
+		v.SetParent(q)
 	}
 }
 
@@ -280,7 +298,10 @@ func (q *Query) RequiresInitialization() bool {
 
 // Convert the query to a string-based representation.
 func (q *Query) String() string {
-	var str string
-	str += q.statements.String()
-	return str
+	arr := []string{}
+	for _, v := range q.variables {
+		arr = append(arr, v.String())
+	}
+	arr = append(arr, q.statements.String())
+	return strings.Join(arr, "\n")
 }

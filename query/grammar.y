@@ -2,6 +2,10 @@
 
 package query
 
+import (
+    "github.com/skydb/sky/core"
+)
+
 %}
 
 %union{
@@ -10,6 +14,8 @@ package query
     str string
     strs []string
     query *Query
+    variable *Variable
+    variables []*Variable
     statement Statement
     statements Statements
     selection *Selection
@@ -25,16 +31,20 @@ package query
 }
 
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
-%token <token> TSELECT, TGROUP, TBY, TINTO, TAS
+%token <token> TFACTOR, TSTRING, TINTEGER, TFLOAT, TBOOLEAN
+%token <token> TDECLARE, TAS
+%token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
 %token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV
 %token <token> TTRUE, TFALSE
-%token <str> TIDENT, TSTRING, TWITHINUNITS
+%token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS
 %token <integer> TINT
 
 %type <query> query
+%type <variables> variables
+%type <variable> variable
 %type <selection> selection
 %type <statement> statement
 %type <statements> statements
@@ -42,6 +52,7 @@ package query
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
 %type <str> selection_name
+%type <str> data_type
 
 %type <condition> condition
 %type <condition_within> condition_within
@@ -88,10 +99,11 @@ start :
 ;
 
 query :
-    statements
+    variables statements
     {
         $$ = &Query{}
-        $$.SetStatements($1)
+        $$.SetVariables($1)
+        $$.SetStatements($2)
     }
 ;
 
@@ -115,6 +127,32 @@ statement :
     {
         $$ = Statement($1)
     }
+;
+
+variables :
+    /* empty */
+    {
+        $$ = make([]*Variable, 0)
+    }
+|   variables variable
+    {
+        $$ = append($1, $2)
+    }
+;
+
+variable :
+    TDECLARE TIDENT TAS data_type
+    {
+        $$ = NewVariable($2, $4)
+    }
+;
+
+data_type :
+    TFACTOR  { $$ = core.FactorDataType }
+|   TSTRING  { $$ = core.StringDataType }
+|   TINTEGER { $$ = core.IntegerDataType }
+|   TFLOAT   { $$ = core.FloatDataType }
+|   TBOOLEAN { $$ = core.BooleanDataType }
 ;
 
 selection :
@@ -182,7 +220,7 @@ selection_name :
     {
         $$ = ""
     }
-|   TINTO TSTRING
+|   TINTO TQUOTEDSTRING
     {
         $$ = $2
     }
@@ -265,7 +303,7 @@ boolean_literal :
 ;
 
 string_literal :
-    TSTRING
+    TQUOTEDSTRING
     {
         $$ = &StringLiteral{value:$1}
     }
