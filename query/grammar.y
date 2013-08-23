@@ -172,7 +172,7 @@ assignment :
 ;
 
 selection :
-    TSELECT selection_fields selection_group_by selection_name TSEMICOLON
+    TSELECT selection_fields selection_group_by selection_name
     {
         $$ = NewSelection()
         $$.SetFields($2)

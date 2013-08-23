@@ -30,7 +30,7 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 	}
 
 	// Run a simple count query.
-	q, _ := query.NewParser().ParseString("SELECT count() AS count;")
+	q, _ := query.NewParser().ParseString("SELECT count() AS count")
 	q.Prefix = req.FormValue("prefix")
 	q.SetTable(table)
 	q.SetFdb(s.fdb)

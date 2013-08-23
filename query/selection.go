@@ -353,6 +353,5 @@ func (s *Selection) String() string {
 	if s.Name != "" {
 		str += " INTO \"" + s.Name + "\""
 	}
-	str += ";"
 	return str
 }
