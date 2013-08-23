@@ -111,20 +111,20 @@ func (s *Selection) Deserialize(obj map[string]interface{}) error {
 		fields := []*SelectionField{}
 		for _, field := range arr {
 			if fieldMap, ok := field.(map[string]interface{}); ok {
-				f := NewSelectionField("", "")
-				f.Deserialize(fieldMap)
+				f := NewSelectionField("", "", nil)
+				if err := f.Deserialize(fieldMap); err != nil {
+					return err
+				}
 				fields = append(fields, f)
 			} else {
 				return fmt.Errorf("Selection: Invalid field: %v", field)
 			}
 		}
 		s.SetFields(fields)
+	} else if obj["field"] == nil {
+		s.SetFields([]*SelectionField{})
 	} else {
-		if obj["field"] == nil {
-			s.SetFields([]*SelectionField{})
-		} else {
-			return fmt.Errorf("Selection: Invalid fields: %v", obj["fields"])
-		}
+		return fmt.Errorf("Selection: Invalid fields: %v", obj["fields"])
 	}
 
 	return nil

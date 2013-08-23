@@ -6,34 +6,38 @@ import (
 	"regexp"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
 type SelectionField struct {
 	queryElementImpl
-	Name       string
-	Expression string
+	Name        string
+	Aggregation string
+	expression  Expression
 }
-
-//------------------------------------------------------------------------------
-//
-// Constructors
-//
-//------------------------------------------------------------------------------
 
 // Creates a new selection field.
-func NewSelectionField(name string, expression string) *SelectionField {
-	return &SelectionField{Name: name, Expression: expression}
+func NewSelectionField(name string, aggregation string, expression Expression) *SelectionField {
+	f := &SelectionField{
+		Name:        name,
+		Aggregation: aggregation,
+	}
+	f.SetExpression(expression)
+	return f
 }
 
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
+// Returns the expression evaluated by the field.
+func (f *SelectionField) Expression() Expression {
+	return f.expression
+}
+
+// Sets the expression.
+func (f *SelectionField) SetExpression(expression Expression) {
+	if f.expression != nil {
+		f.expression.SetParent(nil)
+	}
+	f.expression = expression
+	if f.expression != nil {
+		f.expression.SetParent(f)
+	}
+}
 
 //--------------------------------------
 // Serialization
@@ -42,8 +46,11 @@ func NewSelectionField(name string, expression string) *SelectionField {
 // Encodes a query selection into an untyped map.
 func (f *SelectionField) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
-		"name":       f.Name,
-		"expression": f.Expression,
+		"name":        f.Name,
+		"aggregation": f.Aggregation,
+	}
+	if f.expression != nil {
+		obj["expression"] = f.expression.String()
 	}
 	return obj
 }
@@ -54,9 +61,35 @@ func (f *SelectionField) Deserialize(obj map[string]interface{}) error {
 		return errors.New("SelectionField: Unable to deserialize nil.")
 	}
 
+	// Deserialize "aggregation".
+	if obj["aggregation"] == nil {
+		f.Aggregation = ""
+	} else if aggregation, ok := obj["aggregation"].(string); ok {
+		f.Aggregation = aggregation
+	} else {
+		return fmt.Errorf("SelectionField: Invalid aggregation: %v", obj["aggregation"])
+	}
+
 	// Deserialize "expression".
-	if expression, ok := obj["expression"].(string); ok && len(expression) > 0 {
-		f.Expression = expression
+	if obj["expression"] == nil {
+		f.SetExpression(nil)
+	} else if expression, ok := obj["expression"].(string); ok {
+		// Extract the aggregation from the expression for backwards compatibility.
+		if m := regexp.MustCompile(`^(\w+)\((.*)\)$`).FindStringSubmatch(expression); m != nil && len(f.Aggregation) == 0 {
+			f.Aggregation = m[1]
+			expression = m[2]
+		}
+
+		// Parse expression.
+		if len(expression) > 0 {
+			expr, err := NewExpressionParser().ParseString(expression)
+			if err != nil {
+				return err
+			}
+			f.SetExpression(expr)
+		} else {
+			f.SetExpression(nil)
+		}
 	} else {
 		return fmt.Errorf("SelectionField: Invalid expression: %v", obj["expression"])
 	}
@@ -72,71 +105,47 @@ func (f *SelectionField) Deserialize(obj map[string]interface{}) error {
 }
 
 //--------------------------------------
-// Expression
-//--------------------------------------
-
-// Extracts the parts of the expression. Returns the aggregate function name
-// and the aggregate field name.
-func (f *SelectionField) ExpressionParts() (string, string, error) {
-	r, _ := regexp.Compile(`^ *(?:count\(\)|(sum|min|max|histogram)\((\w+)\)|(\w+)) *$`)
-	if m := r.FindStringSubmatch(f.Expression); m != nil {
-		if len(m[1]) > 0 { // sum()/min()/max()
-			switch m[1] {
-			case "sum", "min", "max", "histogram":
-				return m[1], m[2], nil
-			}
-			return "", "", fmt.Errorf("SelectionField: Invalid aggregate function: %q", f.Expression)
-		} else if len(m[3]) > 0 { // assignment
-			return "", m[3], nil
-		} else { // count()
-			return "count", "", nil
-		}
-	}
-
-	return "", "", fmt.Errorf("SelectionField: Invalid expression: %q", f.Expression)
-}
-
-//--------------------------------------
 // Code Generation
 //--------------------------------------
 
 // Generates Lua code for the expression.
 func (f *SelectionField) CodegenExpression(init bool) (string, error) {
-	functionName, fieldName, err := f.ExpressionParts()
-	if err != nil {
-		return "", err
+	var code string
+	var err error
+	if f.expression != nil {
+		if code, err = f.expression.Codegen(); err != nil {
+			return "", err
+		}
 	}
 
-	switch functionName {
+	// Expressions are required for everything except count().
+	if f.expression == nil && f.Aggregation != "count" {
+		return "", fmt.Errorf("Selection field expression required for '%s'", f.Aggregation)
+	}
+
+	switch f.Aggregation {
 	case "sum":
-		return fmt.Sprintf("data.%s = (data.%s or 0) + cursor.event:%s()", f.Name, f.Name, fieldName), nil
+		return fmt.Sprintf("data.%s = (data.%s or 0) + (%s)", f.Name, f.Name, code), nil
 	case "min":
-		return fmt.Sprintf("if(data.%s == nil or data.%s > cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
+		return fmt.Sprintf("if(data.%s == nil or data.%s > (%s)) then data.%s = (%s) end", f.Name, f.Name, code, f.Name, code), nil
 	case "max":
-		return fmt.Sprintf("if(data.%s == nil or data.%s < cursor.event:%s()) then data.%s = cursor.event:%s() end", f.Name, f.Name, fieldName, f.Name, fieldName), nil
+		return fmt.Sprintf("if(data.%s == nil or data.%s < (%s)) then data.%s = (%s) end", f.Name, f.Name, code, f.Name, code), nil
 	case "count":
 		return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
 	case "histogram":
 		if init {
-			return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, cursor.event:%s())", f.Name, f.Name, f.Name, fieldName), nil
+			return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, (%s))", f.Name, f.Name, f.Name, code), nil
 		} else {
-			return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, cursor.event:%s()) end", f.Name, f.Name, fieldName), nil
+			return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, (%s)) end", f.Name, f.Name, code), nil
 		}
-	case "":
-		return fmt.Sprintf("data.%s = cursor.event:%s()", f.Name, fieldName), nil
 	}
 
-	return "", fmt.Errorf("SelectionField: Unexpected codegen error: %q", f.Expression)
+	return "", fmt.Errorf("SelectionField: Unsupported aggregation method: %v", f.Aggregation)
 }
 
 // Generates Lua code for the merge expression.
 func (f *SelectionField) CodegenMergeExpression() (string, error) {
-	functionName, _, err := f.ExpressionParts()
-	if err != nil {
-		return "", err
-	}
-
-	switch functionName {
+	switch f.Aggregation {
 	case "sum":
 		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
 	case "min":
@@ -151,7 +160,7 @@ func (f *SelectionField) CodegenMergeExpression() (string, error) {
 		return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
 	}
 
-	return "", fmt.Errorf("SelectionField: Unexpected merge codegen error: %q", f.Expression)
+	return "", fmt.Errorf("SelectionField: Unsupported merge aggregation method: %s", f.Aggregation)
 }
 
 //--------------------------------------
@@ -162,11 +171,7 @@ func (f *SelectionField) CodegenMergeExpression() (string, error) {
 // aggregation. This will occur when computing histograms since all servlets
 // need to insert into the same bins.
 func (f *SelectionField) RequiresInitialization() bool {
-	functionName, _, _ := f.ExpressionParts()
-	if functionName == "histogram" {
-		return true
-	}
-	return false
+	return f.Aggregation == "histogram"
 }
 
 //--------------------------------------
@@ -176,13 +181,17 @@ func (f *SelectionField) RequiresInitialization() bool {
 // Retrieves a list of variables referenced by this field.
 func (f *SelectionField) VarRefs() []*VarRef {
 	refs := []*VarRef{}
-	if _, fieldName, _ := f.ExpressionParts(); fieldName != "" {
-		refs = append(refs, &VarRef{value: fieldName})
+	if f.expression != nil {
+		refs = append(refs, f.expression.VarRefs()...)
 	}
 	return refs
 }
 
 // Converts the field to a string-based representation.
 func (f *SelectionField) String() string {
-	return fmt.Sprintf("%s AS %s", f.Expression, f.Name)
+	var expr string
+	if f.expression != nil {
+		expr = f.expression.String()
+	}
+	return fmt.Sprintf("%s(%s) AS %s", f.Aggregation, expr, f.Name)
 }

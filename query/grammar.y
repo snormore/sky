@@ -200,11 +200,11 @@ selection_fields :
 selection_field :
     TIDENT TLPAREN TRPAREN TAS TIDENT
     {
-        $$ = NewSelectionField($5, $1 + "()")
+        $$ = NewSelectionField($5, $1, nil)
     }
-|   TIDENT TLPAREN TIDENT TRPAREN TAS TIDENT
+|   TIDENT TLPAREN expr TRPAREN TAS TIDENT
     {
-        $$ = NewSelectionField($6, $1 + "(" + $3 + ")")
+        $$ = NewSelectionField($6, $1, $3)
     }
 ;
 

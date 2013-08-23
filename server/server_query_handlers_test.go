@@ -79,10 +79,11 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		query := `{"query":"` +
 			`SELECT count() AS count, sum(price) AS sum GROUP BY gender, state INTO \"s1\"; ` +
 			`SELECT min(price) AS minimum, max(price) AS maximum GROUP BY gender, state;` +
+			`SELECT sum((price + num) * 2) AS sum INTO \"_\"; ` +
 			`"}`
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"_":{"sum":2720},"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
 
