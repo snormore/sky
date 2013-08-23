@@ -1,6 +1,6 @@
-package engine
+package query
 
-const LuaHeader = `
+const luaHeader = `
 -- SKY GENERATED CODE BEGIN --
 local ffi = require('ffi')
 ffi.cdef([[

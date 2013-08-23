@@ -1,4 +1,4 @@
-PACKAGES=core factors query query/engine server skyd/config
+PACKAGES=core factors query server skyd/config
 PKGPATHS=$(patsubst %,github.com/skydb/sky/%,$(PACKAGES))
 
 all: fmt test

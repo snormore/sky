@@ -8,7 +8,6 @@ import (
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/factors"
 	"github.com/skydb/sky/query"
-	"github.com/skydb/sky/query/engine"
 	"io"
 	"io/ioutil"
 	"log"
@@ -483,32 +482,25 @@ func (s *Server) SetNoSync(noSync bool) {
 
 // Runs a query against a table.
 func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error) {
-	var rootEngine *engine.ExecutionEngine
-	engines := make([]*engine.ExecutionEngine, 0)
+	engines := make([]*query.ExecutionEngine, 0)
 
 	// Create a channel to receive aggregate responses.
 	rchannel := make(chan interface{}, len(s.servlets))
 
-	// Generate the query source code.
-	source, err := q.Codegen()
-	if err != nil {
-		return nil, err
-	}
-
 	// Create an engine for merging results.
-	rootEngine, err = engine.NewExecutionEngine(table, q.Prefix, source)
+	rootEngine, err := query.NewExecutionEngine(q)
 	if err != nil {
 		return nil, err
 	}
 	defer rootEngine.Destroy()
-	//fmt.Println(engine.FullAnnotatedSource())
+	//fmt.Println(query.FullAnnotatedSource())
 
 	// Initialize one execution engine for each servlet.
 	var data interface{}
 	for index, servlet := range s.servlets {
 		// Create an engine for each servlet. The execution engine is
 		// protected by a mutex so it's safe to destroy it at any time.
-		subengine, err := servlet.CreateExecutionEngine(table, q.Prefix, source)
+		subengine, err := servlet.CreateExecutionEngine(q)
 		if err != nil {
 			return nil, err
 		}

@@ -5,6 +5,7 @@ type QueryElement interface {
 	SetParent(QueryElement)
 	Query() *Query
 	ElementId() int
+	VarRefs() []*VarRef
 }
 
 type queryElementImpl struct {

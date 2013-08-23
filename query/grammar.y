@@ -2,6 +2,10 @@
 
 package query
 
+import (
+    "github.com/skydb/sky/core"
+)
+
 %}
 
 %union{
@@ -10,8 +14,11 @@ package query
     str string
     strs []string
     query *Query
+    variable *Variable
+    variables []*Variable
     statement Statement
     statements Statements
+    assignment *Assignment
     selection *Selection
     selection_field *SelectionField
     selection_fields []*SelectionField
@@ -25,16 +32,21 @@ package query
 }
 
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
-%token <token> TSELECT, TGROUP, TBY, TINTO, TAS
+%token <token> TFACTOR, TSTRING, TINTEGER, TFLOAT, TBOOLEAN
+%token <token> TDECLARE, TAS, TSET
+%token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
-%token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV
+%token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV, TASSIGN
 %token <token> TTRUE, TFALSE
-%token <str> TIDENT, TSTRING, TWITHINUNITS
+%token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS
 %token <integer> TINT
 
 %type <query> query
+%type <variables> variables
+%type <variable> variable
+%type <assignment> assignment
 %type <selection> selection
 %type <statement> statement
 %type <statements> statements
@@ -42,6 +54,7 @@ package query
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
 %type <str> selection_name
+%type <str> data_type
 
 %type <condition> condition
 %type <condition_within> condition_within
@@ -52,6 +65,7 @@ package query
 %type <string_literal> string_literal
 %type <var_ref> var_ref
 
+%left TASSIGN
 %left TOR
 %left TAND
 %left TEQUALS TNOTEQUALS
@@ -88,10 +102,11 @@ start :
 ;
 
 query :
-    statements
+    variables statements
     {
         $$ = &Query{}
-        $$.SetStatements($1)
+        $$.SetDeclaredVariables($1)
+        $$.SetStatements($2)
     }
 ;
 
@@ -107,7 +122,11 @@ statements :
 ;
 
 statement :
-    selection
+    assignment
+    {
+        $$ = Statement($1)
+    }
+|   selection
     {
         $$ = Statement($1)
     }
@@ -117,8 +136,43 @@ statement :
     }
 ;
 
+variables :
+    /* empty */
+    {
+        $$ = make([]*Variable, 0)
+    }
+|   variables variable
+    {
+        $$ = append($1, $2)
+    }
+;
+
+variable :
+    TDECLARE TIDENT TAS data_type
+    {
+        $$ = NewVariable($2, $4)
+    }
+;
+
+data_type :
+    TFACTOR  { $$ = core.FactorDataType }
+|   TSTRING  { $$ = core.StringDataType }
+|   TINTEGER { $$ = core.IntegerDataType }
+|   TFLOAT   { $$ = core.FloatDataType }
+|   TBOOLEAN { $$ = core.BooleanDataType }
+;
+
+assignment :
+    TSET var_ref TASSIGN expr
+    {
+        $$ = NewAssignment()
+        $$.SetTarget($2)
+        $$.SetExpression($4)
+    }
+;
+
 selection :
-    TSELECT selection_fields selection_group_by selection_name TSEMICOLON
+    TSELECT selection_fields selection_group_by selection_name
     {
         $$ = NewSelection()
         $$.SetFields($2)
@@ -146,11 +200,11 @@ selection_fields :
 selection_field :
     TIDENT TLPAREN TRPAREN TAS TIDENT
     {
-        $$ = NewSelectionField($5, $1 + "()")
+        $$ = NewSelectionField($5, $1, nil)
     }
-|   TIDENT TLPAREN TIDENT TRPAREN TAS TIDENT
+|   TIDENT TLPAREN expr TRPAREN TAS TIDENT
     {
-        $$ = NewSelectionField($6, $1 + "(" + $3 + ")")
+        $$ = NewSelectionField($6, $1, $3)
     }
 ;
 
@@ -182,7 +236,7 @@ selection_name :
     {
         $$ = ""
     }
-|   TINTO TSTRING
+|   TINTO TQUOTEDSTRING
     {
         $$ = $2
     }
@@ -265,7 +319,7 @@ boolean_literal :
 ;
 
 string_literal :
-    TSTRING
+    TQUOTEDSTRING
     {
         $$ = &StringLiteral{value:$1}
     }

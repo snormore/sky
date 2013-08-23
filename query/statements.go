@@ -133,8 +133,17 @@ func (s Statements) RequiresInitialization() bool {
 }
 
 //--------------------------------------
-// String
+// Utility
 //--------------------------------------
+
+// Retrieves a list of variable references used by the statements.
+func (s Statements) VarRefs() []*VarRef {
+	refs := []*VarRef{}
+	for _, statement := range s {
+		refs = append(refs, statement.VarRefs()...)
+	}
+	return refs
+}
 
 // Converts the statements to a string-based representation.
 func (s Statements) String() string {

@@ -5,6 +5,10 @@ type BooleanLiteral struct {
 	value bool
 }
 
+func (l *BooleanLiteral) VarRefs() []*VarRef {
+	return []*VarRef{}
+}
+
 func (l *BooleanLiteral) Codegen() (string, error) {
 	return l.String(), nil
 }
