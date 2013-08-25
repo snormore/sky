@@ -24,6 +24,8 @@ import (
     selection_fields []*SelectionField
     condition *Condition
     condition_within *within
+    event_loop *EventLoop
+    temporal_loop *TemporalLoop
     expr Expression
     var_ref *VarRef
     integer_literal *IntegerLiteral
@@ -36,11 +38,12 @@ import (
 %token <token> TDECLARE, TAS, TSET
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
+%token <token> TFOR, TEACH, TEVERY, TIN, TEVENT
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
 %token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV, TASSIGN
 %token <token> TTRUE, TFALSE
-%token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS
+%token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS, TTIMEUNITS
 %token <integer> TINT
 
 %type <query> query
@@ -58,6 +61,10 @@ import (
 
 %type <condition> condition
 %type <condition_within> condition_within
+
+%type <event_loop> event_loop
+%type <temporal_loop> temporal_loop
+%type <integer> temporal_loop_step temporal_loop_duration
 
 %type <expr> expr
 %type <integer_literal> integer_literal
@@ -122,18 +129,11 @@ statements :
 ;
 
 statement :
-    assignment
-    {
-        $$ = Statement($1)
-    }
-|   selection
-    {
-        $$ = Statement($1)
-    }
-|   condition
-    {
-        $$ = Statement($1)
-    }
+    assignment    { $$ = Statement($1) }
+|   selection     { $$ = Statement($1) }
+|   condition     { $$ = Statement($1) }
+|   event_loop    { $$ = Statement($1) }
+|   temporal_loop { $$ = Statement($1) }
 ;
 
 variables :
@@ -273,6 +273,53 @@ condition_within :
     }
 ;
 
+event_loop :
+    TFOR TEACH TEVENT statements TEND
+    {
+        $$ = NewEventLoop()
+        $$.SetStatements($4)
+    }
+;
+
+temporal_loop :
+    TFOR var_ref temporal_loop_step temporal_loop_duration statements TEND
+    {
+        $$ = NewTemporalLoop()
+        $$.SetRef($2)
+        $$.step = $3
+        $$.duration = $4
+        $$.SetStatements($5)
+
+        // Default steps to 1 of the unit of the duration.
+        if $$.step == 0 && $$.duration > 0 {
+            _, units := secondsToTimeSpan($4)
+            $$.step = timeSpanToSeconds(1, units)
+        }
+    }
+;
+
+temporal_loop_step :
+    /* empty */
+    {
+        $$ = 0
+    }
+|   TEVERY TINT TTIMEUNITS
+    {
+        $$ = timeSpanToSeconds($2, $3)
+    }
+;
+
+temporal_loop_duration :
+    /* empty */
+    {
+        $$ = 0
+    }
+|   TWITHIN TINT TTIMEUNITS
+    {
+        $$ = timeSpanToSeconds($2, $3)
+    }
+;
+
 expr :
     expr TEQUALS expr     { $$ = NewBinaryExpression(OpEquals, $1, $3) }
 |   expr TNOTEQUALS expr  { $$ = NewBinaryExpression(OpNotEquals, $1, $3) }
@@ -332,4 +379,3 @@ type within struct {
     end int
     units string
 }
-

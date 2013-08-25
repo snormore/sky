@@ -337,6 +337,11 @@ func (s *Selection) VarRefs() []*VarRef {
 	return refs
 }
 
+// Returns a list of variables declared within this statement.
+func (s *Selection) Variables() []*Variable {
+	return []*Variable{}
+}
+
 // Converts the statements to a string-based representation.
 func (s *Selection) String() string {
 	str := "SELECT "

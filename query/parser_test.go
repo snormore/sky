@@ -73,6 +73,20 @@ func TestParserVariable(t *testing.T) {
 	}
 }
 
+func TestParserTemporalLoop(t *testing.T) {
+	str := `FOR i EVERY 1 DAY WITHIN 30 DAYS` + "\n"
+	str += `  FOR EACH EVENT` + "\n"
+	str += `    SELECT count() AS count` + "\n"
+	str += `  END` + "\n"
+	str += `END`
+
+	if query, err := NewParser().ParseString(str); err != nil {
+		t.Fatal("Parse error:", err)
+	} else if query.String() != str {
+		t.Fatal("\nExpected:\n" + str + "\n\nGot:\n" + query.String())
+	}
+}
+
 func TestParserError(t *testing.T) {
 	_, err := NewParser().ParseString(`SELECT count() AS` + "\n" + `count GRP BY action`)
 	if err == nil || err.Error() != "Unexpected 'GRP' at line 2, char 8, syntax error" {

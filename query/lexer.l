@@ -91,11 +91,17 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "WITHIN"                   return y.token(yylval, TWITHIN);
 "THEN"                     return y.token(yylval, TTHEN);
 "END"                      return y.token(yylval, TEND);
+"FOR"                      return y.token(yylval, TFOR);
+"EACH"                     return y.token(yylval, TEACH);
+"EVERY"                    return y.token(yylval, TEVERY);
+"IN"                       return y.token(yylval, TIN);
+"EVENT"                    return y.token(yylval, TEVENT);
 "FACTOR"                   return y.token(yylval, TFACTOR);
 "STRING"                   return y.token(yylval, TSTRING);
 "INTEGER"                  return y.token(yylval, TINTEGER);
 "FLOAT"                    return y.token(yylval, TFLOAT);
 "BOOLEAN"                  return y.token(yylval, TBOOLEAN);
+(SECOND|SECONDS|MINUTE|MINUTES|HOUR|HOURS|DAY|DAYS|WEEK|WEEKS|YEAR|YEARS)  return y.strtoken(yylval, TTIMEUNITS);
 (STEPS|SESSIONS)           return y.strtoken(yylval, TWITHINUNITS);
 "true"                     return y.token(yylval, TTRUE);
 "false"                    return y.token(yylval, TFALSE);

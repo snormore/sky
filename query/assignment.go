@@ -69,6 +69,11 @@ func (a *Assignment) VarRefs() []*VarRef {
 	return refs
 }
 
+// Returns a list of variables declared within this statement.
+func (a *Assignment) Variables() []*Variable {
+	return []*Variable{}
+}
+
 //--------------------------------------
 // Serialization
 //--------------------------------------
@@ -133,7 +138,7 @@ func (a *Assignment) CodegenAggregateFunction(init bool) (string, error) {
 
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", a.FunctionName(init))
 
-	targetCode, err := a.target.RawCodegen()
+	targetCode, err := a.target.CodegenRaw()
 	if err != nil {
 		return "", err
 	}

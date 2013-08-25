@@ -238,6 +238,34 @@ func TestServerFSMQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can use time loops.
+func TestServerTimeLoopQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", true, "factor")
+		setupTestProperty("foo", "val", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"00", "1980-01-01T00:00:00Z", `{"data":{"action":"home","val":10}}`},
+			[]string{"00", "1980-01-03T00:00:00Z", `{"data":{"action":"signup","val":20}}`},
+			[]string{"00", "1980-01-03T23:59:59Z", `{"data":{"val":30}}`},
+			[]string{"00", "1980-01-04T00:00:00Z", `{"data":{"action":"register","val":40}}`},
+		})
+
+		// Run query.
+		query := `
+			FOR i EVERY 1 DAY WITHIN 7 DAYS
+				FOR EACH EVENT
+					SELECT sum(val) AS sum GROUP BY i
+				END
+			END
+		`
+		q, _ := json.Marshal(query)
+		// _codegen(t, "foo", `{"query":`+string(q)+`}`)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{"i":{"1":{"sum":10},"3":{"sum":60},"4":{"sum":70}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can query the server for a histogram of values.
 func TestServerHistogramQuery(t *testing.T) {
 	runTestServer(func(s *Server) {

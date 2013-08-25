@@ -103,19 +103,20 @@ typedef struct {
 
 struct sky_cursor {
     void *data;
+    uint32_t next_timestamp;
+    uint32_t max_timestamp;
+    int32_t session_event_index;
+
     uint32_t data_sz;
     uint32_t action_data_sz;
 
-    int32_t min_property_id;
-    int32_t max_property_id;
-
-    int32_t session_event_index;
     void *startptr;
     void *nextptr;
     void *endptr;
     void *ptr;
     bool eof;
     bool in_session;
+    bool in_time_range;
     uint32_t last_timestamp;
     uint32_t session_idle_in_sec;
 
@@ -123,6 +124,9 @@ struct sky_cursor {
     sky_property_descriptor *property_descriptors;
     sky_property_descriptor *property_zero_descriptor;
     uint32_t property_count;
+
+    int32_t min_property_id;
+    int32_t max_property_id;
 
     void *key_prefix;
     uint32_t key_prefix_sz;
@@ -413,6 +417,7 @@ void sky_cursor_next_event(sky_cursor *cursor)
         cursor->startptr   = NULL;
         cursor->nextptr    = NULL;
         cursor->endptr     = NULL;
+        cursor->next_timestamp = 0;
     }
     // Otherwise update the event object with data.
     else {
@@ -427,7 +432,15 @@ void sky_cursor_next_event(sky_cursor *cursor)
         int64_t ts = minipack_unpack_int(ptr, &sz);
         if(sz == 0) badcursordata("timestamp", ptr);
         uint32_t timestamp = sky_timestamp_to_seconds(ts);
+        cursor->next_timestamp = timestamp;
         ptr += sz;
+
+        // Check for time boundry.
+        cursor->in_time_range = (cursor->max_timestamp == 0 || timestamp < cursor->max_timestamp);
+        if(!cursor->in_time_range) {
+            cursor->ptr = prevptr;
+            return;
+        }
 
         // Check for session boundry. This only applies if this is not the
         // first event in the session and a session idle time has been set.
@@ -492,7 +505,7 @@ void sky_cursor_next_event(sky_cursor *cursor)
 bool sky_lua_cursor_next_event(sky_cursor *cursor)
 {
     sky_cursor_next_event(cursor);
-    return (!cursor->eof && cursor->in_session);
+    return (!cursor->eof && cursor->in_session && cursor->in_time_range);
 }
 
 bool sky_cursor_eof(sky_cursor *cursor)
