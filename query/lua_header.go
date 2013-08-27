@@ -4,19 +4,31 @@ const luaHeader = `
 -- SKY GENERATED CODE BEGIN --
 local ffi = require('ffi')
 ffi.cdef([[
-typedef struct sky_string_t { int32_t length; char *data; } sky_string_t;
+
+typedef struct sky_string_t {
+  int32_t length;
+  char *data;
+} sky_string_t;
+
 typedef struct {
   {{range .}}{{structdef .}}
   {{end}}
   int64_t _ts;
   uint32_t _timestamp;
 } sky_lua_event_t;
-typedef struct sky_cursor_t { sky_lua_event_t *event; int32_t session_event_index; } sky_cursor_t;
+
+typedef struct sky_cursor_t {
+  sky_lua_event_t *event;
+  uint32_t next_timestamp;
+  uint32_t max_timestamp;
+  int32_t session_event_index;
+} sky_cursor_t;
 
 int sky_cursor_set_data_sz(sky_cursor_t *cursor, uint32_t sz);
 int sky_cursor_set_timestamp_offset(sky_cursor_t *cursor, uint32_t offset);
 int sky_cursor_set_ts_offset(sky_cursor_t *cursor, uint32_t offset);
 int sky_cursor_set_property(sky_cursor_t *cursor, int64_t property_id, uint32_t offset, uint32_t sz, const char *data_type);
+int sky_cursor_set_max_timestamp(sky_cursor_t *cursor, uint32_t timestamp);
 
 bool sky_cursor_has_next_object(sky_cursor_t *);
 bool sky_cursor_next_object(sky_cursor_t *);
@@ -33,6 +45,7 @@ ffi.metatype('sky_cursor_t', {
     set_ts_offset = function(cursor, offset) return ffi.C.sky_cursor_set_ts_offset(cursor, offset) end,
     set_action_id_offset = function(cursor, offset) return ffi.C.sky_cursor_set_action_id_offset(cursor, offset) end,
     set_property = function(cursor, property_id, offset, sz, data_type) return ffi.C.sky_cursor_set_property(cursor, property_id, offset, sz, data_type) end,
+    set_max_timestamp = function(cursor, timestamp) return ffi.C.sky_cursor_set_max_timestamp(cursor, timestamp) end,
 
     hasNextObject = function(cursor) return ffi.C.sky_cursor_has_next_object(cursor) end,
     nextObject = function(cursor) return ffi.C.sky_cursor_next_object(cursor) end,

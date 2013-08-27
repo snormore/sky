@@ -145,6 +145,15 @@ func (s Statements) VarRefs() []*VarRef {
 	return refs
 }
 
+// Retrieves a list of variable declarations within the statements.
+func (s Statements) Variables() []*Variable {
+	variables := []*Variable{}
+	for _, statement := range s {
+		variables = append(variables, statement.Variables()...)
+	}
+	return variables
+}
+
 // Converts the statements to a string-based representation.
 func (s Statements) String() string {
 	output := []string{}

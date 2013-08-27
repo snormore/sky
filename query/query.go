@@ -104,6 +104,13 @@ func (q *Query) GetVariable(name string) *Variable {
 		}
 	}
 
+	// Find all variables declared within statements.
+	for _, v := range q.statements.Variables() {
+		if v.Name == name {
+			return v
+		}
+	}
+
 	return nil
 }
 

@@ -286,6 +286,11 @@ func (c *Condition) VarRefs() []*VarRef {
 	return refs
 }
 
+// Returns a list of variables declared within this statement.
+func (c *Condition) Variables() []*Variable {
+	return c.statements.Variables()
+}
+
 // Converts the condition to a string-based representation.
 func (c *Condition) String() string {
 	str := "WHEN"
@@ -296,7 +301,7 @@ func (c *Condition) String() string {
 		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, strings.ToUpper(c.WithinUnits))
 	}
 	str += " THEN\n"
-	str += regexp.MustCompile(`^`).ReplaceAllString(c.statements.String(), "  ") + "\n"
+	str += regexp.MustCompile(`(?m)^`).ReplaceAllString(c.statements.String(), "  ") + "\n"
 	str += "END"
 	return str
 }

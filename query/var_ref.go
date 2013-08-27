@@ -11,7 +11,11 @@ type VarRef struct {
 
 // Retrieves the referenced variable.
 func (v *VarRef) Variable() (*Variable, error) {
-	variable := v.Query().GetVariable(v.value)
+	q := v.Query()
+	if q == nil {
+		return nil, fmt.Errorf("Var ref not attached to query: %s", v.value)
+	}
+	variable := q.GetVariable(v.value)
 	if variable == nil {
 		return nil, fmt.Errorf("Variable not found: %s", v.value)
 	}
@@ -31,7 +35,7 @@ func (v *VarRef) Codegen() (string, error) {
 }
 
 // Generates a Lua representation of the raw struct reference.
-func (v *VarRef) RawCodegen() (string, error) {
+func (v *VarRef) CodegenRaw() (string, error) {
 	if _, err := v.Variable(); err != nil {
 		return "", err
 	}

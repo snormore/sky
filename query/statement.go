@@ -1,9 +1,11 @@
 package query
 
 const (
-	TypeAssignment = "assignment"
-	TypeCondition  = "condition"
-	TypeSelection  = "selection"
+	TypeAssignment   = "assignment"
+	TypeCondition    = "condition"
+	TypeSelection    = "selection"
+	TypeTemporalLoop = "temporal_loop"
+	TypeEventLoop    = "event_loop"
 )
 
 type Statement interface {
@@ -16,5 +18,6 @@ type Statement interface {
 	CodegenMergeFunction() (string, error)
 	Defactorize(data interface{}) error
 	RequiresInitialization() bool
+	Variables() []*Variable
 	String() string
 }
