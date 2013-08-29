@@ -329,6 +329,28 @@ func TestServerRawQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can stop the query execution within an object.
+func TestServerExitQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "value", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"0001", "2012-01-01T00:00:00Z", `{"data":{"value":100}}`},
+			[]string{"0001", "2012-01-01T00:01:00Z", `{"data":{"value":200}}`},
+			[]string{"0001", "2012-01-01T00:02:00Z", `{"data":{"value":300}}`},
+			[]string{"0002", "2012-01-01T00:00:00Z", `{"data":{"value":10}}`},
+			[]string{"0002", "2012-01-01T00:01:00Z", `{"data":{"value":20}}`},
+		})
+		query := `
+			SELECT sum(value) AS total
+			WHEN value == 200 || value == 10 THEN EXIT END
+		`
+		q, _ := json.Marshal(query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{"total":310}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can select into the same field but dedupe merges.
 func TestServerDuplicateSelectionQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
