@@ -3,6 +3,7 @@ package query
 const (
 	TypeAssignment   = "assignment"
 	TypeCondition    = "condition"
+	TypeExit         = "exit"
 	TypeSelection    = "selection"
 	TypeTemporalLoop = "temporal_loop"
 	TypeEventLoop    = "event_loop"

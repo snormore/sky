@@ -19,6 +19,7 @@ import (
     statement Statement
     statements Statements
     assignment *Assignment
+    exit *Exit
     selection *Selection
     selection_field *SelectionField
     selection_fields []*SelectionField
@@ -35,7 +36,7 @@ import (
 
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
 %token <token> TFACTOR, TSTRING, TINTEGER, TFLOAT, TBOOLEAN
-%token <token> TDECLARE, TAS, TSET
+%token <token> TDECLARE, TAS, TSET, TEXIT
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TFOR, TEACH, TEVERY, TIN, TEVENT
@@ -50,6 +51,7 @@ import (
 %type <variables> variables
 %type <variable> variable
 %type <assignment> assignment
+%type <exit> exit
 %type <selection> selection
 %type <statement> statement
 %type <statements> statements
@@ -130,6 +132,7 @@ statements :
 
 statement :
     assignment    { $$ = Statement($1) }
+|   exit          { $$ = Statement($1) }
 |   selection     { $$ = Statement($1) }
 |   condition     { $$ = Statement($1) }
 |   event_loop    { $$ = Statement($1) }
@@ -168,6 +171,13 @@ assignment :
         $$ = NewAssignment()
         $$.SetTarget($2)
         $$.SetExpression($4)
+    }
+;
+
+exit :
+    TEXIT
+    {
+        $$ = NewExit()
     }
 ;
 
