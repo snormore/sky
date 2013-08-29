@@ -136,6 +136,7 @@ func (a *Assignment) CodegenAggregateFunction(init bool) (string, error) {
 
 	buffer := new(bytes.Buffer)
 
+	fmt.Fprintf(buffer, "-- %s\n", a.String())
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", a.FunctionName(init))
 
 	targetCode, err := a.target.CodegenRaw()
