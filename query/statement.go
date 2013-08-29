@@ -15,7 +15,7 @@ type Statement interface {
 	Serialize() map[string]interface{}
 	Deserialize(map[string]interface{}) error
 	CodegenAggregateFunction(init bool) (string, error)
-	CodegenMergeFunction() (string, error)
+	CodegenMergeFunction(map[string]interface{}) (string, error)
 	Defactorize(data interface{}) error
 	RequiresInitialization() bool
 	Variables() []*Variable

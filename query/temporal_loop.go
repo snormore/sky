@@ -200,8 +200,8 @@ func (l *TemporalLoop) CodegenAggregateFunction(init bool) (string, error) {
 }
 
 // Generates Lua code for the query.
-func (l *TemporalLoop) CodegenMergeFunction() (string, error) {
-	return l.statements.CodegenMergeFunctions()
+func (l *TemporalLoop) CodegenMergeFunction(fields map[string]interface{}) (string, error) {
+	return l.statements.CodegenMergeFunctions(fields)
 }
 
 // Converts factorized fields back to their original strings.
