@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -355,13 +356,21 @@ func (s *Server) ApiHandleFunc(route string, handlerFunction func(http.ResponseW
 
 // Decodes the body of the message into parameters.
 func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[string]interface{}, error) {
-	// Parses body parameters.
 	params := make(map[string]interface{})
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&params)
-	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Malformed json request: %v", err)
+
+	// If body starts with an open bracket then assume JSON. Otherwise read as raw string.
+	bufReader := bufio.NewReader(req.Body)
+	if first, err := bufReader.Peek(1); err == nil && string(first[0]) != "{" {
+		raw, _ := ioutil.ReadAll(bufReader)
+		params["RAW_POST_DATA"] = string(raw)
+	} else {
+		decoder := json.NewDecoder(bufReader)
+		err := decoder.Decode(&params)
+		if err != nil && err != io.EOF {
+			return nil, fmt.Errorf("Malformed json request: %v", err)
+		}
 	}
+
 	return params, nil
 }
 

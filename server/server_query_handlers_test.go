@@ -316,6 +316,19 @@ func TestServerPrefixQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can can query with raw text.
+func TestServerRawQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "price", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"x", "2012-01-01T00:00:00Z", `{"data":{"price":100}}`},
+		})
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", "SELECT count() AS count")
+		assertResponse(t, resp, 200, `{"count":1}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can run basic stats.
 func TestServerStatsQuery(t *testing.T) {
 	runTestServer(func(s *Server) {

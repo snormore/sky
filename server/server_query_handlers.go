@@ -79,8 +79,13 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 func (s *Server) parseQuery(table *core.Table, params map[string]interface{}) (*query.Query, error) {
 	var err error
 
+	// Use raw post data as query if it's not JSON.
+	raw := params["RAW_POST_DATA"]
+
 	// DEPRECATED: Allow query to be passed in as root param.
-	raw := params["query"]
+	if raw == nil {
+		raw = params["query"]
+	}
 	if raw == nil {
 		raw = params
 	}
