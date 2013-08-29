@@ -200,6 +200,7 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	buffer.WriteString(str)
 
 	// Generate main function.
+	fmt.Fprintf(buffer, "%s\n", regexp.MustCompile(`(?m)^`).ReplaceAllString(c.String(), "-- "))
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName(init))
 	if c.WithinRangeStart > 0 {
 		fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")

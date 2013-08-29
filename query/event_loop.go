@@ -100,6 +100,7 @@ func (l *EventLoop) CodegenAggregateFunction(init bool) (string, error) {
 	}
 	buffer.WriteString(str)
 
+	fmt.Fprintf(buffer, "%s\n", regexp.MustCompile(`(?m)^`).ReplaceAllString(l.String(), "-- "))
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", l.FunctionName(init))
 	fmt.Fprintln(buffer, "  repeat")
 	fmt.Fprintln(buffer, "  if cursor.next_timestamp == 0 or (cursor.max_timestamp > 0 and cursor.next_timestamp >= cursor.max_timestamp) then return end")

@@ -256,6 +256,12 @@ func (q *Query) Codegen() (string, error) {
 
 		// Generate initialization functions (if necessary).
 		if q.RequiresInitialization() {
+			buffer.WriteString("----------------------------------------------------------------------\n")
+			buffer.WriteString("--\n")
+			buffer.WriteString("-- INITIALIZATION\n")
+			buffer.WriteString("--\n")
+			buffer.WriteString("----------------------------------------------------------------------\n\n")
+
 			str, err := q.statements.CodegenAggregateFunctions(true)
 			if err != nil {
 				return "", err
@@ -265,6 +271,11 @@ func (q *Query) Codegen() (string, error) {
 		}
 
 		// Generate aggregation functions.
+		buffer.WriteString("----------------------------------------------------------------------\n")
+		buffer.WriteString("--\n")
+		buffer.WriteString("-- AGGREGATION\n")
+		buffer.WriteString("--\n")
+		buffer.WriteString("----------------------------------------------------------------------\n\n")
 		str, err := q.statements.CodegenAggregateFunctions(false)
 		if err != nil {
 			return "", err
@@ -273,6 +284,11 @@ func (q *Query) Codegen() (string, error) {
 		buffer.WriteString(q.CodegenAggregateFunction(false))
 
 		// Generate merge functions.
+		buffer.WriteString("----------------------------------------------------------------------\n")
+		buffer.WriteString("--\n")
+		buffer.WriteString("-- MERGE\n")
+		buffer.WriteString("--\n")
+		buffer.WriteString("----------------------------------------------------------------------\n\n")
 		str, err = q.statements.CodegenMergeFunctions()
 		if err != nil {
 			return "", err

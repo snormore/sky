@@ -139,6 +139,7 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate main function.
+	fmt.Fprintf(buffer, "-- %s\n", s.String())
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", s.FunctionName(init))
 
 	// Add selection name.
@@ -182,6 +183,7 @@ func (s *Selection) CodegenMergeFunction() (string, error) {
 	buffer.WriteString(code + "\n")
 
 	// Generate main function.
+	fmt.Fprintf(buffer, "-- %s\n", s.String())
 	fmt.Fprintf(buffer, "function %s(result, data)\n", s.MergeFunctionName())
 	if s.Name != "" {
 		fmt.Fprintf(buffer, "  if result[\"%s\"] == nil then result[\"%s\"] = {} end\n", s.Name, s.Name)
