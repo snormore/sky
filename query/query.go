@@ -289,7 +289,7 @@ func (q *Query) Codegen() (string, error) {
 		buffer.WriteString("-- MERGE\n")
 		buffer.WriteString("--\n")
 		buffer.WriteString("----------------------------------------------------------------------\n\n")
-		str, err = q.statements.CodegenMergeFunctions()
+		str, err = q.statements.CodegenMergeFunctions(map[string]interface{}{})
 		if err != nil {
 			return "", err
 		}

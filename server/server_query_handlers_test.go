@@ -329,6 +329,23 @@ func TestServerRawQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can select into the same field but dedupe merges.
+func TestServerDuplicateSelectionQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "value", true, "integer")
+		setupTestData(t, "foo", [][]string{[]string{"x", "2012-01-01T00:00:00Z", `{"data":{"value":100}}`}})
+		query := `
+			SELECT count() AS count GROUP BY value
+			SELECT count() AS count GROUP BY value
+			SELECT count() AS count GROUP BY value INTO "test"
+		`
+		q, _ := json.Marshal(query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{"test":{"value":{"100":{"count":1}}},"value":{"100":{"count":2}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can run basic stats.
 func TestServerStatsQuery(t *testing.T) {
 	runTestServer(func(s *Server) {

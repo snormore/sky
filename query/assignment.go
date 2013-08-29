@@ -155,7 +155,7 @@ func (a *Assignment) CodegenAggregateFunction(init bool) (string, error) {
 }
 
 // Generates Lua code for the selection merge.
-func (a *Assignment) CodegenMergeFunction() (string, error) {
+func (a *Assignment) CodegenMergeFunction(fields map[string]interface{}) (string, error) {
 	return "", nil
 }
 

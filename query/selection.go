@@ -172,11 +172,11 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 }
 
 // Generates Lua code for the selection merge.
-func (s *Selection) CodegenMergeFunction() (string, error) {
+func (s *Selection) CodegenMergeFunction(fields map[string]interface{}) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate nested functions first.
-	code, err := s.CodegenInnerMergeFunction(0)
+	code, err := s.CodegenInnerMergeFunction(0, s.Name, fields)
 	if err != nil {
 		return "", err
 	}
@@ -198,12 +198,13 @@ func (s *Selection) CodegenMergeFunction() (string, error) {
 }
 
 // Generates Lua code for the inner merge.
-func (s *Selection) CodegenInnerMergeFunction(index int) (string, error) {
+func (s *Selection) CodegenInnerMergeFunction(index int, path string, fields map[string]interface{}) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate next nested function first.
 	if index < len(s.Dimensions) {
-		code, err := s.CodegenInnerMergeFunction(index + 1)
+		path += "." + s.Dimensions[index]
+		code, err := s.CodegenInnerMergeFunction(index+1, path, fields)
 		if err != nil {
 			return "", err
 		}
@@ -225,11 +226,16 @@ func (s *Selection) CodegenInnerMergeFunction(index int) (string, error) {
 	} else {
 		// Merge fields.
 		for _, field := range s.fields {
-			exp, err := field.CodegenMergeExpression()
-			if err != nil {
-				return "", err
+			fieldPath := path + "." + field.Name
+			if fields[fieldPath] == nil {
+				fields[fieldPath] = true
+
+				exp, err := field.CodegenMergeExpression()
+				if err != nil {
+					return "", err
+				}
+				fmt.Fprintln(buffer, "  "+exp)
 			}
-			fmt.Fprintln(buffer, "  "+exp)
 		}
 	}
 	fmt.Fprintf(buffer, "end\n")

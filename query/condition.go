@@ -242,11 +242,11 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 }
 
 // Generates Lua code for the query.
-func (c *Condition) CodegenMergeFunction() (string, error) {
+func (c *Condition) CodegenMergeFunction(fields map[string]interface{}) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate child statement functions.
-	str, err := c.statements.CodegenMergeFunctions()
+	str, err := c.statements.CodegenMergeFunctions(fields)
 	if err != nil {
 		return "", err
 	}

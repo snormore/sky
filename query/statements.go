@@ -69,10 +69,10 @@ func (s Statements) CodegenAggregateFunctions(init bool) (string, error) {
 }
 
 // Generates merge code for all statements.
-func (s Statements) CodegenMergeFunctions() (string, error) {
+func (s Statements) CodegenMergeFunctions(fields map[string]interface{}) (string, error) {
 	buffer := new(bytes.Buffer)
 	for _, statement := range s {
-		code, err := statement.CodegenMergeFunction()
+		code, err := statement.CodegenMergeFunction(fields)
 		if err != nil {
 			return "", err
 		}
