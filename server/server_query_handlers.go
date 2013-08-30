@@ -71,8 +71,15 @@ func (s *Server) queryCodegenHandler(w http.ResponseWriter, req *http.Request, p
 		return nil, err
 	}
 
+	// Create an engine to retrieve full header.
+	engine, err := query.NewExecutionEngine(q)
+	if err != nil {
+		return nil, err
+	}
+	source := engine.FullSource()
+	engine.Destroy()
+
 	// Generate the query source code.
-	source, err := q.Codegen()
 	return source, &TextPlainContentTypeError{}
 }
 
