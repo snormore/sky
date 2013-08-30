@@ -87,7 +87,7 @@ func TestParserTemporalLoop(t *testing.T) {
 	}
 }
 
-func TestParserErrorLoop(t *testing.T) {
+func TestParserError(t *testing.T) {
 	str := `SELECT count() AS count` + "\n"
 	str += `EXIT`
 
@@ -98,7 +98,16 @@ func TestParserErrorLoop(t *testing.T) {
 	}
 }
 
-func TestParserError(t *testing.T) {
+func TestParserDebug(t *testing.T) {
+	str := `DEBUG(x + 12)`
+	if query, err := NewParser().ParseString(str); err != nil {
+		t.Fatal("Parse error:", err)
+	} else if query.String() != str {
+		t.Fatal("\nExpected:\n" + str + "\n\nGot:\n" + query.String())
+	}
+}
+
+func TestParserSyntaxError(t *testing.T) {
 	_, err := NewParser().ParseString(`SELECT count() AS` + "\n" + `count GRP BY action`)
 	if err == nil || err.Error() != "Unexpected 'GRP' at line 2, char 8, syntax error" {
 		t.Fatal("Unexpected parse error: ", err)
