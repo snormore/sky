@@ -8,7 +8,10 @@ func (s Variables) Len() int {
 }
 
 func (s Variables) Less(i, j int) bool {
-	return s[i].PropertyId < s[j].PropertyId || s[i].Name < s[j].Name
+	if s[i].PropertyId == s[j].PropertyId {
+		return s[i].Name < s[j].Name
+	}
+	return s[i].PropertyId < s[j].PropertyId
 }
 
 func (s Variables) Swap(i, j int) {
