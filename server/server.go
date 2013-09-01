@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -483,6 +484,21 @@ func (s *Server) DeleteTable(name string) error {
 // Set the mdb.NOSYNC option.
 func (s *Server) SetNoSync(noSync bool) {
 	s.noSync = noSync
+}
+
+// Retrieves a list of all object keys for a table
+func (s *Server) ObjectKeys(tableName string) ([]string, error) {
+	keys := []string{}
+	for _, servlet := range s.servlets {
+		servletKeys, err := servlet.ObjectKeys(tableName)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, servletKeys...)
+	}
+
+	sort.Strings(keys)
+	return keys, nil
 }
 
 //--------------------------------------

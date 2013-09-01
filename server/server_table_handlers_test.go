@@ -72,3 +72,31 @@ func TestServerDeleteTable(t *testing.T) {
 		}
 	})
 }
+
+// Ensure that we can retrieve a list of object keys from the server for a table.
+func TestServerTableKeys(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "value", true, "integer")
+		setupTestData(t, "foo", [][]string{
+			[]string{"a0", "2012-01-01T00:00:00Z", `{"data":{"value":1}}`},
+			[]string{"a1", "2012-01-01T00:00:00Z", `{"data":{"value":2}}`},
+			[]string{"a1", "2012-01-01T00:00:01Z", `{"data":{"value":3}}`},
+			[]string{"a2", "2012-01-01T00:00:00Z", `{"data":{"value":4}}`},
+			[]string{"a3", "2012-01-01T00:00:00Z", `{"data":{"value":5}}`},
+		})
+
+		setupTestTable("bar")
+		setupTestProperty("bar", "value", true, "integer")
+		setupTestData(t, "bar", [][]string{
+			[]string{"b0", "2012-01-01T00:00:00Z", `{"data":{"value":1}}`},
+			[]string{"b1", "2012-01-01T00:00:00Z", `{"data":{"value":2}}`},
+			[]string{"b1", "2012-01-01T00:00:01Z", `{"data":{"value":3}}`},
+			[]string{"b2", "2012-01-01T00:00:00Z", `{"data":{"value":4}}`},
+			[]string{"b3", "2012-01-01T00:00:00Z", `{"data":{"value":5}}`},
+		})
+
+		resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/keys", "application/json", "")
+		assertResponse(t, resp, 200, `["a0","a1","a2","a3"]`+"\n", "POST /tables/:name/keys failed.")
+	})
+}
