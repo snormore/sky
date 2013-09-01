@@ -164,10 +164,15 @@ func (s *Servlet) ObjectKeys(tableName string) ([]string, error) {
 		if err == mdb.NotFound {
 			break
 		} else if err != nil {
+			cursor.Close()
+			txn.Abort()
 			return nil, fmt.Errorf("Servlet: LMDB cursor error: %s", err)
 		}
 		keys = append(keys, string(bkey))
 	}
+
+	cursor.Close()
+	txn.Abort()
 
 	return keys, nil
 }
