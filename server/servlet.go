@@ -142,6 +142,40 @@ func (s *Servlet) Unlock() {
 // Event Management
 //--------------------------------------
 
+// Retrieves a list of all object keys.
+func (s *Servlet) ObjectKeys(tableName string) ([]string, error) {
+	// Begin a transaction.
+	txn, dbi, err := s.mdbTxnBegin(tableName, false)
+	if err != nil {
+		return nil, fmt.Errorf("Servlet: Unable to begin LMDB transaction for object keys: %s", err)
+	}
+
+	// Setup cursor.
+	cursor, err := txn.CursorOpen(dbi)
+	if err != nil {
+		cursor.Close()
+		txn.Abort()
+		return nil, fmt.Errorf("Servlet: Unable to open LMDB cursor: %s", err)
+	}
+
+	keys := []string{}
+	for {
+		bkey, _, err := cursor.Get(nil, mdb.NEXT)
+		if err == mdb.NotFound {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("Servlet: LMDB cursor error: %s", err)
+		}
+		keys = append(keys, string(bkey))
+	}
+
+	return keys, nil
+}
+
+//--------------------------------------
+// Event Management
+//--------------------------------------
+
 // Adds many events, in many objects, into a table
 func (s *Servlet) PutObjects(table *core.Table, objects map[string][]*core.Event, replace bool) (int, error) {
 	s.Lock()

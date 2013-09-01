@@ -20,6 +20,9 @@ func (s *Server) addTableHandlers() {
 	s.ApiHandleFunc("/tables/{name}", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 		return s.deleteTableHandler(w, req, params)
 	}).Methods("DELETE")
+	s.ApiHandleFunc("/tables/{name}/keys", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+		return s.tableKeysHandler(w, req, params)
+	}).Methods("GET")
 }
 
 // GET /tables
@@ -63,4 +66,10 @@ func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request, pa
 	tableName := vars["name"]
 
 	return nil, s.DeleteTable(tableName)
+}
+
+// GET /tables/:name/objects/keys
+func (s *Server) tableKeysHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+	vars := mux.Vars(req)
+	return s.ObjectKeys(vars["name"])
 }
