@@ -132,6 +132,8 @@ func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 		return fmt.Sprintf("if(data.%s == nil or data.%s < (%s)) then data.%s = (%s) end", f.Name, f.Name, code, f.Name, code), nil
 	case "count":
 		return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
+	case "avg":
+		return fmt.Sprintf("if data.%s == nil then data.%s = sky_average_new() end sky_average_insert(data.%s, (%s))", f.Name, f.Name, f.Name, code), nil
 	case "histogram":
 		if init {
 			return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, (%s))", f.Name, f.Name, f.Name, code), nil
@@ -154,6 +156,8 @@ func (f *SelectionField) CodegenMergeExpression() (string, error) {
 		return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
 	case "count":
 		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+	case "avg":
+		return fmt.Sprintf("result.%s = sky_average_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
 	case "histogram":
 		return fmt.Sprintf("result.%s = sky_histogram_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
 	case "":
