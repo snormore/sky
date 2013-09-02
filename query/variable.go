@@ -7,12 +7,15 @@ import (
 
 // A Variable represents a variable declaration on the cursor. The value
 // of the variable persist for the duration of an object and can be
-// referenced like any other property on the database.
+// referenced like any other property on the database. The variable can
+// also be associated with another variable for the purpose of reusing
+// factorization.
 type Variable struct {
 	queryElementImpl
-	Name       string
-	DataType   string
-	PropertyId int64
+	Name        string
+	DataType    string
+	Association string
+	PropertyId  int64
 }
 
 func NewVariable(name string, dataType string) *Variable {
@@ -53,5 +56,9 @@ func (v *Variable) String() string {
 		dataType = "BOOLEAN"
 	}
 
-	return fmt.Sprintf("DECLARE %s AS %s", v.Name, dataType)
+	str := fmt.Sprintf("DECLARE %s AS %s", v.Name, dataType)
+	if v.Association != "" {
+		str += "(" + v.Association + ")"
+	}
+	return str
 }

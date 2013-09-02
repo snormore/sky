@@ -127,9 +127,6 @@ func (a *Assignment) CodegenAggregateFunction(init bool) (string, error) {
 	if variable == nil {
 		return "", fmt.Errorf("Assignment: %s", err)
 	}
-	if variable.DataType == core.FactorDataType {
-		return "", fmt.Errorf("Assignment: Factor assignment is not currently supported.")
-	}
 	if variable.DataType == core.StringDataType {
 		return "", fmt.Errorf("Assignment: String assignment is not currently supported.")
 	}

@@ -36,7 +36,11 @@ func (l *StringLiteral) Codegen() (string, error) {
 			return "", err
 		}
 		if variable.DataType == core.FactorDataType {
-			sequence, err := query.fdb.Factorize(query.table.Name, variable.Name, l.value, false)
+			targetName := variable.Name
+			if variable.Association != "" {
+				targetName = variable.Association
+			}
+			sequence, err := query.fdb.Factorize(query.table.Name, targetName, l.value, false)
 			if _, ok := err.(*factors.FactorNotFound); ok {
 				return "0", nil
 			} else if err != nil {

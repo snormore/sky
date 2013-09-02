@@ -61,6 +61,7 @@ func TestParserConditionWithin(t *testing.T) {
 
 func TestParserVariable(t *testing.T) {
 	str := `DECLARE foo AS FLOAT` + "\n"
+	str += `DECLARE bar AS FACTOR(bat)` + "\n"
 	str += `SET foo = 12` + "\n"
 	str += `SELECT sum(foo) AS total`
 

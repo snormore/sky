@@ -238,6 +238,34 @@ func TestServerFSMQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can use variables associated with factor properties.
+func TestServerFactorVariableQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", true, "factor")
+		setupTestData(t, "foo", [][]string{
+			[]string{"00", "1970-01-01T00:00:00Z", `{"data":{"action":"x"}}`},
+			[]string{"00", "1970-01-01T00:00:02Z", `{"data":{"action":"y"}}`},
+			[]string{"00", "1970-01-01T00:00:03Z", `{"data":{"action":"z"}}`},
+
+			[]string{"01", "1970-01-01T00:00:00Z", `{"data":{"action":"y"}}`},
+			[]string{"01", "1970-01-01T00:00:02Z", `{"data":{"action":"z"}}`},
+		})
+
+		// Run query.
+		query := `
+			DECLARE prev_action AS FACTOR(action)
+			WHEN prev_action != "x" THEN
+				SELECT count() AS count GROUP BY prev_action, action
+			END
+			SET prev_action = action
+		`
+		q, _ := json.Marshal(query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{"prev_action":{"":{"action":{"x":{"count":1},"y":{"count":1}}},"y":{"action":{"z":{"count":2}}}}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can use time loops.
 func TestServerTimeLoopQuery(t *testing.T) {
 	runTestServer(func(s *Server) {

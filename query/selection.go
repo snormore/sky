@@ -293,7 +293,14 @@ func (s *Selection) defactorize(data interface{}, index int) error {
 				// Only process this if it hasn't been defactorized already. Duplicate
 				// defactorization can occur if there are multiple overlapping selections.
 				if sequence, ok := normalize(k).(int64); ok {
-					stringValue, err := query.fdb.Defactorize(query.table.Name, dimension, uint64(sequence))
+					// If variable is associated with another variable then use that one
+					// for factorization.
+					factorDimension := dimension
+					if variable.Association != "" {
+						factorDimension = variable.Association
+					}
+
+					stringValue, err := query.fdb.Defactorize(query.table.Name, factorDimension, uint64(sequence))
 					if err != nil {
 						return err
 					}

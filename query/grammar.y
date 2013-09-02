@@ -61,7 +61,7 @@ import (
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
 %type <str> selection_name
-%type <str> data_type
+%type <str> data_type, variable_association
 
 %type <condition> condition
 %type <condition_within> condition_within
@@ -154,9 +154,21 @@ variables :
 ;
 
 variable :
-    TDECLARE TIDENT TAS data_type
+    TDECLARE TIDENT TAS data_type variable_association
     {
         $$ = NewVariable($2, $4)
+        $$.Association = $5
+    }
+;
+
+variable_association :
+    /* empty */
+    {
+        $$ = ""
+    }
+|   TLPAREN TIDENT TRPAREN
+    {
+        $$ = $2
     }
 ;
 
