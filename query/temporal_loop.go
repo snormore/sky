@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
-	"regexp"
 )
 
 // A loop statement that iterates over time.
@@ -165,7 +164,7 @@ func (l *TemporalLoop) CodegenAggregateFunction(init bool) (string, error) {
 	}
 
 	// Generate main function.
-	fmt.Fprintf(buffer, "%s\n", regexp.MustCompile(`(?m)^`).ReplaceAllString(l.String(), "-- "))
+	fmt.Fprintf(buffer, "%s\n", lineStartRegex.ReplaceAllString(l.String(), "-- "))
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", l.FunctionName(init))
 	fmt.Fprintf(buffer, "  %s = 0\n", ref)
 	fmt.Fprintf(buffer, "  start_timestamp = cursor.event:timestamp()\n")
@@ -254,7 +253,7 @@ func (l *TemporalLoop) String() string {
 	}
 
 	str += "\n"
-	str += regexp.MustCompile(`(?m)^`).ReplaceAllString(l.statements.String(), "  ") + "\n"
+	str += lineStartRegex.ReplaceAllString(l.statements.String(), "  ") + "\n"
 	str += "END"
 
 	return str

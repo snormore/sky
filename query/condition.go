@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -200,7 +199,7 @@ func (c *Condition) CodegenAggregateFunction(init bool) (string, error) {
 	buffer.WriteString(str)
 
 	// Generate main function.
-	fmt.Fprintf(buffer, "%s\n", regexp.MustCompile(`(?m)^`).ReplaceAllString(c.String(), "-- "))
+	fmt.Fprintf(buffer, "%s\n", lineStartRegex.ReplaceAllString(c.String(), "-- "))
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", c.FunctionName(init))
 	if c.WithinRangeStart > 0 {
 		fmt.Fprintf(buffer, "  if cursor:eos() or cursor:eof() then return false end\n")
@@ -302,7 +301,7 @@ func (c *Condition) String() string {
 		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, strings.ToUpper(c.WithinUnits))
 	}
 	str += " THEN\n"
-	str += regexp.MustCompile(`(?m)^`).ReplaceAllString(c.statements.String(), "  ") + "\n"
+	str += lineStartRegex.ReplaceAllString(c.statements.String(), "  ") + "\n"
 	str += "END"
 	return str
 }

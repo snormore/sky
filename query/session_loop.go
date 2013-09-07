@@ -6,19 +6,20 @@ import (
 	"fmt"
 )
 
-// A loop statement that iterates over individual events.
-type EventLoop struct {
+// A loop statement that iterates over individual sessions.
+type SessionLoop struct {
 	queryElementImpl
-	statements Statements
+	statements   Statements
+	IdleDuration int
 }
 
-// Creates a new event loop.
-func NewEventLoop() *EventLoop {
-	return &EventLoop{}
+// Creates a new session loop.
+func NewSessionLoop() *SessionLoop {
+	return &SessionLoop{}
 }
 
 // Retrieves the function name used during codegen.
-func (l *EventLoop) FunctionName(init bool) string {
+func (l *SessionLoop) FunctionName(init bool) string {
 	if init {
 		return fmt.Sprintf("i%d", l.ElementId())
 	}
@@ -26,17 +27,17 @@ func (l *EventLoop) FunctionName(init bool) string {
 }
 
 // Retrieves the merge function name used during codegen.
-func (l *EventLoop) MergeFunctionName() string {
+func (l *SessionLoop) MergeFunctionName() string {
 	return ""
 }
 
 // Returns the statements executed for each loop iteration.
-func (l *EventLoop) Statements() Statements {
+func (l *SessionLoop) Statements() Statements {
 	return l.statements
 }
 
 // Sets the loop's statements.
-func (l *EventLoop) SetStatements(statements Statements) {
+func (l *SessionLoop) SetStatements(statements Statements) {
 	for _, s := range l.statements {
 		s.SetParent(nil)
 	}
@@ -50,22 +51,22 @@ func (l *EventLoop) SetStatements(statements Statements) {
 // Serialization
 //--------------------------------------
 
-// Encodes a event loop into an untyped map.
-func (l *EventLoop) Serialize() map[string]interface{} {
+// Encodes a session loop into an untyped map.
+func (l *SessionLoop) Serialize() map[string]interface{} {
 	return map[string]interface{}{
-		"type":       TypeEventLoop,
+		"type":       TypeSessionLoop,
 		"statements": l.statements.Serialize(),
 	}
 }
 
-// Decodes a event loop from an untyped map.
-func (l *EventLoop) Deserialize(obj map[string]interface{}) error {
+// Decodes a session loop from an untyped map.
+func (l *SessionLoop) Deserialize(obj map[string]interface{}) error {
 	var err error
 
 	if obj == nil {
-		return errors.New("EventLoop: Unable to deserialize nil.")
-	} else if obj["type"] != TypeEventLoop {
-		return fmt.Errorf("EventLoop: Invalid statement type: %v", obj["type"])
+		return errors.New("SessionLoop: Unable to deserialize nil.")
+	} else if obj["type"] != TypeSessionLoop {
+		return fmt.Errorf("SessionLoop: Invalid statement type: %v", obj["type"])
 	}
 
 	// Parse statements as string or as map.
@@ -89,7 +90,7 @@ func (l *EventLoop) Deserialize(obj map[string]interface{}) error {
 //--------------------------------------
 
 // Generates Lua code for the loop.
-func (l *EventLoop) CodegenAggregateFunction(init bool) (string, error) {
+func (l *SessionLoop) CodegenAggregateFunction(init bool) (string, error) {
 	buffer := new(bytes.Buffer)
 
 	// Generate child statement functions.
@@ -101,28 +102,31 @@ func (l *EventLoop) CodegenAggregateFunction(init bool) (string, error) {
 
 	fmt.Fprintf(buffer, "%s\n", lineStartRegex.ReplaceAllString(l.String(), "-- "))
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", l.FunctionName(init))
-	fmt.Fprintln(buffer, "  repeat")
-	fmt.Fprintln(buffer, "  if cursor.next_timestamp == 0 or (cursor.max_timestamp > 0 and cursor.next_timestamp >= cursor.max_timestamp) then return end")
+	fmt.Fprintf(buffer, "  cursor:set_session_idle(%d)\n", l.IdleDuration)
+	fmt.Fprintln(buffer, "  while true do")
 	for _, statement := range l.statements {
 		fmt.Fprintf(buffer, "    %s(cursor, data)\n", statement.FunctionName(init))
 	}
-	fmt.Fprintln(buffer, "  until not cursor:next()")
+	fmt.Fprintln(buffer, "    if not cursor:next_session() then break end")
+	fmt.Fprintln(buffer, "    cursor:next()")
+	fmt.Fprintln(buffer, "  end")
+	fmt.Fprintln(buffer, "  cursor:set_session_idle(0)")
 	fmt.Fprintln(buffer, "end")
 
 	return buffer.String(), nil
 }
 
 // Generates Lua code for the query.
-func (l *EventLoop) CodegenMergeFunction(fields map[string]interface{}) (string, error) {
+func (l *SessionLoop) CodegenMergeFunction(fields map[string]interface{}) (string, error) {
 	return l.statements.CodegenMergeFunctions(fields)
 }
 
 // Converts factorized fields back to their original strings.
-func (l *EventLoop) Defactorize(data interface{}) error {
+func (l *SessionLoop) Defactorize(data interface{}) error {
 	return l.statements.Defactorize(data)
 }
 
-func (l *EventLoop) RequiresInitialization() bool {
+func (l *SessionLoop) RequiresInitialization() bool {
 	return l.statements.RequiresInitialization()
 }
 
@@ -131,18 +135,19 @@ func (l *EventLoop) RequiresInitialization() bool {
 //--------------------------------------
 
 // Returns a list of variable references within this condition.
-func (l *EventLoop) VarRefs() []*VarRef {
+func (l *SessionLoop) VarRefs() []*VarRef {
 	return l.statements.VarRefs()
 }
 
 // Returns a list of variables declared within this statement.
-func (l *EventLoop) Variables() []*Variable {
+func (l *SessionLoop) Variables() []*Variable {
 	return l.statements.Variables()
 }
 
 // Converts the loop to a string-based representation.
-func (l *EventLoop) String() string {
-	str := "FOR EACH EVENT\n"
+func (l *SessionLoop) String() string {
+	quantity, units := secondsToTimeSpan(l.IdleDuration)
+	str := fmt.Sprintf("FOR EACH SESSION DELIMITED BY %d %s\n", quantity, units)
 	str += lineStartRegex.ReplaceAllString(l.statements.String(), "  ") + "\n"
 	str += "END"
 	return str

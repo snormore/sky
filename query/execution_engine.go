@@ -106,6 +106,7 @@ struct sky_cursor {
     uint32_t next_timestamp;
     uint32_t max_timestamp;
     int32_t session_event_index;
+    uint32_t session_idle_in_sec;
 
     uint32_t data_sz;
     uint32_t action_data_sz;
@@ -118,7 +119,6 @@ struct sky_cursor {
     bool in_session;
     bool in_time_range;
     uint32_t last_timestamp;
-    uint32_t session_idle_in_sec;
 
     sky_timestamp_descriptor timestamp_descriptor;
     sky_property_descriptor *property_descriptors;
@@ -524,7 +524,7 @@ void sky_cursor_set_session_idle(sky_cursor *cursor, uint32_t seconds)
     cursor->session_idle_in_sec = seconds;
 
     // If the value is non-zero then start sessionizing the cursor.
-    cursor->in_session = (seconds > 0 ? false : !cursor->eof);
+    //cursor->in_session = (seconds > 0 ? false : !cursor->eof);
 }
 
 void sky_cursor_next_session(sky_cursor *cursor)

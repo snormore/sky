@@ -27,6 +27,7 @@ import (
     condition *Condition
     condition_within *within
     event_loop *EventLoop
+    session_loop *SessionLoop
     temporal_loop *TemporalLoop
     expr Expression
     var_ref *VarRef
@@ -41,6 +42,7 @@ import (
 %token <token> TSELECT, TGROUP, TBY, TINTO
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TFOR, TEACH, TEVERY, TIN, TEVENT
+%token <token> TSESSION, TDELIMITED
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
 %token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV, TASSIGN
@@ -67,6 +69,7 @@ import (
 %type <condition_within> condition_within
 
 %type <event_loop> event_loop
+%type <session_loop> session_loop
 %type <temporal_loop> temporal_loop
 %type <integer> temporal_loop_step temporal_loop_duration
 
@@ -139,6 +142,7 @@ statement :
 |   selection     { $$ = Statement($1) }
 |   condition     { $$ = Statement($1) }
 |   event_loop    { $$ = Statement($1) }
+|   session_loop  { $$ = Statement($1) }
 |   temporal_loop { $$ = Statement($1) }
 ;
 
@@ -311,6 +315,15 @@ event_loop :
     {
         $$ = NewEventLoop()
         $$.SetStatements($4)
+    }
+;
+
+session_loop :
+    TFOR TEACH TSESSION TDELIMITED TBY TINT TTIMEUNITS statements TEND
+    {
+        $$ = NewSessionLoop()
+        $$.IdleDuration = timeSpanToSeconds($6, $7)
+        $$.SetStatements($8)
     }
 ;
 

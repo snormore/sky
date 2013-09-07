@@ -22,6 +22,7 @@ typedef struct sky_cursor_t {
   uint32_t next_timestamp;
   uint32_t max_timestamp;
   int32_t session_event_index;
+  uint32_t session_idle_in_sec;
 } sky_cursor_t;
 
 int sky_cursor_set_data_sz(sky_cursor_t *cursor, uint32_t sz);

@@ -4,10 +4,11 @@ const (
 	TypeAssignment   = "assignment"
 	TypeCondition    = "condition"
 	TypeDebug        = "debug"
+	TypeEventLoop    = "event_loop"
 	TypeExit         = "exit"
 	TypeSelection    = "selection"
+	TypeSessionLoop  = "session_loop"
 	TypeTemporalLoop = "temporal_loop"
-	TypeEventLoop    = "event_loop"
 )
 
 type Statement interface {

@@ -76,8 +76,10 @@ func TestParserVariable(t *testing.T) {
 
 func TestParserTemporalLoop(t *testing.T) {
 	str := `FOR i EVERY 1 DAY WITHIN 30 DAYS` + "\n"
-	str += `  FOR EACH EVENT` + "\n"
-	str += `    SELECT count() AS count` + "\n"
+	str += `  FOR EACH SESSION DELIMITED BY 2 HOURS` + "\n"
+	str += `    FOR EACH EVENT` + "\n"
+	str += `      SELECT count() AS count` + "\n"
+	str += `    END` + "\n"
 	str += `  END` + "\n"
 	str += `END`
 
