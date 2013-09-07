@@ -19,7 +19,6 @@ type Query struct {
 	refs              []*VarRef
 	sequence          int
 	Prefix            string
-	SessionIdleTime   int
 	declaredVariables []*Variable
 	statements        Statements
 }
@@ -172,9 +171,8 @@ func (q *Query) ElementId() int {
 // Encodes a query into an untyped map.
 func (q *Query) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
-		"sessionIdleTime": q.SessionIdleTime,
-		"prefix":          q.Prefix,
-		"statements":      q.statements.Serialize(),
+		"prefix":     q.Prefix,
+		"statements": q.statements.Serialize(),
 	}
 	return obj
 }
@@ -188,13 +186,6 @@ func (q *Query) Deserialize(obj map[string]interface{}) error {
 		q.Prefix = prefix
 	} else {
 		return fmt.Errorf("Invalid 'prefix': %v", obj["prefix"])
-	}
-
-	// Deserialize "session idle time".
-	if sessionIdleTime, ok := obj["sessionIdleTime"].(float64); ok || obj["sessionIdleTime"] == nil {
-		q.SessionIdleTime = int(sessionIdleTime)
-	} else {
-		return fmt.Errorf("Invalid 'sessionIdleTime': %v", obj["sessionIdleTime"])
 	}
 
 	// DEPRECATED: Statements can be passed in as "steps".
@@ -316,14 +307,8 @@ func (q *Query) CodegenAggregateFunction(init bool) string {
 		fmt.Fprintln(buffer, "function aggregate(cursor, data)")
 	}
 
-	// Set the session idle if one is available.
-	if q.SessionIdleTime > 0 {
-		fmt.Fprintf(buffer, "  cursor:set_session_idle(%d)\n", q.SessionIdleTime)
-	}
-
 	// Begin cursor loop.
-	fmt.Fprintln(buffer, "  while cursor:next_session() do")
-	fmt.Fprintln(buffer, "    while cursor:next() do")
+	fmt.Fprintln(buffer, "  while cursor:next() do")
 
 	// Call each statement function.
 	for _, statement := range q.statements {
@@ -331,7 +316,6 @@ func (q *Query) CodegenAggregateFunction(init bool) string {
 	}
 
 	// End cursor loop.
-	fmt.Fprintln(buffer, "    end")
 	fmt.Fprintln(buffer, "  end")
 
 	// End function.

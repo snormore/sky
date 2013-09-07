@@ -2,7 +2,10 @@ package query
 
 import (
 	"reflect"
+	"regexp"
 )
+
+var lineStartRegex = regexp.MustCompile(`(?m)^`)
 
 // Normalizes a value. Int and Uint types are combined into int64 and Float types
 // are combined into float64. All other types are left alone.

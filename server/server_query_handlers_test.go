@@ -151,23 +151,26 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 		setupTestProperty("foo", "action", false, "factor")
 		setupTestData(t, "foo", [][]string{
 			// A0[0..0]..A1[1..1] occurs once for this object. The second one is broken across sessions.
-			[]string{"f0", "2012-01-01T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"f0", "2012-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
-			[]string{"f0", "2012-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
-			[]string{"f0", "2012-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
+			[]string{"f0", "1970-01-01T00:00:01Z", `{"data":{"action":"A0"}}`},
+			[]string{"f0", "1970-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
+			[]string{"f0", "1970-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"f0", "1970-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
 		})
 
 		// Run query.
 		query := `{
-			"sessionIdleTime":7200,
 			"statements":"` +
-			`WHEN action == \"A0\" THEN ` +
-			`  WHEN action == \"A1\" WITHIN 1..1 STEPS THEN ` +
-			`    SELECT count() AS count GROUP BY action ` +
+			`FOR EACH SESSION DELIMITED BY 2 HOURS ` +
+			`  FOR EACH EVENT ` +
+			`    WHEN action == \"A0\" THEN ` +
+			`      WHEN action == \"A1\" WITHIN 1..1 STEPS THEN ` +
+			`        SELECT count() AS count GROUP BY action ` +
+			`      END ` +
+			`    END ` +
 			`  END ` +
 			`END` +
 			`"}`
-		//_codegen(t, "foo", query)
+		// _codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"action":{"A1":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
 	})
