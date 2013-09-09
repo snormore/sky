@@ -5,6 +5,7 @@ import (
     "bufio"
     "fmt"
     "strconv"
+    "strings"
 )
 
 type yylexer struct{
@@ -76,8 +77,8 @@ func (y *yylexer) Lex(yylval *yySymType) int {
     y.tlineidx, y.tcharidx = y.lineidx, y.charidx
     y.buf = y.buf[:0]
 
-\"(\\.|[^\\"])*\"          return y.quotedstrtoken(yylval, TQUOTEDSTRING);
-\'(\\.|[^\\'])*\'          return y.quotedstrtoken(yylval, TQUOTEDSTRING);
+\"(\\.|[^\\"])*\"          return y.quotedstrtoken(yylval, TQUOTEDSTRING, "\"");
+\'(\\.|[^\\'])*\'          return y.quotedstrtoken(yylval, TQUOTEDSTRING, "'");
 [0-9]+                     return y.inttoken(yylval, TINT);
 
 "DECLARE"                  return y.token(yylval, TDECLARE);
@@ -151,9 +152,11 @@ func (y *yylexer) strtoken(yylval *yySymType, tok int) int {
 
 // Saves the quoted string in the buffer and the token to the parser value
 // and returns the token.
-func (y *yylexer) quotedstrtoken(yylval *yySymType, tok int) int {
+func (y *yylexer) quotedstrtoken(yylval *yySymType, tok int, quote string) int {
     str := string(y.buf)
-    yylval.str = str[1:len(str)-1]
+    str = str[1:len(str)-1]
+    str = strings.Replace(str, "\\" + quote, quote, -1)
+    yylval.str = str
     return y.token(yylval, tok)
 }
 
