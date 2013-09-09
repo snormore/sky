@@ -27,7 +27,7 @@ func TestParserSelectDimensions(t *testing.T) {
 }
 
 func TestParserSelectInto(t *testing.T) {
-	str := `SELECT count() AS count INTO "xxx"`
+	str := `SELECT count() AS count INTO "xxx\"'"`
 	query, err := NewParser().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
@@ -38,7 +38,7 @@ func TestParserSelectInto(t *testing.T) {
 }
 
 func TestParserCondition(t *testing.T) {
-	str := `WHEN action == "signup" THEN` + "\n" + `  SELECT count() AS count` + "\n" + `END`
+	str := `WHEN action == "signup\"'" THEN` + "\n" + `  SELECT count() AS count` + "\n" + `END`
 	query, err := NewParser().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)

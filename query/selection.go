@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
+	"strconv"
 	"strings"
 )
 
@@ -371,7 +372,7 @@ func (s *Selection) String() string {
 		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
 	}
 	if s.Name != "" {
-		str += " INTO \"" + s.Name + "\""
+		str += " INTO " + strconv.Quote(s.Name)
 	}
 	return str
 }
