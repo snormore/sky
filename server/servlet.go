@@ -570,7 +570,6 @@ func (s *Servlet) CreateExecutionEngine(q *query.Query) (*query.ExecutionEngine,
 	cursor, err := txn.CursorOpen(dbi)
 	if err != nil {
 		e.Destroy()
-		cursor.Close()
 		txn.Abort()
 		return nil, fmt.Errorf("skyd.Servlet: Unable to open LMDB cursor: %s", err)
 	}
