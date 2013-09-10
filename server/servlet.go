@@ -561,7 +561,7 @@ func (s *Servlet) CreateExecutionEngine(q *query.Query) (*query.ExecutionEngine,
 	}
 
 	// Begin a transaction.
-	txn, dbi, err := s.mdbTxnBegin(q.Table().Name, false)
+	txn, dbi, err := s.mdbTxnBegin(q.Table().Name, true)
 	if err != nil {
 		return nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for execution engine: %s", err)
 	}
