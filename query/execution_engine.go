@@ -71,7 +71,7 @@ int mp_unpack(lua_State *L);
     return; \
 } while(0)
 
-#define debug(M, ...) fprintf(stderr, "DEBUG %s:%d: " M "\n", __FILE__, __LINE__, ##__VA_ARGS__) 
+#define debug(M, ...) fprintf(stderr, "DEBUG %s:%d: " M "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 
 //==============================================================================
@@ -782,7 +782,11 @@ func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
 	if e.lmdbCursor != nil && e.lmdbCursor != lmdbCursor {
 		txn := e.lmdbCursor.Txn()
 		e.lmdbCursor.Close()
-		txn.Abort()
+		if lmdbCursor == nil {
+			txn.Commit()
+		} else {
+			txn.Abort()
+		}
 	}
 	if e.cursor != nil {
 		e.cursor.lmdb_cursor = nil

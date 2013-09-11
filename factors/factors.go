@@ -75,7 +75,7 @@ func (db *DB) Options() uint {
 	if db.noSync {
 		options = mdb.NOSYNC
 	}
-	return options
+	return options | mdb.NOTLS
 }
 
 //------------------------------------------------------------------------------

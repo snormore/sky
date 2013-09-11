@@ -561,7 +561,7 @@ func (s *Servlet) CreateExecutionEngine(q *query.Query) (*query.ExecutionEngine,
 	}
 
 	// Begin a transaction.
-	txn, dbi, err := s.mdbTxnBegin(q.Table().Name, false)
+	txn, dbi, err := s.mdbTxnBegin(q.Table().Name, true)
 	if err != nil {
 		return nil, fmt.Errorf("skyd.Servlet: Unable to begin LMDB transaction for execution engine: %s", err)
 	}
@@ -600,9 +600,15 @@ func (s *Servlet) mdbTxnBegin(name string, readOnly bool) (*mdb.Txn, mdb.DBI, er
 	if err != nil {
 		return nil, 0, fmt.Errorf("skyd.Servlet: Unable to start LMDB transaction: %s", err)
 	}
-	dbi, err := txn.DBIOpen(&name, mdb.CREATE)
-	if err != nil {
-		return nil, 0, fmt.Errorf("skyd.Servlet: Unable to open LMDB DBI: %s", err)
+	var dbi mdb.DBI
+	if readOnly {
+		if dbi, err = txn.DBIOpen(&name, 0); err != nil && err != mdb.NotFound {
+			return nil, 0, fmt.Errorf("Unable to open read-only LMDB DBI: %s", err)
+		}
+	} else {
+		if dbi, err = txn.DBIOpen(&name, mdb.CREATE); err != nil {
+			return nil, 0, fmt.Errorf("Unable to open writable LMDB DBI: %s", err)
+		}
 	}
 
 	return txn, dbi, nil
