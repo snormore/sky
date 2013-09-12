@@ -369,7 +369,7 @@ func (s *Selection) String() string {
 	str += strings.Join(arr, ", ")
 
 	if len(s.Dimensions) > 0 {
-		str += " GROUP BY " + strings.Join(s.Dimensions, ", ")
+		str += " GROUP BY @" + strings.Join(s.Dimensions, ", @")
 	}
 	if s.Name != "" {
 		str += " INTO " + strconv.Quote(s.Name)

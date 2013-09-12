@@ -43,5 +43,5 @@ func (v *VarRef) CodegenRaw() (string, error) {
 }
 
 func (v *VarRef) String() string {
-	return v.value
+	return "@" + v.value
 }

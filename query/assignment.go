@@ -166,5 +166,5 @@ func (a *Assignment) RequiresInitialization() bool {
 
 // Converts the statement to a string-based representation.
 func (a *Assignment) String() string {
-	return fmt.Sprintf("SET %s = %s", a.target.value, a.expression.String())
+	return fmt.Sprintf("SET @%s = %s", a.target.value, a.expression.String())
 }
