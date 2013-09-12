@@ -19,13 +19,17 @@ type Query struct {
 	refs              []*VarRef
 	sequence          int
 	Prefix            string
+	systemVariables   []*Variable
 	declaredVariables []*Variable
 	statements        Statements
 }
 
 // NewQuery returns a new query.
 func NewQuery() *Query {
-	return &Query{statements: make(Statements, 0)}
+	q := &Query{statements: make(Statements, 0)}
+	q.addSystemVariable(NewVariable("@eos", core.BooleanDataType))
+	q.addSystemVariable(NewVariable("@eof", core.BooleanDataType))
+	return q
 }
 
 // Retrieves the table this query is associated with.
@@ -66,6 +70,12 @@ func (q *Query) SetStatements(statements Statements) {
 // Variables
 //--------------------------------------
 
+// Adds a system variable.
+func (q *Query) addSystemVariable(variable *Variable) {
+	variable.SetParent(q)
+	q.systemVariables = append(q.systemVariables, variable)
+}
+
 // Returns the variables declared for this query.
 func (q *Query) DeclaredVariables() []*Variable {
 	return q.declaredVariables
@@ -84,6 +94,13 @@ func (q *Query) SetDeclaredVariables(variables []*Variable) {
 
 // Retrieves the variable with a given name.
 func (q *Query) GetVariable(name string) *Variable {
+	// Check against system variables first.
+	for _, v := range q.systemVariables {
+		if v.Name == name {
+			return v
+		}
+	}
+
 	// Try to find variable from schema first.
 	if q.Table() != nil && q.Table().PropertyFile() != nil {
 		p := q.Table().PropertyFile().GetPropertyByName(name)

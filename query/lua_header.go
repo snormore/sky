@@ -35,6 +35,8 @@ bool sky_cursor_has_next_object(sky_cursor_t *);
 bool sky_cursor_next_object(sky_cursor_t *);
 bool sky_cursor_eof(sky_cursor_t *);
 bool sky_cursor_eos(sky_cursor_t *);
+bool sky_cursor_sys_eof(sky_cursor_t *);
+bool sky_cursor_sys_eos(sky_cursor_t *);
 bool sky_lua_cursor_next_event(sky_cursor_t *);
 bool sky_lua_cursor_next_session(sky_cursor_t *);
 bool sky_cursor_set_session_idle(sky_cursor_t *, uint32_t);
@@ -52,6 +54,8 @@ ffi.metatype('sky_cursor_t', {
     nextObject = function(cursor) return ffi.C.sky_cursor_next_object(cursor) end,
     eof = function(cursor) return ffi.C.sky_cursor_eof(cursor) end,
     eos = function(cursor) return ffi.C.sky_cursor_eos(cursor) end,
+    sys_eof = function(cursor) return ffi.C.sky_cursor_sys_eof(cursor) end,
+    sys_eos = function(cursor) return ffi.C.sky_cursor_sys_eos(cursor) end,
     next = function(cursor) return ffi.C.sky_lua_cursor_next_event(cursor) end,
     next_session = function(cursor) return ffi.C.sky_lua_cursor_next_session(cursor) end,
     set_session_idle = function(cursor, seconds) return ffi.C.sky_cursor_set_session_idle(cursor, seconds) end,

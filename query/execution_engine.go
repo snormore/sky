@@ -116,7 +116,7 @@ struct sky_cursor {
     void *endptr;
     void *ptr;
     bool eof;
-    bool in_session;
+    bool eos;
     bool in_time_range;
     uint32_t last_timestamp;
 
@@ -381,7 +381,7 @@ void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     cursor->nextptr    = ptr;
     cursor->endptr     = ptr + sz;
     cursor->ptr        = NULL;
-    cursor->in_session = true;
+    cursor->eos        = false;
     cursor->last_timestamp      = 0;
     cursor->session_idle_in_sec = 0;
     cursor->session_event_index = -1;
@@ -400,7 +400,7 @@ void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
 void sky_cursor_next_event(sky_cursor *cursor)
 {
     // Ignore any calls when the cursor is out of session or EOF.
-    if(cursor->eof || !cursor->in_session) {
+    if(cursor->eof || cursor->eos) {
         return;
     }
 
@@ -412,7 +412,7 @@ void sky_cursor_next_event(sky_cursor *cursor)
     // If pointer is beyond the last event then set eof.
     if(cursor->ptr >= cursor->endptr) {
         cursor->eof        = true;
-        cursor->in_session = false;
+        cursor->eos        = true;
         cursor->ptr        = NULL;
         cursor->startptr   = NULL;
         cursor->nextptr    = NULL;
@@ -450,13 +450,13 @@ void sky_cursor_next_event(sky_cursor *cursor)
             // and mark the cursor as being "out of session".
             if(timestamp - cursor->last_timestamp >= cursor->session_idle_in_sec) {
                 cursor->ptr = prevptr;
-                cursor->in_session = false;
+                cursor->eos = true;
             }
         }
         cursor->last_timestamp = timestamp;
 
         // Only process the event if we're still in session.
-        if(cursor->in_session) {
+        if(!cursor->eos) {
             cursor->session_event_index++;
 
             // Set timestamp.
@@ -505,7 +505,7 @@ void sky_cursor_next_event(sky_cursor *cursor)
 bool sky_lua_cursor_next_event(sky_cursor *cursor)
 {
     sky_cursor_next_event(cursor);
-    return (!cursor->eof && cursor->in_session && cursor->in_time_range);
+    return (!cursor->eof && !cursor->eos && cursor->in_time_range);
 }
 
 bool sky_cursor_eof(sky_cursor *cursor)
@@ -515,7 +515,17 @@ bool sky_cursor_eof(sky_cursor *cursor)
 
 bool sky_cursor_eos(sky_cursor *cursor)
 {
-    return !cursor->in_session;
+    return cursor->eos;
+}
+
+bool sky_cursor_sys_eof(sky_cursor *cursor)
+{
+    return cursor->eof;
+}
+
+bool sky_cursor_sys_eos(sky_cursor *cursor)
+{
+    return cursor->eos;
 }
 
 void sky_cursor_set_session_idle(sky_cursor *cursor, uint32_t seconds)
@@ -524,15 +534,15 @@ void sky_cursor_set_session_idle(sky_cursor *cursor, uint32_t seconds)
     cursor->session_idle_in_sec = seconds;
 
     // If the value is non-zero then start sessionizing the cursor.
-    //cursor->in_session = (seconds > 0 ? false : !cursor->eof);
+    //cursor->eos = (seconds > 0 ? true : cursor->eof);
 }
 
 void sky_cursor_next_session(sky_cursor *cursor)
 {
     // Set a flag to allow the cursor to continue iterating unless EOF is set.
-    if(!cursor->in_session) {
+    if(cursor->eos) {
         cursor->session_event_index = -1;
-        cursor->in_session = !cursor->eof;
+        cursor->eos = cursor->eof;
     }
 }
 

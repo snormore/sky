@@ -151,10 +151,15 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 
 	// Group by dimension.
 	for _, dimension := range s.Dimensions {
-		fmt.Fprintf(buffer, "  dimension = cursor.event:%s()\n", dimension)
-		fmt.Fprintf(buffer, "  if data.%s == nil then data.%s = {} end\n", dimension, dimension)
-		fmt.Fprintf(buffer, "  if data.%s[dimension] == nil then data.%s[dimension] = {} end\n", dimension, dimension)
-		fmt.Fprintf(buffer, "  data = data.%s[dimension]\n\n", dimension)
+		name, root := dimension, "cursor.event"
+		if name[0] == '@' {
+			name = name[1:]
+			root = "cursor"
+		}
+		fmt.Fprintf(buffer, "  dimension = %s:%s()\n", root, name)
+		fmt.Fprintf(buffer, "  if data.%s == nil then data.%s = {} end\n", name, name)
+		fmt.Fprintf(buffer, "  if data.%s[dimension] == nil then data.%s[dimension] = {} end\n", name, name)
+		fmt.Fprintf(buffer, "  data = data.%s[dimension]\n\n", name)
 	}
 
 	// Select fields.
@@ -217,11 +222,15 @@ func (s *Selection) CodegenInnerMergeFunction(index int, path string, fields map
 	fmt.Fprintf(buffer, "function %sn%d(result, data)\n", s.MergeFunctionName(), index)
 	if index < len(s.Dimensions) {
 		dimension := s.Dimensions[index]
-		fmt.Fprintf(buffer, "  if data ~= nil and data.%s ~= nil then\n", dimension)
-		fmt.Fprintf(buffer, "    if result.%s == nil then result.%s = {} end\n", dimension, dimension)
-		fmt.Fprintf(buffer, "    for k,v in pairs(data.%s) do\n", dimension)
-		fmt.Fprintf(buffer, "      if result.%s[k] == nil then result.%s[k] = {} end\n", dimension, dimension)
-		fmt.Fprintf(buffer, "      %sn%d(result.%s[k], v)\n", s.MergeFunctionName(), (index + 1), dimension)
+		name := dimension
+		if name[0] == '@' {
+			name = name[1:]
+		}
+		fmt.Fprintf(buffer, "  if data ~= nil and data.%s ~= nil then\n", name)
+		fmt.Fprintf(buffer, "    if result.%s == nil then result.%s = {} end\n", name, name)
+		fmt.Fprintf(buffer, "    for k,v in pairs(data.%s) do\n", name)
+		fmt.Fprintf(buffer, "      if result.%s[k] == nil then result.%s[k] = {} end\n", name, name)
+		fmt.Fprintf(buffer, "      %sn%d(result.%s[k], v)\n", s.MergeFunctionName(), (index + 1), name)
 		fmt.Fprintf(buffer, "    end\n")
 		fmt.Fprintf(buffer, "  end\n")
 	} else {

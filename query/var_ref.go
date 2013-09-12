@@ -31,7 +31,13 @@ func (v *VarRef) Codegen() (string, error) {
 	if _, err := v.Variable(); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("cursor.event:%s()", v.value), nil
+
+	// Remove ampersand prefix if this is a system variable.
+	if v.value[0] == '@' {
+		return fmt.Sprintf("cursor:%s()", v.value[1:]), nil
+	} else {
+		return fmt.Sprintf("cursor.event:%s()", v.value), nil
+	}
 }
 
 // Generates a Lua representation of the raw struct reference.

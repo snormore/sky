@@ -74,6 +74,17 @@ func TestParserVariable(t *testing.T) {
 	}
 }
 
+func TestParserSystemVariable(t *testing.T) {
+	str := `SELECT count() AS count GROUP BY @@eos`
+	query, err := NewParser().ParseString(str)
+	if err != nil {
+		t.Fatal("Parse error:", err)
+	}
+	if query.String() != str {
+		t.Fatal("Unexpected:", "'"+query.String()+"'")
+	}
+}
+
 func TestParserTemporalLoop(t *testing.T) {
 	str := `FOR @i EVERY 1 DAY WITHIN 30 DAYS` + "\n"
 	str += `  FOR EACH SESSION DELIMITED BY 2 HOURS` + "\n"

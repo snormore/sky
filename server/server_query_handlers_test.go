@@ -176,6 +176,27 @@ func TestServerSessionizedFunnelAnalysisQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can access system variables like eos and eof.
+func TestServerSystemVariables(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "action", false, "factor")
+		setupTestData(t, "foo", [][]string{
+			[]string{"f0", "1970-01-01T00:00:01Z", `{"data":{"action":"A0"}}`},
+			[]string{"f0", "1970-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
+			[]string{"f0", "1970-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
+			[]string{"f0", "1970-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
+		})
+
+		query := `
+			SELECT count() AS count GROUP BY action, @@eos
+		`
+		q, _ := json.Marshal(query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{ }`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can utilitize the timestamp in the query.
 func TestServerTimestampQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
