@@ -128,8 +128,8 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "("                        return y.token(yylval, TLPAREN);
 ")"                        return y.token(yylval, TRPAREN);
 "="                        return y.token(yylval, TASSIGN);
-"@"                        return y.token(yylval, TAMPERSAND);
 
+\@[a-zA-Z_~][a-zA-Z0-9_]*  return y.strtoken(yylval, TAMPIDENT);
 [a-zA-Z_~][a-zA-Z0-9_]*    return y.strtoken(yylval, TIDENT);
 [ \t\n\r]+
 

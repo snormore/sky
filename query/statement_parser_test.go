@@ -16,7 +16,7 @@ func TestStatementParserSelection(t *testing.T) {
 }
 
 func TestStatementParserCondition(t *testing.T) {
-	str := `WHEN @action == "signup" THEN` + "\n" + `  SELECT count() AS count` + "\n" + `END`
+	str := `WHEN @EVENT == "signup" THEN` + "\n" + `  SELECT count() AS count` + "\n" + `END`
 	s, err := NewStatementParser().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)

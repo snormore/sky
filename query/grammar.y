@@ -47,7 +47,7 @@ import (
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
 %token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV, TASSIGN
 %token <token> TTRUE, TFALSE, TAMPERSAND
-%token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS, TTIMEUNITS
+%token <str> TIDENT, TAMPIDENT, TQUOTEDSTRING, TWITHINUNITS, TTIMEUNITS
 %token <integer> TINT
 
 %type <query> query
@@ -398,9 +398,9 @@ variable_name :
     {
         $$ = $1
     }
-|   TAMPERSAND TIDENT
+|   TAMPIDENT
     {
-        $$ = $2
+        $$ = $1[1:]
     }
 ;
 
