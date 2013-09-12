@@ -67,7 +67,7 @@ int mp_unpack(lua_State *L);
 
 #define badcursordata(MSG, PTR) do {\
     fprintf(stderr, "Cursor pointing at invalid raw event data [" MSG "]: %p->%p\n", cursor->ptr, PTR); \
-    cursor->eof = true; \
+    cursor->sys_eof = cursor->eof = true; \
     return; \
 } while(0)
 
@@ -117,6 +117,8 @@ struct sky_cursor {
     void *ptr;
     bool eof;
     bool eos;
+    bool sys_eof;
+    bool sys_eos;
     bool in_time_range;
     uint32_t last_timestamp;
 
@@ -381,11 +383,13 @@ void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     cursor->nextptr    = ptr;
     cursor->endptr     = ptr + sz;
     cursor->ptr        = NULL;
+    cursor->sys_eos    = false;
     cursor->eos        = false;
     cursor->last_timestamp      = 0;
     cursor->session_idle_in_sec = 0;
     cursor->session_event_index = -1;
-    cursor->eof        = !(ptr != NULL && cursor->startptr < cursor->endptr);
+    cursor->sys_eof    = !(ptr != NULL && cursor->startptr < cursor->endptr);
+    cursor->eof        = cursor->eof;
 
     // Clear the data object if set.
     memset(cursor->data, 0, cursor->data_sz);
@@ -397,10 +401,43 @@ void sky_cursor_set_ptr(sky_cursor *cursor, void *ptr, size_t sz)
     }
 }
 
+int sky_cursor_peek(sky_cursor *cursor, void **ptr, int64_t *ts, uint32_t *timestamp, bool *in_time_range, bool *eos)
+{
+    sky_event_flag_t flag = *((sky_event_flag_t*)(*ptr));
+
+    // If flag isn't correct then report and exit.
+    if(flag != EVENT_FLAG) return -1;
+    *ptr += sizeof(sky_event_flag_t);
+
+    // Read timestamp.
+    size_t sz;
+    *ts = minipack_unpack_int(*ptr, &sz);
+    if(sz == 0) return -2;
+    *timestamp = sky_timestamp_to_seconds(*ts);
+    *ptr += sz;
+
+    // Check for time boundry.
+    *in_time_range = (cursor->max_timestamp == 0 || *timestamp < cursor->max_timestamp);
+    if(!(*in_time_range)) return 0;
+
+    // Check for session boundry. This only applies if this is not the
+    // first event in the session and a session idle time has been set.
+    if(cursor->last_timestamp > 0 && cursor->session_idle_in_sec > 0) {
+        // If the elapsed time is greater than the idle time then rewind
+        // back to the event we started on at the beginning of the function
+        // and mark the cursor as being "out of session".
+        if((*timestamp) - cursor->last_timestamp >= cursor->session_idle_in_sec) {
+            *eos = true;
+        }
+    }
+
+    return 0;
+}
+
 void sky_cursor_next_event(sky_cursor *cursor)
 {
     // Ignore any calls when the cursor is out of session or EOF.
-    if(cursor->eof || cursor->eos) {
+    if(cursor->sys_eof || cursor->sys_eos) {
         return;
     }
 
@@ -411,8 +448,8 @@ void sky_cursor_next_event(sky_cursor *cursor)
 
     // If pointer is beyond the last event then set eof.
     if(cursor->ptr >= cursor->endptr) {
-        cursor->eof        = true;
-        cursor->eos        = true;
+        cursor->sys_eof = cursor->eof = true;
+        cursor->sys_eos = cursor->eos = true;
         cursor->ptr        = NULL;
         cursor->startptr   = NULL;
         cursor->nextptr    = NULL;
@@ -421,49 +458,26 @@ void sky_cursor_next_event(sky_cursor *cursor)
     }
     // Otherwise update the event object with data.
     else {
-        sky_event_flag_t flag = *((sky_event_flag_t*)ptr);
-
-        // If flag isn't correct then report and exit.
-        if(flag != EVENT_FLAG) badcursordata("eflag", ptr);
-        ptr += sizeof(sky_event_flag_t);
-
-        // Read timestamp.
+        int64_t ts = 0;
         size_t sz;
-        int64_t ts = minipack_unpack_int(ptr, &sz);
-        if(sz == 0) badcursordata("timestamp", ptr);
-        uint32_t timestamp = sky_timestamp_to_seconds(ts);
-        cursor->next_timestamp = timestamp;
-        ptr += sz;
-
-        // Check for time boundry.
-        cursor->in_time_range = (cursor->max_timestamp == 0 || timestamp < cursor->max_timestamp);
+        int rc = sky_cursor_peek(cursor, &ptr, &ts, &cursor->next_timestamp, &cursor->in_time_range, &cursor->sys_eos);
+        if(rc == -1) badcursordata("eflag", ptr);
+        if(rc == -2) badcursordata("timestamp", ptr);
         if(!cursor->in_time_range) {
             cursor->ptr = prevptr;
             return;
         }
-
-        // Check for session boundry. This only applies if this is not the
-        // first event in the session and a session idle time has been set.
-        if(cursor->last_timestamp > 0 && cursor->session_idle_in_sec > 0) {
-            // If the elapsed time is greater than the idle time then rewind
-            // back to the event we started on at the beginning of the function
-            // and mark the cursor as being "out of session".
-            if(timestamp - cursor->last_timestamp >= cursor->session_idle_in_sec) {
-                cursor->ptr = prevptr;
-                cursor->eos = true;
-            }
-        }
-        cursor->last_timestamp = timestamp;
+        if(cursor->eos) cursor->ptr = prevptr;
 
         // Only process the event if we're still in session.
-        if(!cursor->eos) {
+        if(!cursor->sys_eos) {
             cursor->session_event_index++;
 
             // Set timestamp.
             int64_t *data_ts = (int64_t*)(cursor->data + cursor->timestamp_descriptor.ts_offset);
             uint32_t *data_timestamp = (uint32_t*)(cursor->data + cursor->timestamp_descriptor.timestamp_offset);
             *data_ts = ts;
-            *data_timestamp = timestamp;
+            *data_timestamp = cursor->next_timestamp;
 
             // Clear old action data.
             if(cursor->action_data_sz > 0) {
@@ -498,14 +512,25 @@ void sky_cursor_next_event(sky_cursor *cursor)
             }
 
             cursor->nextptr = ptr;
+
+            // Peek ahead and set current eof/eos.
+            if(cursor->nextptr >= cursor->endptr) {
+                cursor->eof = cursor->eos = true;
+            } else {
+                bool in_time_range;
+                uint32_t timestamp;
+                sky_cursor_peek(cursor, &ptr, &ts, &timestamp, &in_time_range, &cursor->eos);
+            }
         }
+
+        cursor->last_timestamp = cursor->next_timestamp;
     }
 }
 
 bool sky_lua_cursor_next_event(sky_cursor *cursor)
 {
     sky_cursor_next_event(cursor);
-    return (!cursor->eof && !cursor->eos && cursor->in_time_range);
+    return (!cursor->sys_eof && !cursor->sys_eos && cursor->in_time_range);
 }
 
 bool sky_cursor_eof(sky_cursor *cursor)
@@ -520,12 +545,12 @@ bool sky_cursor_eos(sky_cursor *cursor)
 
 bool sky_cursor_sys_eof(sky_cursor *cursor)
 {
-    return cursor->eof;
+    return cursor->sys_eof;
 }
 
 bool sky_cursor_sys_eos(sky_cursor *cursor)
 {
-    return cursor->eos;
+    return cursor->sys_eos;
 }
 
 void sky_cursor_set_session_idle(sky_cursor *cursor, uint32_t seconds)
@@ -534,22 +559,22 @@ void sky_cursor_set_session_idle(sky_cursor *cursor, uint32_t seconds)
     cursor->session_idle_in_sec = seconds;
 
     // If the value is non-zero then start sessionizing the cursor.
-    //cursor->eos = (seconds > 0 ? true : cursor->eof);
+    //cursor->sys_eos = (seconds > 0 ? true : cursor->sys_eof);
 }
 
 void sky_cursor_next_session(sky_cursor *cursor)
 {
     // Set a flag to allow the cursor to continue iterating unless EOF is set.
-    if(cursor->eos) {
+    if(cursor->sys_eos) {
         cursor->session_event_index = -1;
-        cursor->eos = cursor->eof;
+        cursor->sys_eos = cursor->sys_eof;
     }
 }
 
 bool sky_lua_cursor_next_session(sky_cursor *cursor)
 {
     sky_cursor_next_session(cursor);
-    return !cursor->eof;
+    return !cursor->sys_eof;
 }
 
 

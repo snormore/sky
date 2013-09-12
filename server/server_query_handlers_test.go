@@ -186,14 +186,20 @@ func TestServerSystemVariables(t *testing.T) {
 			[]string{"f0", "1970-01-01T01:59:59Z", `{"data":{"action":"A1"}}`},
 			[]string{"f0", "1970-01-02T00:00:00Z", `{"data":{"action":"A0"}}`},
 			[]string{"f0", "1970-01-02T02:00:00Z", `{"data":{"action":"A1"}}`},
+
+			[]string{"f1", "1970-01-01T02:00:00Z", `{"data":{"action":"A0"}}`},
 		})
 
 		query := `
-			SELECT count() AS count GROUP BY action, @@eos
+			FOR EACH SESSION DELIMITED BY 2 HOURS
+			  FOR EACH EVENT
+				SELECT count() AS count GROUP BY action, @@eos, @@eof
+			  END
+			END
 		`
 		q, _ := json.Marshal(query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
-		assertResponse(t, resp, 200, `{ }`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"action":{"A0":{"eos":{"false":{"eof":{"false":{"count":1}}},"true":{"eof":{"false":{"count":1},"true":{"count":1}}}}},"A1":{"eos":{"true":{"eof":{"false":{"count":1},"true":{"count":1}}}}}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
 
