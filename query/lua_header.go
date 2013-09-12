@@ -140,6 +140,42 @@ end
 
 ----------------------------------------------------------------------
 --
+-- Average Functions
+--
+----------------------------------------------------------------------
+
+-- Checks if a value is an average.
+function sky_is_average(average)
+   return (average ~= nil and average.__average__ == true)
+end
+
+-- Creates a new average object.
+function sky_average_new()
+  return {__average__=true, count=0, sum=0}
+end
+
+-- Inserts a value into an existing average.
+function sky_average_insert(average, value)
+  average.count = average.count + 1
+  average.sum   = average.sum + value
+end
+
+-- Merges one average into another.
+function sky_average_merge(a, b)
+  -- takes two averages
+  if a == nil then
+    a = b
+  elseif b ~= nil then
+    a.count = a.count + b.count
+    a.sum = a.sum + b.sum
+    a.avg = a.sum / a.count
+  end
+  return a
+end
+
+
+----------------------------------------------------------------------
+--
 -- Utility Functions
 --
 ----------------------------------------------------------------------
@@ -147,7 +183,7 @@ end
 -- Finalizes a data structure so that it can be used to seed the aggregation.
 function sky_finalize(value)
   if type(value) ~= "table" then return nil end
-   
+
   if sky_is_histogram(value) then
     sky_histogram_finalize(value)
   else
@@ -155,7 +191,7 @@ function sky_finalize(value)
       value[k] = sky_finalize(v)
     end
   end
-  
+
   return value
 end
 
