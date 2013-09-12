@@ -56,9 +56,9 @@ func (v *Variable) String() string {
 		dataType = "BOOLEAN"
 	}
 
-	str := fmt.Sprintf("DECLARE %s AS %s", v.Name, dataType)
+	str := fmt.Sprintf("DECLARE @%s AS %s", v.Name, dataType)
 	if v.Association != "" {
-		str += "(" + v.Association + ")"
+		str += "(@" + v.Association + ")"
 	}
 	return str
 }

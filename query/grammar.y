@@ -46,8 +46,8 @@ import (
 %token <token> TSEMICOLON, TCOMMA, TLPAREN, TRPAREN, TRANGE
 %token <token> TEQUALS, TNOTEQUALS, TLT, TLTE, TGT, TGTE
 %token <token> TAND, TOR, TPLUS, TMINUS, TMUL, TDIV, TASSIGN
-%token <token> TTRUE, TFALSE
-%token <str> TIDENT, TQUOTEDSTRING, TWITHINUNITS, TTIMEUNITS
+%token <token> TTRUE, TFALSE, TAMPERSAND
+%token <str> TIDENT, TAMPIDENT, TQUOTEDSTRING, TWITHINUNITS, TTIMEUNITS
 %token <integer> TINT
 
 %type <query> query
@@ -62,7 +62,7 @@ import (
 %type <selection_field> selection_field
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
-%type <str> selection_name
+%type <str> variable_name, selection_name
 %type <str> data_type, variable_association
 
 %type <condition> condition
@@ -158,7 +158,7 @@ variables :
 ;
 
 variable :
-    TDECLARE TIDENT TAS data_type variable_association
+    TDECLARE variable_name TAS data_type variable_association
     {
         $$ = NewVariable($2, $4)
         $$.Association = $5
@@ -170,7 +170,7 @@ variable_association :
     {
         $$ = ""
     }
-|   TLPAREN TIDENT TRPAREN
+|   TLPAREN variable_name TRPAREN
     {
         $$ = $2
     }
@@ -257,12 +257,12 @@ selection_group_by :
 ;
 
 selection_dimensions :
-    TIDENT
+    variable_name
     {
         $$ = make([]string, 0)
         $$ = append($$, $1)
     }
-|   selection_dimensions TCOMMA TIDENT
+|   selection_dimensions TCOMMA variable_name
     {
         $$ = append($1, $3)
     }
@@ -387,9 +387,20 @@ expr :
 ;
 
 var_ref :
-    TIDENT
+    variable_name
     {
         $$ = &VarRef{value:$1}
+    }
+;
+
+variable_name :
+    TIDENT
+    {
+        $$ = $1
+    }
+|   TAMPIDENT
+    {
+        $$ = $1[1:]
     }
 ;
 
