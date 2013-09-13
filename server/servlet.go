@@ -68,8 +68,12 @@ func (s *Servlet) Open() error {
 		return fmt.Errorf(fmt.Sprintf("skyd.Servlet: Unable to create LMDB environment: %v", err))
 	}
 	// Setup max dbs.
-	if err := s.env.SetMaxDBs(4096); err != nil {
+	if err := s.env.SetMaxDBs(s.fdb.MaxDBs); err != nil {
 		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max dbs: %v", err)
+	}
+	// Setup max readers.
+	if err := s.env.SetMaxReaders(s.fdb.MaxReaders); err != nil {
+		return fmt.Errorf("skyd.Servlet: Unable to set LMDB max readers: %v", err)
 	}
 	// Setup map size.
 	if err := s.env.SetMapSize(2 << 40); err != nil {

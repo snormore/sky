@@ -45,7 +45,6 @@ type Server struct {
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
-	noSync           bool
 }
 
 //------------------------------------------------------------------------------
@@ -91,6 +90,8 @@ func NewServer(port uint, path string) *Server {
 	s.addObjectHandlers()
 	s.addQueryHandlers()
 	s.addDebugHandlers()
+
+	s.fdb = factors.NewDB(s.FactorsPath())
 
 	return s
 }
@@ -204,8 +205,6 @@ func (s *Server) open() error {
 	}
 
 	// Open factors database.
-	s.fdb = factors.NewDB(s.FactorsPath())
-	// s.fdb.noSync = s.noSync
 	err = s.fdb.Open()
 	if err != nil {
 		s.close()
@@ -258,7 +257,6 @@ func (s *Server) close() {
 	// Close factors database.
 	if s.fdb != nil {
 		s.fdb.Close()
-		s.fdb = nil
 	}
 }
 
@@ -483,7 +481,17 @@ func (s *Server) DeleteTable(name string) error {
 
 // Set the mdb.NOSYNC option.
 func (s *Server) SetNoSync(noSync bool) {
-	s.noSync = noSync
+	s.fdb.SetNoSync(noSync)
+}
+
+// Set the mdb MaxDBs setting.
+func (s *Server) SetMaxDBs(maxDBs uint) {
+	s.fdb.SetMaxDBs(maxDBs)
+}
+
+// Set the mdb MaxReaders setting.
+func (s *Server) SetMaxReaders(maxReaders uint) {
+	s.fdb.SetMaxReaders(maxReaders)
 }
 
 // Retrieves a list of all object keys for a table
