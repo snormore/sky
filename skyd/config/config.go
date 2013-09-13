@@ -12,10 +12,12 @@ import (
 //------------------------------------------------------------------------------
 
 const (
-	DefaultPort     = 8585
-	DefaultDataPath = "/var/lib/sky"
-	DefaultPidPath  = "/var/run/skyd.pid"
-	DefaultNoSync   = false
+	DefaultPort       = 8585
+	DefaultDataPath   = "/var/lib/sky"
+	DefaultPidPath    = "/var/run/skyd.pid"
+	DefaultNoSync     = false
+	DefaultMaxDBs     = 4096
+	DefaultMaxReaders = 126 // lmdb's default
 )
 
 //------------------------------------------------------------------------------
@@ -26,10 +28,12 @@ const (
 
 // The configuration for running Sky.
 type Config struct {
-	Port     uint   `toml:"port"`
-	DataPath string `toml:"data-path"`
-	PidPath  string `toml:"pid-path"`
-	NoSync   bool   `toml:"nosync"`
+	Port       uint   `toml:"port"`
+	DataPath   string `toml:"data-path"`
+	PidPath    string `toml:"pid-path"`
+	NoSync     bool   `toml:"nosync"`
+	MaxDBs     uint   `toml:"max-dbs"`
+	MaxReaders uint   `toml:"max-readers"`
 }
 
 //------------------------------------------------------------------------------
@@ -41,10 +45,12 @@ type Config struct {
 // Creates a new configuration object.
 func NewConfig() *Config {
 	return &Config{
-		Port:     DefaultPort,
-		DataPath: DefaultDataPath,
-		PidPath:  DefaultPidPath,
-		NoSync:   DefaultNoSync,
+		Port:       DefaultPort,
+		DataPath:   DefaultDataPath,
+		PidPath:    DefaultPidPath,
+		NoSync:     DefaultNoSync,
+		MaxDBs:     DefaultMaxDBs,
+		MaxReaders: DefaultMaxReaders,
 	}
 }
 

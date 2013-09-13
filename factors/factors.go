@@ -19,10 +19,12 @@ import (
 
 // A Factors database object manages the factorization and defactorization of values.
 type DB struct {
-	env    *mdb.Env
-	path   string
-	mutex  sync.Mutex
-	noSync bool
+	env        *mdb.Env
+	path       string
+	mutex      sync.Mutex
+	noSync     bool
+	MaxDBs     mdb.DBI
+	MaxReaders uint
 }
 
 //------------------------------------------------------------------------------
@@ -55,7 +57,7 @@ func (e *FactorNotFound) Error() string {
 
 // NewDB returns a new database object.
 func NewDB(path string) *DB {
-	return &DB{path: path}
+	return &DB{path: path, MaxDBs: 4096, MaxReaders: 126}
 }
 
 //------------------------------------------------------------------------------
@@ -105,9 +107,14 @@ func (db *DB) Open() error {
 		return fmt.Errorf(fmt.Sprintf("skyd: Unable to create factors environment: %v", err))
 	}
 	// Setup max dbs.
-	if err = db.env.SetMaxDBs(4096); err != nil {
+	if err = db.env.SetMaxDBs(db.MaxDBs); err != nil {
 		db.Close()
 		return fmt.Errorf("skyd: Unable to set factors max dbs: %v", err)
+	}
+	// Setup max readers.
+	if err = db.env.SetMaxReaders(db.MaxReaders); err != nil {
+		db.Close()
+		return fmt.Errorf("skyd: Unable to set factors max readers: %v", err)
 	}
 	// Setup map size.
 	if err := db.env.SetMapSize(10 << 30); err != nil {
@@ -138,6 +145,16 @@ func (db *DB) IsOpen() bool {
 // Set the mdb.NOSYNC option.
 func (db *DB) SetNoSync(noSync bool) {
 	db.noSync = noSync
+}
+
+// Set the mdb MaxDBs setting.
+func (db *DB) SetMaxDBs(maxDBs uint) {
+	db.MaxDBs = mdb.DBI(maxDBs)
+}
+
+// Set the mdb MaxReaders setting.
+func (db *DB) SetMaxReaders(maxReaders uint) {
+	db.MaxReaders = maxReaders
 }
 
 //--------------------------------------

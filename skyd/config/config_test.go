@@ -10,6 +10,8 @@ port=9000
 data-path="/home/data"
 pid-path = "/home/pid"
 nosync = true
+max-dbs = 5
+max-readers = 250
 `
 
 // Decode a configuration file.
@@ -27,5 +29,9 @@ func TestDecode(t *testing.T) {
 		t.Fatalf("Invalid pid path: %v", config.PidPath)
 	} else if config.NoSync != true {
 		t.Fatalf("Invalid nosync option: %v", config.NoSync)
+	} else if config.MaxDBs != 5 {
+		t.Fatalf("Invalid max DBs setting: %v", config.MaxDBs)
+	} else if config.MaxReaders != 250 {
+		t.Fatalf("Invalid max readers setting: %v", config.MaxReaders)
 	}
 }
