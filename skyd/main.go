@@ -38,7 +38,7 @@ func init() {
 	flag.StringVar(&config.PidPath, "pid-path", config.PidPath, "the path to the pid file")
 	flag.BoolVar(&config.NoSync, "nosync", config.NoSync, "use mdb.NOSYNC option, or not")
 	flag.UintVar(&config.MaxDBs, "max-dbs", config.MaxDBs, "max number of named btrees in the database (mdb.MaxDBs)")
-	flag.UintVar(&config.MaxDBs, "max-readers", config.MaxReaders, "max number of concurrenly executing queries (mdb.MaxReaders)")
+	flag.UintVar(&config.MaxReaders, "max-readers", config.MaxReaders, "max number of concurrenly executing queries (mdb.MaxReaders)")
 	flag.StringVar(&configPath, "config", "", "the path to the config file")
 }
 
