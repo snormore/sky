@@ -122,6 +122,10 @@ func (l *EventLoop) Defactorize(data interface{}) error {
 	return l.statements.Defactorize(data)
 }
 
+func (l *EventLoop) Finalize(data interface{}) error {
+	return l.statements.Finalize(data)
+}
+
 func (l *EventLoop) RequiresInitialization() bool {
 	return l.statements.RequiresInitialization()
 }

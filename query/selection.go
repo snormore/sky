@@ -51,6 +51,16 @@ func (s *Selection) SetFields(fields []*SelectionField) {
 	}
 }
 
+// Determines if this selection contains non-aggregation fields.
+func (s *Selection) HasNonAggregateFields() bool {
+	for _, f := range s.fields {
+		if !f.IsAggregate() {
+			return true
+		}
+	}
+	return false
+}
+
 //--------------------------------------
 // Serialization
 //--------------------------------------
@@ -162,6 +172,11 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 		fmt.Fprintf(buffer, "  data = data.%s[dimension]\n\n", name)
 	}
 
+	// Create row object for non-aggregated selection.
+	if s.HasNonAggregateFields() {
+		fmt.Fprintf(buffer, "  row = {}\n\n")
+	}
+
 	// Select fields.
 	for _, field := range s.fields {
 		exp, err := field.CodegenExpression(init)
@@ -169,6 +184,12 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 			return "", err
 		}
 		fmt.Fprintln(buffer, "  "+exp)
+	}
+
+	// Append row object to "_".
+	if s.HasNonAggregateFields() {
+		fmt.Fprintf(buffer, "  if data._ == nil then data._ = {} end\n")
+		fmt.Fprintf(buffer, "  table.insert(data._, row)\n")
 	}
 
 	// End function definition.
@@ -247,6 +268,20 @@ func (s *Selection) CodegenInnerMergeFunction(index int, path string, fields map
 				fmt.Fprintln(buffer, "  "+exp)
 			}
 		}
+
+		// Merge non-aggregate selections.
+		if s.HasNonAggregateFields() {
+			fieldPath := path + "._"
+			if fields[fieldPath] == nil {
+				fields[fieldPath] = true
+				fmt.Fprintf(buffer, "  if data ~= nil and data._ ~= nil then\n")
+				fmt.Fprintf(buffer, "    if result._ == nil then result._ = {} end\n")
+				fmt.Fprintf(buffer, "    for k,v in pairs(data._) do\n")
+				fmt.Fprintf(buffer, "      table.insert(result._, v)\n")
+				fmt.Fprintf(buffer, "    end\n")
+				fmt.Fprintf(buffer, "  end\n")
+			}
+		}
 	}
 	fmt.Fprintf(buffer, "end\n")
 
@@ -269,6 +304,12 @@ func (s *Selection) Defactorize(data interface{}) error {
 			}
 		}
 
+		if s.HasNonAggregateFields() && m["_"] != nil {
+			if err := s.defactorizeNonAggregateFields(m["_"]); err != nil {
+				return err
+			}
+		}
+
 		// Recursively defactorize dimensions and then fields.
 		return s.defactorize(m, 0)
 	}
@@ -279,12 +320,17 @@ func (s *Selection) Defactorize(data interface{}) error {
 // Recursively defactorizes dimensions.
 func (s *Selection) defactorize(data interface{}, index int) error {
 	query := s.Query()
-	if index >= len(s.Dimensions) {
-		return nil
-	}
+
 	// Ignore any values that are nil or not maps.
 	inner, ok := data.(map[interface{}]interface{})
 	if !ok || data == nil {
+		return nil
+	}
+
+	if index >= len(s.Dimensions) {
+		if s.HasNonAggregateFields() && inner["_"] != nil {
+			return s.defactorizeNonAggregateFields(inner["_"])
+		}
 		return nil
 	}
 
@@ -329,6 +375,124 @@ func (s *Selection) defactorize(data interface{}, index int) error {
 	}
 
 	return nil
+}
+
+// Defactorize non-aggregate field selection.
+func (s *Selection) defactorizeNonAggregateFields(data interface{}) error {
+	query := s.Query()
+
+	// Ignore any values that are nil or not maps.
+	inner, ok := data.(map[interface{}]interface{})
+	if !ok || data == nil {
+		return nil
+	}
+
+	// NOTE: This nesting below is crazy right now. This will probably be
+	// refactored in the near future though.
+
+	// Loop over each row and field.
+	for _, row := range inner {
+		if row, ok := row.(map[interface{}]interface{}); ok {
+			for _, field := range s.fields {
+				if ref, ok := field.Expression().(*VarRef); ok && !field.IsAggregate() {
+					if variable, err := ref.Variable(); err != nil {
+						return err
+					} else if variable.DataType == core.FactorDataType {
+						name := field.CodegenName()
+						if sequence, ok := normalize(row[name]).(int64); ok {
+							factorName := variable.Name
+							if variable.Association != "" {
+								factorName = variable.Association
+							}
+
+							stringValue, err := query.fdb.Defactorize(query.table.Name, factorName, uint64(sequence))
+							if err != nil {
+								return err
+							}
+							row[name] = stringValue
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+//--------------------------------------
+// Finalization
+//--------------------------------------
+
+// Finalizes the results into a final state after merge.
+func (s *Selection) Finalize(data interface{}) error {
+	if m, ok := data.(map[interface{}]interface{}); ok {
+		// If this is a named selection then drill in first.
+		if s.Name != "" {
+			if tmp, ok := m[s.Name].(map[interface{}]interface{}); ok {
+				m = tmp
+			} else {
+				return nil
+			}
+		}
+
+		if s.HasNonAggregateFields() && m["_"] != nil {
+			m["_"] = s.finalizeNonAggregateFields(m["_"])
+		}
+
+		// Recursively defactorize dimensions and fields.
+		return s.finalize(m, 0)
+	}
+
+	return nil
+}
+
+// Recursively finalizes dimensions.
+func (s *Selection) finalize(data interface{}, index int) error {
+	// Ignore any values that are nil or not maps.
+	inner, ok := data.(map[interface{}]interface{})
+	if !ok || data == nil {
+		return nil
+	}
+
+	if s.HasNonAggregateFields() {
+		inner["_"] = s.finalizeNonAggregateFields(inner["_"])
+	}
+
+	if index >= len(s.Dimensions) {
+		return nil
+	}
+
+	// Defactorize.
+	dimension := s.Dimensions[index]
+	if outer, ok := inner[dimension].(map[interface{}]interface{}); ok {
+		copy := map[interface{}]interface{}{}
+		for k, v := range outer {
+			s.finalize(v, index+1)
+			copy[k] = v
+		}
+		inner[dimension] = copy
+	}
+
+	return nil
+}
+
+// Finalizes non-aggregate field selection.
+func (s *Selection) finalizeNonAggregateFields(data interface{}) interface{} {
+	if data, ok := data.(map[interface{}]interface{}); ok {
+		ret := []interface{}{}
+		for _, row := range data {
+			if row, ok := row.(map[interface{}]interface{}); ok {
+				obj := map[string]interface{}{}
+				for k, v := range row {
+					obj[k.(string)] = v
+				}
+				ret = append(ret, obj)
+			}
+		}
+		return ret
+	}
+	return data
 }
 
 //--------------------------------------

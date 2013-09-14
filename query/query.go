@@ -363,14 +363,15 @@ func (q *Query) NextIdentifier() int {
 	return q.sequence
 }
 
-//--------------------------------------
-// Factorization
-//--------------------------------------
-
 // Converts factorized results from the aggregate function results to use
 // the appropriate strings.
 func (q *Query) Defactorize(data interface{}) error {
 	return q.statements.Defactorize(data)
+}
+
+// Finalizes the results into a final state after merge.
+func (q *Query) Finalize(data interface{}) error {
+	return q.statements.Finalize(data)
 }
 
 //--------------------------------------

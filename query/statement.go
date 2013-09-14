@@ -20,6 +20,7 @@ type Statement interface {
 	CodegenAggregateFunction(init bool) (string, error)
 	CodegenMergeFunction(map[string]interface{}) (string, error)
 	Defactorize(data interface{}) error
+	Finalize(interface{}) error
 	RequiresInitialization() bool
 	Variables() []*Variable
 	String() string
