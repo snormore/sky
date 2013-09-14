@@ -208,6 +208,10 @@ func (l *TemporalLoop) Defactorize(data interface{}) error {
 	return l.statements.Defactorize(data)
 }
 
+func (l *TemporalLoop) Finalize(data interface{}) error {
+	return l.statements.Finalize(data)
+}
+
 func (l *TemporalLoop) RequiresInitialization() bool {
 	return l.statements.RequiresInitialization()
 }

@@ -126,6 +126,10 @@ func (l *SessionLoop) Defactorize(data interface{}) error {
 	return l.statements.Defactorize(data)
 }
 
+func (l *SessionLoop) Finalize(data interface{}) error {
+	return l.statements.Finalize(data)
+}
+
 func (l *SessionLoop) RequiresInitialization() bool {
 	return l.statements.RequiresInitialization()
 }

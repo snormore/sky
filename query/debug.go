@@ -120,6 +120,10 @@ func (d *Debug) Defactorize(data interface{}) error {
 	return nil
 }
 
+func (d *Debug) Finalize(data interface{}) error {
+	return nil
+}
+
 func (d *Debug) RequiresInitialization() bool {
 	return false
 }

@@ -589,7 +589,14 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 			}
 		}
 	}
-	err = servletError
+	if servletError != nil {
+		return nil, servletError
+	}
 
-	return result, err
+	// Finalize results.
+	if err := q.Finalize(result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

@@ -429,6 +429,34 @@ func TestServerDebugQuery(t *testing.T) {
 	})
 }
 
+// Ensure that we can select non-aggregated field with a selection.
+func TestServerExportQuery(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo")
+		setupTestProperty("foo", "val", true, "integer")
+		setupTestProperty("foo", "my_string", true, "string")
+		setupTestProperty("foo", "my_factor", true, "factor")
+		setupTestProperty("foo", "my_integer", true, "integer")
+		setupTestProperty("foo", "my_float", true, "float")
+		setupTestProperty("foo", "my_boolean", true, "boolean")
+		setupTestData(t, "foo", [][]string{
+			[]string{"0001", "2012-01-01T00:00:00Z", `{"data":{"my_string":"xxx", "my_factor":"yyy", "my_integer":100, "my_float":10.2, "my_boolean":true}}`},
+			[]string{"0001", "2012-01-01T00:00:01Z", `{"data":{"val":1000}}`},
+		})
+		query := `
+			SELECT my_factor INTO "named"
+			SELECT my_factor INTO "named"
+			SELECT my_factor AS factor2 GROUP BY my_integer
+			SELECT count() GROUP BY my_integer
+			SELECT timestamp, my_string, my_factor, my_integer, my_float, my_boolean
+		`
+		//_codegen(t, "foo", query)
+		q, _ := json.Marshal(query)
+		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
+		assertResponse(t, resp, 200, `{"_":[{"my_boolean":true,"my_factor":"yyy","my_float":10.2,"my_integer":100,"my_string":"xxx","timestamp":1325376000},{"my_boolean":false,"my_factor":"","my_float":0,"my_integer":0,"my_string":"","timestamp":1325376001}],"my_integer":{"0":{"_":[{"factor2":""}],"count":1},"100":{"_":[{"factor2":"yyy"}],"count":1}},"named":{"_":[{"my_factor":"yyy"},{"my_factor":"yyy"},{"my_factor":""},{"my_factor":""}]}}`+"\n", "POST /tables/:name/query failed.")
+	})
+}
+
 // Ensure that we can select into the same field but dedupe merges.
 func TestServerDuplicateSelectionQuery(t *testing.T) {
 	runTestServer(func(s *Server) {

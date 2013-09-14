@@ -254,13 +254,14 @@ func (c *Condition) CodegenMergeFunction(fields map[string]interface{}) (string,
 	return buffer.String(), nil
 }
 
-//--------------------------------------
-// Factorization
-//--------------------------------------
-
 // Converts factorized fields back to their original strings.
 func (c *Condition) Defactorize(data interface{}) error {
 	return c.statements.Defactorize(data)
+}
+
+// Finalizes the results into a final state after merge.
+func (c *Condition) Finalize(data interface{}) error {
+	return c.statements.Finalize(data)
 }
 
 //--------------------------------------
