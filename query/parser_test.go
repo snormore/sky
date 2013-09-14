@@ -15,6 +15,17 @@ func TestParserSelectCount(t *testing.T) {
 	}
 }
 
+func TestParserSelectUnnamedExpression(t *testing.T) {
+	str := `SELECT sum(@unit_price)`
+	query, err := NewParser().ParseString(str)
+	if err != nil {
+		t.Fatal("Parse error:", err)
+	}
+	if query.String() != str {
+		t.Fatal("Unexpected:", "'"+query.String()+"'")
+	}
+}
+
 func TestParserSelectDimensions(t *testing.T) {
 	str := `SELECT count() AS count GROUP BY @foo, @bar`
 	query, err := NewParser().ParseString(str)

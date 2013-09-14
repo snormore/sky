@@ -62,7 +62,7 @@ import (
 %type <selection_field> selection_field
 %type <selection_fields> selection_fields
 %type <strs> selection_group_by, selection_dimensions
-%type <str> variable_name, selection_name
+%type <str> variable_name, selection_name, selection_field_alias
 %type <str> data_type, variable_association
 
 %type <condition> condition
@@ -235,14 +235,19 @@ selection_fields :
 ;
 
 selection_field :
-    TIDENT TLPAREN TRPAREN TAS TIDENT
+    TIDENT TLPAREN TRPAREN selection_field_alias
     {
-        $$ = NewSelectionField($5, $1, nil)
+        $$ = NewSelectionField($4, $1, nil)
     }
-|   TIDENT TLPAREN expr TRPAREN TAS TIDENT
+|   TIDENT TLPAREN expr TRPAREN selection_field_alias
     {
-        $$ = NewSelectionField($6, $1, $3)
+        $$ = NewSelectionField($5, $1, $3)
     }
+;
+
+selection_field_alias :
+    /* empty */  { $$ = "" }
+|   TAS TIDENT   { $$ = $2 }
 ;
 
 selection_group_by :

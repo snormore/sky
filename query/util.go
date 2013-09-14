@@ -6,6 +6,7 @@ import (
 )
 
 var lineStartRegex = regexp.MustCompile(`(?m)^`)
+var nonAlphaRegex = regexp.MustCompile(`[^a-zA-Z]+`)
 
 // Normalizes a value. Int and Uint types are combined into int64 and Float types
 // are combined into float64. All other types are left alone.
