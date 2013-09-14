@@ -26,7 +26,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{"query":{"statements":"SELECT count() AS count"}}`
+		query := `{"query":{"statements":"SELECT count()"}}`
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
 		assertResponse(t, resp, 200, `{"count":5}`+"\n", "POST /tables/:name/query failed.")
 		resp, _ = sendTestHttpRequest("POST", "http://localhost:8586/tables/bar/query", "application/json", query)
@@ -314,14 +314,14 @@ func TestServerTimeLoopQuery(t *testing.T) {
 		query := `
 			FOR i EVERY 1 DAY WITHIN 7 DAYS
 				FOR EACH EVENT
-					SELECT sum(val) AS sum GROUP BY i
+					SELECT sum(val) GROUP BY i
 				END
 			END
 		`
 		q, _ := json.Marshal(query)
 		// _codegen(t, "foo", `{"query":`+string(q)+`}`)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", `{"query":`+string(q)+`}`)
-		assertResponse(t, resp, 200, `{"i":{"1":{"sum":10},"3":{"sum":60},"4":{"sum":70}}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"i":{"1":{"sum_val":10},"3":{"sum_val":60},"4":{"sum_val":70}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
 

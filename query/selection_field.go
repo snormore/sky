@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 type SelectionField struct {
@@ -108,10 +109,32 @@ func (f *SelectionField) Deserialize(obj map[string]interface{}) error {
 // Code Generation
 //--------------------------------------
 
+// Returns the name used by the field. This is automatically generated
+// if a name is not explicitly set.
+func (f *SelectionField) CodegenName() string {
+	if f.Name != "" {
+		return f.Name
+	} else {
+		names := []string{}
+		if f.Aggregation != "" {
+			names = append(names, f.Aggregation)
+		}
+		if f.expression != nil {
+			expr := f.expression.String()
+			expr = nonAlphaRegex.ReplaceAllString(expr, "_")
+			expr = strings.Trim(expr, "_")
+			names = append(names, expr)
+		}
+		return strings.Join(names, "_")
+	}
+}
+
 // Generates Lua code for the expression.
 func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 	var code string
 	var err error
+	name := f.CodegenName()
+
 	if f.expression != nil {
 		if code, err = f.expression.Codegen(); err != nil {
 			return "", err
@@ -125,20 +148,20 @@ func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 
 	switch f.Aggregation {
 	case "sum":
-		return fmt.Sprintf("data.%s = (data.%s or 0) + (%s)", f.Name, f.Name, code), nil
+		return fmt.Sprintf("data.%s = (data.%s or 0) + (%s)", name, name, code), nil
 	case "min":
-		return fmt.Sprintf("if(data.%s == nil or data.%s > (%s)) then data.%s = (%s) end", f.Name, f.Name, code, f.Name, code), nil
+		return fmt.Sprintf("if(data.%s == nil or data.%s > (%s)) then data.%s = (%s) end", name, name, code, name, code), nil
 	case "max":
-		return fmt.Sprintf("if(data.%s == nil or data.%s < (%s)) then data.%s = (%s) end", f.Name, f.Name, code, f.Name, code), nil
+		return fmt.Sprintf("if(data.%s == nil or data.%s < (%s)) then data.%s = (%s) end", name, name, code, name, code), nil
 	case "count":
-		return fmt.Sprintf("data.%s = (data.%s or 0) + 1", f.Name, f.Name), nil
+		return fmt.Sprintf("data.%s = (data.%s or 0) + 1", name, name), nil
 	case "avg":
-		return fmt.Sprintf("if data.%s == nil then data.%s = sky_average_new() end sky_average_insert(data.%s, (%s))", f.Name, f.Name, f.Name, code), nil
+		return fmt.Sprintf("if data.%s == nil then data.%s = sky_average_new() end sky_average_insert(data.%s, (%s))", name, name, name, code), nil
 	case "histogram":
 		if init {
-			return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, (%s))", f.Name, f.Name, f.Name, code), nil
+			return fmt.Sprintf("if data.%s == nil then data.%s = sky_histogram_new() end table.insert(data.%s.values, (%s))", name, name, name, code), nil
 		} else {
-			return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, (%s)) end", f.Name, f.Name, code), nil
+			return fmt.Sprintf("if data.%s ~= nil then sky_histogram_insert(data.%s, (%s)) end", name, name, code), nil
 		}
 	}
 
@@ -147,21 +170,23 @@ func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 
 // Generates Lua code for the merge expression.
 func (f *SelectionField) CodegenMergeExpression() (string, error) {
+	name := f.CodegenName()
+
 	switch f.Aggregation {
 	case "sum":
-		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", name, name, name), nil
 	case "min":
-		return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
+		return fmt.Sprintf("if(result.%s == nil or result.%s > data.%s) then result.%s = data.%s end", name, name, name, name, name), nil
 	case "max":
-		return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", f.Name, f.Name, f.Name, f.Name, f.Name), nil
+		return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", name, name, name, name, name), nil
 	case "count":
-		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", f.Name, f.Name, f.Name), nil
+		return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", name, name, name), nil
 	case "avg":
-		return fmt.Sprintf("result.%s = sky_average_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
+		return fmt.Sprintf("result.%s = sky_average_merge(result.%s, data.%s)", name, name, name), nil
 	case "histogram":
-		return fmt.Sprintf("result.%s = sky_histogram_merge(result.%s, data.%s)", f.Name, f.Name, f.Name), nil
+		return fmt.Sprintf("result.%s = sky_histogram_merge(result.%s, data.%s)", name, name, name), nil
 	case "":
-		return fmt.Sprintf("result.%s = data.%s", f.Name, f.Name), nil
+		return fmt.Sprintf("result.%s = data.%s", name, name), nil
 	}
 
 	return "", fmt.Errorf("SelectionField: Unsupported merge aggregation method: %s", f.Aggregation)
@@ -197,5 +222,11 @@ func (f *SelectionField) String() string {
 	if f.expression != nil {
 		expr = f.expression.String()
 	}
-	return fmt.Sprintf("%s(%s) AS %s", f.Aggregation, expr, f.Name)
+
+	var str string
+	str = fmt.Sprintf("%s(%s)", f.Aggregation, expr)
+	if f.Name != "" {
+		str += " AS " + f.Name
+	}
+	return str
 }
