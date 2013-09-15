@@ -118,7 +118,7 @@ start :
 query :
     variables statements
     {
-        $$ = &Query{}
+        $$ = NewQuery()
         $$.SetDeclaredVariables($1)
         $$.SetStatements($2)
     }

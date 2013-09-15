@@ -1144,14 +1144,14 @@ func (e *ExecutionEngine) generateHeader() error {
 }
 
 func variableStructDef(args ...interface{}) string {
-	if variable, ok := args[0].(*Variable); ok {
+	if variable, ok := args[0].(*Variable); ok && !variable.IsSystemVariable() {
 		return fmt.Sprintf("%v _%v;", variable.cType(), variable.Name)
 	}
 	return ""
 }
 
 func metatypeFunctionDef(args ...interface{}) string {
-	if variable, ok := args[0].(*Variable); ok {
+	if variable, ok := args[0].(*Variable); ok && !variable.IsSystemVariable() {
 		switch variable.DataType {
 		case core.StringDataType:
 			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", variable.Name, variable.Name, variable.Name)

@@ -22,6 +22,11 @@ func NewVariable(name string, dataType string) *Variable {
 	return &Variable{Name: name, DataType: dataType}
 }
 
+// Determines if the variable is a system variable.
+func (v *Variable) IsSystemVariable() bool {
+	return (len(v.Name) != 0 && v.Name[0] == '@')
+}
+
 // Returns the C data type used by this variable.
 func (v *Variable) cType() string {
 	switch v.DataType {

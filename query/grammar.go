@@ -560,7 +560,7 @@ yydefault:
 	case 5:
 		//line grammar.y:120
 		{
-			yyVAL.query = &Query{}
+			yyVAL.query = NewQuery()
 			yyVAL.query.SetDeclaredVariables(yyS[yypt-1].variables)
 			yyVAL.query.SetStatements(yyS[yypt-0].statements)
 		}
