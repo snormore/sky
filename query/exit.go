@@ -84,6 +84,10 @@ func (e *Exit) Defactorize(data interface{}) error {
 	return nil
 }
 
+func (e *Exit) Finalize(data interface{}) error {
+	return nil
+}
+
 func (e *Exit) RequiresInitialization() bool {
 	return false
 }

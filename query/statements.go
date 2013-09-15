@@ -101,15 +101,21 @@ func (s Statements) CodegenMergeInvoke() string {
 	return buffer.String()
 }
 
-//--------------------------------------
-// Factorization
-//--------------------------------------
-
 // Defactorizes results generated from the aggregate function.
 func (s Statements) Defactorize(data interface{}) error {
 	for _, statement := range s {
 		err := statement.Defactorize(data)
 		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Finalizes results into an end state.
+func (s Statements) Finalize(data interface{}) error {
+	for _, statement := range s {
+		if err := statement.Finalize(data); err != nil {
 			return err
 		}
 	}

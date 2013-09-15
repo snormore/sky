@@ -160,6 +160,10 @@ func (a *Assignment) Defactorize(data interface{}) error {
 	return nil
 }
 
+func (a *Assignment) Finalize(data interface{}) error {
+	return nil
+}
+
 func (a *Assignment) RequiresInitialization() bool {
 	return false
 }

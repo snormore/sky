@@ -235,7 +235,11 @@ selection_fields :
 ;
 
 selection_field :
-    TIDENT TLPAREN TRPAREN selection_field_alias
+    expr selection_field_alias
+    {
+        $$ = NewSelectionField($2, "", $1)
+    }
+|   TIDENT TLPAREN TRPAREN selection_field_alias
     {
         $$ = NewSelectionField($4, $1, nil)
     }
