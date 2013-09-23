@@ -161,6 +161,8 @@ func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 			return fmt.Sprintf("if(data.%s == nil or data.%s < (%s)) then data.%s = (%s) end", name, name, code, name, code), nil
 		case "count":
 			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", name, name), nil
+		case "distinct":
+			return fmt.Sprintf("if data.%s == nil then data.%s = sky_distinct_new() end sky_distinct_insert(data.%s, (%s))", name, name, name, code), nil
 		case "avg":
 			return fmt.Sprintf("if data.%s == nil then data.%s = sky_average_new() end sky_average_insert(data.%s, (%s))", name, name, name, code), nil
 		case "histogram":
@@ -192,6 +194,8 @@ func (f *SelectionField) CodegenMergeExpression() (string, error) {
 			return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", name, name, name, name, name), nil
 		case "count":
 			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", name, name, name), nil
+		case "distinct":
+			return fmt.Sprintf("result.%s = sky_distinct_merge(result.%s, data.%s)", name, name, name), nil
 		case "avg":
 			return fmt.Sprintf("result.%s = sky_average_merge(result.%s, data.%s)", name, name, name), nil
 		case "histogram":
