@@ -86,6 +86,7 @@ func (y *yylexer) Lex(yylval *yySymType) int {
 "EXIT"                     return y.token(yylval, TEXIT);
 "DEBUG"                    return y.token(yylval, TDEBUG);
 "SELECT"                   return y.token(yylval, TSELECT);
+"DISTINCT"                 return y.token(yylval, TDISTINCT);
 "GROUP"                    return y.token(yylval, TGROUP);
 "BY"                       return y.token(yylval, TBY);
 "INTO"                     return y.token(yylval, TINTO);

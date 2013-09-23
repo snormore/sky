@@ -11,6 +11,7 @@ type SelectionField struct {
 	queryElementImpl
 	Name        string
 	Aggregation string
+	Distinct    bool
 	expression  Expression
 }
 
@@ -54,6 +55,7 @@ func (f *SelectionField) Serialize() map[string]interface{} {
 	obj := map[string]interface{}{
 		"name":        f.Name,
 		"aggregation": f.Aggregation,
+		"distinct":    f.Distinct,
 	}
 	if f.expression != nil {
 		obj["expression"] = f.expression.String()
@@ -74,6 +76,15 @@ func (f *SelectionField) Deserialize(obj map[string]interface{}) error {
 		f.Aggregation = aggregation
 	} else {
 		return fmt.Errorf("SelectionField: Invalid aggregation: %v", obj["aggregation"])
+	}
+
+	// Deserialize "distinct".
+	if obj["distinct"] == nil {
+		f.Distinct = false
+	} else if distinct, ok := obj["distinct"].(bool); ok {
+		f.Distinct = distinct
+	} else {
+		return fmt.Errorf("SelectionField: Invalid distinct: %v", obj["distinct"])
 	}
 
 	// Deserialize "expression".
@@ -148,7 +159,7 @@ func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 
 	if f.IsAggregate() {
 		// Expressions are required for everything except count().
-		if f.expression == nil && f.Aggregation != "count" {
+		if f.expression == nil && f.Aggregation != "count" && !f.Distinct {
 			return "", fmt.Errorf("Selection field expression required for '%s'", f.Aggregation)
 		}
 
@@ -160,9 +171,11 @@ func (f *SelectionField) CodegenExpression(init bool) (string, error) {
 		case "max":
 			return fmt.Sprintf("if(data.%s == nil or data.%s < (%s)) then data.%s = (%s) end", name, name, code, name, code), nil
 		case "count":
-			return fmt.Sprintf("data.%s = (data.%s or 0) + 1", name, name), nil
-		case "distinct":
-			return fmt.Sprintf("if data.%s == nil then data.%s = sky_distinct_new() end sky_distinct_insert(data.%s, (%s))", name, name, name, code), nil
+			if f.Distinct {
+				return fmt.Sprintf("if data.%s == nil then data.%s = sky_distinct_new() end sky_distinct_insert(data.%s, (%s))", name, name, name, code), nil
+			} else {
+				return fmt.Sprintf("data.%s = (data.%s or 0) + 1", name, name), nil
+			}
 		case "avg":
 			return fmt.Sprintf("if data.%s == nil then data.%s = sky_average_new() end sky_average_insert(data.%s, (%s))", name, name, name, code), nil
 		case "histogram":
@@ -193,9 +206,11 @@ func (f *SelectionField) CodegenMergeExpression() (string, error) {
 		case "max":
 			return fmt.Sprintf("if(result.%s == nil or result.%s < data.%s) then result.%s = data.%s end", name, name, name, name, name), nil
 		case "count":
-			return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", name, name, name), nil
-		case "distinct":
-			return fmt.Sprintf("result.%s = sky_distinct_merge(result.%s, data.%s)", name, name, name), nil
+			if f.Distinct {
+				return fmt.Sprintf("result.%s = sky_distinct_merge(result.%s, data.%s)", name, name, name), nil
+			} else {
+				return fmt.Sprintf("result.%s = (result.%s or 0) + (data.%s or 0)", name, name, name), nil
+			}
 		case "avg":
 			return fmt.Sprintf("result.%s = sky_average_merge(result.%s, data.%s)", name, name, name), nil
 		case "histogram":
@@ -245,7 +260,11 @@ func (f *SelectionField) String() string {
 	if f.Aggregation == "" {
 		str = expr
 	} else {
-		str = fmt.Sprintf("%s(%s)", f.Aggregation, expr)
+		if f.Distinct {
+			str = fmt.Sprintf("%s(DISTINCT %s)", f.Aggregation, expr)
+		} else {
+			str = fmt.Sprintf("%s(%s)", f.Aggregation, expr)
+		}
 	}
 	if f.Name != "" {
 		str += " AS " + f.Name
