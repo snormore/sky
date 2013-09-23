@@ -81,10 +81,11 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 			`SELECT min(price) AS minimum, max(price) AS maximum GROUP BY gender, state ` +
 			`SELECT sum((price + num) * 2) AS sum INTO \"_\" ` +
 			`SELECT avg(price) AS avg INTO \"_\" ` +
+			`SELECT distinct(price) AS distinct INTO \"_\" ` +
 			`"}`
 		//_codegen(t, "foo", query)
 		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"_":{"avg":{"__average__":true,"avg":60,"count":6,"sum":360},"sum":2720},"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
+		assertResponse(t, resp, 200, `{"_":{"avg":{"__average__":true,"avg":60,"count":6,"sum":360},"sum":2720,"distinct":{"__distinct__":true,"distinct":6,"values":{"0":1,"10":1,"100":1,"20":1,"200":1,"30":1}}},"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
 	})
 }
 

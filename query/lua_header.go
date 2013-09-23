@@ -176,6 +176,43 @@ end
 
 ----------------------------------------------------------------------
 --
+-- Distinct Functions
+--
+----------------------------------------------------------------------
+
+-- Checks if a value is a distinct.
+function sky_is_distinct(distinct)
+   return (distinct ~= nil and distinct.__distinct__ == true)
+end
+
+-- Creates a new distinct object.
+function sky_distinct_new()
+  return {__distinct__=true, values={}, count=0}
+end
+
+-- Inserts a value into an existing distinct.
+function sky_distinct_insert(distinct, value)
+  distinct.values[value] = 1
+end
+
+-- Merges one distinct into another.
+function sky_distinct_merge(a, b)
+  -- takes two distincts
+  if a == nil then
+    a = b
+  elseif b ~= nil then
+    for k,v in pairs(b.values) do sky_distinct_insert(a, k) end
+
+    local count = 0
+    for k,v in pairs(a.values) do count = count + 1 end
+    a.distinct = count
+  end
+  return a
+end
+
+
+----------------------------------------------------------------------
+--
 -- Utility Functions
 --
 ----------------------------------------------------------------------
