@@ -11,6 +11,7 @@ import (
 %union{
     token int
     integer int
+    boolean bool
     str string
     strs []string
     query *Query
@@ -39,7 +40,7 @@ import (
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
 %token <token> TFACTOR, TSTRING, TINTEGER, TFLOAT, TBOOLEAN
 %token <token> TDECLARE, TAS, TSET, TEXIT, TDEBUG
-%token <token> TSELECT, TGROUP, TBY, TINTO
+%token <token> TSELECT, TGROUP, TBY, TINTO, TDISTINCT
 %token <token> TWHEN, TWITHIN, TTHEN, TEND
 %token <token> TFOR, TEACH, TEVERY, TIN, TEVENT
 %token <token> TSESSION, TDELIMITED
@@ -64,6 +65,7 @@ import (
 %type <strs> selection_group_by, selection_dimensions
 %type <str> variable_name, selection_name, selection_field_alias
 %type <str> data_type, variable_association
+%type <boolean> selection_field_distinct
 
 %type <condition> condition
 %type <condition_within> condition_within
@@ -243,10 +245,16 @@ selection_field :
     {
         $$ = NewSelectionField($4, $1, nil)
     }
-|   TIDENT TLPAREN expr TRPAREN selection_field_alias
+|   TIDENT TLPAREN selection_field_distinct expr TRPAREN selection_field_alias
     {
-        $$ = NewSelectionField($5, $1, $3)
+        $$ = NewSelectionField($6, $1, $4)
+        $$.Distinct = $3
     }
+;
+
+selection_field_distinct :
+    /* empty */  { $$ = false }
+|   TDISTINCT   { $$ = true }
 ;
 
 selection_field_alias :

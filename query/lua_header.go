@@ -187,7 +187,7 @@ end
 
 -- Creates a new distinct object.
 function sky_distinct_new()
-  return {__distinct__=true, values={}, count=0}
+  return {__distinct__=true, values={}}
 end
 
 -- Inserts a value into an existing distinct.

@@ -26,6 +26,17 @@ func TestParserSelectUnnamedExpression(t *testing.T) {
 	}
 }
 
+func TestParserSelectDistinctExpression(t *testing.T) {
+	str := `SELECT count(DISTINCT @unit_price)`
+	query, err := NewParser().ParseString(str)
+	if err != nil {
+		t.Fatal("Parse error:", err)
+	}
+	if query.String() != str {
+		t.Fatal("Unexpected:", "'"+query.String()+"'")
+	}
+}
+
 func TestParserSelectNonAggregatedExpression(t *testing.T) {
 	str := `SELECT @name, @price AS unit_price`
 	query, err := NewParser().ParseString(str)
