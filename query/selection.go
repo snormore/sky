@@ -460,6 +460,9 @@ func (s *Selection) finalize(data interface{}, index int) error {
 	}
 
 	if index >= len(s.Dimensions) {
+		for _, field := range s.fields {
+			field.Finalize(inner)
+		}
 		return nil
 	}
 
