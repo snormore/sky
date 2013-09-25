@@ -237,6 +237,29 @@ func (f *SelectionField) RequiresInitialization() bool {
 }
 
 //--------------------------------------
+// Finalization
+//--------------------------------------
+
+// Finalizes the results into a final state after merge.
+func (f *SelectionField) Finalize(data interface{}) error {
+	switch f.Aggregation {
+	case "count":
+		if f.Distinct {
+			aggregation := data.(map[interface{}]interface{})
+			object := aggregation[f.Name].(map[interface{}]interface{})
+			value := object["distinct"]
+			aggregation[f.Name] = value
+		}
+	case "avg":
+		aggregation := data.(map[interface{}]interface{})
+		object := aggregation[f.Name].(map[interface{}]interface{})
+		value := object["avg"]
+		aggregation[f.Name] = value
+	}
+	return nil
+}
+
+//--------------------------------------
 // Utility
 //--------------------------------------
 
