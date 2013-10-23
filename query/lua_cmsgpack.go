@@ -21,7 +21,7 @@ int mp_unpack(lua_State *L);
 #define LUACMSGPACK_COPYRIGHT   "Copyright (C) 2012, Salvatore Sanfilippo"
 #define LUACMSGPACK_DESCRIPTION "MessagePack C implementation for Lua"
 
-#define LUACMSGPACK_MAX_NESTING  16
+#define LUACMSGPACK_MAX_NESTING  32
 
 //  ==============================================================================
 //  * MessagePack implementation and bindings for Lua 5.1.
