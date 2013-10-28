@@ -38,13 +38,13 @@ func (s *Server) addEventHandlers() {
 // GET /tables/:name/objects/:objectId/events
 func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+	t, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
 
 	// Retrieve raw events.
-	events, _, err := servlet.GetEvents(table, vars["objectId"])
+	events, _, err := s.db.GetEvents(t.Name, vars["objectId"])
 	if err != nil {
 		return nil, err
 	}
@@ -52,10 +52,10 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 	// Denormalize events.
 	output := make([]map[string]interface{}, 0)
 	for _, event := range events {
-		if err = s.fdb.DefactorizeEvent(event, table.Name, table.PropertyFile()); err != nil {
+		if err = s.db.Factorizer().DefactorizeEvent(event, t.Name, t.PropertyFile()); err != nil {
 			return nil, err
 		}
-		e, err := table.SerializeEvent(event)
+		e, err := t.SerializeEvent(event)
 		if err != nil {
 			return nil, err
 		}
@@ -68,18 +68,17 @@ func (s *Server) getEventsHandler(w http.ResponseWriter, req *http.Request, para
 // DELETE /tables/:name/objects/:objectId/events
 func (s *Server) deleteEventsHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+	t, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
-
-	return nil, servlet.DeleteEvents(table, vars["objectId"])
+	return nil, s.db.DeleteEvents(t.Name, vars["objectId"])
 }
 
 // GET /tables/:name/objects/:objectId/events/:timestamp
 func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+	t, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +90,7 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 	}
 
 	// Find event.
-	event, err := servlet.GetEvent(table, vars["objectId"], timestamp)
+	event, err := s.db.GetEvent(t.Name, vars["objectId"], timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +100,10 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 	}
 
 	// Convert an event to a serializable object.
-	if err = s.fdb.DefactorizeEvent(event, table.Name, table.PropertyFile()); err != nil {
+	if err = s.db.Factorizer().DefactorizeEvent(event, t.Name, t.PropertyFile()); err != nil {
 		return nil, err
 	}
-	e, err := table.SerializeEvent(event)
+	e, err := t.SerializeEvent(event)
 	if err != nil {
 		return nil, err
 	}
@@ -114,42 +113,42 @@ func (s *Server) getEventHandler(w http.ResponseWriter, req *http.Request, param
 // PUT /tables/:name/objects/:objectId/events/:timestamp
 func (s *Server) replaceEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+	t, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
 
 	params["timestamp"] = vars["timestamp"]
-	event, err := table.DeserializeEvent(params)
+	event, err := t.DeserializeEvent(params)
 	if err != nil {
 		return nil, err
 	}
-	err = s.fdb.FactorizeEvent(event, table.Name, table.PropertyFile(), true)
+	err = s.db.Factorizer().FactorizeEvent(event, t.Name, t.PropertyFile(), true)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, servlet.PutEvent(table, vars["objectId"], event, true)
+	return nil, s.db.InsertEvent(t.Name, vars["objectId"], event, true)
 }
 
 // PATCH /tables/:name/objects/:objectId/events/:timestamp
 func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+	t, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
 
 	params["timestamp"] = vars["timestamp"]
-	event, err := table.DeserializeEvent(params)
+	event, err := t.DeserializeEvent(params)
 	if err != nil {
 		return nil, err
 	}
-	err = s.fdb.FactorizeEvent(event, table.Name, table.PropertyFile(), true)
+	err = s.db.Factorizer().FactorizeEvent(event, t.Name, t.PropertyFile(), true)
 	if err != nil {
 		return nil, err
 	}
-	return nil, servlet.PutEvent(table, vars["objectId"], event, false)
+	return nil, s.db.InsertEvent(t.Name, vars["objectId"], event, false)
 }
 
 // PATCH /tables/:name/events
@@ -164,7 +163,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	queue := make(map[*Servlet]map[string][]*core.Event)
+	objects := make(map[string][]*core.Event)
 
 	events_written := 0
 	err = func() error {
@@ -184,25 +183,16 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 				return fmt.Errorf("Object identifier required")
 			}
 
-			// Determine the appropriate servlet to insert into.
-			servlet := s.GetServlet(table, objectId)
-			if err != nil {
-				return fmt.Errorf("Cannot determine object context: %v", err)
-			}
-
 			// Convert to a Sky event and insert.
 			event, err := table.DeserializeEvent(rawEvent)
 			if err != nil {
 				return fmt.Errorf("Cannot deserialize: %v", err)
 			}
-			if err = s.fdb.FactorizeEvent(event, table.Name, table.PropertyFile(), true); err != nil {
+			if err = s.db.Factorizer().FactorizeEvent(event, table.Name, table.PropertyFile(), true); err != nil {
 				return fmt.Errorf("Cannot factorize: %v", err)
 			}
 
-			if queue[servlet] == nil {
-				queue[servlet] = make(map[string][]*core.Event)
-			}
-			queue[servlet][objectId] = append(queue[servlet][objectId], event)
+			objects[objectId] = append(objects[objectId], event)
 		}
 
 		return nil
@@ -210,13 +200,11 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 
 	if err == nil {
 		err = func() error {
-			count := 0
-			for servlet, objects := range queue {
-				if count, err = servlet.PutObjects(table, objects, false); err != nil {
-					return fmt.Errorf("Cannot put event: %v", err)
-				}
-				events_written += count
+			count, err := s.db.InsertObjects(table.Name, objects, false)
+			if err != nil {
+				return fmt.Errorf("Cannot put event: %v", err)
 			}
+			events_written += count
 			return nil
 		}()
 	}
@@ -234,7 +222,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 // DELETE /tables/:name/objects/:objectId/events/:timestamp
 func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (ret interface{}, err error) {
 	vars := mux.Vars(req)
-	table, servlet, err := s.GetObjectContext(vars["name"], vars["objectId"])
+	t, err := s.OpenTable(vars["name"])
 	if err != nil {
 		return nil, err
 	}
@@ -244,5 +232,5 @@ func (s *Server) deleteEventHandler(w http.ResponseWriter, req *http.Request, pa
 		return nil, fmt.Errorf("Unable to parse timestamp: %v", timestamp)
 	}
 
-	return nil, servlet.DeleteEvent(table, vars["objectId"], timestamp)
+	return nil, s.db.DeleteEvent(t.Name, vars["objectId"], timestamp)
 }

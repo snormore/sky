@@ -4,11 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/skydb/sky"
-	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
-	"github.com/skydb/sky/query"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,10 +11,14 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"sort"
-	"strconv"
 	"sync"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/skydb/sky"
+	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/db"
+	"github.com/skydb/sky/query"
 )
 
 // The number of servlets created on startup defaults to the number
@@ -37,14 +36,16 @@ type Server struct {
 	httpServer       *http.Server
 	router           *mux.Router
 	logger           *log.Logger
+	db               db.DB
 	path             string
 	listener         net.Listener
-	servlets         []*Servlet
 	tables           map[string]*core.Table
-	fdb              *factors.DB
 	shutdownChannel  chan bool
 	shutdownFinished chan bool
 	mutex            sync.Mutex
+	NoSync           bool
+	MaxDBs           int
+	MaxReaders       uint
 }
 
 //------------------------------------------------------------------------------
@@ -81,6 +82,9 @@ func NewServer(port uint, path string) *Server {
 		logger:     log.New(os.Stdout, "", log.LstdFlags),
 		path:       path,
 		tables:     make(map[string]*core.Table),
+		NoSync:     false,
+		MaxDBs:     4096,
+		MaxReaders: 126,
 	}
 
 	s.addHandlers()
@@ -90,8 +94,6 @@ func NewServer(port uint, path string) *Server {
 	s.addObjectHandlers()
 	s.addQueryHandlers()
 	s.addDebugHandlers()
-
-	s.fdb = factors.NewDB(s.FactorsPath())
 
 	return s
 }
@@ -107,11 +109,6 @@ func (s *Server) Path() string {
 	return s.path
 }
 
-// The path to the data directory.
-func (s *Server) DataPath() string {
-	return fmt.Sprintf("%v/data", s.path)
-}
-
 // The path to the table metadata directory.
 func (s *Server) TablesPath() string {
 	return fmt.Sprintf("%v/tables", s.path)
@@ -120,11 +117,6 @@ func (s *Server) TablesPath() string {
 // Generates the path for a table attached to the server.
 func (s *Server) TablePath(name string) string {
 	return fmt.Sprintf("%v/%v", s.TablesPath(), name)
-}
-
-// The path to the factors database.
-func (s *Server) FactorsPath() string {
-	return fmt.Sprintf("%v/factors", s.path)
 }
 
 //------------------------------------------------------------------------------
@@ -204,59 +196,21 @@ func (s *Server) open() error {
 		return fmt.Errorf("skyd.Server: Unable to create server folders: %v", err)
 	}
 
-	// Open factors database.
-	err = s.fdb.Open()
-	if err != nil {
+	// Initialize and open database.
+	s.db = db.New(s.path, s.NoSync, s.MaxDBs, s.MaxReaders)
+	if err = s.db.Open(); err != nil {
 		s.close()
 		return err
-	}
-
-	// Determine the servlet count from the directory listing.
-	infos, err := ioutil.ReadDir(s.DataPath())
-	if err != nil {
-		return err
-	}
-	servletCount := 0
-	for _, info := range infos {
-		index, err := strconv.Atoi(info.Name())
-		if info.IsDir() && err == nil && (index+1) > servletCount {
-			servletCount = index + 1
-		}
-	}
-
-	// If none exist then build them based on the number of logical CPUs available.
-	if servletCount == 0 {
-		servletCount = defaultServletCount
-	}
-	for i := 0; i < servletCount; i++ {
-		s.servlets = append(s.servlets, NewServlet(fmt.Sprintf("%s/%v", s.DataPath(), i), s.fdb))
-	}
-
-	// Open servlets.
-	for _, servlet := range s.servlets {
-		err = servlet.Open()
-		if err != nil {
-			s.close()
-			return err
-		}
 	}
 
 	return nil
 }
 
-// Closes the data directory and servlets.
+// Closes the database.
 func (s *Server) close() {
-	// Close servlets.
-	if s.servlets != nil {
-		for _, servlet := range s.servlets {
-			servlet.Close()
-		}
-		s.servlets = nil
-	}
-
-	// Close factors database.
-	if s.fdb != nil {
-		s.fdb.Close()
+	if s.db != nil {
+		s.db.Close()
+		s.db = nil
 	}
 }
 
@@ -264,12 +218,6 @@ func (s *Server) close() {
 func (s *Server) createIfNotExists() error {
 	// Create root directory.
 	err := os.MkdirAll(s.path, 0700)
-	if err != nil {
-		return err
-	}
-
-	// Create data directory and one directory for each servlet.
-	err = os.MkdirAll(s.DataPath(), 0700)
 	if err != nil {
 		return err
 	}
@@ -374,33 +322,6 @@ func (s *Server) decodeParams(w http.ResponseWriter, req *http.Request) (map[str
 }
 
 //--------------------------------------
-// Servlet Management
-//--------------------------------------
-
-func (s *Server) GetServlet(table *core.Table, objectId string) *Servlet {
-	// Determine servlet index.
-	index := s.GetObjectServletIndex(table, objectId)
-	return s.servlets[index]
-}
-
-// Retrieves the table and servlet reference for a single object.
-func (s *Server) GetObjectContext(tableName string, objectId string) (*core.Table, *Servlet, error) {
-	table, err := s.OpenTable(tableName)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	servlet := s.GetServlet(table, objectId)
-
-	return table, servlet, nil
-}
-
-// Calculates a tablet index based on the object identifier even hash.
-func (s *Server) GetObjectServletIndex(t *core.Table, objectId string) uint32 {
-	return core.ObjectLocalHash(objectId) % uint32(len(s.servlets))
-}
-
-//--------------------------------------
 // Table Management
 //--------------------------------------
 
@@ -464,11 +385,9 @@ func (s *Server) DeleteTable(name string) error {
 		return fmt.Errorf("Table does not exist: %s", name)
 	}
 
-	// Delete data from each servlet.
-	for _, servlet := range s.servlets {
-		if err := servlet.DeleteTable(name); err != nil {
-			return err
-		}
+	// Delete data from the data store.
+	if err := s.db.Drop(name); err != nil {
+		return err
 	}
 
 	// Remove the table from the lookup and remove it's core.
@@ -479,36 +398,6 @@ func (s *Server) DeleteTable(name string) error {
 	return table.Delete()
 }
 
-// Set the mdb.NOSYNC option.
-func (s *Server) SetNoSync(noSync bool) {
-	s.fdb.SetNoSync(noSync)
-}
-
-// Set the mdb MaxDBs setting.
-func (s *Server) SetMaxDBs(maxDBs uint) {
-	s.fdb.SetMaxDBs(maxDBs)
-}
-
-// Set the mdb MaxReaders setting.
-func (s *Server) SetMaxReaders(maxReaders uint) {
-	s.fdb.SetMaxReaders(maxReaders)
-}
-
-// Retrieves a list of all object keys for a table
-func (s *Server) ObjectKeys(tableName string) ([]string, error) {
-	keys := []string{}
-	for _, servlet := range s.servlets {
-		servletKeys, err := servlet.ObjectKeys(tableName)
-		if err != nil {
-			return nil, err
-		}
-		keys = append(keys, servletKeys...)
-	}
-
-	sort.Strings(keys)
-	return keys, nil
-}
-
 //--------------------------------------
 // Query
 //--------------------------------------
@@ -517,8 +406,14 @@ func (s *Server) ObjectKeys(tableName string) ([]string, error) {
 func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error) {
 	engines := make([]*query.ExecutionEngine, 0)
 
+	// Retrieve low-level cursors for iterating.
+	cursors, err := s.db.Cursors(table.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a channel to receive aggregate responses.
-	rchannel := make(chan interface{}, len(s.servlets))
+	rchannel := make(chan interface{}, len(cursors))
 
 	// Create an engine for merging results.
 	rootEngine, err := query.NewExecutionEngine(q)
@@ -530,14 +425,21 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 
 	// Initialize one execution engine for each servlet.
 	var data interface{}
-	for index, servlet := range s.servlets {
-		// Create an engine for each servlet. The execution engine is
+	for index, c := range cursors {
+		// Create an engine for each cursor. The execution engine is
 		// protected by a mutex so it's safe to destroy it at any time.
-		subengine, err := servlet.CreateExecutionEngine(q)
+		subengine, err := query.NewExecutionEngine(q)
 		if err != nil {
 			return nil, err
 		}
 		defer subengine.Destroy()
+
+		if err = subengine.SetLmdbCursor(c); err != nil {
+			subengine.Destroy()
+			cursors.Close()
+			return nil, fmt.Errorf("execution engine cursor error: %s", err)
+		}
+
 		engines = append(engines, subengine)
 
 		// Run initialization once if required.
@@ -554,7 +456,7 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 
 	// Execute servlets asynchronously and retrieve responses outside
 	// of the server context.
-	for index, _ := range s.servlets {
+	for index, _ := range cursors {
 		e := engines[index]
 		go func() {
 			if result, err := e.Aggregate(data); err != nil {
@@ -569,7 +471,7 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 	var servletError error
 	var result interface{}
 	result = make(map[interface{}]interface{})
-	for i := 0; i < len(s.servlets); i++ {
+	for _, _ = range cursors {
 		ret := <-rchannel
 		if err, ok := ret.(error); ok {
 			fmt.Printf("skyd.Server: Aggregate error: %v", err)

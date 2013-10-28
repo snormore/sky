@@ -2,9 +2,12 @@ package server
 
 import (
 	"errors"
+	"net/http"
+	"sort"
+
 	"github.com/gorilla/mux"
 	"github.com/skydb/sky/core"
-	"net/http"
+	"github.com/szferi/gomdb"
 )
 
 func (s *Server) addTableHandlers() {
@@ -71,5 +74,28 @@ func (s *Server) deleteTableHandler(w http.ResponseWriter, req *http.Request, pa
 // GET /tables/:name/objects/keys
 func (s *Server) tableKeysHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
 	vars := mux.Vars(req)
-	return s.ObjectKeys(vars["name"])
+	t, err := s.OpenTable(vars["name"])
+	if err != nil {
+		return nil, err
+	}
+
+	cursors, err := s.db.Cursors(t.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer cursors.Close()
+
+	keys := []string{}
+	for _, c := range cursors {
+		for {
+			bkey, _, err := c.Get(nil, mdb.NEXT)
+			if err != nil {
+				break
+			}
+			keys = append(keys, string(bkey))
+		}
+	}
+	sort.Strings(keys)
+
+	return keys, nil
 }
