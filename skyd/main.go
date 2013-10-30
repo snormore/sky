@@ -67,9 +67,9 @@ func main() {
 
 	// Initialize
 	s := server.NewServer(config.Port, config.DataPath)
-	s.SetNoSync(config.NoSync)
-	s.SetMaxDBs(config.MaxDBs)
-	s.SetMaxReaders(config.MaxReaders)
+	s.NoSync = config.NoSync
+	s.MaxDBs = config.MaxDBs
+	s.MaxReaders = config.MaxReaders
 	writePidFile()
 	setupSignalHandlers(s)
 

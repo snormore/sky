@@ -2,7 +2,7 @@ package query
 
 import (
 	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
+	"github.com/skydb/sky/db"
 	"strconv"
 )
 
@@ -40,8 +40,8 @@ func (l *StringLiteral) Codegen() (string, error) {
 			if variable.Association != "" {
 				targetName = variable.Association
 			}
-			sequence, err := query.fdb.Factorize(query.table.Name, targetName, l.value, false)
-			if _, ok := err.(*factors.FactorNotFound); ok {
+			sequence, err := query.factorizer.Factorize(query.table.Name, targetName, l.value, false)
+			if _, ok := err.(*db.FactorNotFound); ok {
 				return "0", nil
 			} else if err != nil {
 				return "", err

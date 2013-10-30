@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/factors"
+	"github.com/skydb/sky/db"
 	"io"
 	"sort"
 	"strings"
@@ -14,7 +14,7 @@ import (
 // A Query is a structured way of aggregating data in the database.
 type Query struct {
 	table             *core.Table
-	fdb               *factors.DB
+	factorizer        db.Factorizer
 	source            string
 	refs              []*VarRef
 	sequence          int
@@ -42,12 +42,12 @@ func (q *Query) SetTable(table *core.Table) {
 }
 
 // Retrieves the factors database this query is associated with.
-func (q *Query) Fdb() *factors.DB {
-	return q.fdb
+func (q *Query) Factorizer() db.Factorizer {
+	return q.factorizer
 }
 
-func (q *Query) SetFdb(fdb *factors.DB) {
-	q.fdb = fdb
+func (q *Query) SetFactorizer(factorizer db.Factorizer) {
+	q.factorizer = factorizer
 }
 
 // Returns the top-level statements of the query.

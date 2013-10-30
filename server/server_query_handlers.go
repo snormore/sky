@@ -33,7 +33,7 @@ func (s *Server) statsHandler(w http.ResponseWriter, req *http.Request, params m
 	q, _ := query.NewParser().ParseString("SELECT count() AS count")
 	q.Prefix = req.FormValue("prefix")
 	q.SetTable(table)
-	q.SetFdb(s.fdb)
+	q.SetFactorizer(s.db.Factorizer())
 
 	return s.RunQuery(table, q)
 }
@@ -110,7 +110,7 @@ func (s *Server) parseQuery(table *core.Table, params map[string]interface{}) (*
 		}
 	}
 	q.SetTable(table)
-	q.SetFdb(s.fdb)
+	q.SetFactorizer(s.db.Factorizer())
 
 	return q, nil
 }
