@@ -25,12 +25,12 @@ type factorizer struct {
 	env        *mdb.Env
 	path       string
 	noSync     bool
-	maxDBs     int
+	maxDBs     uint
 	maxReaders uint
 }
 
 // NewFactorizer returns a new LMDB-backed Factorizer.
-func NewFactorizer(path string, noSync bool, maxDBs int, maxReaders uint) Factorizer {
+func NewFactorizer(path string, noSync bool, maxDBs uint, maxReaders uint) Factorizer {
 	return &factorizer{
 		path:       path,
 		noSync:     noSync,

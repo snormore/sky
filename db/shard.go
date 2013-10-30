@@ -29,7 +29,7 @@ func newShard(path string) *shard {
 }
 
 // Open allocates a new LMDB environment.
-func (s *shard) Open(maxDBs int, maxReaders uint, options uint) error {
+func (s *shard) Open(maxDBs uint, maxReaders uint, options uint) error {
 	s.Lock()
 	defer s.Unlock()
 	s.close()

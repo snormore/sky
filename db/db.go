@@ -40,12 +40,12 @@ type db struct {
 	path       string
 	shards     []*shard
 	noSync     bool
-	maxDBs     int
+	maxDBs     uint
 	maxReaders uint
 }
 
 // Creates a new DB instance with data storage at the given path.
-func New(path string, noSync bool, maxDBs int, maxReaders uint) DB {
+func New(path string, noSync bool, maxDBs uint, maxReaders uint) DB {
 	f := NewFactorizer(filepath.Join(path, "factors"), noSync, maxDBs, maxReaders)
 
 	return &db{

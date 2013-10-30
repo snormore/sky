@@ -44,7 +44,7 @@ type Server struct {
 	shutdownFinished chan bool
 	mutex            sync.Mutex
 	NoSync           bool
-	MaxDBs           int
+	MaxDBs           uint
 	MaxReaders       uint
 }
 
