@@ -33,8 +33,10 @@ func (v *VarRef) Codegen() (string, error) {
 	}
 
 	// Remove ampersand prefix if this is a system variable.
-	if v.value[0] == '@' {
-		return fmt.Sprintf("cursor:%s()", v.value[1:]), nil
+	if v.value == "@eof" {
+		return "cursor:next_event:eof()", nil
+	} else if v.value == "@eos" {
+		return "cursor:event:eos()", nil
 	} else {
 		return fmt.Sprintf("cursor.event:%s()", v.value), nil
 	}

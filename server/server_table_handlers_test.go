@@ -83,6 +83,7 @@ func TestServerTableKeys(t *testing.T) {
 			[]string{"a1", "2012-01-01T00:00:00Z", `{"data":{"value":2}}`},
 			[]string{"a1", "2012-01-01T00:00:01Z", `{"data":{"value":3}}`},
 			[]string{"a2", "2012-01-01T00:00:00Z", `{"data":{"value":4}}`},
+			[]string{"a2", "2012-01-01T00:00:01Z", `{"data":{"value":4}}`},
 			[]string{"a3", "2012-01-01T00:00:00Z", `{"data":{"value":5}}`},
 		})
 

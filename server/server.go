@@ -447,10 +447,6 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 			if data, err = subengine.Initialize(); err != nil {
 				return nil, err
 			}
-			// Reset the iterator.
-			if err = subengine.ResetLmdbCursor(); err != nil {
-				return nil, err
-			}
 		}
 	}
 

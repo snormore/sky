@@ -105,7 +105,7 @@ func (d *Debug) CodegenAggregateFunction(init bool) (string, error) {
 
 	fmt.Fprintf(buffer, "-- %s\n", d.String())
 	fmt.Fprintf(buffer, "function %s(cursor, data)\n", d.FunctionName(init))
-	fmt.Fprintf(buffer, "  print(%s)\n", expressionCode)
+	fmt.Fprintf(buffer, "  print(%s, cursor.next_event:eof())\n", expressionCode)
 	fmt.Fprintln(buffer, "end")
 
 	return buffer.String(), nil

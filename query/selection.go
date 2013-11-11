@@ -162,9 +162,12 @@ func (s *Selection) CodegenAggregateFunction(init bool) (string, error) {
 	// Group by dimension.
 	for _, dimension := range s.Dimensions {
 		name, root := dimension, "cursor.event"
-		if name[0] == '@' {
-			name = name[1:]
-			root = "cursor"
+		if name == "@eof" {
+			name = "eof"
+			root = "cursor.next_event"
+		} else if name == "@eos" {
+			name = "eos"
+			root = "cursor.event"
 		}
 		fmt.Fprintf(buffer, "  dimension = %s:%s()\n", root, name)
 		fmt.Fprintf(buffer, "  if data.%s == nil then data.%s = {} end\n", name, name)
