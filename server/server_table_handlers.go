@@ -88,7 +88,8 @@ func (s *Server) tableKeysHandler(w http.ResponseWriter, req *http.Request, para
 	keys := []string{}
 	for _, c := range cursors {
 		for {
-			bkey, _, err := c.Get(nil, mdb.NEXT)
+			// Retrieve main key value.
+			bkey, _, err := c.Get(nil, mdb.NEXT_NODUP)
 			if err != nil {
 				break
 			}

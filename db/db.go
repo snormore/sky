@@ -11,10 +11,11 @@ import (
 	"time"
 
 	"github.com/skydb/sky/core"
-	"github.com/szferi/gomdb"
 )
 
 var defaultShardCount = runtime.NumCPU()
+
+// func init() { defaultShardCount = 1 }
 
 // DB represents access to the low-level data store.
 type DB interface {
@@ -23,12 +24,12 @@ type DB interface {
 	Factorizer() Factorizer
 	Cursors(tablespace string) (Cursors, error)
 	GetEvent(tablespace string, id string, timestamp time.Time) (*core.Event, error)
-	GetEvents(tablespace string, id string) ([]*core.Event, *core.Event, error)
-	InsertEvent(tablespace string, id string, event *core.Event, replace bool) error
-	InsertEvents(tablespace string, id string, newEvents []*core.Event, replace bool) error
-	InsertObjects(tablespace string, objects map[string][]*core.Event, replace bool) (int, error)
+	GetEvents(tablespace string, id string) ([]*core.Event, error)
+	InsertEvent(tablespace string, id string, event *core.Event) error
+	InsertEvents(tablespace string, id string, newEvents []*core.Event) error
+	InsertObjects(tablespace string, objects map[string][]*core.Event) (int, error)
 	DeleteEvent(tablespace string, id string, timestamp time.Time) error
-	DeleteEvents(tablespace string, id string) error
+	DeleteObject(tablespace string, id string) error
 	Merge(tablespace string, destinationId string, sourceId string) error
 	Drop(tablespace string) error
 }
@@ -80,13 +81,6 @@ func (db *db) Open() error {
 		return err
 	}
 
-	// Create LMDB flagset.
-	options := uint(0)
-	options |= mdb.NOTLS
-	if db.noSync {
-		options |= mdb.NOSYNC
-	}
-
 	// Determine shard count.
 	shardCount, err := db.shardCount()
 	if err != nil {
@@ -97,7 +91,7 @@ func (db *db) Open() error {
 	db.shards = make([]*shard, 0)
 	for i := 0; i < shardCount; i++ {
 		db.shards = append(db.shards, newShard(db.shardPath(i)))
-		if err := db.shards[i].Open(db.maxDBs, db.maxReaders, options); err != nil {
+		if err := db.shards[i].Open(db.maxDBs, db.maxReaders, options(db.noSync)); err != nil {
 			db.close()
 			return err
 		}
@@ -175,12 +169,9 @@ func (db *db) Factorizer() Factorizer {
 
 // Cursors retrieves a set of cursors for iterating over the database.
 func (db *db) Cursors(tablespace string) (Cursors, error) {
-	db.LockAll()
-	defer db.UnlockAll()
-
 	cursors := make(Cursors, 0)
 	for _, s := range db.shards {
-		c, err := s.cursor(tablespace)
+		c, err := s.Cursor(tablespace)
 		if err != nil {
 			cursors.Close()
 			return nil, fmt.Errorf("db cursors error: %s", err)
@@ -192,35 +183,32 @@ func (db *db) Cursors(tablespace string) (Cursors, error) {
 
 func (db *db) GetEvent(tablespace string, id string, timestamp time.Time) (*core.Event, error) {
 	s := db.getShardByObjectId(id)
-	return s.getEvent(tablespace, id, timestamp)
+	return s.GetEvent(tablespace, id, timestamp)
 }
 
-func (db *db) GetEvents(tablespace string, id string) ([]*core.Event, *core.Event, error) {
+func (db *db) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 	s := db.getShardByObjectId(id)
-	return s.getEvents(tablespace, id)
+	return s.GetEvents(tablespace, id)
 }
 
 // InsertEvent adds a single event to the database.
-func (db *db) InsertEvent(tablespace string, id string, event *core.Event, replace bool) error {
+func (db *db) InsertEvent(tablespace string, id string, event *core.Event) error {
 	s := db.getShardByObjectId(id)
-	return s.InsertEvent(tablespace, id, event, replace)
+	return s.InsertEvent(tablespace, id, event)
 }
 
 // InsertEvents adds multiple events for a single object.
-func (db *db) InsertEvents(tablespace string, id string, newEvents []*core.Event, replace bool) error {
+func (db *db) InsertEvents(tablespace string, id string, newEvents []*core.Event) error {
 	s := db.getShardByObjectId(id)
-	return s.InsertEvents(tablespace, id, newEvents, replace)
+	return s.InsertEvents(tablespace, id, newEvents)
 }
 
 // InsertObjects bulk inserts events for multiple objects.
-func (db *db) InsertObjects(tablespace string, objects map[string][]*core.Event, replace bool) (int, error) {
-	db.LockAll()
-	defer db.UnlockAll()
-
+func (db *db) InsertObjects(tablespace string, objects map[string][]*core.Event) (int, error) {
 	count := 0
 	for id, events := range objects {
 		s := db.getShardByObjectId(id)
-		if err := s.insertEvents(tablespace, id, events, replace); err != nil {
+		if err := s.InsertEvents(tablespace, id, events); err != nil {
 			return count, err
 		}
 		count += len(events)
@@ -233,9 +221,9 @@ func (db *db) DeleteEvent(tablespace string, id string, timestamp time.Time) err
 	return s.DeleteEvent(tablespace, id, timestamp)
 }
 
-func (db *db) DeleteEvents(tablespace string, id string) error {
+func (db *db) DeleteObject(tablespace string, id string) error {
 	s := db.getShardByObjectId(id)
-	return s.DeleteEvents(tablespace, id)
+	return s.DeleteObject(tablespace, id)
 }
 
 func (db *db) Merge(tablespace string, destinationId string, sourceId string) error {
@@ -243,17 +231,17 @@ func (db *db) Merge(tablespace string, destinationId string, sourceId string) er
 	src := db.getShardByObjectId(sourceId)
 
 	// Retrieve source events.
-	srcEvents, _, err := src.getEvents(tablespace, sourceId)
+	srcEvents, err := src.GetEvents(tablespace, sourceId)
 	if err != nil {
 		return err
 	}
 
 	// Insert events into destination object.
 	if len(srcEvents) > 0 {
-		if err = dest.InsertEvents(tablespace, destinationId, srcEvents, false); err != nil {
+		if err = dest.InsertEvents(tablespace, destinationId, srcEvents); err != nil {
 			return err
 		}
-		if err = src.DeleteEvents(tablespace, sourceId); err != nil {
+		if err = src.DeleteObject(tablespace, sourceId); err != nil {
 			return err
 		}
 	}

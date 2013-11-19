@@ -11,51 +11,44 @@ typedef struct sky_string_t {
 } sky_string_t;
 
 typedef struct {
+  bool _eos;
+  bool _eof;
+  uint32_t _timestamp;
+  int64_t _ts;
   {{range .}}{{structdef .}}
   {{end}}
-  int64_t _ts;
-  uint32_t _timestamp;
 } sky_lua_event_t;
 
 typedef struct sky_cursor_t {
   sky_lua_event_t *event;
-  uint32_t next_timestamp;
+  sky_lua_event_t *next_event;
   uint32_t max_timestamp;
-  int32_t session_event_index;
   uint32_t session_idle_in_sec;
 } sky_cursor_t;
 
-int sky_cursor_set_data_sz(sky_cursor_t *cursor, uint32_t sz);
-int sky_cursor_set_timestamp_offset(sky_cursor_t *cursor, uint32_t offset);
-int sky_cursor_set_ts_offset(sky_cursor_t *cursor, uint32_t offset);
+int sky_cursor_set_event_sz(sky_cursor_t *cursor, uint32_t sz);
 int sky_cursor_set_property(sky_cursor_t *cursor, int64_t property_id, uint32_t offset, uint32_t sz, const char *data_type);
 int sky_cursor_set_max_timestamp(sky_cursor_t *cursor, uint32_t timestamp);
 
-bool sky_cursor_has_next_object(sky_cursor_t *);
+bool sky_cursor_first_object(sky_cursor_t *);
 bool sky_cursor_next_object(sky_cursor_t *);
 bool sky_cursor_eof(sky_cursor_t *);
 bool sky_cursor_eos(sky_cursor_t *);
-bool sky_cursor_sys_eof(sky_cursor_t *);
-bool sky_cursor_sys_eos(sky_cursor_t *);
 bool sky_lua_cursor_next_event(sky_cursor_t *);
 bool sky_lua_cursor_next_session(sky_cursor_t *);
 bool sky_cursor_set_session_idle(sky_cursor_t *, uint32_t);
 ]])
 ffi.metatype('sky_cursor_t', {
   __index = {
-    set_data_sz = function(cursor, sz) return ffi.C.sky_cursor_set_data_sz(cursor, sz) end,
-    set_timestamp_offset = function(cursor, offset) return ffi.C.sky_cursor_set_timestamp_offset(cursor, offset) end,
-    set_ts_offset = function(cursor, offset) return ffi.C.sky_cursor_set_ts_offset(cursor, offset) end,
+    set_event_sz = function(cursor, sz) return ffi.C.sky_cursor_set_event_sz(cursor, sz) end,
     set_action_id_offset = function(cursor, offset) return ffi.C.sky_cursor_set_action_id_offset(cursor, offset) end,
     set_property = function(cursor, property_id, offset, sz, data_type) return ffi.C.sky_cursor_set_property(cursor, property_id, offset, sz, data_type) end,
     set_max_timestamp = function(cursor, timestamp) return ffi.C.sky_cursor_set_max_timestamp(cursor, timestamp) end,
 
-    hasNextObject = function(cursor) return ffi.C.sky_cursor_has_next_object(cursor) end,
     nextObject = function(cursor) return ffi.C.sky_cursor_next_object(cursor) end,
+    firstObject = function(cursor) return ffi.C.sky_cursor_first_object(cursor) end,
     eof = function(cursor) return ffi.C.sky_cursor_eof(cursor) end,
     eos = function(cursor) return ffi.C.sky_cursor_eos(cursor) end,
-    sys_eof = function(cursor) return ffi.C.sky_cursor_sys_eof(cursor) end,
-    sys_eos = function(cursor) return ffi.C.sky_cursor_sys_eos(cursor) end,
     next = function(cursor) return ffi.C.sky_lua_cursor_next_event(cursor) end,
     next_session = function(cursor) return ffi.C.sky_lua_cursor_next_session(cursor) end,
     set_session_idle = function(cursor, seconds) return ffi.C.sky_cursor_set_session_idle(cursor, seconds) end,
@@ -63,6 +56,8 @@ ffi.metatype('sky_cursor_t', {
 })
 ffi.metatype('sky_lua_event_t', {
   __index = {
+  eos = function(event) return event._eos end,
+  eof = function(event) return event._eof end,
   timestamp = function(event) return event._timestamp end,
   {{range .}}{{metatypedef .}}
   {{end}}
@@ -73,9 +68,7 @@ function sky_init_cursor(_cursor)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
   {{range .}}{{initdescriptor .}}
   {{end}}
-  cursor:set_timestamp_offset(ffi.offsetof('sky_lua_event_t', '_timestamp'))
-  cursor:set_ts_offset(ffi.offsetof('sky_lua_event_t', '_ts'))
-  cursor:set_data_sz(ffi.sizeof('sky_lua_event_t'))
+  cursor:set_event_sz(ffi.sizeof('sky_lua_event_t'))
 end
 
 -- A reference to the error thrown when exiting an object query.
@@ -146,7 +139,7 @@ end
 
 -- Checks if a value is an average.
 function sky_is_average(average)
-   return (average ~= nil and average.__average__ == true)
+  return (average ~= nil and average.__average__ == true)
 end
 
 -- Creates a new average object.
@@ -168,8 +161,8 @@ function sky_average_merge(a, b)
   elseif b ~= nil then
     a.count = a.count + b.count
     a.sum = a.sum + b.sum
-    a.avg = a.sum / a.count
   end
+  a.avg = a.sum / a.count
   return a
 end
 
@@ -202,11 +195,12 @@ function sky_distinct_merge(a, b)
     a = b
   elseif b ~= nil then
     for k,v in pairs(b.values) do sky_distinct_insert(a, k) end
-
-    local count = 0
-    for k,v in pairs(a.values) do count = count + 1 end
-    a.distinct = count
   end
+
+  local count = 0
+  for k,v in pairs(a.values) do count = count + 1 end
+  a.distinct = count
+
   return a
 end
 
@@ -246,10 +240,12 @@ function sky_initialize(_cursor)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
   index = 0
   data = {}
-  while cursor:nextObject() do
-    initialize(cursor, data)
-    index = index + 1
-    if index >= 1000 then break end
+  if cursor:firstObject() then
+    repeat
+      initialize(cursor, data)
+      index = index + 1
+      if index >= 1000 then break end
+    until not cursor:nextObject()
   end
   sky_finalize(data)
   return data
@@ -260,9 +256,11 @@ end
 function sky_aggregate(_cursor, data)
   cursor = ffi.cast('sky_cursor_t*', _cursor)
   if data == nil then data = {} end
-  while cursor:nextObject() do
-    status, err = pcall(function() aggregate(cursor, data) end)
-    if not status and err ~= exit_error then error(err) end
+  if cursor:firstObject() then
+    repeat
+      status, err = pcall(function() aggregate(cursor, data) end)
+      if not status and err ~= exit_error then error(err) end
+    until not cursor:nextObject()
   end
   return data
 end
