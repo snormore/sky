@@ -95,3 +95,26 @@ func TestServerStreamUpdateEvents(t *testing.T) {
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
 	})
 }
+
+// Ensure that we can put multiple events on the server at once, using table agnostic event stream.
+func TestServerStreamUpdateEventsTableAgnostic(t *testing.T) {
+	runTestServer(func(s *Server) {
+		setupTestTable("foo_1")
+		setupTestProperty("foo_1", "bar", false, "string")
+		setupTestProperty("foo_1", "baz", true, "integer")
+
+		setupTestTable("foo_2")
+		setupTestProperty("foo_2", "bar", false, "string")
+		setupTestProperty("foo_2", "baz", true, "integer")
+
+		// Send two new events in one request.
+		resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8586/events", "application/json", `{"id":"xyz","table":"foo_1","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}{"id":"xyz","table":"foo_2","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}{"id":"xyz","table":"foo_1","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}{"id":"xyz","table":"foo_2","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}`)
+		assertResponse(t, resp, 200, `{"events_written":4}`, "PATCH /events failed.")
+
+		// Check our work.
+		resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo_1/objects/xyz/events", "application/json", "")
+		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
+		resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo_2/objects/xyz/events", "application/json", "")
+		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
+	})
+}
