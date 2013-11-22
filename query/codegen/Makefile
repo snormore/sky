@@ -1,8 +1,8 @@
 TMPL=$(wildcard tmpl/*.tmpl)
-TMPLBIN=$(patsubst tmpl/%.tmpl,tmpl_%.go,$(TMPL))
+TMPLBIN=$(patsubst tmpl/%.tmpl,tmpl/bin/%_tmpl.go,$(TMPL))
 
 default: $(TMPLBIN)
 
-tmpl_%.go: tmpl/%.tmpl
-	go-bindata -pkg codegen -func $(patsubst tmpl/%.tmpl,%_tmpl,$<) -out $@ $<
+tmpl/bin/%_tmpl.go: tmpl/%.tmpl
+	go-bindata -pkg bin -toc -prefix tmpl/ -func $(patsubst tmpl/%.tmpl,%_tmpl,$<) -out $@ $<
 	@go fmt $@

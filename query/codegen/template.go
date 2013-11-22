@@ -5,7 +5,8 @@ import (
 	"text/template"
 
 	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/query"
+	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/codegen/tmpl/bin"
 )
 
 // The template used for generating Lua code from queries.
@@ -17,20 +18,20 @@ func init() {
 		"vardecl":  vardecl,
 	}
 	tmpl = template.New("query").Funcs(m)
-	template.Must(tmpl.Parse(string(cursor_tmpl())))
-	template.Must(tmpl.Parse(string(event_tmpl())))
-	template.Must(tmpl.Parse(string(histogram_tmpl())))
-	template.Must(tmpl.Parse(string(average_tmpl())))
-	template.Must(tmpl.Parse(string(distinct_tmpl())))
-	template.Must(tmpl.Parse(string(util_tmpl())))
-	template.Must(tmpl.Parse(string(initialize_tmpl())))
-	template.Must(tmpl.Parse(string(aggregate_tmpl())))
-	template.Must(tmpl.Parse(string(merge_tmpl())))
-	template.Must(tmpl.Parse(string(query_tmpl())))
+	template.Must(tmpl.Parse(bin.Tmpl("/cursor.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/event.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/histogram.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/average.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/distinct.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/util.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/initialize.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/aggregate.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/merge.tmpl")))
+	template.Must(tmpl.Parse(bin.Tmpl("/query.tmpl")))
 }
 
 // vardecl returns the C field definition for a variable.
-func vardecl(v *query.Variable) string {
+func vardecl(v *ast.Variable) string {
 	if v.IsSystemVariable() || v.Name == "timestamp" {
 		return ""
 	}
@@ -52,7 +53,7 @@ func vardecl(v *query.Variable) string {
 	return fmt.Sprintf("%s _%s;", ctype, v.Name)
 }
 
-func metadecl(v *query.Variable) string {
+func metadecl(v *ast.Variable) string {
 	if v.IsSystemVariable() {
 		return ""
 	}
