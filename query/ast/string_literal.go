@@ -1,4 +1,4 @@
-package query
+package ast
 
 import (
 	"github.com/skydb/sky/core"

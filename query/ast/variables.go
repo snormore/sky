@@ -1,4 +1,4 @@
-package query
+package ast
 
 // A slice of Variables.
 type Variables []*Variable

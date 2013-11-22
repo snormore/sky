@@ -1,4 +1,4 @@
-package query
+package ast
 
 import (
 	"bytes"
@@ -74,48 +74,6 @@ func (a *Assignment) Variables() []*Variable {
 	return []*Variable{}
 }
 
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a query selection into an untyped map.
-func (a *Assignment) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       TypeAssignment,
-		"target":     a.target.value,
-		"expression": a.expression.String(),
-	}
-}
-
-// Decodes an assignment from an untyped map.
-func (a *Assignment) Deserialize(obj map[string]interface{}) error {
-	if obj == nil {
-		return errors.New("Assignment: Unable to deserialize nil.")
-	}
-	if obj["type"] != TypeAssignment {
-		return fmt.Errorf("Assignment: Invalid statement type: %v", obj["type"])
-	}
-
-	// Deserialize "target".
-	if target, ok := obj["target"].(string); ok {
-		a.SetTarget(&VarRef{value: target})
-	} else {
-		return fmt.Errorf("Assignment: Invalid target: %v", obj["target"])
-	}
-
-	// Deserialize "expression".
-	if expression, ok := obj["expression"].(string); ok {
-		expr, err := NewExpressionParser().ParseString(expression)
-		if err != nil {
-			return err
-		}
-		a.SetExpression(expr)
-	} else {
-		return fmt.Errorf("Assignment: Invalid expression: %v", obj["expression"])
-	}
-
-	return nil
-}
 
 //--------------------------------------
 // Code Generation
