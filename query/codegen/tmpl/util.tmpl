@@ -1,0 +1,17 @@
+{{define "util"}}
+-- Finalizes a data structure so that it can be used to seed the aggregation.
+function sky_finalize(value)
+  if type(value) ~= "table" then return nil end
+
+  if sky_is_histogram(value) then
+    sky_histogram_finalize(value)
+  else
+    for k,v in pairs(value) do
+      value[k] = sky_finalize(v)
+    end
+  end
+
+  return value
+end
+
+{{end}}

@@ -1,0 +1,20 @@
+local ffi = require('ffi')
+
+ffi.cdef([[
+typedef struct sky_string_t {
+  int32_t length;
+  char *data;
+} sky_string_t;
+]])
+
+{{template "event"}}
+{{template "cursor"}}
+
+{{template "histogram"}}
+{{template "average"}}
+{{template "distinct"}}
+{{template "util"}}
+
+{{template "initialize"}}
+{{template "aggregate"}}
+{{template "merge"}}

@@ -12,9 +12,6 @@ package query
 #include <luajit-2.0/lualib.h>
 #include <luajit-2.0/lauxlib.h>
 
-int mp_pack(lua_State *L);
-int mp_unpack(lua_State *L);
-
 //==============================================================================
 //
 // Constants
@@ -724,447 +721,95 @@ import (
 	"github.com/ugorji/go/codec"
 	"regexp"
 	"sync"
-	"text/template"
 	"unsafe"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
+var (
+	cstr_sky_initialize = C.CString("sky_initialize")
+	cstr_sky_aggregate = C.CString("sky_aggregate")
+)
 
-// An ExecutionEngine is used to iterate over a series of objects.
-type ExecutionEngine struct {
-	query      *Query
-	lmdbCursor *mdb.Cursor
-	cursor     *C.sky_cursor
-	state      *C.lua_State
-	header     string
-	source     string
-	fullSource string
-	mutex      sync.Mutex
+// Engine is an execution engine used to iterate over a series of objects.
+type Engine struct {
+    sync.Mutex
+	cursor  *mdb.Cursor
+    source  string
+    prefix  string
 }
 
-//------------------------------------------------------------------------------
-//
-// Constructor
-//
-//------------------------------------------------------------------------------
-
-func NewExecutionEngine(q *Query) (*ExecutionEngine, error) {
-	// Generate Lua code from query.
-	source, err := q.Codegen()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create the engine.
-	e := &ExecutionEngine{query: q, source: source}
-
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
-	// Initialize the engine.
-	if err = e.init(); err != nil {
-		fmt.Printf("%s\n\n", e.FullAnnotatedSource())
-		e.destroy()
-		return nil, err
-	}
-
-	// Set the prefix.
-	if err = e.setPrefix(e.query.Prefix); err != nil {
-		e.destroy()
-		return nil, err
-	}
-
-	return e, nil
+// New creates a new engine.
+func New(source string, prefix string) *Engine {
+	e := &Engine{
+        source: source,
+        prefix: prefix,
+    }
 }
 
-//------------------------------------------------------------------------------
-//
-// Properties
-//
-//------------------------------------------------------------------------------
-
-// Retrieves the source for the engine.
-func (e *ExecutionEngine) Source() string {
-	return e.source
+// Source returns the Lua source for the engine.
+func (e *Engine) Source() string {
+    return e.source
 }
 
-// Retrieves the generated header for the engine.
-func (e *ExecutionEngine) Header() string {
-	return e.header
+// Prefix returns the object prefix used to limit the engine execution.
+func (e *Engine) Prefix() string {
+    return e.prefix
 }
-
-// Retrieves the full source sent to the Lua compiler.
-func (e *ExecutionEngine) FullSource() string {
-	return e.fullSource
-}
-
-// Retrieves the full annotated source with line numbers.
-func (e *ExecutionEngine) FullAnnotatedSource() string {
-	lineNumber := 1
-	r, _ := regexp.Compile(`\n`)
-	return "00001 " + r.ReplaceAllStringFunc(e.fullSource, func(str string) string {
-		lineNumber += 1
-		return fmt.Sprintf("%s%05d ", str, lineNumber)
-	})
-}
-
-// Sets the low-level LMDB cursor to use.
-func (e *ExecutionEngine) SetLmdbCursor(lmdbCursor *mdb.Cursor) error {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	return e.setLmdbCursor(lmdbCursor)
-}
-
-func (e *ExecutionEngine) setLmdbCursor(lmdbCursor *mdb.Cursor) error {
-	// Close the old cursor (if it's not the one being set).
-	if e.lmdbCursor != nil && e.lmdbCursor != lmdbCursor {
-		txn := e.lmdbCursor.Txn()
-		e.lmdbCursor.Close()
-		if lmdbCursor == nil {
-			txn.Commit()
-		} else {
-			txn.Abort()
-		}
-	}
-	if e.cursor != nil {
-		e.cursor.lmdb_cursor = nil
-	}
-
-	// Attach the new cursor.
-	e.lmdbCursor = lmdbCursor
-	if e.lmdbCursor != nil {
-		e.cursor.lmdb_cursor = e.lmdbCursor.MdbCursor()
-	}
-
-	return nil
-}
-
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
-
-//--------------------------------------
-// Lifecycle
-//--------------------------------------
-
-// Initializes the Lua context and compiles the source code.
-func (e *ExecutionEngine) init() error {
-	if e.state != nil {
-		return nil
-	}
-
-	// Initialize the state and open the libraries.
-	if e.state = C.luaL_newstate(); e.state == nil {
-		return errors.New("Unable to initialize Lua context.")
-	}
-	C.luaL_openlibs(e.state)
-
-	// Generate the header file.
-	if err := e.generateHeader(); err != nil {
-		e.destroy()
-		return err
-	}
-
-	// Generate the script.
-	e.fullSource = fmt.Sprintf("%v\n%v", e.header, e.source)
-	// fmt.Println(e.fullSource)
-
-	source := C.CString(e.fullSource)
-	if source == nil {
-		return errors.New("skyd.ExecutionEngine: Unable to allocate full source")
-	}
-	defer C.free(unsafe.Pointer(source))
-
-	// Compile the script.
-	if ret := C.luaL_loadstring(e.state, source); ret != 0 {
-		defer e.destroy()
-		errstring := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		return fmt.Errorf("skyd.ExecutionEngine: Syntax Error: %v", errstring)
-	}
-
-	// Run script once to initialize.
-	if ret := C.lua_pcall(e.state, 0, 0, 0); ret != 0 {
-		defer e.destroy()
-		errstring := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		return fmt.Errorf("skyd.ExecutionEngine: Init Error: %v", errstring)
-	}
-
-	// Setup cursor.
-	if err := e.initCursor(); err != nil {
-		e.destroy()
-		return err
-	}
-
-	return nil
-}
-
-// Initializes the cursor used by the script.
-func (e *ExecutionEngine) initCursor() error {
-	// Create the cursor.
-	minPropertyId, maxPropertyId := e.query.PropertyIdentifierRange()
-	if e.cursor = C.sky_cursor_new((C.int32_t)(minPropertyId), (C.int32_t)(maxPropertyId)); e.cursor == nil {
-		return errors.New("skyd.ExecutionEngine: Unable to allocate cursor")
-	}
-
-	// Initialize the cursor from within Lua.
-	functionName := C.CString("sky_init_cursor")
-	if functionName == nil {
-		return errors.New("skyd.ExecutionEngine: Unable to allocate function name")
-	}
-	defer C.free(unsafe.Pointer(functionName))
-
-	C.lua_getfield(e.state, -10002, functionName)
-	C.lua_pushlightuserdata(e.state, unsafe.Pointer(e.cursor))
-	//fmt.Printf("%s\n\n", e.FullAnnotatedSource())
-	if rc := C.lua_pcall(e.state, 1, 0, 0); rc != 0 {
-		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		return fmt.Errorf("Unable to init cursor: %s", luaErrString)
-	}
-
-	return nil
-}
-
-// Closes the lua context.
-func (e *ExecutionEngine) Destroy() {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	e.destroy()
-}
-
-func (e *ExecutionEngine) destroy() {
-	if e.state != nil {
-		C.lua_close(e.state)
-		e.state = nil
-	}
-	if e.lmdbCursor != nil {
-		e.setLmdbCursor(nil)
-	}
-	if e.cursor != nil {
-		C.sky_cursor_free(e.cursor)
-		e.cursor = nil
-	}
-}
-
-//--------------------------------------
-// Prefix
-//--------------------------------------
-
-// Sets the prefix on the execution engine.
-func (e *ExecutionEngine) setPrefix(prefix string) error {
-	if e.cursor == nil {
-		return errors.New("Cursor not initialized")
-	}
-
-	// Clean up existing key prefix.
-	if e.cursor.key_prefix != nil {
-		C.free(e.cursor.key_prefix)
-		e.cursor.key_prefix = nil
-		e.cursor.key_prefix_sz = 0
-	}
-
-	// Allocate new prefix.
-	if prefix == "" {
-		e.cursor.key_prefix = nil
-	} else {
-		if e.cursor.key_prefix = unsafe.Pointer(C.CString(prefix)); e.cursor.key_prefix == nil {
-			return errors.New("skyd.ExecutionEngine: Unable to allocate cursor key prefix")
-		}
-	}
-	e.cursor.key_prefix_sz = C.uint32_t(len(prefix))
-
-	return nil
-}
-
-//--------------------------------------
-// Execution
-//--------------------------------------
 
 // Initializes the data structure used for aggregation.
-func (e *ExecutionEngine) Initialize() (interface{}, error) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
-	functionName := C.CString("sky_initialize")
-	if functionName == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Unable to allocate initialization function name")
+func (e *Engine) Initialize() (interface{}, error) {
+	state, err := e.lua_state()
+	if err != nil {
+		return err
 	}
-	defer C.free(unsafe.Pointer(functionName))
+	defer C.lua_close(state)
 
-	C.lua_getfield(e.state, -10002, functionName)
-	C.lua_pushlightuserdata(e.state, unsafe.Pointer(e.cursor))
-	if rc := C.lua_pcall(e.state, 1, 1, 0); rc != 0 {
-		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		fmt.Println(e.FullAnnotatedSource())
-		return nil, fmt.Errorf("skyd.ExecutionEngine: Unable to initialize: %s", luaErrString)
+	C.lua_getfield(state, -10002, cstr_sky_initialize)
+	C.lua_pushlightuserdata(state, unsafe.Pointer(e.cursor))
+	if rc := C.lua_pcall(state, 1, 1, 0); rc != 0 {
+		return fmt.Errorf("engine init error: %s", C.GoString(C.lua_tolstring(state, -1, nil)))
 	}
 
-	return e.decodeResult()
+	return lua_ret(state)
 }
 
 // Executes an aggregation over the entire database.
-func (e *ExecutionEngine) Aggregate(data interface{}) (interface{}, error) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-
-	if e.state == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Engine destroyed")
+func (e *Engine) Aggregate(data interface{}) (interface{}, error) {
+	state, err := e.lua_state()
+	if err != nil {
+		return err
 	}
-	functionName := C.CString("sky_aggregate")
-	if functionName == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Unable to allocate aggregation function name")
-	}
-	defer C.free(unsafe.Pointer(functionName))
+	defer C.lua_close(state)
 
-	C.lua_getfield(e.state, -10002, functionName)
-	C.lua_pushlightuserdata(e.state, unsafe.Pointer(e.cursor))
-	if err := e.encodeArgument(data); err != nil {
+	C.lua_getfield(state, -10002, cstr_sky_aggregate)
+	C.lua_pushlightuserdata(state, unsafe.Pointer(e.cursor))
+	if err := lua_arg(state, data); err != nil {
 		return nil, err
 	}
-	rc := C.lua_pcall(e.state, 2, 1, 0)
-	if rc != 0 {
-		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		fmt.Println(e.FullAnnotatedSource())
-		return nil, fmt.Errorf("skyd.ExecutionEngine: Unable to aggregate: %s", luaErrString)
+	if rc := C.lua_pcall(state, 2, 1, 0); rc != 0 {
+		return fmt.Errorf("engine aggregate error: %s", C.GoString(C.lua_tolstring(state, -1, nil)))
 	}
 
-	return e.decodeResult()
+	return lua_ret(state)
 }
 
 // Executes an merge over the aggregated data.
-func (e *ExecutionEngine) Merge(results interface{}, data interface{}) (interface{}, error) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	if e.state == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Engine destroyed")
+func (e *Engine) Merge(results interface{}, data interface{}) (interface{}, error) {
+	state, err := e.lua_state()
+	if err != nil {
+		return err
 	}
+	defer C.lua_close(state)
 
-	functionName := C.CString("sky_merge")
-	if functionName == nil {
-		return nil, errors.New("skyd.ExecutionEngine: Unable to allocate merge function name")
-	}
-	defer C.free(unsafe.Pointer(functionName))
-
-	C.lua_getfield(e.state, -10002, functionName)
-	if err := e.encodeArgument(results); err != nil {
+	C.lua_getfield(state, -10002, cstr_sky_merge)
+	if err := lua_arg(state, results); err != nil {
 		return results, err
 	}
-	if err := e.encodeArgument(data); err != nil {
+	if err := lua_arg(state, data); err != nil {
 		return results, err
 	}
-	if rc := C.lua_pcall(e.state, 2, 1, 0); rc != 0 {
-		luaErrString := C.GoString(C.lua_tolstring(e.state, -1, nil))
-		fmt.Println(e.FullAnnotatedSource())
-		return results, fmt.Errorf("skyd.ExecutionEngine: Unable to merge: %s", luaErrString)
+	if rc := C.lua_pcall(state, 2, 1, 0); rc != 0 {
+		return fmt.Errorf("engine merge error: %s", C.GoString(C.lua_tolstring(state, -1, nil)))
 	}
 
-	return e.decodeResult()
-}
-
-// Encodes a Go object into Msgpack and adds it to the function arguments.
-func (e *ExecutionEngine) encodeArgument(value interface{}) error {
-	// Encode Go object into msgpack.
-	var handle codec.MsgpackHandle
-	handle.RawToString = true
-	buffer := new(bytes.Buffer)
-	encoder := codec.NewEncoder(buffer, &handle)
-	if err := encoder.Encode(value); err != nil {
-		return err
-	}
-
-	// Push the msgpack data onto the Lua stack.
-	data := buffer.String()
-	cdata := C.CString(data)
-	if cdata == nil {
-		return errors.New("skyd.ExecutionEngine: Unable to allocate argument data")
-	}
-	defer C.free(unsafe.Pointer(cdata))
-	C.lua_pushlstring(e.state, cdata, (C.size_t)(len(data)))
-
-	// Convert the argument from msgpack into Lua.
-	if rc := C.mp_unpack(e.state); rc != 1 {
-		return errors.New("skyd.ExecutionEngine: Unable to msgpack encode Lua argument")
-	}
-	C.lua_remove(e.state, -2)
-
-	return nil
-}
-
-// Decodes the result from a function into a Go object.
-func (e *ExecutionEngine) decodeResult() (interface{}, error) {
-	// Encode Lua object into msgpack.
-	if rc := C.mp_pack(e.state); rc != 1 {
-		return nil, errors.New("skyd.ExecutionEngine: Unable to msgpack decode Lua result")
-	}
-	sz := C.size_t(0)
-	ptr := C.lua_tolstring(e.state, -1, (*C.size_t)(&sz))
-	str := C.GoStringN(ptr, (C.int)(sz))
-	C.lua_settop(e.state, -(1)-1) // lua_pop()
-
-	// Decode msgpack into a Go object.
-	var handle codec.MsgpackHandle
-	handle.RawToString = true
-	var ret interface{}
-	decoder := codec.NewDecoder(bytes.NewBufferString(str), &handle)
-	if err := decoder.Decode(&ret); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
-//--------------------------------------
-// Codegen
-//--------------------------------------
-
-// Generates the header for the script based on a source string.
-func (e *ExecutionEngine) generateHeader() error {
-	// Parse the header template.
-	t := template.New("header.lua")
-	t.Funcs(template.FuncMap{"structdef": variableStructDef, "metatypedef": metatypeFunctionDef, "initdescriptor": initDescriptorDef})
-	if _, err := t.Parse(luaHeader); err != nil {
-		return err
-	}
-
-	// Generate the template from the property references.
-	var buffer bytes.Buffer
-	if err := t.Execute(&buffer, e.query.Variables()); err != nil {
-		return err
-	}
-
-	// Assign header
-	e.header = buffer.String()
-
-	return nil
-}
-
-func variableStructDef(args ...interface{}) string {
-	if variable, ok := args[0].(*Variable); ok && !variable.IsSystemVariable() && variable.Name != "timestamp" {
-		return fmt.Sprintf("%v _%v;", variable.cType(), variable.Name)
-	}
-	return ""
-}
-
-func metatypeFunctionDef(args ...interface{}) string {
-	if variable, ok := args[0].(*Variable); ok && !variable.IsSystemVariable() {
-		switch variable.DataType {
-		case core.StringDataType:
-			return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", variable.Name, variable.Name, variable.Name)
-		default:
-			return fmt.Sprintf("%v = function(event) return event._%v end,", variable.Name, variable.Name)
-		}
-	}
-	return ""
-}
-
-func initDescriptorDef(args ...interface{}) string {
-	if variable, ok := args[0].(*Variable); ok && !variable.IsSystemVariable() {
-		return fmt.Sprintf("cursor:set_property(%d, ffi.offsetof('sky_lua_event_t', '_%s'), ffi.sizeof('%s'), '%s')", variable.PropertyId, variable.Name, variable.cType(), variable.DataType)
-	}
-	return ""
+	return lua_ret(state)
 }

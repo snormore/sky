@@ -404,7 +404,8 @@ func (s *Server) DeleteTable(name string) error {
 
 // Runs a query against a table.
 func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error) {
-	engines := make([]*query.ExecutionEngine, 0)
+	source, err := codegen.Codegen(q)
+	engines := make([]*engine.Engine, 0)
 
 	// Retrieve low-level cursors for iterating.
 	cursors, err := s.db.Cursors(table.Name)
@@ -416,7 +417,7 @@ func (s *Server) RunQuery(table *core.Table, q *query.Query) (interface{}, error
 	rchannel := make(chan interface{}, len(cursors))
 
 	// Create an engine for merging results.
-	rootEngine, err := query.NewExecutionEngine(q)
+	rootEngine, err := engine.New(q)
 	if err != nil {
 		return nil, err
 	}

@@ -27,21 +27,6 @@ func (v *Variable) IsSystemVariable() bool {
 	return (len(v.Name) != 0 && v.Name[0] == '@')
 }
 
-// Returns the C data type used by this variable.
-func (v *Variable) cType() string {
-	switch v.DataType {
-	case core.StringDataType:
-		return "sky_string_t"
-	case core.FactorDataType, core.IntegerDataType:
-		return "int32_t"
-	case core.FloatDataType:
-		return "double"
-	case core.BooleanDataType:
-		return "bool"
-	}
-	panic(fmt.Sprintf("Invalid data type: %v", v.DataType))
-}
-
 func (v *Variable) Codegen() (string, error) {
 	return "", nil
 }

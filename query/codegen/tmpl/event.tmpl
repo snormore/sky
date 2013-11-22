@@ -1,0 +1,27 @@
+{{define "event"}}
+ffi.cdef([[
+
+typedef struct {
+  bool _eos;
+  bool _eof;
+  uint32_t _timestamp;
+  int64_t _ts;
+  {{range .Variables}}
+  {{vardecl .}}
+  {{end}}
+} sky_event_t;
+
+]])
+
+ffi.metatype('sky_event_t', {
+  __index = {
+  eos = function(event) return event._eos end,
+  eof = function(event) return event._eof end,
+  timestamp = function(event) return event._timestamp end,
+  {{range .Variables}}
+    {{metatypedef .}}
+  {{end}}
+  }
+})
+
+{{end}}

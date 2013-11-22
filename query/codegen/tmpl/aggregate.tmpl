@@ -1,0 +1,19 @@
+{{define "aggregate"}}
+
+exit_error = {}
+
+-- Loops over every event for every object. This is run once per
+-- servlet.
+function sky_aggregate(_cursor, data)
+  cursor = ffi.cast('sky_cursor_t*', _cursor)
+  if data == nil then data = {} end
+  if cursor:firstObject() then
+    repeat
+      status, err = pcall(function() aggregate(cursor, data) end)
+      if not status and err ~= exit_error then error(err) end
+    until not cursor:nextObject()
+  end
+  return data
+end
+
+{{end}}
