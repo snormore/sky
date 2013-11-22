@@ -19,7 +19,7 @@ ffi.metatype('sky_event_t', {
   eof = function(event) return event._eof end,
   timestamp = function(event) return event._timestamp end,
   {{range .Variables}}
-    {{metatypedef .}}
+    {{metadecl .}}
   {{end}}
   }
 })

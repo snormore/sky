@@ -13,6 +13,7 @@ var tmpl *template.Template
 
 func init() {
 	m := template.FuncMap{
+		"metadecl": metadecl,
 		"vardecl": vardecl,
 	}
 	tmpl = template.New("query").Funcs(m)
@@ -49,4 +50,17 @@ func vardecl(v *query.Variable) string {
 	}
 
 	return fmt.Sprintf("%s _%s;", ctype, v.Name)
+}
+
+func metadecl(v *query.Variable) string {
+	if v.IsSystemVariable() {
+		return ""
+	}
+	switch v.DataType {
+	case core.StringDataType:
+		return fmt.Sprintf("%v = function(event) return ffi.string(event._%v.data, event._%v.length) end,", v.Name, v.Name, v.Name)
+	case core.FactorDataType, core.IntegerDataType, core.FloatDataType, core.BooleanDataType:
+		return fmt.Sprintf("%v = function(event) return event._%v end,", v.Name, v.Name)
+	}
+	return ""
 }
