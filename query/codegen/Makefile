@@ -1,12 +1,9 @@
-default:
-	@echo "usage:"
-	@echo "  make bindata"
-	@echo
+TMPL=$(wildcard tmpl/*.tmpl)
+TMPLBIN=$(patsubst tmpl/%.tmpl,tmpl_%.go,$(TMPL))
 
-bindata: query_tmpl.go event_decl_tmpl.go
+default: $(TMPLBIN)
+	echo $(TMPLBIN)
 
-query_tmpl.go: tmpl/query.tmpl
-	cat $< | go-bindata -func query_tmpl -pkg codegen | gofmt > $@
-
-event_decl_tmpl.go: tmpl/event_decl.tmpl
-	cat $< | go-bindata -func event_decl_tmpl -pkg codegen | gofmt > $@
+tmpl_%.go: tmpl/%.tmpl
+	go-bindata -pkg codegen -func $(patsubst tmpl/%.tmpl,%_tmpl,$<) -out $@ $<
+	@go fmt $@

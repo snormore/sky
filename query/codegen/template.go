@@ -15,8 +15,17 @@ func init() {
 	m := template.FuncMap{
 		"vardecl": vardecl,
 	}
-	tmpl = template.Must(template.New("query").Funcs(m).Parse(string(query_tmpl())))
-	template.Must(tmpl.Parse(string(event_decl_tmpl())))
+	tmpl = template.New("query").Funcs(m)
+	template.Must(tmpl.Parse(string(cursor_tmpl())))
+	template.Must(tmpl.Parse(string(event_tmpl())))
+	template.Must(tmpl.Parse(string(histogram_tmpl())))
+	template.Must(tmpl.Parse(string(average_tmpl())))
+	template.Must(tmpl.Parse(string(distinct_tmpl())))
+	template.Must(tmpl.Parse(string(util_tmpl())))
+	template.Must(tmpl.Parse(string(initialize_tmpl())))
+	template.Must(tmpl.Parse(string(aggregate_tmpl())))
+	template.Must(tmpl.Parse(string(merge_tmpl())))
+	template.Must(tmpl.Parse(string(query_tmpl())))
 }
 
 // vardecl returns the C field definition for a variable.
