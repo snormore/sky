@@ -15,8 +15,6 @@ type Statement interface {
 	QueryElement
 	FunctionName(init bool) string
 	MergeFunctionName() string
-	Serialize() map[string]interface{}
-	Deserialize(map[string]interface{}) error
 	CodegenAggregateFunction(init bool) (string, error)
 	CodegenMergeFunction(map[string]interface{}) (string, error)
 	Defactorize(data interface{}) error

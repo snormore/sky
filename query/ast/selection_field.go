@@ -1,9 +1,7 @@
 package ast
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -44,81 +42,6 @@ func (f *SelectionField) SetExpression(expression Expression) {
 	if f.expression != nil {
 		f.expression.SetParent(f)
 	}
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a query selection into an untyped map.
-func (f *SelectionField) Serialize() map[string]interface{} {
-	obj := map[string]interface{}{
-		"name":        f.Name,
-		"aggregation": f.Aggregation,
-		"distinct":    f.Distinct,
-	}
-	if f.expression != nil {
-		obj["expression"] = f.expression.String()
-	}
-	return obj
-}
-
-// Decodes a query selection from an untyped map.
-func (f *SelectionField) Deserialize(obj map[string]interface{}) error {
-	if obj == nil {
-		return errors.New("SelectionField: Unable to deserialize nil.")
-	}
-
-	// Deserialize "aggregation".
-	if obj["aggregation"] == nil {
-		f.Aggregation = ""
-	} else if aggregation, ok := obj["aggregation"].(string); ok {
-		f.Aggregation = aggregation
-	} else {
-		return fmt.Errorf("SelectionField: Invalid aggregation: %v", obj["aggregation"])
-	}
-
-	// Deserialize "distinct".
-	if obj["distinct"] == nil {
-		f.Distinct = false
-	} else if distinct, ok := obj["distinct"].(bool); ok {
-		f.Distinct = distinct
-	} else {
-		return fmt.Errorf("SelectionField: Invalid distinct: %v", obj["distinct"])
-	}
-
-	// Deserialize "expression".
-	if obj["expression"] == nil {
-		f.SetExpression(nil)
-	} else if expression, ok := obj["expression"].(string); ok {
-		// Extract the aggregation from the expression for backwards compatibility.
-		if m := regexp.MustCompile(`^(\w+)\((.*)\)$`).FindStringSubmatch(expression); m != nil && len(f.Aggregation) == 0 {
-			f.Aggregation = m[1]
-			expression = m[2]
-		}
-
-		// Parse expression.
-		if len(expression) > 0 {
-			expr, err := NewExpressionParser().ParseString(expression)
-			if err != nil {
-				return err
-			}
-			f.SetExpression(expr)
-		} else {
-			f.SetExpression(nil)
-		}
-	} else {
-		return fmt.Errorf("SelectionField: Invalid expression: %v", obj["expression"])
-	}
-
-	// Deserialize "name".
-	if name, ok := obj["name"].(string); ok && len(name) > 0 {
-		f.Name = name
-	} else {
-		return fmt.Errorf("SelectionField: Invalid name: %v", obj["name"])
-	}
-
-	return nil
 }
 
 //--------------------------------------

@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
 	"strconv"
@@ -59,86 +58,6 @@ func (s *Selection) HasNonAggregateFields() bool {
 		}
 	}
 	return false
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a query selection into an untyped map.
-func (s *Selection) Serialize() map[string]interface{} {
-	fields := []interface{}{}
-	for _, field := range s.fields {
-		fields = append(fields, field.Serialize())
-	}
-
-	obj := map[string]interface{}{
-		"type":       TypeSelection,
-		"name":       s.Name,
-		"dimensions": s.Dimensions,
-		"fields":     fields,
-	}
-	return obj
-}
-
-// Decodes a query selection from an untyped map.
-func (s *Selection) Deserialize(obj map[string]interface{}) error {
-	if obj == nil {
-		return errors.New("Selection: Unable to deserialize nil.")
-	}
-	if obj["type"] != TypeSelection {
-		return fmt.Errorf("Selection: Invalid statement type: %v", obj["type"])
-	}
-
-	// Deserialize "name".
-	if name, ok := obj["name"].(string); ok {
-		s.Name = name
-	} else if obj["name"] == nil {
-		s.Name = ""
-	} else {
-		return fmt.Errorf("Selection: Invalid name: %v", obj["name"])
-	}
-
-	// Deserialize "dimensions".
-	if dimensions, ok := obj["dimensions"].([]interface{}); ok {
-		s.Dimensions = []string{}
-		for _, dimension := range dimensions {
-			if str, ok := dimension.(string); ok {
-				s.Dimensions = append(s.Dimensions, str)
-			} else {
-				return fmt.Errorf("Selection: Invalid dimension: %v", dimension)
-			}
-		}
-	} else {
-		if obj["dimension"] == nil {
-			s.Dimensions = []string{}
-		} else {
-			return fmt.Errorf("Selection: Invalid dimensions: %v", obj["dimensions"])
-		}
-	}
-
-	// Deserialize "fields".
-	if arr, ok := obj["fields"].([]interface{}); ok {
-		fields := []*SelectionField{}
-		for _, field := range arr {
-			if fieldMap, ok := field.(map[string]interface{}); ok {
-				f := NewSelectionField("", "", nil)
-				if err := f.Deserialize(fieldMap); err != nil {
-					return err
-				}
-				fields = append(fields, f)
-			} else {
-				return fmt.Errorf("Selection: Invalid field: %v", field)
-			}
-		}
-		s.SetFields(fields)
-	} else if obj["field"] == nil {
-		s.SetFields([]*SelectionField{})
-	} else {
-		return fmt.Errorf("Selection: Invalid fields: %v", obj["fields"])
-	}
-
-	return nil
 }
 
 //--------------------------------------

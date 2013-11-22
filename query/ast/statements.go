@@ -9,49 +9,6 @@ import (
 type Statements []Statement
 
 //--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a list of query statement into an untyped object.
-func (s Statements) Serialize() []interface{} {
-	statements := make([]interface{}, 0)
-	for _, statement := range s {
-		statements = append(statements, statement.Serialize())
-	}
-	return statements
-}
-
-// Decodes a list of query statements from an untyped slice.
-func DeserializeStatements(obj interface{}) (Statements, error) {
-	l := make(Statements, 0)
-	if statements, ok := obj.([]interface{}); ok {
-		for _, _s := range statements {
-			if s, ok := _s.(map[string]interface{}); ok {
-				var statement Statement
-				switch s["type"] {
-				case TypeCondition:
-					statement = NewCondition()
-				case TypeSelection:
-					statement = NewSelection()
-				default:
-					return nil, fmt.Errorf("Invalid query statement type: %v", s["type"])
-				}
-				err := statement.Deserialize(s)
-				if err != nil {
-					return nil, err
-				}
-				l = append(l, statement)
-			} else {
-				return nil, fmt.Errorf("Invalid statement: %v", obj)
-			}
-		}
-	} else if obj != nil {
-		return nil, fmt.Errorf("Invalid statements: %v", obj)
-	}
-	return l, nil
-}
-
-//--------------------------------------
 // Code Generation
 //--------------------------------------
 

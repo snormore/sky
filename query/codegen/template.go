@@ -14,7 +14,7 @@ var tmpl *template.Template
 func init() {
 	m := template.FuncMap{
 		"metadecl": metadecl,
-		"vardecl": vardecl,
+		"vardecl":  vardecl,
 	}
 	tmpl = template.New("query").Funcs(m)
 	template.Must(tmpl.Parse(string(cursor_tmpl())))

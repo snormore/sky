@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
 )
@@ -64,73 +63,6 @@ func (l *TemporalLoop) SetStatements(statements Statements) {
 	for _, s := range l.statements {
 		s.SetParent(l)
 	}
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a temporal loop into an untyped map.
-func (l *TemporalLoop) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       TypeTemporalLoop,
-		"ref":        l.ref.value,
-		"step":       l.step,
-		"duration":   l.duration,
-		"statements": l.statements.Serialize(),
-	}
-}
-
-// Decodes a temporal loop from an untyped map.
-func (l *TemporalLoop) Deserialize(obj map[string]interface{}) error {
-	var err error
-
-	if obj == nil {
-		return errors.New("TemporalLoop: Unable to deserialize nil.")
-	}
-	if obj["type"] != TypeTemporalLoop {
-		return fmt.Errorf("TemporalLoop: Invalid statement type: %v", obj["type"])
-	}
-
-	// Deserialize "expression".
-	if ref, ok := obj["ref"].(string); ok && len(ref) > 0 {
-		l.SetRef(&VarRef{value: ref})
-	} else {
-		return fmt.Errorf("Invalid 'ref': %v", obj["ref"])
-	}
-
-	// Deserialize "step".
-	if obj["step"] == nil {
-		l.step = 0
-	} else if step, ok := obj["step"].(float64); ok {
-		l.step = int(step)
-	} else {
-		return fmt.Errorf("Invalid 'step': %v", obj["step"])
-	}
-
-	// Deserialize "duration".
-	if obj["duration"] == nil {
-		l.duration = 0
-	} else if duration, ok := obj["duration"].(float64); ok {
-		l.duration = int(duration)
-	} else {
-		return fmt.Errorf("Invalid 'duration': %v", obj["duration"])
-	}
-
-	// Parse statements as string or as map.
-	var statements Statements
-	if strval, ok := obj["statements"].(string); ok && len(strval) > 0 {
-		if statements, err = NewStatementsParser().ParseString(strval); err != nil {
-			return err
-		}
-	} else {
-		if statements, err = DeserializeStatements(obj["statements"]); err != nil {
-			return err
-		}
-	}
-	l.SetStatements(statements)
-
-	return nil
 }
 
 //--------------------------------------

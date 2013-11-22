@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -34,29 +33,6 @@ func (e *Exit) VarRefs() []*VarRef {
 // Returns a list of variables declared within this statement.
 func (e *Exit) Variables() []*Variable {
 	return []*Variable{}
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a query selection into an untyped map.
-func (e *Exit) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		"type": TypeExit,
-	}
-}
-
-// Decodes an exit from an untyped map.
-func (e *Exit) Deserialize(obj map[string]interface{}) error {
-	if obj == nil {
-		return errors.New("Exit: Unable to deserialize nil.")
-	}
-	if obj["type"] != TypeExit {
-		return fmt.Errorf("Exit: Invalid statement type: %v", obj["type"])
-	}
-
-	return nil
 }
 
 //--------------------------------------

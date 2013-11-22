@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -45,44 +44,6 @@ func (l *SessionLoop) SetStatements(statements Statements) {
 	for _, s := range l.statements {
 		s.SetParent(l)
 	}
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a session loop into an untyped map.
-func (l *SessionLoop) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       TypeSessionLoop,
-		"statements": l.statements.Serialize(),
-	}
-}
-
-// Decodes a session loop from an untyped map.
-func (l *SessionLoop) Deserialize(obj map[string]interface{}) error {
-	var err error
-
-	if obj == nil {
-		return errors.New("SessionLoop: Unable to deserialize nil.")
-	} else if obj["type"] != TypeSessionLoop {
-		return fmt.Errorf("SessionLoop: Invalid statement type: %v", obj["type"])
-	}
-
-	// Parse statements as string or as map.
-	var statements Statements
-	if strval, ok := obj["statements"].(string); ok && len(strval) > 0 {
-		if statements, err = NewStatementsParser().ParseString(strval); err != nil {
-			return err
-		}
-	} else {
-		if statements, err = DeserializeStatements(obj["statements"]); err != nil {
-			return err
-		}
-	}
-	l.SetStatements(statements)
-
-	return nil
 }
 
 //--------------------------------------

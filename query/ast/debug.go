@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -53,41 +52,6 @@ func (d *Debug) VarRefs() []*VarRef {
 // Returns a list of variables declared within this statement.
 func (d *Debug) Variables() []*Variable {
 	return []*Variable{}
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a query selection into an untyped map.
-func (d *Debug) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       TypeDebug,
-		"expression": d.expression.String(),
-	}
-}
-
-// Decodes a debug statement from an untyped map.
-func (d *Debug) Deserialize(obj map[string]interface{}) error {
-	if obj == nil {
-		return errors.New("Debug: Unable to deserialize nil.")
-	}
-	if obj["type"] != TypeDebug {
-		return fmt.Errorf("Debug: Invalid statement type: %v", obj["type"])
-	}
-
-	// Deserialize "expression".
-	if expression, ok := obj["expression"].(string); ok {
-		expr, err := NewExpressionParser().ParseString(expression)
-		if err != nil {
-			return err
-		}
-		d.SetExpression(expr)
-	} else {
-		return fmt.Errorf("Debug: Invalid expression: %v", obj["expression"])
-	}
-
-	return nil
 }
 
 //--------------------------------------

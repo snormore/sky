@@ -2,11 +2,9 @@ package ast
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/db"
-	"io"
 	"sort"
 	"strings"
 )
@@ -179,77 +177,6 @@ func (q *Query) Query() *Query {
 
 func (q *Query) ElementId() int {
 	return 0
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a query into an untyped map.
-func (q *Query) Serialize() map[string]interface{} {
-	obj := map[string]interface{}{
-		"prefix":     q.Prefix,
-		"statements": q.statements.Serialize(),
-	}
-	return obj
-}
-
-// Decodes a query from an untyped map.
-func (q *Query) Deserialize(obj map[string]interface{}) error {
-	var err error
-
-	// Deserialize "prefix".
-	if prefix, ok := obj["prefix"].(string); ok || obj["prefix"] == nil {
-		q.Prefix = prefix
-	} else {
-		return fmt.Errorf("Invalid 'prefix': %v", obj["prefix"])
-	}
-
-	// DEPRECATED: Statements can be passed in as "steps".
-	val := obj["steps"]
-	if val == nil {
-		val = obj["statements"]
-	}
-
-	// Parse statements as string or as map.
-	var statements Statements
-	if strval, ok := val.(string); ok && len(strval) > 0 {
-		if statements, err = NewStatementsParser().ParseString(strval); err != nil {
-			return err
-		}
-	} else {
-		if statements, err = DeserializeStatements(val); err != nil {
-			return err
-		}
-	}
-	q.SetStatements(statements)
-
-	return nil
-}
-
-//--------------------------------------
-// Encoding
-//--------------------------------------
-
-// Encodes a query to JSON.
-func (q *Query) Encode(writer io.Writer) error {
-	encoder := json.NewEncoder(writer)
-	err := encoder.Encode(q.Serialize())
-	return err
-}
-
-// Decodes a query from JSON.
-func (q *Query) Decode(reader io.Reader) error {
-	// Decode into an untyped object first since we need to determine the
-	// type of statements to create.
-	var obj map[string]interface{}
-	decoder := json.NewDecoder(reader)
-	err := decoder.Decode(&obj)
-	if err != nil {
-		return err
-	}
-
-	return q.Deserialize(obj)
 }
 
 //--------------------------------------

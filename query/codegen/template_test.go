@@ -27,7 +27,6 @@ func TestVarDeclTimestamp(t *testing.T) {
 	assert.Equal(t, "", vardecl(query.NewVariable("timestamp", "integer")))
 }
 
-
 // Ensure that metamethod definitions can be generated.
 func TestMetaDecl(t *testing.T) {
 	assert.Equal(t, `foo = function(event) return ffi.string(event._foo.data, event._foo.length) end,`, metadecl(query.NewVariable("foo", "string")))
@@ -38,8 +37,6 @@ func TestMetaDecl(t *testing.T) {
 func TestMetaDeclSystem(t *testing.T) {
 	assert.Equal(t, "", metadecl(query.NewVariable("@eof", "string")))
 }
-
-
 
 // MustExecuteTemplate executes a named template and returns the result.
 // Panic occurs on error.

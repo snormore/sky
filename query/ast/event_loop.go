@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 )
 
@@ -44,44 +43,6 @@ func (l *EventLoop) SetStatements(statements Statements) {
 	for _, s := range l.statements {
 		s.SetParent(l)
 	}
-}
-
-//--------------------------------------
-// Serialization
-//--------------------------------------
-
-// Encodes a event loop into an untyped map.
-func (l *EventLoop) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		"type":       TypeEventLoop,
-		"statements": l.statements.Serialize(),
-	}
-}
-
-// Decodes a event loop from an untyped map.
-func (l *EventLoop) Deserialize(obj map[string]interface{}) error {
-	var err error
-
-	if obj == nil {
-		return errors.New("EventLoop: Unable to deserialize nil.")
-	} else if obj["type"] != TypeEventLoop {
-		return fmt.Errorf("EventLoop: Invalid statement type: %v", obj["type"])
-	}
-
-	// Parse statements as string or as map.
-	var statements Statements
-	if strval, ok := obj["statements"].(string); ok && len(strval) > 0 {
-		if statements, err = NewStatementsParser().ParseString(strval); err != nil {
-			return err
-		}
-	} else {
-		if statements, err = DeserializeStatements(obj["statements"]); err != nil {
-			return err
-		}
-	}
-	l.SetStatements(statements)
-
-	return nil
 }
 
 //--------------------------------------

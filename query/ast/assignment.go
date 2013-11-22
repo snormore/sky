@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/skydb/sky/core"
 )
@@ -73,7 +72,6 @@ func (a *Assignment) VarRefs() []*VarRef {
 func (a *Assignment) Variables() []*Variable {
 	return []*Variable{}
 }
-
 
 //--------------------------------------
 // Code Generation
