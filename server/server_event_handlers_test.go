@@ -163,6 +163,10 @@ func TestServerStreamUpdateEventsFlushesOnThreshold(t *testing.T) {
 		_, err = io.WriteString(io.Writer(out), body)
 		assert.NoError(t, err)
 
+		// NOTE: This seems to be the only way to flush the http Client buffer...
+		// so here we just fill up the buffer to force a flush.
+		fmt.Fprintf(out, "%4096s", " ")
+
 		// Assert that the events were flushed
 		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
 		assert.NoError(t, err)

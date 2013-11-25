@@ -282,23 +282,23 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 				tableEventsCount[eventTable] = 0
 			}
 
+			// Add event to table buffer.
+			tableObjects[eventTable][objectId] = append(tableObjects[eventTable][objectId], event)
+			tableEventsCount[eventTable] += 1
+
 			// Flush events if exceeding threshold.
 			if tableEventsCount[eventTable] >= s.StreamFlushThreshold {
 				log.Printf("Event count %v exceeded threshold of %v, flushing...", tableEventsCount[eventTable], s.StreamFlushThreshold)
-				count, err := s.flushTableEvents(table, tableObjects[eventTable])
+				count, err := s.flushTableEvents(eventTable, tableObjects[eventTable])
 				if err != nil {
 					return err
 				}
 				events_written += count
 
 				// TODO: optimize this by reusing slice
-				delete(tableObjects, table)
-				delete(tableEventsCount, table)
+				delete(tableObjects, eventTable)
+				delete(tableEventsCount, eventTable)
 			}
-
-			// Add event to table buffer.
-			tableObjects[eventTable][objectId] = append(tableObjects[eventTable][objectId], event)
-			tableEventsCount[eventTable] += 1
 
 		}
 
