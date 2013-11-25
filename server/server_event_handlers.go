@@ -172,7 +172,6 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 	vars := mux.Vars(req)
 	t0 := time.Now()
 
-	log.Printf("HERE!!!")
 	var table *core.Table
 	tableName := vars["name"]
 	if tableName != "" {
@@ -261,7 +260,6 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 			} else {
 				eventTable = table
 			}
-			log.Printf("rawEvent: %+v", rawEvent)
 
 			// Extract the object identifier.
 			objectId, ok := rawEvent["id"].(string)
