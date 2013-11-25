@@ -1,9 +1,7 @@
 package server
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -138,7 +136,7 @@ func TestServerStreamUpdateEventsFlushesOnThreshold(t *testing.T) {
 		client.Write(`{"id":"xyz","table":"foo","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}` + "\n")
 
 		// Assert that the event was NOT flushed
-		resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
+		resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", "application/json", "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[]`+"\n", "GET /events failed.")
 
@@ -148,7 +146,7 @@ func TestServerStreamUpdateEventsFlushesOnThreshold(t *testing.T) {
 		client.Flush()
 
 		// Assert that the events were flushed
-		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
+		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", "application/json", "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /events failed.")
 
@@ -160,7 +158,7 @@ func TestServerStreamUpdateEventsFlushesOnThreshold(t *testing.T) {
 		assertResponse(t, resp, 200, `{"events_written":2}`, "PATCH /events failed.")
 
 		// Ensure events exist.
-		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
+		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", "application/json", "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /events failed.")
 	})
@@ -187,7 +185,7 @@ func TestServerStreamUpdateEventsFlushesOnPeriod(t *testing.T) {
 		time.Sleep(time.Duration(s.StreamFlushPeriod) * time.Millisecond)
 
 		// Assert that the events were flushed
-		resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
+		resp, err := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", "application/json", "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /events failed.")
 
@@ -198,60 +196,8 @@ func TestServerStreamUpdateEventsFlushesOnPeriod(t *testing.T) {
 		assertResponse(t, resp, 200, `{"events_written":2}`, "PATCH /events failed.")
 
 		// Ensure events exist.
-		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
+		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", "application/json", "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /events failed.")
 	})
-}
-
-var contentType = "application/json"
-
-type StreamingClient struct {
-	client   *http.Client
-	in       *io.PipeReader
-	out      *io.PipeWriter
-	finished chan interface{}
-	t        *testing.T
-}
-
-func NewStreamingClient(t *testing.T, endpoint string) (*StreamingClient, error) {
-	method := "PATCH"
-
-	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: false}}
-	in, out := io.Pipe()
-	req, err := http.NewRequest(method, endpoint, in)
-	assert.NoError(t, err)
-	req.Header.Add("Content-Type", contentType)
-
-	finished := make(chan interface{})
-	go func() {
-		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		finished <- resp
-	}()
-	return &StreamingClient{client: client, in: in, out: out, finished: finished, t: t}, nil
-}
-
-func (s *StreamingClient) Write(event string) {
-	_, err := io.WriteString(io.Writer(s.out), event)
-	assert.NoError(s.t, err)
-}
-
-func (s *StreamingClient) Flush() {
-	// NOTE: This seems to be the only way to flush the http Client buffer...
-	// so here we just fill up the buffer to force a flush.
-	_, err := fmt.Fprintf(s.out, "%4096s", " ")
-	assert.NoError(s.t, err)
-}
-
-func (s *StreamingClient) Close() interface{} {
-	defer s.in.Close()
-	s.out.Close()
-	select {
-	case ret := <-s.finished:
-		return ret
-	case <-time.After(1 * time.Second):
-		s.t.Fail()
-	}
-	return nil
 }

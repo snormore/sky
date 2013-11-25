@@ -237,6 +237,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 					}
 					events_written += count
 				}
+				// TODO: Should we reslice the slices to 0 length instead?
 				tableObjects = make(map[*core.Table]objectEvents)
 				tableEventsCount = make(map[*core.Table]uint)
 				continue loop
