@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/skydb/sky/core"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -154,13 +155,24 @@ func (s *Server) updateEventHandler(w http.ResponseWriter, req *http.Request, pa
 	return nil, s.db.InsertEvent(t.Name, vars["objectId"], event, false)
 }
 
-// PATCH /tables/:name/events
+// Used by streaming handler.
 type objectEvents map[string][]*core.Event
 
+func (s *Server) flushTableEvents(table *core.Table, objects objectEvents) (int, error) {
+	count, err := s.db.InsertObjects(table.Name, objects, false)
+	if err != nil {
+		return count, fmt.Errorf("Cannot put event: %v", err)
+	}
+	log.Printf("Flushed %v events!", count)
+	return count, nil
+}
+
+// PATCH /tables/:name/events
 func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	t0 := time.Now()
 
+	log.Printf("HERE!!!")
 	var table *core.Table
 	tableName := vars["name"]
 	if tableName != "" {
@@ -174,18 +186,60 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 	}
 
 	tableObjects := make(map[*core.Table]objectEvents)
+	tableEventsCount := make(map[*core.Table]uint)
 
 	events_written := 0
 	err := func() error {
 		// Stream in JSON event objects.
 		decoder := json.NewDecoder(req.Body)
+
+		// Set up events decoder listener
+		events := make(chan map[string]interface{})
+		eventErrors := make(chan error)
+		go func(decoder *json.Decoder) {
+			for {
+				rawEvent := map[string]interface{}{}
+				if err := decoder.Decode(&rawEvent); err == io.EOF {
+					close(events)
+					break
+				} else if err != nil {
+					eventErrors <- fmt.Errorf("Malformed json event: %v", err)
+					break
+				}
+				events <- rawEvent
+			}
+		}(decoder)
+
+		flushTimer := time.NewTimer(time.Duration(s.StreamFlushPeriod) * time.Millisecond)
+
+	loop:
 		for {
+
 			// Read in a JSON object.
 			rawEvent := map[string]interface{}{}
-			if err := decoder.Decode(&rawEvent); err == io.EOF {
-				break
-			} else if err != nil {
-				return fmt.Errorf("Malformed json event: %v", err)
+			select {
+			case event, ok := <-events:
+				if !ok {
+					break loop
+				} else {
+					rawEvent = event
+				}
+
+			case err := <-eventErrors:
+				return err
+
+			case <-flushTimer.C:
+				// Flush ALL events.
+				for table, events := range tableObjects {
+					log.Printf("Streaming flush period exceeding, flushing...")
+					count, err := s.flushTableEvents(table, events)
+					if err != nil {
+						return err
+					}
+					events_written += count
+				}
+				tableObjects = make(map[*core.Table]objectEvents)
+				tableEventsCount = make(map[*core.Table]uint)
 			}
 
 			// Extract table name, if necessary.
@@ -206,6 +260,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 			} else {
 				eventTable = table
 			}
+			log.Printf("rawEvent: %+v", rawEvent)
 
 			// Extract the object identifier.
 			objectId, ok := rawEvent["id"].(string)
@@ -224,8 +279,27 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 
 			if _, ok := tableObjects[eventTable]; !ok {
 				tableObjects[eventTable] = make(objectEvents)
+				tableEventsCount[eventTable] = 0
 			}
+
+			// Flush events if exceeding threshold.
+			if tableEventsCount[eventTable] >= s.StreamFlushThreshold {
+				log.Printf("Event count %v exceeded threshold of %v, flushing...", tableEventsCount[eventTable], s.StreamFlushThreshold)
+				count, err := s.flushTableEvents(table, tableObjects[eventTable])
+				if err != nil {
+					return err
+				}
+				events_written += count
+
+				// TODO: optimize this by reusing slice
+				delete(tableObjects, table)
+				delete(tableEventsCount, table)
+			}
+
+			// Add event to table buffer.
 			tableObjects[eventTable][objectId] = append(tableObjects[eventTable][objectId], event)
+			tableEventsCount[eventTable] += 1
+
 		}
 
 		return nil
@@ -234,9 +308,10 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 	if err == nil {
 		err = func() error {
 			for table, objects := range tableObjects {
-				count, err := s.db.InsertObjects(table.Name, objects, false)
+				log.Printf("Streaming connection closing, flushing events...")
+				count, err := s.flushTableEvents(table, objects)
 				if err != nil {
-					return fmt.Errorf("Cannot put event: %v", err)
+					return err
 				}
 				events_written += count
 			}
