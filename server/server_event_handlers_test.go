@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"testing"
-	"time"
 )
 
 // Ensure that we can put an event on the server.
@@ -149,7 +148,7 @@ func TestServerStreamUpdateEventsFlushesOnThreshold(t *testing.T) {
 			finished <- resp
 		}()
 
-		// Send two new events in one request.
+		// Send a single event.
 		body := `{"id":"xyz","table":"foo","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}` + "\n"
 		_, err = io.WriteString(io.Writer(out), body)
 		assert.NoError(t, err)
@@ -159,58 +158,29 @@ func TestServerStreamUpdateEventsFlushesOnThreshold(t *testing.T) {
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[]`+"\n", "GET /events failed.")
 
-		// resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
-		// assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
-
-		// resp, _ := sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
-		// assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
-
-		// in.Close()
-
-		//,{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}
-		// Send another event and ensure flushed
-		// time.Sleep(10 * time.Second)
-
+		// Send a second event.
 		body = `{"id":"xyz","table":"foo","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}` + "\n"
 		_, err = io.WriteString(io.Writer(out), body)
 		assert.NoError(t, err)
-
-		time.Sleep(1 * time.Second)
 
 		// Assert that the events were flushed
 		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /events failed.")
-		// resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
-		// assert.NoError(t, err)
-		// assertResponse(t, resp, 200, `[{"id":"xyz","table":"foo","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}{"id":"xyz","table":"foo","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}]`+"\n", "GET /events failed.")
 
-		// resp, _ := sendTestStreamingHttpRequest(client, method, endpoint, contentType, body)
-		// req, _ = http.NewRequest(method, endpoint, strings.NewReader(body))
-		// req.Header.Add("Content-Type", contentType)
-		// resp = client.Do(req)
-		// TODO: assert flushed
-
+		// Close streaming request.
 		out.Close()
 		ret := <-finished
 		in.Close()
 
+		// Assert that 2 events were written during stream.
 		resp = ret.(*http.Response)
 		assertResponse(t, resp, 200, `{"events_written":2}`, "PATCH /events failed.")
 
-		// Ensure events were flushed
+		// Ensure events exist.
 		resp, err = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events", contentType, "")
 		assert.NoError(t, err)
 		assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /events failed.")
-
-		// body = `{"id":"xyz","table":"foo","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}`
-
-		// resp, _ := sendTestHttpRequest("PATCH", "http://localhost:8586/events", "application/json", `{"id":"xyz","table":"foo_1","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}{"id":"xyz","table":"foo_2","timestamp":"2012-01-01T02:00:00Z","data":{"bar":"myValue", "baz":12}}{"id":"xyz","table":"foo_1","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}{"id":"xyz","table":"foo_2","timestamp":"2012-01-01T03:00:00Z","data":{"bar":"myValue2"}}`)
-		// assertResponse(t, resp, 200, `{"events_written":4}`, "PATCH /events failed.")
-
-		// Check our work.
-		// resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo_1/objects/xyz/events", "application/json", "")
-		// assertResponse(t, resp, 200, `[{"data":{"bar":"myValue","baz":12},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2"},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n", "GET /tables/:name/objects/:objectId/events failed.")
 	})
 }
 
