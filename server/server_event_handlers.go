@@ -240,6 +240,7 @@ func (s *Server) streamUpdateEventsHandler(w http.ResponseWriter, req *http.Requ
 				}
 				tableObjects = make(map[*core.Table]objectEvents)
 				tableEventsCount = make(map[*core.Table]uint)
+				continue loop
 			}
 
 			// Extract table name, if necessary.
