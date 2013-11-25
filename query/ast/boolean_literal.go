@@ -1,20 +1,14 @@
 package ast
 
+// BooleanLiteral represents a hardcoded boolean value.
 type BooleanLiteral struct {
-	queryElementImpl
-	value bool
+	Value bool
 }
 
-func (l *BooleanLiteral) VarRefs() []*VarRef {
-	return []*VarRef{}
-}
-
-func (l *BooleanLiteral) Codegen() (string, error) {
-	return l.String(), nil
-}
+func (l *BooleanLiteral) node() string {}
 
 func (l *BooleanLiteral) String() string {
-	if l.value {
+	if l.Value {
 		return "true"
 	} else {
 		return "false"

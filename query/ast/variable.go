@@ -11,13 +11,15 @@ import (
 // also be associated with another variable for the purpose of reusing
 // factorization.
 type Variable struct {
-	queryElementImpl
 	Name        string
 	DataType    string
 	Association string
 	PropertyId  int64
 }
 
+func (v *Variable) node() string {}
+
+// NewVariable returns a new Variable instance.
 func NewVariable(name string, dataType string) *Variable {
 	return &Variable{Name: name, DataType: dataType}
 }
@@ -25,10 +27,6 @@ func NewVariable(name string, dataType string) *Variable {
 // Determines if the variable is a system variable.
 func (v *Variable) IsSystemVariable() bool {
 	return (len(v.Name) != 0 && v.Name[0] == '@')
-}
-
-func (v *Variable) Codegen() (string, error) {
-	return "", nil
 }
 
 func (v *Variable) String() string {

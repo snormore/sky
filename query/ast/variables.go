@@ -1,6 +1,6 @@
 package ast
 
-// A slice of Variables.
+// A slice of Variable objects.
 type Variables []*Variable
 
 func (s Variables) Len() int {

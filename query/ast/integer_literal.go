@@ -2,19 +2,13 @@ package ast
 
 import "strconv"
 
+// IntegerLiteral represents a hardcoded integer number.
 type IntegerLiteral struct {
-	queryElementImpl
-	value int
+	Value int
 }
 
-func (l *IntegerLiteral) VarRefs() []*VarRef {
-	return []*VarRef{}
-}
-
-func (l *IntegerLiteral) Codegen() (string, error) {
-	return l.String(), nil
-}
+func (l *IntegerLiteral) node() string {}
 
 func (l *IntegerLiteral) String() string {
-	return strconv.Itoa(l.value)
+	return strconv.Itoa(l.Value)
 }
