@@ -240,13 +240,18 @@ func (s *StreamingClient) Write(event string) {
 func (s *StreamingClient) Flush() {
 	// NOTE: This seems to be the only way to flush the http Client buffer...
 	// so here we just fill up the buffer to force a flush.
-	fmt.Fprintf(s.out, "%4096s", " ")
+	_, err := fmt.Fprintf(s.out, "%4096s", " ")
+	assert.NoError(s.t, err)
 }
 
 func (s *StreamingClient) Close() interface{} {
-	// Close streaming request.
+	defer s.in.Close()
 	s.out.Close()
-	ret := <-s.finished
-	s.in.Close()
-	return ret
+	select {
+	case ret := <-s.finished:
+		return ret
+	case <-time.After(1 * time.Second):
+		s.t.Fail()
+	}
+	return nil
 }
