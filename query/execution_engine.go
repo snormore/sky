@@ -542,6 +542,8 @@ bool sky_cursor_read(sky_cursor *cursor, sky_event *event, void *ptr)
         }
         ptr += sz;
     }
+
+    return true;
 }
 
 bool sky_lua_cursor_next_event(sky_cursor *cursor)
