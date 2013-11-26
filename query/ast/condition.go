@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 )
@@ -21,7 +20,7 @@ type Condition struct {
 	Statements       Statements
 }
 
-func (c *Condition) node() string {}
+func (c *Condition) node() {}
 
 // NewCondition returns a new Condition instance.
 func NewCondition() *Condition {
@@ -36,13 +35,13 @@ func NewCondition() *Condition {
 func (c *Condition) String() string {
 	str := "WHEN"
 	if str != "" {
-		str += " " + c.expression.String()
+		str += " " + c.Expression.String()
 	}
 	if c.WithinRangeStart != 0 || c.WithinRangeStart != 0 || c.WithinUnits != UnitSteps {
 		str += fmt.Sprintf(" WITHIN %d .. %d %s", c.WithinRangeStart, c.WithinRangeEnd, strings.ToUpper(c.WithinUnits))
 	}
 	str += " THEN\n"
-	str += lineStartRegex.ReplaceAllString(c.statements.String(), "  ") + "\n"
+	str += lineStartRegex.ReplaceAllString(c.Statements.String(), "  ") + "\n"
 	str += "END"
 	return str
 }

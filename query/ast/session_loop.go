@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"bytes"
 	"fmt"
 )
 
@@ -11,7 +10,7 @@ type SessionLoop struct {
 	IdleDuration int
 }
 
-func (l *SessionLoop) node() string {}
+func (l *SessionLoop) node() {}
 
 // NewSessionLoop creates a new SessionLoop instance.
 func NewSessionLoop() *SessionLoop {
@@ -19,9 +18,9 @@ func NewSessionLoop() *SessionLoop {
 }
 
 func (l *SessionLoop) String() string {
-	quantity, units := secondsToTimeSpan(l.IdleDuration)
+	quantity, units := SecondsToTimeSpan(l.IdleDuration)
 	str := fmt.Sprintf("FOR EACH SESSION DELIMITED BY %d %s\n", quantity, units)
-	str += lineStartRegex.ReplaceAllString(l.statements.String(), "  ") + "\n"
+	str += lineStartRegex.ReplaceAllString(l.Statements.String(), "  ") + "\n"
 	str += "END"
 	return str
 }

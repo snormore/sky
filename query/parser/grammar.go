@@ -1,14 +1,15 @@
 //line grammar.y:2
-package query
+package parser
 
 import __yyfmt__ "fmt"
 
 //line grammar.y:3
 import (
 	"github.com/skydb/sky/core"
+	"github.com/skydb/sky/query/ast"
 )
 
-//line grammar.y:11
+//line grammar.y:12
 type yySymType struct {
 	yys              int
 	token            int
@@ -16,27 +17,27 @@ type yySymType struct {
 	boolean          bool
 	str              string
 	strs             []string
-	query            *Query
-	variable         *Variable
-	variables        []*Variable
-	statement        Statement
-	statements       Statements
-	assignment       *Assignment
-	exit             *Exit
-	debug            *Debug
-	selection        *Selection
-	selection_field  *SelectionField
-	selection_fields []*SelectionField
-	condition        *Condition
+	query            *ast.Query
+	var_decl         *ast.VarDecl
+	var_decls        ast.VarDecls
+	statement        ast.Statement
+	statements       ast.Statements
+	assignment       *ast.Assignment
+	exit             *ast.Exit
+	debug            *ast.Debug
+	selection        *ast.Selection
+	field            *ast.Field
+	fields           ast.Fields
+	condition        *ast.Condition
 	condition_within *within
-	event_loop       *EventLoop
-	session_loop     *SessionLoop
-	temporal_loop    *TemporalLoop
-	expr             Expression
-	var_ref          *VarRef
-	integer_literal  *IntegerLiteral
-	boolean_literal  *BooleanLiteral
-	string_literal   *StringLiteral
+	event_loop       *ast.EventLoop
+	session_loop     *ast.SessionLoop
+	temporal_loop    *ast.TemporalLoop
+	expr             ast.Expression
+	var_ref          *ast.VarRef
+	integer_literal  *ast.IntegerLiteral
+	boolean_literal  *ast.BooleanLiteral
+	string_literal   *ast.StringLiteral
 }
 
 const TSTARTQUERY = 57346
@@ -162,7 +163,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line grammar.y:449
+//line grammar.y:451
 type within struct {
 	start int
 	end   int
@@ -378,7 +379,7 @@ out:
 		c = yyTok2[1] /* unknown char */
 	}
 	if yyDebug >= 3 {
-		__yyfmt__.Printf("lex %U %s\n", uint(char), yyTokname(c))
+		__yyfmt__.Printf("lex %s(%d)\n", yyTokname(c), uint(char))
 	}
 	return c
 }
@@ -475,7 +476,7 @@ yydefault:
 			Nerrs++
 			if yyDebug >= 1 {
 				__yyfmt__.Printf("%s", yyStatname(yystate))
-				__yyfmt__.Printf("saw %s\n", yyTokname(yychar))
+				__yyfmt__.Printf(" saw %s\n", yyTokname(yychar))
 			}
 			fallthrough
 
@@ -542,441 +543,442 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		//line grammar.y:99
+		//line grammar.y:100
 		{
 			l := yylex.(*yylexer)
 			l.query = yyS[yypt-0].query
 		}
 	case 2:
-		//line grammar.y:104
+		//line grammar.y:105
 		{
 			l := yylex.(*yylexer)
 			l.statements = yyS[yypt-0].statements
 		}
 	case 3:
-		//line grammar.y:109
+		//line grammar.y:110
 		{
 			l := yylex.(*yylexer)
 			l.statement = yyS[yypt-0].statement
 		}
 	case 4:
-		//line grammar.y:114
+		//line grammar.y:115
 		{
 			l := yylex.(*yylexer)
 			l.expression = yyS[yypt-0].expr
 		}
 	case 5:
-		//line grammar.y:122
+		//line grammar.y:123
 		{
-			yyVAL.query = NewQuery()
-			yyVAL.query.SetDeclaredVariables(yyS[yypt-1].variables)
-			yyVAL.query.SetStatements(yyS[yypt-0].statements)
+			yyVAL.query = ast.NewQuery()
+			yyVAL.query.DeclaredVarDecls = yyS[yypt-1].var_decls
+			yyVAL.query.Statements = yyS[yypt-0].statements
 		}
 	case 6:
-		//line grammar.y:131
+		//line grammar.y:132
 		{
-			yyVAL.statements = make(Statements, 0)
+			yyVAL.statements = make(ast.Statements, 0)
 		}
 	case 7:
-		//line grammar.y:135
+		//line grammar.y:136
 		{
 			yyVAL.statements = append(yyS[yypt-1].statements, yyS[yypt-0].statement)
 		}
 	case 8:
-		//line grammar.y:141
-		{
-			yyVAL.statement = Statement(yyS[yypt-0].assignment)
-		}
-	case 9:
 		//line grammar.y:142
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].exit)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].assignment)
 		}
-	case 10:
+	case 9:
 		//line grammar.y:143
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].debug)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].exit)
 		}
-	case 11:
+	case 10:
 		//line grammar.y:144
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].selection)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].debug)
 		}
-	case 12:
+	case 11:
 		//line grammar.y:145
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].condition)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].selection)
 		}
-	case 13:
+	case 12:
 		//line grammar.y:146
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].event_loop)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].condition)
 		}
-	case 14:
+	case 13:
 		//line grammar.y:147
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].session_loop)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].event_loop)
 		}
-	case 15:
+	case 14:
 		//line grammar.y:148
 		{
-			yyVAL.statement = Statement(yyS[yypt-0].temporal_loop)
+			yyVAL.statement = ast.Statement(yyS[yypt-0].session_loop)
+		}
+	case 15:
+		//line grammar.y:149
+		{
+			yyVAL.statement = ast.Statement(yyS[yypt-0].temporal_loop)
 		}
 	case 16:
-		//line grammar.y:153
+		//line grammar.y:154
 		{
-			yyVAL.variables = make([]*Variable, 0)
+			yyVAL.var_decls = make(ast.VarDecls, 0)
 		}
 	case 17:
-		//line grammar.y:157
+		//line grammar.y:158
 		{
-			yyVAL.variables = append(yyS[yypt-1].variables, yyS[yypt-0].variable)
+			yyVAL.var_decls = append(yyS[yypt-1].var_decls, yyS[yypt-0].var_decl)
 		}
 	case 18:
-		//line grammar.y:164
+		//line grammar.y:165
 		{
-			yyVAL.variable = NewVariable(yyS[yypt-3].str, yyS[yypt-1].str)
-			yyVAL.variable.Association = yyS[yypt-0].str
+			yyVAL.var_decl = ast.NewVarDecl(yyS[yypt-3].str, yyS[yypt-1].str)
+			yyVAL.var_decl.Association = yyS[yypt-0].str
 		}
 	case 19:
-		//line grammar.y:172
+		//line grammar.y:173
 		{
 			yyVAL.str = ""
 		}
 	case 20:
-		//line grammar.y:176
+		//line grammar.y:177
 		{
 			yyVAL.str = yyS[yypt-1].str
 		}
 	case 21:
-		//line grammar.y:182
+		//line grammar.y:183
 		{
 			yyVAL.str = core.FactorDataType
 		}
 	case 22:
-		//line grammar.y:183
+		//line grammar.y:184
 		{
 			yyVAL.str = core.StringDataType
 		}
 	case 23:
-		//line grammar.y:184
+		//line grammar.y:185
 		{
 			yyVAL.str = core.IntegerDataType
 		}
 	case 24:
-		//line grammar.y:185
+		//line grammar.y:186
 		{
 			yyVAL.str = core.FloatDataType
 		}
 	case 25:
-		//line grammar.y:186
+		//line grammar.y:187
 		{
 			yyVAL.str = core.BooleanDataType
 		}
 	case 26:
-		//line grammar.y:191
+		//line grammar.y:192
 		{
-			yyVAL.assignment = NewAssignment()
-			yyVAL.assignment.SetTarget(yyS[yypt-2].var_ref)
-			yyVAL.assignment.SetExpression(yyS[yypt-0].expr)
+			yyVAL.assignment = ast.NewAssignment()
+			yyVAL.assignment.Target = yyS[yypt-2].var_ref
+			yyVAL.assignment.Expression = yyS[yypt-0].expr
 		}
 	case 27:
-		//line grammar.y:200
+		//line grammar.y:201
 		{
-			yyVAL.exit = NewExit()
+			yyVAL.exit = ast.NewExit()
 		}
 	case 28:
-		//line grammar.y:207
+		//line grammar.y:208
 		{
-			yyVAL.debug = NewDebug()
-			yyVAL.debug.SetExpression(yyS[yypt-1].expr)
+			yyVAL.debug = ast.NewDebug()
+			yyVAL.debug.Expression = yyS[yypt-1].expr
 		}
 	case 29:
-		//line grammar.y:215
+		//line grammar.y:216
 		{
-			yyVAL.selection = NewSelection()
-			yyVAL.selection.SetFields(yyS[yypt-2].selection_fields)
+			yyVAL.selection = ast.NewSelection()
+			yyVAL.selection.Fields = yyS[yypt-2].fields
 			yyVAL.selection.Dimensions = yyS[yypt-1].strs
 			yyVAL.selection.Name = yyS[yypt-0].str
 		}
 	case 30:
-		//line grammar.y:225
+		//line grammar.y:226
 		{
-			yyVAL.selection_fields = make([]*SelectionField, 0)
+			yyVAL.fields = make(ast.Fields, 0)
 		}
 	case 31:
-		//line grammar.y:229
+		//line grammar.y:230
 		{
-			yyVAL.selection_fields = make([]*SelectionField, 0)
-			yyVAL.selection_fields = append(yyVAL.selection_fields, yyS[yypt-0].selection_field)
+			yyVAL.fields = make(ast.Fields, 0)
+			yyVAL.fields = append(yyVAL.fields, yyS[yypt-0].field)
 		}
 	case 32:
-		//line grammar.y:234
+		//line grammar.y:235
 		{
-			yyVAL.selection_fields = append(yyS[yypt-2].selection_fields, yyS[yypt-0].selection_field)
+			yyVAL.fields = append(yyS[yypt-2].fields, yyS[yypt-0].field)
 		}
 	case 33:
-		//line grammar.y:241
+		//line grammar.y:242
 		{
-			yyVAL.selection_field = NewSelectionField(yyS[yypt-0].str, "", yyS[yypt-1].expr)
+			yyVAL.field = ast.NewField(yyS[yypt-0].str, "", yyS[yypt-1].expr)
 		}
 	case 34:
-		//line grammar.y:245
+		//line grammar.y:246
 		{
-			yyVAL.selection_field = NewSelectionField(yyS[yypt-0].str, yyS[yypt-3].str, nil)
+			yyVAL.field = ast.NewField(yyS[yypt-0].str, yyS[yypt-3].str, nil)
 		}
 	case 35:
-		//line grammar.y:249
+		//line grammar.y:250
 		{
-			yyVAL.selection_field = NewSelectionField(yyS[yypt-0].str, yyS[yypt-5].str, yyS[yypt-2].expr)
-			yyVAL.selection_field.Distinct = yyS[yypt-3].boolean
+			yyVAL.field = ast.NewField(yyS[yypt-0].str, yyS[yypt-5].str, yyS[yypt-2].expr)
+			yyVAL.field.Distinct = yyS[yypt-3].boolean
 		}
 	case 36:
-		//line grammar.y:256
+		//line grammar.y:257
 		{
 			yyVAL.boolean = false
 		}
 	case 37:
-		//line grammar.y:257
+		//line grammar.y:258
 		{
 			yyVAL.boolean = true
 		}
 	case 38:
-		//line grammar.y:261
+		//line grammar.y:262
 		{
 			yyVAL.str = ""
 		}
 	case 39:
-		//line grammar.y:262
+		//line grammar.y:263
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 40:
-		//line grammar.y:267
+		//line grammar.y:268
 		{
 			yyVAL.strs = make([]string, 0)
 		}
 	case 41:
-		//line grammar.y:271
+		//line grammar.y:272
 		{
 			yyVAL.strs = yyS[yypt-0].strs
 		}
 	case 42:
-		//line grammar.y:278
+		//line grammar.y:279
 		{
 			yyVAL.strs = make([]string, 0)
 			yyVAL.strs = append(yyVAL.strs, yyS[yypt-0].str)
 		}
 	case 43:
-		//line grammar.y:283
+		//line grammar.y:284
 		{
 			yyVAL.strs = append(yyS[yypt-2].strs, yyS[yypt-0].str)
 		}
 	case 44:
-		//line grammar.y:290
+		//line grammar.y:291
 		{
 			yyVAL.str = ""
 		}
 	case 45:
-		//line grammar.y:294
+		//line grammar.y:295
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 46:
-		//line grammar.y:301
+		//line grammar.y:302
 		{
-			yyVAL.condition = NewCondition()
-			yyVAL.condition.SetExpression(yyS[yypt-4].expr)
+			yyVAL.condition = ast.NewCondition()
+			yyVAL.condition.Expression = yyS[yypt-4].expr
 			yyVAL.condition.WithinRangeStart = yyS[yypt-3].condition_within.start
 			yyVAL.condition.WithinRangeEnd = yyS[yypt-3].condition_within.end
 			yyVAL.condition.WithinUnits = yyS[yypt-3].condition_within.units
-			yyVAL.condition.SetStatements(yyS[yypt-1].statements)
+			yyVAL.condition.Statements = yyS[yypt-1].statements
 		}
 	case 47:
-		//line grammar.y:313
+		//line grammar.y:314
 		{
-			yyVAL.condition_within = &within{start: 0, end: 0, units: UnitSteps}
+			yyVAL.condition_within = &within{start: 0, end: 0, units: ast.UnitSteps}
 		}
 	case 48:
-		//line grammar.y:317
+		//line grammar.y:318
 		{
 			yyVAL.condition_within = &within{start: yyS[yypt-3].integer, end: yyS[yypt-1].integer}
 			switch yyS[yypt-0].str {
 			case "STEPS":
-				yyVAL.condition_within.units = UnitSteps
+				yyVAL.condition_within.units = ast.UnitSteps
 			case "SESSIONS":
-				yyVAL.condition_within.units = UnitSessions
+				yyVAL.condition_within.units = ast.UnitSessions
 			case "SECONDS":
-				yyVAL.condition_within.units = UnitSeconds
+				yyVAL.condition_within.units = ast.UnitSeconds
 			}
 		}
 	case 49:
-		//line grammar.y:332
+		//line grammar.y:333
 		{
-			yyVAL.event_loop = NewEventLoop()
-			yyVAL.event_loop.SetStatements(yyS[yypt-1].statements)
+			yyVAL.event_loop = ast.NewEventLoop()
+			yyVAL.event_loop.Statements = yyS[yypt-1].statements
 		}
 	case 50:
-		//line grammar.y:340
+		//line grammar.y:341
 		{
-			yyVAL.session_loop = NewSessionLoop()
-			yyVAL.session_loop.IdleDuration = timeSpanToSeconds(yyS[yypt-3].integer, yyS[yypt-2].str)
-			yyVAL.session_loop.SetStatements(yyS[yypt-1].statements)
+			yyVAL.session_loop = ast.NewSessionLoop()
+			yyVAL.session_loop.IdleDuration = ast.TimeSpanToSeconds(yyS[yypt-3].integer, yyS[yypt-2].str)
+			yyVAL.session_loop.Statements = yyS[yypt-1].statements
 		}
 	case 51:
-		//line grammar.y:349
+		//line grammar.y:350
 		{
-			yyVAL.temporal_loop = NewTemporalLoop()
-			yyVAL.temporal_loop.SetRef(yyS[yypt-4].var_ref)
-			yyVAL.temporal_loop.step = yyS[yypt-3].integer
-			yyVAL.temporal_loop.duration = yyS[yypt-2].integer
-			yyVAL.temporal_loop.SetStatements(yyS[yypt-1].statements)
+			yyVAL.temporal_loop = ast.NewTemporalLoop()
+			yyVAL.temporal_loop.Iterator = yyS[yypt-4].var_ref
+			yyVAL.temporal_loop.Step = yyS[yypt-3].integer
+			yyVAL.temporal_loop.Duration = yyS[yypt-2].integer
+			yyVAL.temporal_loop.Statements = yyS[yypt-1].statements
 
 			// Default steps to 1 of the unit of the duration.
-			if yyVAL.temporal_loop.step == 0 && yyVAL.temporal_loop.duration > 0 {
-				_, units := secondsToTimeSpan(yyS[yypt-2].integer)
-				yyVAL.temporal_loop.step = timeSpanToSeconds(1, units)
+			if yyVAL.temporal_loop.Step == 0 && yyVAL.temporal_loop.Duration > 0 {
+				_, units := ast.SecondsToTimeSpan(yyS[yypt-2].integer)
+				yyVAL.temporal_loop.Step = ast.TimeSpanToSeconds(1, units)
 			}
 		}
 	case 52:
-		//line grammar.y:366
+		//line grammar.y:367
 		{
 			yyVAL.integer = 0
 		}
 	case 53:
-		//line grammar.y:370
+		//line grammar.y:371
 		{
-			yyVAL.integer = timeSpanToSeconds(yyS[yypt-1].integer, yyS[yypt-0].str)
+			yyVAL.integer = ast.TimeSpanToSeconds(yyS[yypt-1].integer, yyS[yypt-0].str)
 		}
 	case 54:
-		//line grammar.y:377
+		//line grammar.y:378
 		{
 			yyVAL.integer = 0
 		}
 	case 55:
-		//line grammar.y:381
+		//line grammar.y:382
 		{
-			yyVAL.integer = timeSpanToSeconds(yyS[yypt-1].integer, yyS[yypt-0].str)
+			yyVAL.integer = ast.TimeSpanToSeconds(yyS[yypt-1].integer, yyS[yypt-0].str)
 		}
 	case 56:
-		//line grammar.y:387
-		{
-			yyVAL.expr = NewBinaryExpression(OpEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
-		}
-	case 57:
 		//line grammar.y:388
 		{
-			yyVAL.expr = NewBinaryExpression(OpNotEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 58:
+	case 57:
 		//line grammar.y:389
 		{
-			yyVAL.expr = NewBinaryExpression(OpLessThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpNotEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 59:
+	case 58:
 		//line grammar.y:390
 		{
-			yyVAL.expr = NewBinaryExpression(OpLessThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpLessThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 60:
+	case 59:
 		//line grammar.y:391
 		{
-			yyVAL.expr = NewBinaryExpression(OpGreaterThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpLessThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 61:
+	case 60:
 		//line grammar.y:392
 		{
-			yyVAL.expr = NewBinaryExpression(OpGreaterThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpGreaterThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 62:
+	case 61:
 		//line grammar.y:393
 		{
-			yyVAL.expr = NewBinaryExpression(OpAnd, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpGreaterThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 63:
+	case 62:
 		//line grammar.y:394
 		{
-			yyVAL.expr = NewBinaryExpression(OpOr, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpAnd, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 64:
+	case 63:
 		//line grammar.y:395
 		{
-			yyVAL.expr = NewBinaryExpression(OpPlus, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpOr, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 65:
+	case 64:
 		//line grammar.y:396
 		{
-			yyVAL.expr = NewBinaryExpression(OpMinus, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpPlus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 66:
+	case 65:
 		//line grammar.y:397
 		{
-			yyVAL.expr = NewBinaryExpression(OpMultiply, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpMinus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 67:
+	case 66:
 		//line grammar.y:398
 		{
-			yyVAL.expr = NewBinaryExpression(OpDivide, yyS[yypt-2].expr, yyS[yypt-0].expr)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpMultiply, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 68:
+	case 67:
 		//line grammar.y:399
 		{
-			yyVAL.expr = Expression(yyS[yypt-0].var_ref)
+			yyVAL.expr = ast.NewBinaryExpression(ast.OpDivide, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
-	case 69:
+	case 68:
 		//line grammar.y:400
 		{
-			yyVAL.expr = Expression(yyS[yypt-0].integer_literal)
+			yyVAL.expr = ast.Expression(yyS[yypt-0].var_ref)
 		}
-	case 70:
+	case 69:
 		//line grammar.y:401
 		{
-			yyVAL.expr = Expression(yyS[yypt-0].boolean_literal)
+			yyVAL.expr = ast.Expression(yyS[yypt-0].integer_literal)
 		}
-	case 71:
+	case 70:
 		//line grammar.y:402
 		{
-			yyVAL.expr = Expression(yyS[yypt-0].string_literal)
+			yyVAL.expr = ast.Expression(yyS[yypt-0].boolean_literal)
+		}
+	case 71:
+		//line grammar.y:403
+		{
+			yyVAL.expr = ast.Expression(yyS[yypt-0].string_literal)
 		}
 	case 72:
-		//line grammar.y:403
+		//line grammar.y:404
 		{
 			yyVAL.expr = yyS[yypt-1].expr
 		}
 	case 73:
-		//line grammar.y:408
+		//line grammar.y:409
 		{
-			yyVAL.var_ref = &VarRef{value: yyS[yypt-0].str}
+			yyVAL.var_ref = ast.NewVarRef()
+			yyVAL.var_ref.Name = yyS[yypt-0].str
 		}
 	case 74:
-		//line grammar.y:415
+		//line grammar.y:417
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 75:
-		//line grammar.y:419
+		//line grammar.y:421
 		{
 			yyVAL.str = yyS[yypt-0].str[1:]
 		}
 	case 76:
-		//line grammar.y:426
+		//line grammar.y:428
 		{
-			yyVAL.integer_literal = &IntegerLiteral{value: yyS[yypt-0].integer}
+			yyVAL.integer_literal = ast.NewIntegerLiteral(yyS[yypt-0].integer)
 		}
 	case 77:
-		//line grammar.y:433
+		//line grammar.y:435
 		{
-			yyVAL.boolean_literal = &BooleanLiteral{value: true}
+			yyVAL.boolean_literal = ast.NewBooleanLiteral(true)
 		}
 	case 78:
-		//line grammar.y:437
+		//line grammar.y:439
 		{
-			yyVAL.boolean_literal = &BooleanLiteral{value: false}
+			yyVAL.boolean_literal = ast.NewBooleanLiteral(false)
 		}
 	case 79:
-		//line grammar.y:444
+		//line grammar.y:446
 		{
-			yyVAL.string_literal = &StringLiteral{value: yyS[yypt-0].str}
+			yyVAL.string_literal = ast.NewStringLiteral(yyS[yypt-0].str)
 		}
 	}
 	goto yystack /* stack new state and value */

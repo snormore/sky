@@ -39,7 +39,8 @@ type BinaryExpression struct {
 	RHS Expression
 }
 
-func (e *BinaryExpression) node() string {}
+func (e *BinaryExpression) node()       {}
+func (e *BinaryExpression) expression() {}
 
 // Creates a new binary expression.
 func NewBinaryExpression(op int, lhs Expression, rhs Expression) *BinaryExpression {

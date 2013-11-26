@@ -5,31 +5,31 @@ import (
 	"github.com/skydb/sky/core"
 )
 
-// A Variable represents a variable declaration on the cursor. The value
+// VarDecl represents a variable declaration in the query. The value
 // of the variable persist for the duration of an object and can be
 // referenced like any other property on the database. The variable can
 // also be associated with another variable for the purpose of reusing
 // factorization.
-type Variable struct {
+type VarDecl struct {
+	Id          int64
 	Name        string
 	DataType    string
 	Association string
-	PropertyId  int64
 }
 
-func (v *Variable) node() string {}
+func (v *VarDecl) node() {}
 
-// NewVariable returns a new Variable instance.
-func NewVariable(name string, dataType string) *Variable {
-	return &Variable{Name: name, DataType: dataType}
+// NewVarDecl returns a new VarDecl instance.
+func NewVarDecl(name string, dataType string) *VarDecl {
+	return &VarDecl{Name: name, DataType: dataType}
 }
 
-// Determines if the variable is a system variable.
-func (v *Variable) IsSystemVariable() bool {
+// Determines if the variable declaration is a system variable.
+func (v *VarDecl) IsSystemVarDecl() bool {
 	return (len(v.Name) != 0 && v.Name[0] == '@')
 }
 
-func (v *Variable) String() string {
+func (v *VarDecl) String() string {
 	var dataType string
 	switch v.DataType {
 	case core.FactorDataType:

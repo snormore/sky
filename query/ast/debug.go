@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"bytes"
 	"fmt"
 )
 
@@ -10,7 +9,7 @@ type Debug struct {
 	Expression Expression
 }
 
-func (d *Debug) node() string {}
+func (d *Debug) node() {}
 
 // NewDebug creates a new debug statement.
 func NewDebug() *Debug {
@@ -18,5 +17,5 @@ func NewDebug() *Debug {
 }
 
 func (d *Debug) String() string {
-	return fmt.Sprintf("DEBUG(%s)", d.expression.String())
+	return fmt.Sprintf("DEBUG(%s)", d.Expression.String())
 }

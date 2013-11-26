@@ -1,9 +1,10 @@
 %{
 
-package query
+package parser
 
 import (
     "github.com/skydb/sky/core"
+    "github.com/skydb/sky/query/ast"
 )
 
 %}
@@ -14,27 +15,27 @@ import (
     boolean bool
     str string
     strs []string
-    query *Query
-    variable *Variable
-    variables []*Variable
-    statement Statement
-    statements Statements
-    assignment *Assignment
-    exit *Exit
-    debug *Debug
-    selection *Selection
-    selection_field *SelectionField
-    selection_fields []*SelectionField
-    condition *Condition
+    query *ast.Query
+    var_decl *ast.VarDecl
+    var_decls ast.VarDecls
+    statement ast.Statement
+    statements ast.Statements
+    assignment *ast.Assignment
+    exit *ast.Exit
+    debug *ast.Debug
+    selection *ast.Selection
+    field *ast.Field
+    fields ast.Fields
+    condition *ast.Condition
     condition_within *within
-    event_loop *EventLoop
-    session_loop *SessionLoop
-    temporal_loop *TemporalLoop
-    expr Expression
-    var_ref *VarRef
-    integer_literal *IntegerLiteral
-    boolean_literal *BooleanLiteral
-    string_literal *StringLiteral
+    event_loop *ast.EventLoop
+    session_loop *ast.SessionLoop
+    temporal_loop *ast.TemporalLoop
+    expr ast.Expression
+    var_ref *ast.VarRef
+    integer_literal *ast.IntegerLiteral
+    boolean_literal *ast.BooleanLiteral
+    string_literal *ast.StringLiteral
 }
 
 %token <token> TSTARTQUERY, TSTARTSTATEMENT, TSTARTSTATEMENTS, TSTARTEXPRESSION
@@ -52,20 +53,20 @@ import (
 %token <integer> TINT
 
 %type <query> query
-%type <variables> variables
-%type <variable> variable
+%type <var_decls> var_decls
+%type <var_decl> var_decl
 %type <assignment> assignment
 %type <exit> exit
 %type <debug> debug
 %type <selection> selection
 %type <statement> statement
 %type <statements> statements
-%type <selection_field> selection_field
-%type <selection_fields> selection_fields
+%type <field> field
+%type <fields> fields
 %type <strs> selection_group_by, selection_dimensions
-%type <str> variable_name, selection_name, selection_field_alias
-%type <str> data_type, variable_association
-%type <boolean> selection_field_distinct
+%type <str> var_name, selection_name, field_alias
+%type <str> data_type, var_decl_association
+%type <boolean> field_distinct
 
 %type <condition> condition
 %type <condition_within> condition_within
@@ -118,18 +119,18 @@ start :
 ;
 
 query :
-    variables statements
+    var_decls statements
     {
-        $$ = NewQuery()
-        $$.SetDeclaredVariables($1)
-        $$.SetStatements($2)
+        $$ = ast.NewQuery()
+        $$.DeclaredVarDecls = $1
+        $$.Statements = $2
     }
 ;
 
 statements :
     /* empty */
     {
-        $$ = make(Statements, 0)
+        $$ = make(ast.Statements, 0)
     }
 |   statements statement
     {
@@ -138,41 +139,41 @@ statements :
 ;
 
 statement :
-    assignment    { $$ = Statement($1) }
-|   exit          { $$ = Statement($1) }
-|   debug         { $$ = Statement($1) }
-|   selection     { $$ = Statement($1) }
-|   condition     { $$ = Statement($1) }
-|   event_loop    { $$ = Statement($1) }
-|   session_loop  { $$ = Statement($1) }
-|   temporal_loop { $$ = Statement($1) }
+    assignment    { $$ = ast.Statement($1) }
+|   exit          { $$ = ast.Statement($1) }
+|   debug         { $$ = ast.Statement($1) }
+|   selection     { $$ = ast.Statement($1) }
+|   condition     { $$ = ast.Statement($1) }
+|   event_loop    { $$ = ast.Statement($1) }
+|   session_loop  { $$ = ast.Statement($1) }
+|   temporal_loop { $$ = ast.Statement($1) }
 ;
 
-variables :
+var_decls :
     /* empty */
     {
-        $$ = make([]*Variable, 0)
+        $$ = make(ast.VarDecls, 0)
     }
-|   variables variable
+|   var_decls var_decl
     {
         $$ = append($1, $2)
     }
 ;
 
-variable :
-    TDECLARE variable_name TAS data_type variable_association
+var_decl :
+    TDECLARE var_name TAS data_type var_decl_association
     {
-        $$ = NewVariable($2, $4)
+        $$ = ast.NewVarDecl($2, $4)
         $$.Association = $5
     }
 ;
 
-variable_association :
+var_decl_association :
     /* empty */
     {
         $$ = ""
     }
-|   TLPAREN variable_name TRPAREN
+|   TLPAREN var_name TRPAREN
     {
         $$ = $2
     }
@@ -189,75 +190,75 @@ data_type :
 assignment :
     TSET var_ref TASSIGN expr
     {
-        $$ = NewAssignment()
-        $$.SetTarget($2)
-        $$.SetExpression($4)
+        $$ = ast.NewAssignment()
+        $$.Target = $2
+        $$.Expression = $4
     }
 ;
 
 exit :
     TEXIT
     {
-        $$ = NewExit()
+        $$ = ast.NewExit()
     }
 ;
 
 debug :
     TDEBUG TLPAREN expr TRPAREN
     {
-        $$ = NewDebug()
-        $$.SetExpression($3)
+        $$ = ast.NewDebug()
+        $$.Expression = $3
     }
 ;
 
 selection :
-    TSELECT selection_fields selection_group_by selection_name
+    TSELECT fields selection_group_by selection_name
     {
-        $$ = NewSelection()
-        $$.SetFields($2)
+        $$ = ast.NewSelection()
+        $$.Fields = $2
         $$.Dimensions = $3
         $$.Name = $4
     }
 ;
 
-selection_fields :
+fields :
     /* empty */
     {
-        $$ = make([]*SelectionField, 0)
+        $$ = make(ast.Fields, 0)
     }
-|   selection_field
+|   field
     {
-        $$ = make([]*SelectionField, 0)
+        $$ = make(ast.Fields, 0)
         $$ = append($$, $1)
     }
-|   selection_fields TCOMMA selection_field
+|   fields TCOMMA field
     {
         $$ = append($1, $3)
     }
 ;
 
-selection_field :
-    expr selection_field_alias
+field :
+    expr field_alias
     {
-        $$ = NewSelectionField($2, "", $1)
+        $$ = ast.NewField($2, "", $1)
     }
-|   TIDENT TLPAREN TRPAREN selection_field_alias
+|   TIDENT TLPAREN TRPAREN field_alias
     {
-        $$ = NewSelectionField($4, $1, nil)
+        $$ = ast.NewField($4, $1, nil)
     }
-|   TIDENT TLPAREN selection_field_distinct expr TRPAREN selection_field_alias
+|   TIDENT TLPAREN field_distinct expr TRPAREN field_alias
     {
-        $$ = NewSelectionField($6, $1, $4)
+        $$ = ast.NewField($6, $1, $4)
         $$.Distinct = $3
     }
 ;
 
-selection_field_distinct :
+field_distinct :
     /* empty */  { $$ = false }
 |   TDISTINCT   { $$ = true }
 ;
 
-selection_field_alias :
+field_alias :
     /* empty */  { $$ = "" }
 |   TAS TIDENT   { $$ = $2 }
 ;
@@ -274,12 +275,12 @@ selection_group_by :
 ;
 
 selection_dimensions :
-    variable_name
+    var_name
     {
         $$ = make([]string, 0)
         $$ = append($$, $1)
     }
-|   selection_dimensions TCOMMA variable_name
+|   selection_dimensions TCOMMA var_name
     {
         $$ = append($1, $3)
     }
@@ -299,30 +300,30 @@ selection_name :
 condition :
     TWHEN expr condition_within TTHEN statements TEND
     {
-        $$ = NewCondition()
-        $$.SetExpression($2)
+        $$ = ast.NewCondition()
+        $$.Expression = $2
         $$.WithinRangeStart = $3.start
         $$.WithinRangeEnd = $3.end
         $$.WithinUnits = $3.units
-        $$.SetStatements($5)
+        $$.Statements = $5
     }
 ;
 
 condition_within :
     /* empty */
     {
-        $$ = &within{start:0, end:0, units:UnitSteps}
+        $$ = &within{start:0, end:0, units:ast.UnitSteps}
     }
 |   TWITHIN TINT TRANGE TINT TWITHINUNITS
     {
         $$ = &within{start:$2, end:$4}
         switch $5 {
         case "STEPS":
-            $$.units = UnitSteps
+            $$.units = ast.UnitSteps
         case "SESSIONS":
-            $$.units = UnitSessions
+            $$.units = ast.UnitSessions
         case "SECONDS":
-            $$.units = UnitSeconds
+            $$.units = ast.UnitSeconds
         }
     }
 ;
@@ -330,33 +331,33 @@ condition_within :
 event_loop :
     TFOR TEACH TEVENT statements TEND
     {
-        $$ = NewEventLoop()
-        $$.SetStatements($4)
+        $$ = ast.NewEventLoop()
+        $$.Statements = $4
     }
 ;
 
 session_loop :
     TFOR TEACH TSESSION TDELIMITED TBY TINT TTIMEUNITS statements TEND
     {
-        $$ = NewSessionLoop()
-        $$.IdleDuration = timeSpanToSeconds($6, $7)
-        $$.SetStatements($8)
+        $$ = ast.NewSessionLoop()
+        $$.IdleDuration = ast.TimeSpanToSeconds($6, $7)
+        $$.Statements = $8
     }
 ;
 
 temporal_loop :
     TFOR var_ref temporal_loop_step temporal_loop_duration statements TEND
     {
-        $$ = NewTemporalLoop()
-        $$.SetRef($2)
-        $$.step = $3
-        $$.duration = $4
-        $$.SetStatements($5)
+        $$ = ast.NewTemporalLoop()
+        $$.Iterator = $2
+        $$.Step = $3
+        $$.Duration = $4
+        $$.Statements = $5
 
         // Default steps to 1 of the unit of the duration.
-        if $$.step == 0 && $$.duration > 0 {
-            _, units := secondsToTimeSpan($4)
-            $$.step = timeSpanToSeconds(1, units)
+        if $$.Step == 0 && $$.Duration > 0 {
+            _, units := ast.SecondsToTimeSpan($4)
+            $$.Step = ast.TimeSpanToSeconds(1, units)
         }
     }
 ;
@@ -368,7 +369,7 @@ temporal_loop_step :
     }
 |   TEVERY TINT TTIMEUNITS
     {
-        $$ = timeSpanToSeconds($2, $3)
+        $$ = ast.TimeSpanToSeconds($2, $3)
     }
 ;
 
@@ -379,38 +380,39 @@ temporal_loop_duration :
     }
 |   TWITHIN TINT TTIMEUNITS
     {
-        $$ = timeSpanToSeconds($2, $3)
+        $$ = ast.TimeSpanToSeconds($2, $3)
     }
 ;
 
 expr :
-    expr TEQUALS expr     { $$ = NewBinaryExpression(OpEquals, $1, $3) }
-|   expr TNOTEQUALS expr  { $$ = NewBinaryExpression(OpNotEquals, $1, $3) }
-|   expr TLT expr         { $$ = NewBinaryExpression(OpLessThan, $1, $3) }
-|   expr TLTE expr        { $$ = NewBinaryExpression(OpLessThanOrEqualTo, $1, $3) }
-|   expr TGT expr         { $$ = NewBinaryExpression(OpGreaterThan, $1, $3) }
-|   expr TGTE expr        { $$ = NewBinaryExpression(OpGreaterThanOrEqualTo, $1, $3) }
-|   expr TAND expr        { $$ = NewBinaryExpression(OpAnd, $1, $3) }
-|   expr TOR expr         { $$ = NewBinaryExpression(OpOr, $1, $3) }
-|   expr TPLUS expr       { $$ = NewBinaryExpression(OpPlus, $1, $3) }
-|   expr TMINUS expr      { $$ = NewBinaryExpression(OpMinus, $1, $3) }
-|   expr TMUL expr        { $$ = NewBinaryExpression(OpMultiply, $1, $3) }
-|   expr TDIV expr        { $$ = NewBinaryExpression(OpDivide, $1, $3) }
-|   var_ref               { $$ = Expression($1) }
-|   integer_literal       { $$ = Expression($1) }
-|   boolean_literal       { $$ = Expression($1) }
-|   string_literal        { $$ = Expression($1) }
+    expr TEQUALS expr     { $$ = ast.NewBinaryExpression(ast.OpEquals, $1, $3) }
+|   expr TNOTEQUALS expr  { $$ = ast.NewBinaryExpression(ast.OpNotEquals, $1, $3) }
+|   expr TLT expr         { $$ = ast.NewBinaryExpression(ast.OpLessThan, $1, $3) }
+|   expr TLTE expr        { $$ = ast.NewBinaryExpression(ast.OpLessThanOrEqualTo, $1, $3) }
+|   expr TGT expr         { $$ = ast.NewBinaryExpression(ast.OpGreaterThan, $1, $3) }
+|   expr TGTE expr        { $$ = ast.NewBinaryExpression(ast.OpGreaterThanOrEqualTo, $1, $3) }
+|   expr TAND expr        { $$ = ast.NewBinaryExpression(ast.OpAnd, $1, $3) }
+|   expr TOR expr         { $$ = ast.NewBinaryExpression(ast.OpOr, $1, $3) }
+|   expr TPLUS expr       { $$ = ast.NewBinaryExpression(ast.OpPlus, $1, $3) }
+|   expr TMINUS expr      { $$ = ast.NewBinaryExpression(ast.OpMinus, $1, $3) }
+|   expr TMUL expr        { $$ = ast.NewBinaryExpression(ast.OpMultiply, $1, $3) }
+|   expr TDIV expr        { $$ = ast.NewBinaryExpression(ast.OpDivide, $1, $3) }
+|   var_ref               { $$ = ast.Expression($1) }
+|   integer_literal       { $$ = ast.Expression($1) }
+|   boolean_literal       { $$ = ast.Expression($1) }
+|   string_literal        { $$ = ast.Expression($1) }
 |   TLPAREN expr TRPAREN  { $$ = $2 }
 ;
 
 var_ref :
-    variable_name
+    var_name
     {
-        $$ = &VarRef{value:$1}
+        $$ = ast.NewVarRef()
+        $$.Name = $1
     }
 ;
 
-variable_name :
+var_name :
     TIDENT
     {
         $$ = $1
@@ -424,25 +426,25 @@ variable_name :
 integer_literal :
     TINT
     {
-        $$ = &IntegerLiteral{value:$1}
+        $$ = ast.NewIntegerLiteral($1)
     }
 ;
 
 boolean_literal :
     TTRUE
     {
-        $$ = &BooleanLiteral{value:true}
+        $$ = ast.NewBooleanLiteral(true)
     }
 |   TFALSE
     {
-        $$ = &BooleanLiteral{value:false}
+        $$ = ast.NewBooleanLiteral(false)
     }
 ;
 
 string_literal :
     TQUOTEDSTRING
     {
-        $$ = &StringLiteral{value:$1}
+        $$ = ast.NewStringLiteral($1)
     }
 ;
 

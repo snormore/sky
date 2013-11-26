@@ -6,7 +6,10 @@ func Walk(v Visitor, node Node) {
 		return
 	}
 
-	v.Visit(node)
+	v = v.Visit(node)
+	if v == nil {
+		return
+	}
 
 	switch n := node.(type) {
 	case *Assignment:
@@ -31,8 +34,8 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Expression)
 
 	case *Query:
-		Walk(v, n.SystemVariables)
-		Walk(v, n.DeclaredVariables)
+		walkVarDecls(v, n.SystemVarDecls)
+		walkVarDecls(v, n.DeclaredVarDecls)
 		walkStatements(v, n.Statements)
 
 	case *Selection:
@@ -42,7 +45,7 @@ func Walk(v Visitor, node Node) {
 		walkStatements(v, n.Statements)
 
 	case *TemporalLoop:
-		Walk(v, n.VarRef)
+		Walk(v, n.Iterator)
 		walkStatements(v, n.Statements)
 	}
 }
@@ -56,5 +59,11 @@ func walkStatements(v Visitor, statements Statements) {
 func walkFields(v Visitor, fields Fields) {
 	for _, field := range fields {
 		Walk(v, field)
+	}
+}
+
+func walkVarDecls(v Visitor, decls VarDecls) {
+	for _, decl := range decls {
+		Walk(v, decl)
 	}
 }

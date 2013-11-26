@@ -1,20 +1,18 @@
 package ast
 
 import (
-	"bytes"
 	"fmt"
-	"github.com/skydb/sky/core"
 )
 
 // TemporalLoop represents a statement that iterates over time.
 type TemporalLoop struct {
-	Ref        *VarRef
+	Iterator   *VarRef
 	Step       int
 	Duration   int
 	Statements Statements
 }
 
-func (l *TemporalLoop) node() string {}
+func (l *TemporalLoop) node() {}
 
 // NewTemporalLoop creates a new TemporalLoop instance.
 func NewTemporalLoop() *TemporalLoop {
@@ -23,20 +21,20 @@ func NewTemporalLoop() *TemporalLoop {
 
 func (l *TemporalLoop) String() string {
 	str := "FOR"
-	if l.ref != nil {
-		str += " " + l.ref.String()
+	if l.Iterator != nil {
+		str += " " + l.Iterator.String()
 	}
-	if l.step > 0 {
-		quantity, units := secondsToTimeSpan(l.step)
+	if l.Step > 0 {
+		quantity, units := SecondsToTimeSpan(l.Step)
 		str += " " + fmt.Sprintf("EVERY %d %s", quantity, units)
 	}
-	if l.duration > 0 {
-		quantity, units := secondsToTimeSpan(l.duration)
+	if l.Duration > 0 {
+		quantity, units := SecondsToTimeSpan(l.Duration)
 		str += " " + fmt.Sprintf("WITHIN %d %s", quantity, units)
 	}
 
 	str += "\n"
-	str += lineStartRegex.ReplaceAllString(l.statements.String(), "  ") + "\n"
+	str += lineStartRegex.ReplaceAllString(l.Statements.String(), "  ") + "\n"
 	str += "END"
 
 	return str

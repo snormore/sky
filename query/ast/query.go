@@ -1,40 +1,38 @@
 package ast
 
 import (
-	"bytes"
-	"fmt"
+	"strings"
+
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/db"
-	"sort"
-	"strings"
 )
 
 // Query represents a collection of statements used to process data in
 // the Sky database.
 type Query struct {
-	Factorizer        db.Factorizer
-	Table             *core.Table
-	Prefix            string
-	SystemVariables   []*Variable
-	DeclaredVariables []*Variable
-	Statements        Statements
+	Factorizer       db.Factorizer
+	Table            *core.Table
+	Prefix           string
+	SystemVarDecls   VarDecls
+	DeclaredVarDecls VarDecls
+	Statements       Statements
 }
 
-func (q *Query) node() string {}
+func (q *Query) node() {}
 
 // NewQuery returns a new query.
 func NewQuery() *Query {
 	q := &Query{}
-	q.SystemVariables = []*Variable{
-		NewVariable("@eos", core.BooleanDataType),
-		NewVariable("@eof", core.BooleanDataType),
+	q.SystemVarDecls = VarDecls{
+		NewVarDecl("@eos", core.BooleanDataType),
+		NewVarDecl("@eof", core.BooleanDataType),
 	}
 	return q
 }
 
 func (q *Query) String() string {
 	arr := []string{}
-	for _, v := range q.DeclaredVariables {
+	for _, v := range q.DeclaredVarDecls {
 		arr = append(arr, v.String())
 	}
 	arr = append(arr, q.Statements.String())

@@ -2,7 +2,6 @@ package ast
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Field represents a single field within a Selection.
@@ -13,7 +12,7 @@ type Field struct {
 	Expression  Expression
 }
 
-func (f *Field) node() string {}
+func (f *Field) node() {}
 
 // NewField creates a new Field instance.
 func NewField(name string, aggregation string, expression Expression) *Field {
@@ -29,34 +28,11 @@ func (f *Field) IsAggregate() bool {
 	return f.Aggregation != ""
 }
 
-//--------------------------------------
-// Finalization
-//--------------------------------------
-
-// Finalizes the results into a final state after merge.
-func (f *Field) Finalize(data interface{}) error {
-	switch f.Aggregation {
-	case "count":
-		if f.Distinct {
-			aggregation := data.(map[interface{}]interface{})
-			object := aggregation[f.Name].(map[interface{}]interface{})
-			value := object["distinct"]
-			aggregation[f.Name] = value
-		}
-	case "avg":
-		aggregation := data.(map[interface{}]interface{})
-		object := aggregation[f.Name].(map[interface{}]interface{})
-		value := object["avg"]
-		aggregation[f.Name] = value
-	}
-	return nil
-}
-
 // Converts the field to a string-based representation.
 func (f *Field) String() string {
 	var expr string
-	if f.expression != nil {
-		expr = f.expression.String()
+	if f.Expression != nil {
+		expr = f.Expression.String()
 	}
 
 	var str string

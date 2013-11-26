@@ -1,15 +1,10 @@
 package ast
 
-import (
-	"bytes"
-	"fmt"
-)
-
 // Exit represents a statement stops the query on the current object.
 type Exit struct {
 }
 
-func (e *Exit) node() string {}
+func (e *Exit) node() {}
 
 // NewExit creates a new Exit instance.
 func NewExit() *Exit {

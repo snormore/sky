@@ -1,9 +1,6 @@
 package ast
 
 import (
-	"bytes"
-	"fmt"
-	"github.com/skydb/sky/core"
 	"strconv"
 	"strings"
 )
@@ -12,10 +9,10 @@ import (
 type Selection struct {
 	Name       string
 	Dimensions []string
-	Fields     []Fields
+	Fields     Fields
 }
 
-func (s *Selection) node() string {}
+func (s *Selection) node() {}
 
 // NewSelection creates a new Selection instance.
 func NewSelection() *Selection {
@@ -26,7 +23,7 @@ func (s *Selection) String() string {
 	str := "SELECT "
 
 	arr := []string{}
-	for _, field := range s.fields {
+	for _, field := range s.Fields {
 		arr = append(arr, field.String())
 	}
 	str += strings.Join(arr, ", ")

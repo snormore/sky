@@ -1,10 +1,12 @@
-package query
+package parser
 
 import (
 	"bufio"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/skydb/sky/query/ast"
 )
 
 type yylexer struct {
@@ -19,10 +21,10 @@ type yylexer struct {
 	tcharidx   int
 	startToken int
 	err        error
-	query      *Query
-	statement  Statement
-	statements Statements
-	expression Expression
+	query      *ast.Query
+	statement  ast.Statement
+	statements ast.Statements
+	expression ast.Expression
 }
 
 func newLexer(src *bufio.Reader, startToken int) *yylexer {
