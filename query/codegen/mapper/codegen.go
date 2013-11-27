@@ -10,7 +10,7 @@ import (
 var nilValue llvm.Value
 
 // codegen generates LLVM code for a given AST node.
-func (m *Mapper) codegen(node ast.Node, tbl *symtable) (llvm.Value, error) {
+func (m *Mapper) codegen(node ast.Node, tbl *symtable.Symtable) (llvm.Value, error) {
 	if node == nil {
 		return nilValue, errors.New("mapper codegen: unexpected null node")
 	}
@@ -23,7 +23,7 @@ func (m *Mapper) codegen(node ast.Node, tbl *symtable) (llvm.Value, error) {
 	}
 }
 
-func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable) (llvm.Value, error) {
+func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value, error) {
 	fn := llvm.AddFunction(m.module, "entry", llvm.FunctionType(llvm.Int32Type(), []llvm.Type{}, false))
 	fn.SetFunctionCallConv(llvm.CCallConv)
 	entry := llvm.AddBasicBlock(fn, "entry")

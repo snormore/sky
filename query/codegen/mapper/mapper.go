@@ -4,6 +4,7 @@ import (
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
 	_ "github.com/skydb/sky/query/codegen"
+	"github.com/skydb/sky/query/codegen/symtable"
 )
 
 // Mapper can compile a query and execute it against a cursor. The
@@ -23,7 +24,7 @@ func New(q *ast.Query) (*Mapper, error) {
 	m.builder = llvm.NewBuilder()
 
 	var err error
-	if m.entryFunc, err = m.codegen(q, newSymtable(nil)); err != nil {
+	if m.entryFunc, err = m.codegen(q, symtable.New(nil)); err != nil {
 		return nil, err
 	}
 	if err = llvm.VerifyModule(m.module, llvm.ReturnStatusAction); err != nil {
