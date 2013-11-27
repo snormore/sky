@@ -9,7 +9,7 @@ import (
 
 func TestMapper(t *testing.T) {
 	m, err := New(ast.NewQuery())
-	m.Dump()
 	assert.NoError(t, err)
+	m.Dump()
 	assert.Equal(t, 12, m.Execute())
 }

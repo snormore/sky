@@ -5,6 +5,7 @@ import (
 
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/codegen/symtable"
 )
 
 var nilValue llvm.Value
@@ -21,14 +22,5 @@ func (m *Mapper) codegen(node ast.Node, tbl *symtable.Symtable) (llvm.Value, err
 	default:
 		panic("mapper codegen: unexpected node type")
 	}
-}
-
-func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value, error) {
-	fn := llvm.AddFunction(m.module, "entry", llvm.FunctionType(llvm.Int32Type(), []llvm.Type{}, false))
-	fn.SetFunctionCallConv(llvm.CCallConv)
-	entry := llvm.AddBasicBlock(fn, "entry")
-	m.builder.SetInsertPointAtEnd(entry)
-	m.builder.CreateRet(llvm.ConstInt(llvm.Int32Type(), 12, false))
-	return fn, nil
 }
 

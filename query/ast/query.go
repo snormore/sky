@@ -4,14 +4,11 @@ import (
 	"strings"
 
 	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/db"
 )
 
 // Query represents a collection of statements used to process data in
 // the Sky database.
 type Query struct {
-	Factorizer       db.Factorizer
-	Table            *core.Table
 	Prefix           string
 	SystemVarDecls   VarDecls
 	DeclaredVarDecls VarDecls

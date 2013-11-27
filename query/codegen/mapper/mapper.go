@@ -11,16 +11,19 @@ import (
 // execution is single threaded and returns a nested map of data.
 // The results can be combined using a Reducer.
 type Mapper struct {
+	context llvm.Context
 	module llvm.Module
 	engine llvm.ExecutionEngine
 	builder llvm.Builder
+	eventType llvm.Type
 	entryFunc llvm.Value
 }
 
 // New creates a new Mapper instance.
 func New(q *ast.Query) (*Mapper, error) {
 	m := new(Mapper)
-	m.module = llvm.NewModule("mapper")
+	m.context = llvm.NewContext()
+	m.module = m.context.NewModule("mapper")
 	m.builder = llvm.NewBuilder()
 
 	var err error
@@ -45,7 +48,7 @@ func (m *Mapper) Execute() int {
 	return int(ret.Int(false))
 }
 
-// Dump writes the LLVM IR to standard error.
+// Dump writes the LLVM IR to STDERR.
 func (m *Mapper) Dump() {
 	m.module.Dump()
 }
