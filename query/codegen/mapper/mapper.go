@@ -12,32 +12,45 @@ import (
 type Mapper struct {
 	module llvm.Module
 	engine llvm.ExecutionEngine
+	builder llvm.Builder
+	entryFunc llvm.Value
 }
 
 // New creates a new Mapper instance.
 func New(q *ast.Query) (*Mapper, error) {
 	m := new(Mapper)
-	m.codegen(q)
+	m.module = llvm.NewModule("mapper")
+	m.builder = llvm.NewBuilder()
+
+	var err error
+	if m.entryFunc, err = m.codegen(q, newSymtable(nil)); err != nil {
+		return nil, err
+	}
+	if err = llvm.VerifyModule(m.module, llvm.ReturnStatusAction); err != nil {
+		return nil, err
+	}
+	if m.engine, err = llvm.NewJITCompiler(m.module, 2); err != nil {
+		return nil, err
+	}
+
 	return m, nil
 }
 
+// TODO: SetFinalizer to dispose of module, engine and builder.
+
 // Execute runs the entry function on the execution engine.
 func (m *Mapper) Execute() int {
-	fn := llvm.AddFunction(m.module, "entry", llvm.FunctionType(llvm.Int32Type(), []llvm.Type{}, false))
-	fn.SetFunctionCallConv(llvm.CCallConv)
-	return 0
+	ret := m.engine.RunFunction(m.entryFunc, []llvm.GenericValue{})
+	return int(ret.Int(false))
+}
+
+// Dump writes the LLVM IR to standard error.
+func (m *Mapper) Dump() {
+	m.module.Dump()
 }
 
 // Clone creates a duplicate mapper to be run independently.
 func (m *Mapper) Clone() *Mapper {
 	panic("NOT YET IMPLEMENTED")
-}
-
-// codegen generates the execution engine and module for the mapper.
-func (m *Mapper) codegen(q *ast.Query) error {
-	m.module = llvm.NewModule("mapper")
-	entryFunc := llvm.AddFunction(m.module, "entry", llvm.FunctionType(llvm.Int32Type(), []llvm.Type{}, false))
-	entryFunc.SetFunctionCallConv(llvm.CCallConv)
-	return nil
 }
 

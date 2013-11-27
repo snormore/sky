@@ -7,22 +7,28 @@ import (
 	"github.com/skydb/sky/query/ast"
 )
 
+var nilValue llvm.Value
+
 // codegen generates LLVM code for a given AST node.
-func codegen(m *llvm.Module, tbl *symtable, node ast.Node) error {
+func (m *Mapper) codegen(node ast.Node, tbl *symtable) (llvm.Value, error) {
 	if node == nil {
-		return errors.New("mapper codegen: unexpected null node")
+		return nilValue, errors.New("mapper codegen: unexpected null node")
 	}
 
 	switch node := node.(type) {
 	case *ast.Query:
-		return codegenQuery(m, tbl, node)
+		return m.codegenQuery(node, tbl)
 	default:
-		panic("mapper codegen: unexpected node type:")
+		panic("mapper codegen: unexpected node type")
 	}
 }
 
-func codegenQuery(m *llvm.Module, tbl *symtable, q *ast.Query) error {
-	builder := llvm.NewBuilder()
-	defer builder.Dispose()
-	return nil
+func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable) (llvm.Value, error) {
+	fn := llvm.AddFunction(m.module, "entry", llvm.FunctionType(llvm.Int32Type(), []llvm.Type{}, false))
+	fn.SetFunctionCallConv(llvm.CCallConv)
+	entry := llvm.AddBasicBlock(fn, "entry")
+	m.builder.SetInsertPointAtEnd(entry)
+	m.builder.CreateRet(llvm.ConstInt(llvm.Int32Type(), 12, false))
+	return fn, nil
 }
+
