@@ -23,4 +23,3 @@ func (m *Mapper) codegen(node ast.Node, tbl *symtable.Symtable) (llvm.Value, err
 		panic("mapper codegen: unexpected node type")
 	}
 }
-

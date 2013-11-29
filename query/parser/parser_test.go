@@ -6,7 +6,7 @@ import (
 
 func TestParserSelectCount(t *testing.T) {
 	str := `SELECT count() AS count`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -17,7 +17,7 @@ func TestParserSelectCount(t *testing.T) {
 
 func TestParserSelectUnnamedExpression(t *testing.T) {
 	str := `SELECT sum(@unit_price)`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -28,7 +28,7 @@ func TestParserSelectUnnamedExpression(t *testing.T) {
 
 func TestParserSelectDistinctExpression(t *testing.T) {
 	str := `SELECT count(DISTINCT @unit_price)`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -39,7 +39,7 @@ func TestParserSelectDistinctExpression(t *testing.T) {
 
 func TestParserSelectNonAggregatedExpression(t *testing.T) {
 	str := `SELECT @name, @price AS unit_price`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -50,7 +50,7 @@ func TestParserSelectNonAggregatedExpression(t *testing.T) {
 
 func TestParserSelectDimensions(t *testing.T) {
 	str := `SELECT count() AS count GROUP BY @foo, @bar`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -61,7 +61,7 @@ func TestParserSelectDimensions(t *testing.T) {
 
 func TestParserSelectInto(t *testing.T) {
 	str := `SELECT count() AS count INTO "xxx\"'"`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -72,7 +72,7 @@ func TestParserSelectInto(t *testing.T) {
 
 func TestParserCondition(t *testing.T) {
 	str := `WHEN @action == "signup\"'" THEN` + "\n" + `  SELECT count() AS count` + "\n" + `END`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -83,7 +83,7 @@ func TestParserCondition(t *testing.T) {
 
 func TestParserConditionWithin(t *testing.T) {
 	str := `WHEN @action == "signup" WITHIN 1 .. 2 STEPS THEN` + "\n" + `  SELECT count() AS count` + "\n" + `END`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -98,7 +98,7 @@ func TestParserVariable(t *testing.T) {
 	str += `SET @foo = 12` + "\n"
 	str += `SELECT sum(@foo) AS total`
 
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -109,7 +109,7 @@ func TestParserVariable(t *testing.T) {
 
 func TestParserSystemVariable(t *testing.T) {
 	str := `SELECT count() AS count GROUP BY @@eos`
-	query, err := NewParser().ParseString(str)
+	query, err := New().ParseString(str)
 	if err != nil {
 		t.Fatal("Parse error:", err)
 	}
@@ -127,7 +127,7 @@ func TestParserTemporalLoop(t *testing.T) {
 	str += `  END` + "\n"
 	str += `END`
 
-	if query, err := NewParser().ParseString(str); err != nil {
+	if query, err := New().ParseString(str); err != nil {
 		t.Fatal("Parse error:", err)
 	} else if query.String() != str {
 		t.Fatal("\nExpected:\n" + str + "\n\nGot:\n" + query.String())
@@ -138,7 +138,7 @@ func TestParserError(t *testing.T) {
 	str := `SELECT count() AS count` + "\n"
 	str += `EXIT`
 
-	if query, err := NewParser().ParseString(str); err != nil {
+	if query, err := New().ParseString(str); err != nil {
 		t.Fatal("Parse error:", err)
 	} else if query.String() != str {
 		t.Fatal("\nExpected:\n" + str + "\n\nGot:\n" + query.String())
@@ -147,7 +147,7 @@ func TestParserError(t *testing.T) {
 
 func TestParserDebug(t *testing.T) {
 	str := `DEBUG(@x + 12)`
-	if query, err := NewParser().ParseString(str); err != nil {
+	if query, err := New().ParseString(str); err != nil {
 		t.Fatal("Parse error:", err)
 	} else if query.String() != str {
 		t.Fatal("\nExpected:\n" + str + "\n\nGot:\n" + query.String())
@@ -155,7 +155,7 @@ func TestParserDebug(t *testing.T) {
 }
 
 func TestParserSyntaxError(t *testing.T) {
-	_, err := NewParser().ParseString(`SELECT count() AS` + "\n" + `count GRP BY @action`)
+	_, err := New().ParseString(`SELECT count() AS` + "\n" + `count GRP BY @action`)
 	if err == nil || err.Error() != "Unexpected 'GRP' at line 2, char 8, syntax error" {
 		t.Fatal("Unexpected parse error: ", err)
 	}

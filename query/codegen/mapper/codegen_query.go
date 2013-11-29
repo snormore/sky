@@ -16,6 +16,10 @@ func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value,
 	if m.eventType, err = m.codegenEventType(decls); err != nil {
 		return nilValue, err
 	}
+	m.cursorType = m.context.StructCreateNamed("sky_cursor")
+	m.mapType = m.context.StructCreateNamed("sky_map")
+
+	m.cursorInitFunc = m.codegenCursorInitFunc()
 
 	// Generate the entry function.
 	return m.codegenQueryEntryFunc(q, tbl)
@@ -55,21 +59,63 @@ func (m *Mapper) codegenEventType(decls ast.VarDecls) (llvm.Type, error) {
 	}
 
 	// Return composite type.
-	typ := m.context.StructCreateNamed("event_t")
+	typ := m.context.StructCreateNamed("sky_event")
 	typ.StructSetBody(fields, false)
 	return typ, nil
 }
 
 // [codegen]
-// void entry(int32_t) {
-//     return 12;
+// bool sky_cursor_init(sky_cursor *)
+func (m *Mapper) codegenCursorInitFunc() llvm.Value {
+	return llvm.AddFunction(m.module, "sky_cursor_init", llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false))
+}
+
+// [codegen]
+// int32_t entry(sky_cursor *cursor, sky_map *result) {
+//     int32_t rc = 0;
+//     entry:
+//         rc = sky_cursor_init();
+//         if(rc != EEOF) {
+//             goto exit;
+//         }
+//         if(rc != 0) {
+//             goto error;
+//         }
+//
+//     loop:
+//         rc = sky_cursor_next_object();
+//         if(rc != EEOF) {
+//             goto exit;
+//         }
+//         if(rc != 0) {
+//             goto error;
+//         }
+//         goto loop
+//
+//     error:
+//     exit:
+//         return rc;
 // }
 func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *symtable.Symtable) (llvm.Value, error) {
-	fn := llvm.AddFunction(m.module, "entry", llvm.FunctionType(m.context.Int32Type(), []llvm.Type{m.eventType}, false))
+	sig := llvm.FunctionType(m.context.Int32Type(), []llvm.Type{
+		llvm.PointerType(m.cursorType, 0),
+		llvm.PointerType(m.mapType, 0),
+	}, false)
+	fn := llvm.AddFunction(m.module, "entry", sig)
 	fn.SetFunctionCallConv(llvm.CCallConv)
+	cursorArg := fn.Param(0)
+	// resultArg := fn.Param(1)
+
 	entry := m.context.AddBasicBlock(fn, "entry")
+	//loop := m.context.AddBasicBlock(fn, "loop")
+	//error := m.context.AddBasicBlock(fn, "error")
+	exit := m.context.AddBasicBlock(fn, "exit")
+
 	m.builder.SetInsertPointAtEnd(entry)
+	m.builder.CreateCall(m.cursorInitFunc, []llvm.Value{cursorArg}, "")
+	m.builder.CreateBr(exit)
+
+	m.builder.SetInsertPointAtEnd(exit)
 	m.builder.CreateRet(llvm.ConstInt(m.context.Int32Type(), 12, false))
 	return fn, nil
 }
-

@@ -1,0 +1,3 @@
+This directory contains functional query tests that depend on the db
+package. The tests have been moved here so that a db package dependency
+is not added to the query packages.

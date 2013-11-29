@@ -13,10 +13,6 @@ import (
 	"github.com/skydb/sky/core"
 )
 
-var defaultShardCount = runtime.NumCPU()
-
-// func init() { defaultShardCount = 1 }
-
 // DB represents access to the low-level data store.
 type DB interface {
 	Open() error
@@ -37,24 +33,31 @@ type DB interface {
 // db is the default implementation of the DB interface.
 type db struct {
 	sync.RWMutex
-	factorizer Factorizer
-	path       string
-	shards     []*shard
-	noSync     bool
-	maxDBs     uint
-	maxReaders uint
+	defaultShardCount int
+	factorizer        Factorizer
+	path              string
+	shards            []*shard
+	noSync            bool
+	maxDBs            uint
+	maxReaders        uint
 }
 
 // Creates a new DB instance with data storage at the given path.
-func New(path string, noSync bool, maxDBs uint, maxReaders uint) DB {
+func New(path string, defaultShardCount int, noSync bool, maxDBs uint, maxReaders uint) DB {
 	f := NewFactorizer(filepath.Join(path, "factors"), noSync, maxDBs, maxReaders)
 
+	// Default the shard count to the number of logical cores.
+	if defaultShardCount == 0 {
+		defaultShardCount = runtime.NumCPU()
+	}
+
 	return &db{
-		factorizer: f,
-		path:       path,
-		noSync:     noSync,
-		maxDBs:     maxDBs,
-		maxReaders: maxReaders,
+		defaultShardCount: defaultShardCount,
+		factorizer:        f,
+		path:              path,
+		noSync:            noSync,
+		maxDBs:            maxDBs,
+		maxReaders:        maxReaders,
 	}
 }
 
@@ -139,7 +142,7 @@ func (db *db) shardCount() (int, error) {
 	}
 
 	if count == 0 {
-		count = defaultShardCount
+		count = db.defaultShardCount
 	}
 
 	return count, nil

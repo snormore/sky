@@ -10,15 +10,15 @@ import (
 // declarations to be looked up while performing codegen.
 type Symtable struct {
 	parent *Symtable
-	decls map[string]*ast.VarDecl
+	decls  map[string]*ast.VarDecl
 }
 
 // New creates a new Symtable instance that is associated with the given parent.
 // A nil parent means the symtable is the top-level scope.
 func New(parent *Symtable) *Symtable {
 	return &Symtable{
-		parent:parent,
-		decls: make(map[string]*ast.VarDecl),
+		parent: parent,
+		decls:  make(map[string]*ast.VarDecl),
 	}
 }
 

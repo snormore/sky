@@ -27,8 +27,8 @@ func TestFindVarDecls(t *testing.T) {
 func TestFindVarDeclsMismatchId(t *testing.T) {
 	node := NewQuery()
 	node.DeclaredVarDecls = VarDecls{
-		&VarDecl{Id:100, Name:"foo", DataType:"string"},
-		&VarDecl{Id:101, Name:"foo", DataType:"string"},
+		&VarDecl{Id: 100, Name: "foo", DataType: "string"},
+		&VarDecl{Id: 101, Name: "foo", DataType: "string"},
 	}
 	_, err := FindVarDecls(node)
 	if assert.Error(t, err) {
@@ -40,8 +40,8 @@ func TestFindVarDeclsMismatchId(t *testing.T) {
 func TestFindVarDeclsMismatchDataType(t *testing.T) {
 	node := NewQuery()
 	node.DeclaredVarDecls = VarDecls{
-		&VarDecl{Name:"foo", DataType:"string"},
-		&VarDecl{Name:"foo", DataType:"integer"},
+		&VarDecl{Name: "foo", DataType: "string"},
+		&VarDecl{Name: "foo", DataType: "integer"},
 	}
 	_, err := FindVarDecls(node)
 	if assert.Error(t, err) {
@@ -53,8 +53,8 @@ func TestFindVarDeclsMismatchDataType(t *testing.T) {
 func TestFindVarDeclsMismatchAssociation(t *testing.T) {
 	node := NewQuery()
 	node.DeclaredVarDecls = VarDecls{
-		&VarDecl{Name:"foo", DataType:"string", Association:"bar"},
-		&VarDecl{Name:"foo", DataType:"string", Association:"baz"},
+		&VarDecl{Name: "foo", DataType: "string", Association: "bar"},
+		&VarDecl{Name: "foo", DataType: "string", Association: "baz"},
 	}
 	_, err := FindVarDecls(node)
 	if assert.Error(t, err) {
