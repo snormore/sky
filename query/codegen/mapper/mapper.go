@@ -27,8 +27,7 @@ type Mapper struct {
 	eventType  llvm.Type
 	mapType    llvm.Type
 
-	entryFunc      llvm.Value
-	cursorInitFunc llvm.Value
+	entryFunc llvm.Value
 }
 
 // New creates a new Mapper instance.
