@@ -4,6 +4,12 @@ import (
 	"github.com/axw/gollvm/llvm"
 )
 
+const (
+	cursorEventElementIndex     = 0
+	cursorNextEventElementIndex = 1
+	cursorPtrElementIndex = 2
+)
+
 // [codegen]
 // typedef struct {
 //     sky_event *event;
@@ -14,6 +20,7 @@ func (m *Mapper) codegenCursorType() llvm.Type {
 	typ.StructSetBody([]llvm.Type{
 		llvm.PointerType(m.eventType, 0),
 		llvm.PointerType(m.eventType, 0),
+		llvm.PointerType(m.context.Int8Type(), 0),
 	}, false)
 	return typ
 }

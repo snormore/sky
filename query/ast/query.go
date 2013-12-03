@@ -23,6 +23,7 @@ func NewQuery() *Query {
 	q.SystemVarDecls = VarDecls{
 		NewVarDecl("@eos", core.BooleanDataType),
 		NewVarDecl("@eof", core.BooleanDataType),
+		NewVarDecl("timestamp", core.IntegerDataType),
 	}
 	return q
 }

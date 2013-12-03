@@ -3,6 +3,7 @@ package mapper
 import (
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/codegen/minipack"
 	"github.com/skydb/sky/query/codegen/symtable"
 )
 
@@ -17,6 +18,8 @@ func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value,
 	m.mapType = m.context.StructCreateNamed("sky_map")
 
 	m.codegenCursorExternalDecl()
+
+	minipack.Declare_unpack_int(m.module, m.context)
 
 	m.codegenCursorInitFunc()
 	m.codegenCursorNextObjectFunc()

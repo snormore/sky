@@ -42,6 +42,7 @@ typedef struct {
 struct sky_cursor {
     sky_event *event;
     sky_event *next_event;
+    void *ptr;
 
     bool blocking_eos;
 

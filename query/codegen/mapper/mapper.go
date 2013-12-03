@@ -71,6 +71,12 @@ func (m *Mapper) Execute(lmdb_cursor *mdb.Cursor, prefix string, result *interfa
 	return nil
 }
 
+// Execute a given function and returns the result.
+func (m *Mapper) ExecuteFunction(name string, values []llvm.GenericValue) llvm.GenericValue {
+	fn := m.module.NamedFunction(name)
+	return m.engine.RunFunction(fn, values)
+}
+
 // Dump writes the LLVM IR to STDERR.
 func (m *Mapper) Dump() {
 	m.module.Dump()

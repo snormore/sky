@@ -13,7 +13,7 @@ import (
 )
 
 // Executes a query against a given set of data and return the results.
-func runMapper(query string, objects map[string][]*core.Event) (interface{}, error) {
+func runDBMapper(query string, objects map[string][]*core.Event) (interface{}, error) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 
@@ -26,36 +26,40 @@ func runMapper(query string, objects map[string][]*core.Event) (interface{}, err
 
 	// Insert into db.
 	if _, err := db.InsertObjects("TBL", objects); err != nil {
-		debugln("run.mapper.0")
 		return nil, err
 	}
 
 	// Retrieve cursors.
 	cursors, err := db.Cursors("TBL")
 	if err != nil {
-		debugln("run.mapper.1")
 		return nil, err
 	}
 	defer cursors.Close()
 
+	m, err := newMapper(query)
+	if err != nil {
+		return nil, err
+	}
+	m.Dump()
+
+	// Execute the mapper.
+	return m.Execute(cursors[0], "", nil), nil
+}
+
+func newMapper(query string) (*mapper.Mapper, error) {
 	// Create a query.
 	q, err := parser.ParseString(query)
 	if err != nil {
-		debugln("run.mapper.2")
 		return nil, err
 	}
 
 	// Create a mapper generated from the query.
 	m, err := mapper.New(q)
 	if err != nil {
-		debugln("run.mapper.3")
 		return nil, err
 	}
-	m.Dump()
 
-	// Execute the mapper.
-	ret := m.Execute(cursors[0], "", nil)
-	return ret, nil
+	return m, nil
 }
 
 func testevent(timestamp string, args ...interface{}) *core.Event {
