@@ -36,17 +36,6 @@ func runDBMapper(query string, objects map[string][]*core.Event) (interface{}, e
 	}
 	defer cursors.Close()
 
-	m, err := newMapper(query)
-	if err != nil {
-		return nil, err
-	}
-	m.Dump()
-
-	// Execute the mapper.
-	return m.Execute(cursors[0], "", nil), nil
-}
-
-func newMapper(query string) (*mapper.Mapper, error) {
 	// Create a query.
 	q, err := parser.ParseString(query)
 	if err != nil {
@@ -58,8 +47,10 @@ func newMapper(query string) (*mapper.Mapper, error) {
 	if err != nil {
 		return nil, err
 	}
+	m.Dump()
 
-	return m, nil
+	// Execute the mapper.
+	return m.Execute(cursors[0], "", nil), nil
 }
 
 func testevent(timestamp string, args ...interface{}) *core.Event {

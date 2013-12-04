@@ -175,9 +175,9 @@ func (m *Mapper) codegenClearTransientVariablesFunc(decls ast.VarDecls) llvm.Val
 //     size_t sz;
 //
 // read_timestamp:
-//     int64_t ts = minipack_unpack_int(ptr, &sz);
+//     int64_t ts = *((int64_t*)ptr);
 //     event->timestamp = ts;
-//     ptr += sz;
+//     ptr += 8;
 //
 // read_map:
 //     int64_t index = 0;
@@ -220,15 +220,21 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	m.builder.SetInsertPointAtEnd(entry)
 	event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "event")
 	ptr := m.builder.CreateAlloca(llvm.PointerType(m.context.Int8Type(), 0), "ptr")
-	sz := m.builder.CreateAlloca(m.context.Int64Type(), "sz")
+	// sz := m.builder.CreateAlloca(m.context.Int64Type(), "sz")
 	m.builder.CreateStore(fn.Param(0), event)
 	m.builder.CreateStore(fn.Param(1), ptr)
 	m.builder.CreateBr(read_ts)
 
 	m.builder.SetInsertPointAtEnd(read_ts)
+	ts_value := m.builder.CreateLoad(m.builder.CreateBitCast(m.builder.CreateLoad(ptr, ""), llvm.PointerType(m.context.Int64Type(), 0), ""), "ts_value")
+	timestamp_value := m.builder.CreateLShr(ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
+	event_timestamp := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), eventTimestampElementIndex, "event_timestamp")
+	m.builder.CreateStore(timestamp_value, event_timestamp)
+	/*
 	ts := m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_int"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, "ts")
 	m.builder.CreateStore(ts, m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), eventTimestampElementIndex, ""))
 	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
+	*/
 	m.builder.CreateBr(read_map)
 
 	m.builder.SetInsertPointAtEnd(read_map)

@@ -17,6 +17,7 @@ func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value,
 	m.cursorType = m.codegenCursorType()
 	m.mapType = m.context.StructCreateNamed("sky_map")
 
+	llvm.AddFunction(m.module, "debug", llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.context.Int8Type(), 0)}, false))
 	m.codegenCursorExternalDecl()
 
 	minipack.Declare_unpack_int(m.module, m.context)

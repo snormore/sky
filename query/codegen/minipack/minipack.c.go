@@ -1186,8 +1186,6 @@ size_t minipack_sizeof_int_elem(void *ptr)
 // Returns the value of the element
 int64_t minipack_unpack_int(void *ptr, size_t *sz)
 {
-    printf("unpack_int! %d\n", *((uint8_t*)ptr));
-    
     if(minipack_is_pos_fixnum(ptr)) {
         return (int64_t)minipack_unpack_pos_fixnum(ptr, sz);
     }

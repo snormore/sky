@@ -3,9 +3,11 @@ package core
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/ugorji/go/codec"
 	"io"
 	"time"
+
+	"github.com/skydb/sky/endian"
+	"github.com/ugorji/go/codec"
 )
 
 //------------------------------------------------------------------------------
@@ -52,7 +54,7 @@ func NewEvent(timestamp string, data map[int64]interface{}) *Event {
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(w io.Writer) error {
 	// Encode timestamp.
-	if err := binary.Write(w, binary.BigEndian, ShiftTime(e.Timestamp)); err != nil {
+	if err := binary.Write(w, endian.Native, ShiftTime(e.Timestamp)); err != nil {
 		return err
 	}
 
@@ -74,7 +76,7 @@ func (e *Event) MarshalRaw() ([]byte, error) {
 // Decodes an event from MsgPack format.
 func (e *Event) DecodeRaw(r io.Reader) error {
 	var timestamp int64
-	if err := binary.Read(r, binary.BigEndian, &timestamp); err != nil {
+	if err := binary.Read(r, endian.Native, &timestamp); err != nil {
 		return err
 	}
 	e.Timestamp = UnshiftTime(timestamp).UTC()
