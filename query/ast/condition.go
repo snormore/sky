@@ -21,6 +21,8 @@ type Condition struct {
 }
 
 func (c *Condition) node() {}
+func (c *Condition) block() {}
+func (c *Condition) statement() {}
 
 // NewCondition returns a new Condition instance.
 func NewCondition() *Condition {

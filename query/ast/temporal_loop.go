@@ -13,6 +13,8 @@ type TemporalLoop struct {
 }
 
 func (l *TemporalLoop) node() {}
+func (l *TemporalLoop) block() {}
+func (l *TemporalLoop) statement() {}
 
 // NewTemporalLoop creates a new TemporalLoop instance.
 func NewTemporalLoop() *TemporalLoop {

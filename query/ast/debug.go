@@ -10,6 +10,7 @@ type Debug struct {
 }
 
 func (d *Debug) node() {}
+func (d *Debug) statement() {}
 
 // NewDebug creates a new debug statement.
 func NewDebug() *Debug {

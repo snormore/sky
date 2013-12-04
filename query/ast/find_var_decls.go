@@ -4,13 +4,16 @@ import (
 	"fmt"
 )
 
-// FindVarDecls retrieves a list of all unique variable declarations within
+// FindVarDecls retrieves a list of all unique variables declarations within
 // an AST node. An error is returned if there are variables declared with
 // different types, associations or property ids.
 func FindVarDecls(node Node) (VarDecls, error) {
 	v := new(varDeclVisitor)
 	Walk(v, node)
-	return v.decls, v.err
+	if v.err != nil {
+		return nil, v.err
+	}
+	return v.decls, nil
 }
 
 // varDeclVisitor is a visitor that retrieves a list of all unique
@@ -20,13 +23,26 @@ type varDeclVisitor struct {
 	err   error
 }
 
-func (v *varDeclVisitor) Visit(node Node) Visitor {
-	if decl, ok := node.(*VarDecl); ok {
-		if v.add(decl); v.err != nil {
-			return nil
-		}
-	}
+func (v *varDeclVisitor) Visit(node Node, symtable *Symtable) Visitor {
+	// noop
 	return v
+}
+
+func (v *varDeclVisitor) Error(err error) Visitor {
+	v.err = err
+	return nil
+}
+
+func (v *varDeclVisitor) Exiting(node Node, symtable *Symtable) {
+	if v.err != nil {
+		return
+	}
+
+	// Grab a list of local variables as the block is exiting the walk.
+	if _, ok := node.(Block); ok {
+		locals := symtable.Locals()
+		v.decls = append(v.decls, locals...)
+	}
 }
 
 // add appends the node to the list of declarations unless the variable has

@@ -13,6 +13,7 @@ type Selection struct {
 }
 
 func (s *Selection) node() {}
+func (s *Selection) statement() {}
 
 // NewSelection creates a new Selection instance.
 func NewSelection() *Selection {

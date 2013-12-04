@@ -5,6 +5,7 @@ type Exit struct {
 }
 
 func (e *Exit) node() {}
+func (e *Exit) statement() {}
 
 // NewExit creates a new Exit instance.
 func NewExit() *Exit {

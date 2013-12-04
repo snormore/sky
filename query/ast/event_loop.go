@@ -7,6 +7,8 @@ type EventLoop struct {
 }
 
 func (l *EventLoop) node() {}
+func (l *EventLoop) block() {}
+func (l *EventLoop) statement() {}
 
 // NewEventLoop returns a new EventLoop instance.
 func NewEventLoop() *EventLoop {

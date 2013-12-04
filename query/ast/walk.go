@@ -2,68 +2,88 @@ package ast
 
 // Walk traverses the AST in depth-first order.
 func Walk(v Visitor, node Node) {
+	walk(v, node, nil)
+}
+
+func walk(v Visitor, node Node, symtable *Symtable) {
 	if node == nil {
 		return
 	}
 
-	v = v.Visit(node)
+	// Generate a new symtable for blocks.
+	symtable = NodeSymtable(node, symtable)
+
+	v = v.Visit(node, symtable)
 	if v == nil {
 		return
 	}
 
 	switch n := node.(type) {
 	case *Assignment:
-		Walk(v, n.Target)
-		Walk(v, n.Expression)
+		walk(v, n.Target, symtable)
+		walk(v, n.Expression, symtable)
 
 	case *BinaryExpression:
-		Walk(v, n.LHS)
-		Walk(v, n.RHS)
+		walk(v, n.LHS, symtable)
+		walk(v, n.RHS, symtable)
 
 	case *Condition:
-		Walk(v, n.Expression)
-		walkStatements(v, n.Statements)
+		walk(v, n.Expression, symtable)
+		walkStatements(v, n.Statements, symtable)
 
 	case *Debug:
-		Walk(v, n.Expression)
+		walk(v, n.Expression, symtable)
 
 	case *EventLoop:
-		walkStatements(v, n.Statements)
+		walkStatements(v, n.Statements, symtable)
 
 	case *Field:
-		Walk(v, n.Expression)
+		walk(v, n.Expression, symtable)
 
 	case *Query:
-		walkVarDecls(v, n.SystemVarDecls)
-		walkVarDecls(v, n.DeclaredVarDecls)
-		walkStatements(v, n.Statements)
+		walkVarDecls(v, n.SystemVarDecls, symtable)
+		walkVarDecls(v, n.DeclaredVarDecls, symtable)
+		walkStatements(v, n.Statements, symtable)
 
 	case *Selection:
-		walkFields(v, n.Fields)
+		walkFields(v, n.Fields, symtable)
 
 	case *SessionLoop:
-		walkStatements(v, n.Statements)
+		walkStatements(v, n.Statements, symtable)
 
 	case *TemporalLoop:
-		Walk(v, n.Iterator)
-		walkStatements(v, n.Statements)
+		walk(v, n.Iterator, symtable)
+		walkStatements(v, n.Statements, symtable)
+
+	case *VarDecl:
+		if err := symtable.Add(n); err != nil {
+			v = v.Error(err)
+			if v == nil {
+				return
+			}
+		}
+	}
+
+	// Call the visitor on the way out.
+	if v, ok := v.(ExitingVisitor); ok {
+		v.Exiting(node, symtable)
 	}
 }
 
-func walkStatements(v Visitor, statements Statements) {
+func walkStatements(v Visitor, statements Statements, symtable *Symtable) {
 	for _, statement := range statements {
-		Walk(v, statement)
+		walk(v, statement, symtable)
 	}
 }
 
-func walkFields(v Visitor, fields Fields) {
+func walkFields(v Visitor, fields Fields, symtable *Symtable) {
 	for _, field := range fields {
-		Walk(v, field)
+		walk(v, field, symtable)
 	}
 }
 
-func walkVarDecls(v Visitor, decls VarDecls) {
+func walkVarDecls(v Visitor, decls VarDecls, symtable *Symtable) {
 	for _, decl := range decls {
-		Walk(v, decl)
+		walk(v, decl, symtable)
 	}
 }

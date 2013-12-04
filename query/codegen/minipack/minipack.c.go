@@ -288,7 +288,7 @@ size_t minipack_sizeof_raw(uint32_t length);
 
 size_t minipack_sizeof_raw_elem(void *ptr);
 
-uint32_t minipack_unpack_raw(void *ptr, size_t *sz);
+int64_t minipack_unpack_raw(void *ptr, size_t *sz);
 
 void minipack_pack_raw(void *ptr, uint32_t length, size_t *sz);
 
@@ -675,7 +675,7 @@ size_t minipack_sizeof_elem_and_data(void *ptr)
     if(minipack_is_bool(ptr)) return minipack_sizeof_bool();
 
     // Raw
-    uint32_t length = minipack_unpack_raw(ptr, &sz);
+    int64_t length = minipack_unpack_raw(ptr, &sz);
     if(sz > 0) return sz + length;
 
     // Map, Array and other data returns 0.
@@ -1944,16 +1944,16 @@ size_t minipack_sizeof_raw_elem(void *ptr)
 // sz  - A pointer to where the size of the header will be returned to.
 //
 // Returns the number of bytes in the raw bytes.
-uint32_t minipack_unpack_raw(void *ptr, size_t *sz)
+int64_t minipack_unpack_raw(void *ptr, size_t *sz)
 {
     if(minipack_is_fixraw(ptr)) {
-        return (uint32_t)minipack_unpack_fixraw(ptr, sz);
+        return (int64_t)minipack_unpack_fixraw(ptr, sz);
     }
     else if(minipack_is_raw16(ptr)) {
-        return (uint32_t)minipack_unpack_raw16(ptr, sz);
+        return (int64_t)minipack_unpack_raw16(ptr, sz);
     }
     else if(minipack_is_raw32(ptr)) {
-        return minipack_unpack_raw32(ptr, sz);
+        return (int64_t)minipack_unpack_raw32(ptr, sz);
     }
     else {
         *sz = 0;
@@ -2690,7 +2690,11 @@ func Declare_unpack_bool(m llvm.Module, c llvm.Context) {
 }
 
 func Declare_unpack_raw(m llvm.Module, c llvm.Context) {
-	llvm.AddFunction(m, "minipack_unpack_raw", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
+    llvm.AddFunction(m, "minipack_unpack_raw", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
+}
+
+func Declare_unpack_map(m llvm.Module, c llvm.Context) {
+    llvm.AddFunction(m, "minipack_unpack_map", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
 }
 
 func Declare_sizeof_elem_and_data(m llvm.Module, c llvm.Context) {

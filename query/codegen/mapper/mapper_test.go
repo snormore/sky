@@ -26,6 +26,7 @@ var DATA = [1024]byte{}
 func TestReadEvent(t *testing.T) {
 	var b bytes.Buffer
 	binary.Write(&b, endian.Native, int64(10 << core.SECONDS_BIT_OFFSET))
+	b.Write([]byte{'\x81', '\x02', '\x03'})  // map: {2:3}
 	copy(DATA[:], b.Bytes())
 	debugln(DATA)
 
@@ -40,6 +41,7 @@ func TestReadEvent(t *testing.T) {
 		})
 	assert.Equal(t, int64(10), e.timestamp)
 }
+
 
 func newMapperFromQuery(query string) (*Mapper, error) {
 	// Create a query.

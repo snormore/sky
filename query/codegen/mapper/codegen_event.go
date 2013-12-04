@@ -189,19 +189,19 @@ func (m *Mapper) codegenClearTransientVariablesFunc(decls ast.VarDecls) llvm.Val
 //     if(index >= key_count) goto exit;
 //     index += 1;
 //
-//     int64_t id = minipack_unpack_int(ptr, &sz);
+//     int64_t variable_id = minipack_unpack_int(ptr, &sz);
 //     if(sz == 0) return false;
 //     ptr += sz;
-//     ...
-//     if(id == XXX) {
+//     switch(variable_id) {
+//     case XXX:
 //         event->field = minipack_unpack_XXX(ptr, &sz);
 //         if(sz != 0) {
 //             ptr += sz;
 //             goto loop;
 //         }
 //     }
-//     ...
 //     ptr += minipack_sizeof_elem_and_data(ptr);
+//     goto loop
 //
 // exit:
 //     return true;
@@ -210,17 +210,30 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	fntype := llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.context.Int8Type(), 0)}, false)
 	fn := llvm.AddFunction(m.module, "read_event", fntype)
 	fn.SetFunctionCallConv(llvm.CCallConv)
+
+	read_decls := ast.VarDecls{}
+	read_labels := []llvm.BasicBlock{}
 	
 	entry := m.context.AddBasicBlock(fn, "entry")
 	read_ts := m.context.AddBasicBlock(fn, "read_ts")
 	read_map := m.context.AddBasicBlock(fn, "read_map")
 	loop := m.context.AddBasicBlock(fn, "loop")
+	loop_body := m.context.AddBasicBlock(fn, "loop_body")
+	for _, decl := range decls {
+		if decl.Id != 0 {
+			read_decls = append(read_decls, decl)
+			read_labels = append(read_labels, m.context.AddBasicBlock(fn, decl.Name))
+		}
+	}
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
 	event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "event")
 	ptr := m.builder.CreateAlloca(llvm.PointerType(m.context.Int8Type(), 0), "ptr")
-	// sz := m.builder.CreateAlloca(m.context.Int64Type(), "sz")
+	variable_id := m.builder.CreateAlloca(m.context.Int64Type(), "variable_id")
+	key_index := m.builder.CreateAlloca(m.context.Int64Type(), "key_index")
+	key_count := m.builder.CreateAlloca(m.context.Int64Type(), "key_count")
+	sz := m.builder.CreateAlloca(m.context.Int64Type(), "sz")
 	m.builder.CreateStore(fn.Param(0), event)
 	m.builder.CreateStore(fn.Param(1), ptr)
 	m.builder.CreateBr(read_ts)
@@ -230,19 +243,23 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	timestamp_value := m.builder.CreateLShr(ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
 	event_timestamp := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), eventTimestampElementIndex, "event_timestamp")
 	m.builder.CreateStore(timestamp_value, event_timestamp)
-	/*
-	ts := m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_int"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, "ts")
-	m.builder.CreateStore(ts, m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), eventTimestampElementIndex, ""))
-	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
-	*/
+	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
 	m.builder.CreateBr(read_map)
 
 	m.builder.SetInsertPointAtEnd(read_map)
+	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_map"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), key_count)
+	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
 	m.builder.CreateBr(loop)
 
 	m.builder.SetInsertPointAtEnd(loop)
-	/*
-	for index, decl := range decls {
+	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntSLT, m.builder.CreateLoad(key_index, ""), m.builder.CreateLoad(key_count, ""), ""), loop_body, exit)
+
+	m.builder.SetInsertPointAtEnd(loop_body)
+	m.builder.CreateStore(m.builder.CreateAdd(llvm.ConstInt(m.context.Int64Type(), 1, false), m.builder.CreateLoad(key_index, "")), key_index)
+
+	sw := m.builder.CreateSwitch(m.builder.CreateLoad(variable_id), loop)
+	for i, decl := range read_decls {
+		sw.AddCase(llvm.ConstInt(m.context.Int64Type(), decl.Id, false), label[i])
 		if decl.Id == 0 {
 			switch decl.DataType {
 			case core.StringDataType:
@@ -256,8 +273,23 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 			}
 		}
 	}
-	*/
-	m.builder.CreateBr(exit)
+	m.builder.CreateBr(loop)
+
+	for i, decl := range read_decls {
+		sw.AddCase(llvm.ConstInt(m.context.Int64Type(), decl.Id, false), label[i])
+		if decl.Id == 0 {
+			switch decl.DataType {
+			case core.StringDataType:
+				panic("NOT YET IMPLEMENTED: clear_transient_variables [string]")
+			case core.IntegerDataType, core.FactorDataType:
+				m.builder.CreateStore(llvm.ConstInt(m.context.Int64Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
+			case core.FloatDataType:
+				m.builder.CreateStore(llvm.ConstFloat(m.context.DoubleType(), 0), m.builder.CreateStructGEP(event, index, decl.Name))
+			case core.BooleanDataType:
+				m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
+			}
+		}
+	}
 
 	m.builder.SetInsertPointAtEnd(exit)
 	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 1, false))

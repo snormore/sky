@@ -11,6 +11,7 @@ type Assignment struct {
 }
 
 func (a *Assignment) node() {}
+func (a *Assignment) statement() {}
 
 // Creates a new assignment.
 func NewAssignment() *Assignment {

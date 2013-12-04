@@ -11,6 +11,8 @@ type SessionLoop struct {
 }
 
 func (l *SessionLoop) node() {}
+func (l *SessionLoop) block() {}
+func (l *SessionLoop) statement() {}
 
 // NewSessionLoop creates a new SessionLoop instance.
 func NewSessionLoop() *SessionLoop {

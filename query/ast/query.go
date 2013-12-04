@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/skydb/sky/core"
@@ -16,6 +17,7 @@ type Query struct {
 }
 
 func (q *Query) node() {}
+func (q *Query) block() {}
 
 // NewQuery returns a new query.
 func NewQuery() *Query {
@@ -23,9 +25,26 @@ func NewQuery() *Query {
 	q.SystemVarDecls = VarDecls{
 		NewVarDecl("@eos", core.BooleanDataType),
 		NewVarDecl("@eof", core.BooleanDataType),
-		NewVarDecl("timestamp", core.IntegerDataType),
+		NewVarDecl("@timestamp", core.IntegerDataType),
 	}
 	return q
+}
+
+// VarDecls returns a list of indexed variable declarations.
+func (q *Query) VarDecls() (VarDecls, error) {
+	// Retrieve list of 
+	decls, err := FindVarDecls(q)
+	if err != nil {
+		return nil, err
+	}
+
+	// Sort and index declarations.
+	sort.Sort(decls)
+	for i, decl := range decls {
+		decl.index = i
+	}
+
+	return decls, nil
 }
 
 func (q *Query) String() string {

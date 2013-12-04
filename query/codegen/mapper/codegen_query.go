@@ -9,7 +9,7 @@ import (
 
 func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value, error) {
 	// Generate "event" struct type.
-	decls, err := ast.FindVarDecls(q)
+	decls, err := q.VarDecls()
 	if err != nil {
 		return nilValue, err
 	}
@@ -21,6 +21,11 @@ func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value,
 	m.codegenCursorExternalDecl()
 
 	minipack.Declare_unpack_int(m.module, m.context)
+	minipack.Declare_unpack_double(m.module, m.context)
+	minipack.Declare_unpack_bool(m.module, m.context)
+	minipack.Declare_unpack_raw(m.module, m.context)
+	minipack.Declare_unpack_map(m.module, m.context)
+	minipack.Declare_sizeof_elem_and_data(m.module, m.context)
 
 	m.codegenCursorInitFunc()
 	m.codegenCursorNextObjectFunc()

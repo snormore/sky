@@ -15,6 +15,7 @@ type VarDecl struct {
 	Name        string
 	DataType    string
 	Association string
+	index       int
 }
 
 func (v *VarDecl) node() {}
@@ -22,6 +23,12 @@ func (v *VarDecl) node() {}
 // NewVarDecl returns a new VarDecl instance.
 func NewVarDecl(name string, dataType string) *VarDecl {
 	return &VarDecl{Name: name, DataType: dataType}
+}
+
+// Returns the index of the variable declaration. This is used internally
+// to track the generated struct position.
+func (v *VarDecl) Index() int {
+	return v.index
 }
 
 // Determines if the variable declaration is a system variable.
