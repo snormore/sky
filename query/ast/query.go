@@ -23,9 +23,9 @@ func (q *Query) block() {}
 func NewQuery() *Query {
 	q := &Query{}
 	q.SystemVarDecls = VarDecls{
-		NewVarDecl("@eos", core.BooleanDataType),
-		NewVarDecl("@eof", core.BooleanDataType),
-		NewVarDecl("@timestamp", core.IntegerDataType),
+		NewVarDecl(0, "@eos", core.BooleanDataType),
+		NewVarDecl(0, "@eof", core.BooleanDataType),
+		NewVarDecl(0, "@timestamp", core.IntegerDataType),
 	}
 	return q
 }

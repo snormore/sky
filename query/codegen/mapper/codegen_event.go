@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"fmt"
+
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/query/ast"
@@ -171,41 +173,7 @@ func (m *Mapper) codegenClearTransientVariablesFunc(decls ast.VarDecls) llvm.Val
 }
 
 // [codegen]
-// bool read_event(sky_event *event, void *ptr) {
-//     size_t sz;
-//
-// read_timestamp:
-//     int64_t ts = *((int64_t*)ptr);
-//     event->timestamp = ts;
-//     ptr += 8;
-//
-// read_map:
-//     int64_t index = 0;
-//     int64_t key_count = minipack_unpack_raw(ptr, &sz);
-//     if(sz == 0) return false;
-//     ptr += sz;
-//
-// loop:
-//     if(index >= key_count) goto exit;
-//     index += 1;
-//
-//     int64_t variable_id = minipack_unpack_int(ptr, &sz);
-//     if(sz == 0) return false;
-//     ptr += sz;
-//     switch(variable_id) {
-//     case XXX:
-//         event->field = minipack_unpack_XXX(ptr, &sz);
-//         if(sz != 0) {
-//             ptr += sz;
-//             goto loop;
-//         }
-//     }
-//     ptr += minipack_sizeof_elem_and_data(ptr);
-//     goto loop
-//
-// exit:
-//     return true;
-// }
+// bool read_event(sky_event *event, void *ptr)
 func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	fntype := llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.context.Int8Type(), 0)}, false)
 	fn := llvm.AddFunction(m.module, "read_event", fntype)
@@ -218,26 +186,39 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	read_ts := m.context.AddBasicBlock(fn, "read_ts")
 	read_map := m.context.AddBasicBlock(fn, "read_map")
 	loop := m.context.AddBasicBlock(fn, "loop")
-	loop_body := m.context.AddBasicBlock(fn, "loop_body")
+	loop_read_key := m.context.AddBasicBlock(fn, "loop_read_key")
+	loop_read_value := m.context.AddBasicBlock(fn, "loop_read_value")
+	loop_skip := m.context.AddBasicBlock(fn, "loop_skip")
 	for _, decl := range decls {
 		if decl.Id != 0 {
 			read_decls = append(read_decls, decl)
 			read_labels = append(read_labels, m.context.AddBasicBlock(fn, decl.Name))
 		}
 	}
+	error := m.context.AddBasicBlock(fn, "error")
 	exit := m.context.AddBasicBlock(fn, "exit")
 
+	// entry:
+	//     int64_t sz;
+	//     int64_t variable_id;
+	//     int64_t key_count;
+	//     int64_t key_index = 0;
 	m.builder.SetInsertPointAtEnd(entry)
 	event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "event")
 	ptr := m.builder.CreateAlloca(llvm.PointerType(m.context.Int8Type(), 0), "ptr")
-	variable_id := m.builder.CreateAlloca(m.context.Int64Type(), "variable_id")
-	key_index := m.builder.CreateAlloca(m.context.Int64Type(), "key_index")
-	key_count := m.builder.CreateAlloca(m.context.Int64Type(), "key_count")
 	sz := m.builder.CreateAlloca(m.context.Int64Type(), "sz")
+	variable_id := m.builder.CreateAlloca(m.context.Int64Type(), "variable_id")
+	key_count := m.builder.CreateAlloca(m.context.Int64Type(), "key_count")
+	key_index := m.builder.CreateAlloca(m.context.Int64Type(), "key_index")
 	m.builder.CreateStore(fn.Param(0), event)
 	m.builder.CreateStore(fn.Param(1), ptr)
+	m.builder.CreateStore(llvm.ConstInt(m.context.Int64Type(), 0, false), key_index)
 	m.builder.CreateBr(read_ts)
 
+	// read_ts:
+	//     int64_t ts = *((int64_t*)ptr);
+	//     event->timestamp = ts;
+	//     ptr += 8;
 	m.builder.SetInsertPointAtEnd(read_ts)
 	ts_value := m.builder.CreateLoad(m.builder.CreateBitCast(m.builder.CreateLoad(ptr, ""), llvm.PointerType(m.context.Int64Type(), 0), ""), "ts_value")
 	timestamp_value := m.builder.CreateLShr(ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
@@ -246,52 +227,91 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
 	m.builder.CreateBr(read_map)
 
+	// read_map:
+	//     key_index = 0;
+	//     key_count = minipack_unpack_raw(ptr, &sz);
+	//     ptr += sz;
+	//     if(sz != 0) goto loop else goto error
 	m.builder.SetInsertPointAtEnd(read_map)
 	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_map"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), key_count)
 	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
-	m.builder.CreateBr(loop)
+	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error)
 
+	// loop:
+	//     if(key_index < key_count) goto loop_read_key else goto exit;
 	m.builder.SetInsertPointAtEnd(loop)
-	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntSLT, m.builder.CreateLoad(key_index, ""), m.builder.CreateLoad(key_count, ""), ""), loop_body, exit)
+	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntSLT, m.builder.CreateLoad(key_index, ""), m.builder.CreateLoad(key_count, ""), ""), loop_read_key, exit)
 
-	m.builder.SetInsertPointAtEnd(loop_body)
-	m.builder.CreateStore(m.builder.CreateAdd(llvm.ConstInt(m.context.Int64Type(), 1, false), m.builder.CreateLoad(key_index, "")), key_index)
+	// loop_read_key:
+	//     variable_id = minipack_unpack_int(ptr, sz)
+	//     ptr += sz;
+	//     if(sz != 0) goto loop_read_value else goto error;
+	m.builder.SetInsertPointAtEnd(loop_read_key)
+	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_int"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), variable_id)
+	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
+	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop_read_value, error)
 
-	sw := m.builder.CreateSwitch(m.builder.CreateLoad(variable_id), loop)
+	// loop_read_value:
+	//     index += 1;
+	//     switch(variable_id) {
+	//     case XXX:
+	//         event->XXX = minipack_unpack_XXX(ptr, sz);
+	//         goto loop_check_sz;
+	//     default:
+	//         goto loop_skip;
+	//     }
+	m.builder.SetInsertPointAtEnd(loop_read_value)
+	m.builder.CreateStore(m.builder.CreateAdd(llvm.ConstInt(m.context.Int64Type(), 1, false), m.builder.CreateLoad(key_index, ""), ""), key_index)
+	sw := m.builder.CreateSwitch(m.builder.CreateLoad(variable_id, ""), loop_skip, len(read_decls))
 	for i, decl := range read_decls {
-		sw.AddCase(llvm.ConstInt(m.context.Int64Type(), decl.Id, false), label[i])
-		if decl.Id == 0 {
-			switch decl.DataType {
-			case core.StringDataType:
-				panic("NOT YET IMPLEMENTED: clear_transient_variables [string]")
-			case core.IntegerDataType, core.FactorDataType:
-				m.builder.CreateStore(llvm.ConstInt(m.context.Int64Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
-			case core.FloatDataType:
-				m.builder.CreateStore(llvm.ConstFloat(m.context.DoubleType(), 0), m.builder.CreateStructGEP(event, index, decl.Name))
-			case core.BooleanDataType:
-				m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
-			}
-		}
-	}
-	m.builder.CreateBr(loop)
-
-	for i, decl := range read_decls {
-		sw.AddCase(llvm.ConstInt(m.context.Int64Type(), decl.Id, false), label[i])
-		if decl.Id == 0 {
-			switch decl.DataType {
-			case core.StringDataType:
-				panic("NOT YET IMPLEMENTED: clear_transient_variables [string]")
-			case core.IntegerDataType, core.FactorDataType:
-				m.builder.CreateStore(llvm.ConstInt(m.context.Int64Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
-			case core.FloatDataType:
-				m.builder.CreateStore(llvm.ConstFloat(m.context.DoubleType(), 0), m.builder.CreateStructGEP(event, index, decl.Name))
-			case core.BooleanDataType:
-				m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
-			}
-		}
+		sw.AddCase(llvm.ConstIntFromString(m.context.Int64Type(), fmt.Sprintf("%d", decl.Id), 10), read_labels[i])
 	}
 
+	// XXX:
+	//     event->XXX = minipack_unpack_XXX(ptr, sz);
+	//     ptr += sz;
+	//     if(sz != 0) goto loop else goto loop_skip;
+	for i, decl := range read_decls {
+		m.builder.SetInsertPointAtEnd(read_labels[i])
+
+		if decl.DataType == core.StringDataType {
+			panic("NOT YET IMPLEMENTED: read_event [string]")
+		}
+
+		var minipack_func_name string
+		switch decl.DataType {
+		case core.IntegerDataType, core.FactorDataType:
+			minipack_func_name = "minipack_unpack_int"
+		case core.FloatDataType:
+			minipack_func_name = "minipack_unpack_double"
+		case core.BooleanDataType:
+			minipack_func_name = "minipack_unpack_bool"
+		}
+
+		field := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), decl.Index(), "")
+		m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction(minipack_func_name), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), field)
+		m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
+		m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, loop_skip)
+	}
+
+	// loop_skip:
+	//     sz = minipack_sizeof_elem_and_data(ptr);
+	//     ptr += sz;
+	//     if(sz != 0) goto loop else goto error;
+	m.builder.SetInsertPointAtEnd(loop_skip)
+	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_sizeof_elem_and_data"), []llvm.Value{m.builder.CreateLoad(ptr, "")}, ""), sz)
+	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
+	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error)
+
+	// error:
+	//     return false;
+	m.builder.SetInsertPointAtEnd(error)
+	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 0, false))
+
+	// exit:
+	//     return true;
 	m.builder.SetInsertPointAtEnd(exit)
 	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 1, false))
+
 	return fn
 }

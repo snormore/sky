@@ -636,7 +636,7 @@ yydefault:
 	case 18:
 		//line grammar.y:165
 		{
-			yyVAL.var_decl = ast.NewVarDecl(yyS[yypt-3].str, yyS[yypt-1].str)
+			yyVAL.var_decl = ast.NewVarDecl(0, yyS[yypt-3].str, yyS[yypt-1].str)
 			yyVAL.var_decl.Association = yyS[yypt-0].str
 		}
 	case 19:

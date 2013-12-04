@@ -21,8 +21,8 @@ type VarDecl struct {
 func (v *VarDecl) node() {}
 
 // NewVarDecl returns a new VarDecl instance.
-func NewVarDecl(name string, dataType string) *VarDecl {
-	return &VarDecl{Name: name, DataType: dataType}
+func NewVarDecl(id int64, name string, dataType string) *VarDecl {
+	return &VarDecl{Id: id, Name: name, DataType: dataType}
 }
 
 // Returns the index of the variable declaration. This is used internally

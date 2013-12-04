@@ -10,8 +10,8 @@ import (
 func TestFindVarDecls(t *testing.T) {
 	node := NewQuery()
 	node.DeclaredVarDecls = VarDecls{
-		NewVarDecl("foo", "string"),
-		NewVarDecl("bar", "integer"),
+		NewVarDecl(0, "foo", "string"),
+		NewVarDecl(0, "bar", "integer"),
 	}
 	decls, err := FindVarDecls(node)
 	assert.NoError(t, err)
@@ -28,8 +28,8 @@ func TestFindVarDecls(t *testing.T) {
 func TestFindVarDeclsDuplicateInScope(t *testing.T) {
 	q := NewQuery()
 	q.DeclaredVarDecls = VarDecls{
-		NewVarDecl("foo", "string"),
-		NewVarDecl("foo", "integer"),
+		NewVarDecl(0, "foo", "string"),
+		NewVarDecl(0, "foo", "integer"),
 	}
 	_, err := FindVarDecls(q)
 	if assert.Error(t, err) {

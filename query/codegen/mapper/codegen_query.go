@@ -4,10 +4,9 @@ import (
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
 	"github.com/skydb/sky/query/codegen/minipack"
-	"github.com/skydb/sky/query/codegen/symtable"
 )
 
-func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value, error) {
+func (m *Mapper) codegenQuery(q *ast.Query, tbl *ast.Symtable) (llvm.Value, error) {
 	// Generate "event" struct type.
 	decls, err := q.VarDecls()
 	if err != nil {
@@ -48,7 +47,7 @@ func (m *Mapper) codegenQuery(q *ast.Query, tbl *symtable.Symtable) (llvm.Value,
 // exit:
 //     return rc;
 // }
-func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *symtable.Symtable) (llvm.Value, error) {
+func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Value, error) {
 	sig := llvm.FunctionType(m.context.Int32Type(), []llvm.Type{
 		llvm.PointerType(m.cursorType, 0),
 		llvm.PointerType(m.mapType, 0),

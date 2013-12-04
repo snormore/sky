@@ -163,7 +163,7 @@ var_decls :
 var_decl :
     TDECLARE var_name TAS data_type var_decl_association
     {
-        $$ = ast.NewVarDecl($2, $4)
+        $$ = ast.NewVarDecl(0, $2, $4)
         $$.Association = $5
     }
 ;

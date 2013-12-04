@@ -9,8 +9,8 @@ import (
 // Ensure that a variable declaration can be found in the symbol table.
 func TestSymtableFind(t *testing.T) {
 	tbl := NewSymtable(nil)
-	tbl.Add(NewVarDecl("foo", "string"))
-	tbl.Add(NewVarDecl("bar", "integer"))
+	tbl.Add(NewVarDecl(0, "foo", "string"))
+	tbl.Add(NewVarDecl(0, "bar", "integer"))
 	if decl := tbl.Find("foo"); assert.NotNil(t, decl) {
 		assert.Equal(t, decl.Name, "foo")
 	}
@@ -20,7 +20,7 @@ func TestSymtableFind(t *testing.T) {
 func TestSymtableFindInParentScope(t *testing.T) {
 	parent := NewSymtable(nil)
 	tbl := NewSymtable(parent)
-	parent.Add(NewVarDecl("foo", "string"))
+	parent.Add(NewVarDecl(0, "foo", "string"))
 	if decl := tbl.Find("foo"); assert.NotNil(t, decl) {
 		assert.Equal(t, decl.Name, "foo")
 	}
@@ -30,8 +30,8 @@ func TestSymtableFindInParentScope(t *testing.T) {
 func TestSymtableFindOverriddenVariable(t *testing.T) {
 	parent := NewSymtable(nil)
 	tbl := NewSymtable(parent)
-	parent.Add(NewVarDecl("foo", "string"))
-	tbl.Add(NewVarDecl("foo", "integer"))
+	parent.Add(NewVarDecl(0, "foo", "string"))
+	tbl.Add(NewVarDecl(0, "foo", "integer"))
 	if decl := tbl.Find("foo"); assert.NotNil(t, decl) {
 		assert.Equal(t, decl.DataType, "integer")
 	}
