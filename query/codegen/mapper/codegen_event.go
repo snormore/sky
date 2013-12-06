@@ -117,21 +117,22 @@ func (m *Mapper) codegenCursorNextEventFunc(decls ast.VarDecls) {
 func (m *Mapper) codegenCopyPermanentVariablesFunc(decls ast.VarDecls) llvm.Value {
 	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.eventType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "copy_permanent_variables", fntype)
-	event := fn.Param(0)
-	event.SetName("event")
-	next_event := fn.Param(1)
-	next_event.SetName("next_event")
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
+	event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "event")
+	next_event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "next_event")
+	m.builder.CreateStore(fn.Param(0), event)
+	m.builder.CreateStore(fn.Param(1), next_event)
 
-	for index, decl := range decls {
+	for _, decl := range decls {
 		if decl.Id >= 0 {
 			switch decl.DataType {
 			case core.StringDataType:
 				panic("NOT YET IMPLEMENTED: copy_permanent_variables [string]")
 			case core.IntegerDataType, core.FactorDataType, core.FloatDataType, core.BooleanDataType:
-				value := m.builder.CreateLoad(m.builder.CreateStructGEP(event, index, decl.Name + "_src"), decl.Name + "_value")
-				m.builder.CreateStore(value, m.builder.CreateStructGEP(event, index, decl.Name + "_dest"))
+				src := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), decl.Index(), "")
+				dest := m.builder.CreateStructGEP(m.builder.CreateLoad(next_event, ""), decl.Index(), "")
+				m.builder.CreateStore(m.builder.CreateLoad(src, ""), dest)
 			}
 		}
 	}
@@ -254,14 +255,11 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	// loop_read_value:
 	//     index += 1;
 	//     switch(variable_id) {
-	//     case XXX:
-	//         event->XXX = minipack_unpack_XXX(ptr, sz);
-	//         goto loop_check_sz;
+	//     ...
 	//     default:
 	//         goto loop_skip;
 	//     }
 	m.builder.SetInsertPointAtEnd(loop_read_value)
-	m.builder.CreateStore(m.builder.CreateAdd(llvm.ConstInt(m.context.Int64Type(), 1, false), m.builder.CreateLoad(key_index, ""), ""), key_index)
 	sw := m.builder.CreateSwitch(m.builder.CreateLoad(variable_id, ""), loop_skip, len(read_decls))
 	for i, decl := range read_decls {
 		sw.AddCase(llvm.ConstIntFromString(m.context.Int64Type(), fmt.Sprintf("%d", decl.Id), 10), read_labels[i])
@@ -290,7 +288,9 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 
 		field := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), decl.Index(), "")
 		m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction(minipack_func_name), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), field)
+		m.builder.CreateCall(m.module.NamedFunction("debug"), []llvm.Value{m.builder.CreateLoad(ptr, "")}, "")
 		m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
+		// m.createPrintfCall("sz=%d\n", m.builder.CreateLoad(sz, ""))
 		m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, loop_skip)
 	}
 

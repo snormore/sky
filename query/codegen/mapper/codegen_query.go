@@ -19,6 +19,8 @@ func (m *Mapper) codegenQuery(q *ast.Query, tbl *ast.Symtable) (llvm.Value, erro
 	llvm.AddFunction(m.module, "debug", llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.context.Int8Type(), 0)}, false))
 	m.codegenCursorExternalDecl()
 
+	llvm.AddFunction(m.module, "printf", llvm.FunctionType(m.context.Int32Type(), []llvm.Type{}, true))
+
 	minipack.Declare_unpack_int(m.module, m.context)
 	minipack.Declare_unpack_double(m.module, m.context)
 	minipack.Declare_unpack_bool(m.module, m.context)

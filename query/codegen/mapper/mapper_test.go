@@ -20,20 +20,26 @@ type event struct {
 	eos bool
 	eof bool
 	timestamp int64
-	foo int64
+	integerValue int64
+	booleanValue bool
 }
 
 var DATA = [1024]byte{}
 
+var mapperVarDecls = ast.VarDecls{
+	ast.NewVarDecl(2, "integerValue", "integer"),
+	ast.NewVarDecl(5, "booleanValue", "boolean"),
+}
+
 func TestReadEvent(t *testing.T) {
 	var b bytes.Buffer
 	binary.Write(&b, endian.Native, int64(10 << core.SECONDS_BIT_OFFSET))
-	b.Write([]byte{'\x81', '\x02', '\x03'})  // map: {2:3}
+	b.Write([]byte{'\x82', '\x02', '\x03', '\x05', '\xC3'})  // map: {2:3, 5:true}
 	copy(DATA[:], b.Bytes())
-	debugln(DATA)
+	debugln(DATA[:16])
 
 	query, _ := parser.ParseString(`SELECT count()`)
-	query.DeclaredVarDecls = append(query.DeclaredVarDecls, ast.NewVarDecl(2, "foo", "integer"))
+	query.DeclaredVarDecls = append(query.DeclaredVarDecls, mapperVarDecls...)
 	m, err := New(query)
 	assert.NoError(t, err)
 	e := new(event)
@@ -43,7 +49,8 @@ func TestReadEvent(t *testing.T) {
 		llvm.NewGenericValueFromPointer(unsafe.Pointer(&DATA)),
 		})
 	assert.Equal(t, int64(10), e.timestamp)
-	assert.Equal(t, int64(3), e.foo)
+	assert.Equal(t, int64(3), e.integerValue)
+	assert.Equal(t, true, e.booleanValue)
 }
 
 
