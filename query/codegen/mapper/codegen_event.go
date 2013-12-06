@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	eventEosElementIndex     = 0
-	eventEofElementIndex = 1
+	eventEosElementIndex       = 0
+	eventEofElementIndex       = 1
 	eventTimestampElementIndex = 2
 )
 
@@ -24,10 +24,10 @@ const (
 //     bool    boolean_var;
 //     ...
 // } sky_event;
-func (m *Mapper) codegenEventType(decls ast.VarDecls) llvm.Type {
+func (m *Mapper) codegenEventType() llvm.Type {
 	// Append variable declarations.
 	fields := []llvm.Type{}
-	for _, decl := range decls {
+	for _, decl := range m.decls {
 		var field llvm.Type
 
 		switch decl.DataType {
@@ -56,56 +56,80 @@ func (m *Mapper) codegenEventType(decls ast.VarDecls) llvm.Type {
 // [codegen]
 // bool sky_cursor_next_event(sky_cursor *)
 // bool cursor_next_event(sky_cursor *) {
-//     bool rc = sky_cursor_next_event(cursor);
-//     if(rc) goto cont else goto exit;
+//     MDB_val key, data;
+//     goto init;
 //
-// cont:
+// init:
 //     copy_permanent_variables(cursor->event, cursor->next_event);
 //     clear_transient_variables(cursor->next_event);
+//     goto mdb_cursor_get;
+//
+// mdb_cursor_get:
+//     bool rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_NEXT_DUP);
+//     if(rc == 0) goto read_event else goto error;
+//
+// read_event:
 //     rc = read_event(cursor->next_event);
-//     if(rc) goto exit else goto exit;
+//     if(rc) goto exit else goto error;
+//
+// error:
+//     cursor->next_event->eos = true;
+//     cursor->next_event->eof = true;
+//     return false;
 //
 // exit:
-//     return rc;
+//     return true;
 // }
-func (m *Mapper) codegenCursorNextEventFunc(decls ast.VarDecls) {
+func (m *Mapper) codegenCursorNextEventFunc() {
 	fntype := llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "cursor_next_event", fntype)
-	cursor := fn.Param(0)
-	cursor.SetName("cursor")
 
-	copyPermanentVariablesFunc := m.codegenCopyPermanentVariablesFunc(decls)
-	clearTransientVariablesFunc := m.codegenClearTransientVariablesFunc(decls)
-	readEventFunc := m.codegenReadEventFunc(decls)
+	copyPermanentVariablesFunc := m.codegenCopyPermanentVariablesFunc()
+	clearTransientVariablesFunc := m.codegenClearTransientVariablesFunc()
+	readEventFunc := m.codegenReadEventFunc()
 
-	phis := make([]llvm.Value, 0)
 	entry := m.context.AddBasicBlock(fn, "entry")
-	cont := m.context.AddBasicBlock(fn, "cont")
+	init := m.context.AddBasicBlock(fn, "init")
+	mdb_cursor_get := m.context.AddBasicBlock(fn, "mdb_cursor_get")
+	read_event := m.context.AddBasicBlock(fn, "read_event")
+	error_lbl := m.context.AddBasicBlock(fn, "error")
 	exit := m.context.AddBasicBlock(fn, "exit")
 
-	// Call C iterator.
+	// Allocate stack.
 	m.builder.SetInsertPointAtEnd(entry)
-	rc := m.builder.CreateCall(m.module.NamedFunction("sky_cursor_next_event"), []llvm.Value{cursor}, "rc")
-	phis = append(phis, rc)
-	m.builder.CreateCondBr(rc, cont, exit)
+	cursor := m.builder.CreateAlloca(llvm.PointerType(m.cursorType, 0), "cursor")
+	key := m.builder.CreateAlloca(llvm.PointerType(m.mdbValType, 0), "key")
+	data := m.builder.CreateAlloca(llvm.PointerType(m.mdbValType, 0), "data")
+	m.builder.CreateStore(fn.Param(0), cursor)
+	event := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorEventElementIndex, ""), "event")
+	next_event := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorNextEventElementIndex, ""), "next_event")
+	m.builder.CreateBr(init)
 
-	// Retrieve event and next_event pointers.
-	m.builder.SetInsertPointAtEnd(cont)
-	event := m.builder.CreateLoad(m.builder.CreateStructGEP(cursor, cursorEventElementIndex, ""), "event")
-	next_event := m.builder.CreateLoad(m.builder.CreateStructGEP(cursor, cursorNextEventElementIndex, ""), "next_event")
-
-	// Move next event to current event and read the next event.
-	ptr := m.builder.CreateLoad(m.builder.CreateStructGEP(cursor, cursorPtrElementIndex, ""), "ptr")
+	// Copy permanent event values and clear transient values.
+	m.builder.SetInsertPointAtEnd(init)
 	m.builder.CreateCall(copyPermanentVariablesFunc, []llvm.Value{event, next_event}, "")
 	m.builder.CreateCall(clearTransientVariablesFunc, []llvm.Value{next_event}, "")
+	m.builder.CreateBr(mdb_cursor_get)
+
+	// Move MDB cursor forward and retrieve the new pointer.
+	m.builder.SetInsertPointAtEnd(mdb_cursor_get)
+	lmdb_cursor := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorLMDBCursorElementIndex, ""), "lmdb_cursor")
+	rc := m.builder.CreateCall(m.module.NamedFunction("mdb_cursor_get"), []llvm.Value{lmdb_cursor, m.builder.CreateLoad(key, ""), m.builder.CreateLoad(data, ""), llvm.ConstInt(m.context.Int64Type(), MDB_NEXT_DUP, false)}, "rc")
+	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntEQ, rc, llvm.ConstInt(m.context.Int64Type(), 0, false), ""), read_event, error_lbl)
+
+	// Read event from pointer.
+	m.builder.SetInsertPointAtEnd(read_event)
+	ptr := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorPtrElementIndex, ""), "ptr")
 	rc = m.builder.CreateCall(readEventFunc, []llvm.Value{next_event, ptr}, "rc")
-	phis = append(phis, rc)
-	m.builder.CreateBr(exit)
+	m.builder.CreateCondBr(rc, exit, error_lbl)
+
+	m.builder.SetInsertPointAtEnd(error_lbl)
+	m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(next_event, eventEosElementIndex, ""))
+	m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(next_event, eventEofElementIndex, ""))
+	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 0, false))
 
 	m.builder.SetInsertPointAtEnd(exit)
-	phi := m.builder.CreatePHI(m.context.Int1Type(), "phi")
-	phi.AddIncoming(phis, []llvm.BasicBlock{entry, cont})
-	m.builder.CreateRet(phi)
+	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 1, false))
 }
 
 // [codegen]
@@ -114,7 +138,7 @@ func (m *Mapper) codegenCursorNextEventFunc(decls ast.VarDecls) {
 //     dest->field = src->field;
 //     ...
 // }
-func (m *Mapper) codegenCopyPermanentVariablesFunc(decls ast.VarDecls) llvm.Value {
+func (m *Mapper) codegenCopyPermanentVariablesFunc() llvm.Value {
 	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.eventType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "copy_permanent_variables", fntype)
 
@@ -124,7 +148,7 @@ func (m *Mapper) codegenCopyPermanentVariablesFunc(decls ast.VarDecls) llvm.Valu
 	m.builder.CreateStore(fn.Param(0), event)
 	m.builder.CreateStore(fn.Param(1), next_event)
 
-	for _, decl := range decls {
+	for _, decl := range m.decls {
 		if decl.Id >= 0 {
 			switch decl.DataType {
 			case core.StringDataType:
@@ -147,14 +171,14 @@ func (m *Mapper) codegenCopyPermanentVariablesFunc(decls ast.VarDecls) llvm.Valu
 //     event->field = 0;
 //     ...
 // }
-func (m *Mapper) codegenClearTransientVariablesFunc(decls ast.VarDecls) llvm.Value {
+func (m *Mapper) codegenClearTransientVariablesFunc() llvm.Value {
 	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "clear_transient_variables", fntype)
 	event := fn.Param(0)
 	event.SetName("event")
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
-	for index, decl := range decls {
+	for index, decl := range m.decls {
 		if decl.Id < 0 {
 			switch decl.DataType {
 			case core.StringDataType:
@@ -175,14 +199,14 @@ func (m *Mapper) codegenClearTransientVariablesFunc(decls ast.VarDecls) llvm.Val
 
 // [codegen]
 // bool read_event(sky_event *event, void *ptr)
-func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
+func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	fntype := llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.context.Int8Type(), 0)}, false)
 	fn := llvm.AddFunction(m.module, "read_event", fntype)
 	fn.SetFunctionCallConv(llvm.CCallConv)
 
 	read_decls := ast.VarDecls{}
 	read_labels := []llvm.BasicBlock{}
-	
+
 	entry := m.context.AddBasicBlock(fn, "entry")
 	read_ts := m.context.AddBasicBlock(fn, "read_ts")
 	read_map := m.context.AddBasicBlock(fn, "read_map")
@@ -190,7 +214,7 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 	loop_read_key := m.context.AddBasicBlock(fn, "loop_read_key")
 	loop_read_value := m.context.AddBasicBlock(fn, "loop_read_value")
 	loop_skip := m.context.AddBasicBlock(fn, "loop_skip")
-	for _, decl := range decls {
+	for _, decl := range m.decls {
 		if decl.Id != 0 {
 			read_decls = append(read_decls, decl)
 			read_labels = append(read_labels, m.context.AddBasicBlock(fn, decl.Name))
@@ -288,7 +312,6 @@ func (m *Mapper) codegenReadEventFunc(decls ast.VarDecls) llvm.Value {
 
 		field := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), decl.Index(), "")
 		m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction(minipack_func_name), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), field)
-		m.builder.CreateCall(m.module.NamedFunction("debug"), []llvm.Value{m.builder.CreateLoad(ptr, "")}, "")
 		m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
 		// m.createPrintfCall("sz=%d\n", m.builder.CreateLoad(sz, ""))
 		m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, loop_skip)

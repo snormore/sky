@@ -7,7 +7,8 @@ import (
 const (
 	cursorEventElementIndex     = 0
 	cursorNextEventElementIndex = 1
-	cursorPtrElementIndex = 2
+	cursorPtrElementIndex       = 2
+	cursorLMDBCursorElementIndex       = 3
 )
 
 // [codegen]
@@ -21,6 +22,7 @@ func (m *Mapper) codegenCursorType() llvm.Type {
 		llvm.PointerType(m.eventType, 0),
 		llvm.PointerType(m.eventType, 0),
 		llvm.PointerType(m.context.Int8Type(), 0),
+		llvm.PointerType(m.mdbCursorType, 0),
 	}, false)
 	return typ
 }
@@ -29,8 +31,8 @@ func (m *Mapper) codegenCursorType() llvm.Type {
 // bool sky_cursor_init(sky_cursor *)
 // bool sky_cursor_next_object(sky_cursor *)
 func (m *Mapper) codegenCursorExternalDecl() {
-	llvm.AddFunction(m.module, "sky_cursor_init", llvm.FunctionType(m.context.Int32Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false))
-	llvm.AddFunction(m.module, "sky_cursor_next_object", llvm.FunctionType(m.context.Int32Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false))
+	llvm.AddFunction(m.module, "sky_cursor_init", llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false))
+	llvm.AddFunction(m.module, "sky_cursor_next_object", llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false))
 	llvm.AddFunction(m.module, "sky_cursor_next_event", llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false))
 }
 
@@ -40,7 +42,7 @@ func (m *Mapper) codegenCursorExternalDecl() {
 //     return rc;
 // }
 func (m *Mapper) codegenCursorInitFunc() {
-	sig := llvm.FunctionType(m.context.Int32Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false)
+	sig := llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "cursor_init", sig)
 	cursor := fn.Param(0)
 	cursor.SetName("cursor")
@@ -56,7 +58,7 @@ func (m *Mapper) codegenCursorInitFunc() {
 //     return rc;
 // }
 func (m *Mapper) codegenCursorNextObjectFunc() {
-	sig := llvm.FunctionType(m.context.Int32Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false)
+	sig := llvm.FunctionType(m.context.Int1Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "cursor_next_object", sig)
 	cursor := fn.Param(0)
 	cursor.SetName("cursor")

@@ -22,9 +22,13 @@ type Mapper struct {
 	engine  llvm.ExecutionEngine
 	builder llvm.Builder
 
-	cursorType llvm.Type
-	eventType  llvm.Type
-	mapType    llvm.Type
+	decls    ast.VarDecls
+
+	cursorType    llvm.Type
+	eventType     llvm.Type
+	mapType       llvm.Type
+	mdbCursorType llvm.Type
+	mdbValType    llvm.Type
 
 	entryFunc llvm.Value
 }
@@ -39,6 +43,9 @@ func New(q *ast.Query) (*Mapper, error) {
 	m.builder = llvm.NewBuilder()
 
 	var err error
+	if m.decls, err = q.VarDecls(); err != nil {
+		return nil, err
+	}
 	if m.entryFunc, err = m.codegen(q, nil); err != nil {
 		return nil, err
 	}

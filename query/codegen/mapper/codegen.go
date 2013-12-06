@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
@@ -20,6 +21,10 @@ func (m *Mapper) codegen(node ast.Node, symtable *ast.Symtable) (llvm.Value, err
 	switch node := node.(type) {
 	case *ast.Query:
 		return m.codegenQuery(node, symtable)
+	case *ast.EventLoop:
+		return m.codegenEventLoop(node, symtable)
+	case *ast.Selection:
+		return m.codegenSelection(node, symtable)
 	case *ast.VarDecl:
 		if err := symtable.Add(node); err != nil {
 			return nilValue, err
@@ -27,6 +32,6 @@ func (m *Mapper) codegen(node ast.Node, symtable *ast.Symtable) (llvm.Value, err
 		// return m.codegenVarDecl(node, symtable)
 		return nilValue, nil
 	default:
-		panic("mapper codegen: unexpected node type")
+		panic(fmt.Sprintf("mapper codegen: unexpected node type: %v", node))
 	}
 }

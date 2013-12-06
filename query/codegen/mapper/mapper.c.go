@@ -43,12 +43,11 @@ struct sky_cursor {
     sky_event *event;
     sky_event *next_event;
     void *ptr;
+    MDB_cursor* lmdb_cursor;
 
     bool blocking_eos;
-
     void *key_prefix;
     int64_t key_prefix_sz;
-    MDB_cursor* lmdb_cursor;
 };
 
 

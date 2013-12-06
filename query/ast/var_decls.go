@@ -1,6 +1,6 @@
 package ast
 
-// A slice of VarDecl objects.
+// A slice of VarDecl objects. Declarations sort by system, id, name.
 type VarDecls []*VarDecl
 
 func (s VarDecls) Len() int {
@@ -8,10 +8,19 @@ func (s VarDecls) Len() int {
 }
 
 func (s VarDecls) Less(i, j int) bool {
-	if s[i].Id == s[j].Id {
-		return s[i].Name < s[j].Name
+	// System variables go first.
+	isys, jsys := s[i].IsSystemVarDecl(), s[j].IsSystemVarDecl()
+	if isys != jsys {
+		return isys
 	}
-	return s[i].Id < s[j].Id
+
+	// Then sort by id.
+	if s[i].Id != s[j].Id {
+		return s[i].Id < s[j].Id
+	}
+
+	// Finally sort by name.
+	return s[i].Name < s[j].Name
 }
 
 func (s VarDecls) Swap(i, j int) {

@@ -8,12 +8,13 @@ import (
 
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/db"
+	"github.com/skydb/sky/query/ast"
 	"github.com/skydb/sky/query/codegen/mapper"
 	"github.com/skydb/sky/query/parser"
 )
 
 // Executes a query against a given set of data and return the results.
-func runDBMapper(query string, objects map[string][]*core.Event) (interface{}, error) {
+func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Event) (interface{}, error) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 
@@ -41,6 +42,7 @@ func runDBMapper(query string, objects map[string][]*core.Event) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
+	q.DeclaredVarDecls = append(q.DeclaredVarDecls, decls...)
 
 	// Create a mapper generated from the query.
 	m, err := mapper.New(q)
