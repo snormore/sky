@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	cursorEventElementIndex     = 0
-	cursorNextEventElementIndex = 1
-	cursorPtrElementIndex       = 2
-	cursorLMDBCursorElementIndex       = 3
+	cursorEventElementIndex      = 0
+	cursorNextEventElementIndex  = 1
+	cursorPtrElementIndex        = 2
+	cursorLMDBCursorElementIndex = 3
 )
 
 // [codegen]
@@ -49,7 +49,7 @@ func (m *Mapper) codegenCursorInitFunc() {
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
 	rc := m.builder.CreateCall(m.module.NamedFunction("sky_cursor_init"), []llvm.Value{cursor}, "rc")
-	m.builder.CreateRet(rc)
+	m.ret(rc)
 }
 
 // [codegen]
@@ -65,5 +65,5 @@ func (m *Mapper) codegenCursorNextObjectFunc() {
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
 	rc := m.builder.CreateCall(m.module.NamedFunction("sky_cursor_next_object"), []llvm.Value{cursor}, "rc")
-	m.builder.CreateRet(rc)
+	m.ret(rc)
 }

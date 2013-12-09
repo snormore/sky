@@ -72,29 +72,40 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
-	cursor := m.builder.CreateAlloca(llvm.PointerType(m.cursorType, 0), "cursor")
-	result := m.builder.CreateAlloca(llvm.PointerType(m.mapType, 0), "result")
-	m.builder.CreateStore(fn.Param(0), cursor)
-	m.builder.CreateStore(fn.Param(1), result)
-	m.builder.CreateStore(m.builder.CreateMalloc(m.eventType, ""), m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorEventElementIndex, ""))
-	m.builder.CreateStore(m.builder.CreateMalloc(m.eventType, ""), m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorNextEventElementIndex, ""))
-	rc := m.builder.CreateCall(m.module.NamedFunction("cursor_init"), []llvm.Value{m.builder.CreateLoad(cursor, "")}, "rc")
+	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
+	result := m.alloca(llvm.PointerType(m.mapType, 0), "result")
+	m.store(fn.Param(0), cursor)
+	m.store(fn.Param(1), result)
+	m.printf("loop.0 %p\n", m.builder.CreateMalloc(m.eventType, ""))
+	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""))
+	m.printf("loop.0 %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor, ""), cursorNextEventElementIndex, ""))
+	rc := m.builder.CreateCall(m.module.NamedFunction("cursor_init"), []llvm.Value{m.load(cursor, "")}, "rc")
 	m.builder.CreateCondBr(rc, loop_body, exit)
 
 	m.builder.SetInsertPointAtEnd(loop)
-	rc = m.builder.CreateCall(m.module.NamedFunction("cursor_next_object"), []llvm.Value{m.builder.CreateLoad(cursor, "")}, "rc")
+	m.printf("loop.1\n")
+	rc = m.builder.CreateCall(m.module.NamedFunction("cursor_next_object"), []llvm.Value{m.load(cursor, "")}, "rc")
+	m.printf("loop.1.1\n")
 	m.builder.CreateCondBr(rc, loop_body, exit)
 
 	m.builder.SetInsertPointAtEnd(loop_body)
+	m.printf("loop.2\n")
 	for _, statementFn := range statementFns {
-		m.builder.CreateCall(statementFn, []llvm.Value{m.builder.CreateLoad(cursor, ""), m.builder.CreateLoad(result, "")}, "")
+		m.printf("loop.2.1\n")
+		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor, ""), m.load(result, "")}, "")
+		m.printf("loop.! %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
 	}
+	m.printf("loop.2.2\n")
 	m.builder.CreateBr(loop)
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.builder.CreateFree(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorEventElementIndex, ""))
-	m.builder.CreateFree(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorNextEventElementIndex, ""))
-	m.builder.CreateRetVoid()
+	m.printf("loop.3 %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.builder.CreateFree(m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.printf("loop.3.1\n")
+	m.builder.CreateFree(m.load(m.structgep(m.load(cursor, ""), cursorNextEventElementIndex, ""), ""))
+	m.printf("loop.3.2\n")
+	m.retvoid()
 
 	return fn, nil
 }

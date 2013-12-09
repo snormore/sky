@@ -97,39 +97,60 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 
 	// Allocate stack.
 	m.builder.SetInsertPointAtEnd(entry)
-	cursor := m.builder.CreateAlloca(llvm.PointerType(m.cursorType, 0), "cursor")
-	key := m.builder.CreateAlloca(llvm.PointerType(m.mdbValType, 0), "key")
-	data := m.builder.CreateAlloca(llvm.PointerType(m.mdbValType, 0), "data")
-	m.builder.CreateStore(fn.Param(0), cursor)
-	event := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorEventElementIndex, ""), "event")
-	next_event := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorNextEventElementIndex, ""), "next_event")
-	m.builder.CreateBr(init)
+	m.printf("next_event.1\n")
+	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
+	key := m.alloca(m.mdbValType, "key")
+	data := m.alloca(m.mdbValType, "data")
+	m.store(fn.Param(0), cursor)
+	event := m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), "event")
+	next_event := m.load(m.structgep(m.load(cursor, ""), cursorNextEventElementIndex, ""), "next_event")
+	m.printf("next_event.2\n")
+	m.printf("next_event >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.br(init)
 
 	// Copy permanent event values and clear transient values.
 	m.builder.SetInsertPointAtEnd(init)
 	m.builder.CreateCall(copyPermanentVariablesFunc, []llvm.Value{event, next_event}, "")
 	m.builder.CreateCall(clearTransientVariablesFunc, []llvm.Value{next_event}, "")
-	m.builder.CreateBr(mdb_cursor_get)
+	m.printf("next_event.3\n")
+	m.printf("next_event >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.br(mdb_cursor_get)
 
 	// Move MDB cursor forward and retrieve the new pointer.
 	m.builder.SetInsertPointAtEnd(mdb_cursor_get)
-	lmdb_cursor := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorLMDBCursorElementIndex, ""), "lmdb_cursor")
-	rc := m.builder.CreateCall(m.module.NamedFunction("mdb_cursor_get"), []llvm.Value{lmdb_cursor, m.builder.CreateLoad(key, ""), m.builder.CreateLoad(data, ""), llvm.ConstInt(m.context.Int64Type(), MDB_NEXT_DUP, false)}, "rc")
-	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntEQ, rc, llvm.ConstInt(m.context.Int64Type(), 0, false), ""), read_event, error_lbl)
+	lmdb_cursor := m.load(m.structgep(m.load(cursor, ""), cursorLMDBCursorElementIndex, ""), "lmdb_cursor")
+	m.printf("next_event >>> %p | %p | %p\n",
+		m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""),
+		m.load(cursor, ""),
+		lmdb_cursor)
+	rc := m.builder.CreateCall(m.module.NamedFunction("mdb_cursor_get"), []llvm.Value{lmdb_cursor, key, data, llvm.ConstInt(m.context.Int64Type(), MDB_NEXT_DUP, false)}, "rc")
+	m.printf("next_event.4\n")
+	m.printf("next_event >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.condbr(m.builder.CreateICmp(llvm.IntEQ, rc, llvm.ConstInt(m.context.Int64Type(), 0, false), ""), read_event, error_lbl)
 
 	// Read event from pointer.
 	m.builder.SetInsertPointAtEnd(read_event)
-	ptr := m.builder.CreateLoad(m.builder.CreateStructGEP(m.builder.CreateLoad(cursor, ""), cursorPtrElementIndex, ""), "ptr")
+	m.printf("next_event.4.1\n")
+	ptr := m.load(m.structgep(data, 1, ""), "ptr")
+	m.printf("next_event.4.2 %p\n", ptr)
 	rc = m.builder.CreateCall(readEventFunc, []llvm.Value{next_event, ptr}, "rc")
-	m.builder.CreateCondBr(rc, exit, error_lbl)
+	m.printf("next_event.5 %d\n", rc)
+	m.printf("next_event >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.condbr(rc, exit, error_lbl)
 
 	m.builder.SetInsertPointAtEnd(error_lbl)
-	m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(next_event, eventEosElementIndex, ""))
-	m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(next_event, eventEofElementIndex, ""))
-	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 0, false))
+	m.printf("next_event.6.1\n")
+	m.store(llvm.ConstInt(m.context.Int1Type(), 0, false), m.structgep(next_event, eventEosElementIndex, ""))
+	m.printf("next_event.6.2\n")
+	m.store(llvm.ConstInt(m.context.Int1Type(), 0, false), m.structgep(next_event, eventEofElementIndex, ""))
+	m.printf("next_event.6.3\n")
+	m.printf("next_event >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.ret(llvm.ConstInt(m.context.Int1Type(), 0, false))
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 1, false))
+	m.printf("next_event.7\n")
+	m.printf("next_event >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+	m.ret(llvm.ConstInt(m.context.Int1Type(), 1, false))
 }
 
 // [codegen]
@@ -143,10 +164,10 @@ func (m *Mapper) codegenCopyPermanentVariablesFunc() llvm.Value {
 	fn := llvm.AddFunction(m.module, "copy_permanent_variables", fntype)
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
-	event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "event")
-	next_event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "next_event")
-	m.builder.CreateStore(fn.Param(0), event)
-	m.builder.CreateStore(fn.Param(1), next_event)
+	event := m.alloca(llvm.PointerType(m.eventType, 0), "event")
+	next_event := m.alloca(llvm.PointerType(m.eventType, 0), "next_event")
+	m.store(fn.Param(0), event)
+	m.store(fn.Param(1), next_event)
 
 	for _, decl := range m.decls {
 		if decl.Id >= 0 {
@@ -154,14 +175,14 @@ func (m *Mapper) codegenCopyPermanentVariablesFunc() llvm.Value {
 			case core.StringDataType:
 				panic("NOT YET IMPLEMENTED: copy_permanent_variables [string]")
 			case core.IntegerDataType, core.FactorDataType, core.FloatDataType, core.BooleanDataType:
-				src := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), decl.Index(), "")
-				dest := m.builder.CreateStructGEP(m.builder.CreateLoad(next_event, ""), decl.Index(), "")
-				m.builder.CreateStore(m.builder.CreateLoad(src, ""), dest)
+				src := m.structgep(m.load(event, ""), decl.Index(), "")
+				dest := m.structgep(m.load(next_event, ""), decl.Index(), "")
+				m.store(m.load(src, ""), dest)
 			}
 		}
 	}
 
-	m.builder.CreateRetVoid()
+	m.retvoid()
 	return fn
 }
 
@@ -184,16 +205,16 @@ func (m *Mapper) codegenClearTransientVariablesFunc() llvm.Value {
 			case core.StringDataType:
 				panic("NOT YET IMPLEMENTED: clear_transient_variables [string]")
 			case core.IntegerDataType, core.FactorDataType:
-				m.builder.CreateStore(llvm.ConstInt(m.context.Int64Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
+				m.store(llvm.ConstInt(m.context.Int64Type(), 0, false), m.structgep(event, index, decl.Name))
 			case core.FloatDataType:
-				m.builder.CreateStore(llvm.ConstFloat(m.context.DoubleType(), 0), m.builder.CreateStructGEP(event, index, decl.Name))
+				m.store(llvm.ConstFloat(m.context.DoubleType(), 0), m.structgep(event, index, decl.Name))
 			case core.BooleanDataType:
-				m.builder.CreateStore(llvm.ConstInt(m.context.Int1Type(), 0, false), m.builder.CreateStructGEP(event, index, decl.Name))
+				m.store(llvm.ConstInt(m.context.Int1Type(), 0, false), m.structgep(event, index, decl.Name))
 			}
 		}
 	}
 
-	m.builder.CreateRetVoid()
+	m.retvoid()
 	return fn
 }
 
@@ -229,28 +250,36 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     int64_t key_count;
 	//     int64_t key_index = 0;
 	m.builder.SetInsertPointAtEnd(entry)
-	event := m.builder.CreateAlloca(llvm.PointerType(m.eventType, 0), "event")
-	ptr := m.builder.CreateAlloca(llvm.PointerType(m.context.Int8Type(), 0), "ptr")
-	sz := m.builder.CreateAlloca(m.context.Int64Type(), "sz")
-	variable_id := m.builder.CreateAlloca(m.context.Int64Type(), "variable_id")
-	key_count := m.builder.CreateAlloca(m.context.Int64Type(), "key_count")
-	key_index := m.builder.CreateAlloca(m.context.Int64Type(), "key_index")
-	m.builder.CreateStore(fn.Param(0), event)
-	m.builder.CreateStore(fn.Param(1), ptr)
-	m.builder.CreateStore(llvm.ConstInt(m.context.Int64Type(), 0, false), key_index)
-	m.builder.CreateBr(read_ts)
+	m.printf("read_event.1\n")
+	event := m.alloca(llvm.PointerType(m.eventType, 0), "event")
+	ptr := m.alloca(llvm.PointerType(m.context.Int8Type(), 0), "ptr")
+	sz := m.alloca(m.context.Int64Type(), "sz")
+	variable_id := m.alloca(m.context.Int64Type(), "variable_id")
+	key_count := m.alloca(m.context.Int64Type(), "key_count")
+	key_index := m.alloca(m.context.Int64Type(), "key_index")
+	m.store(fn.Param(0), event)
+	m.store(fn.Param(1), ptr)
+	m.store(llvm.ConstInt(m.context.Int64Type(), 0, false), key_index)
+	m.printf("read_event.2\n")
+	m.br(read_ts)
 
 	// read_ts:
 	//     int64_t ts = *((int64_t*)ptr);
 	//     event->timestamp = ts;
 	//     ptr += 8;
 	m.builder.SetInsertPointAtEnd(read_ts)
-	ts_value := m.builder.CreateLoad(m.builder.CreateBitCast(m.builder.CreateLoad(ptr, ""), llvm.PointerType(m.context.Int64Type(), 0), ""), "ts_value")
+	m.printf("read_event.3.1 %p\n", m.load(ptr, ""))
+	ts_value := m.load(m.builder.CreateBitCast(m.load(ptr, ""), llvm.PointerType(m.context.Int64Type(), 0), ""), "ts_value")
+	m.printf("read_event.3.2\n")
 	timestamp_value := m.builder.CreateLShr(ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
-	event_timestamp := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), eventTimestampElementIndex, "event_timestamp")
-	m.builder.CreateStore(timestamp_value, event_timestamp)
-	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
-	m.builder.CreateBr(read_map)
+	m.printf("read_event.3.3\n")
+	event_timestamp := m.structgep(m.load(event, ""), eventTimestampElementIndex, "event_timestamp")
+	m.printf("read_event.3.4\n")
+	m.store(timestamp_value, event_timestamp)
+	m.printf("read_event.3.5\n")
+	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
+	m.printf("read_event.3.6\n")
+	m.br(read_map)
 
 	// read_map:
 	//     key_index = 0;
@@ -258,23 +287,26 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     ptr += sz;
 	//     if(sz != 0) goto loop else goto error
 	m.builder.SetInsertPointAtEnd(read_map)
-	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_map"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), key_count)
-	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
-	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error)
+	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_map"), []llvm.Value{m.load(ptr, ""), sz}, ""), key_count)
+	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
+	m.printf("read_event.4\n")
+	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error)
 
 	// loop:
 	//     if(key_index < key_count) goto loop_read_key else goto exit;
 	m.builder.SetInsertPointAtEnd(loop)
-	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntSLT, m.builder.CreateLoad(key_index, ""), m.builder.CreateLoad(key_count, ""), ""), loop_read_key, exit)
+	m.printf("read_event.5\n")
+	m.condbr(m.builder.CreateICmp(llvm.IntSLT, m.load(key_index, ""), m.load(key_count, ""), ""), loop_read_key, exit)
 
 	// loop_read_key:
 	//     variable_id = minipack_unpack_int(ptr, sz)
 	//     ptr += sz;
 	//     if(sz != 0) goto loop_read_value else goto error;
 	m.builder.SetInsertPointAtEnd(loop_read_key)
-	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_int"), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), variable_id)
-	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
-	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop_read_value, error)
+	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_int"), []llvm.Value{m.load(ptr, ""), sz}, ""), variable_id)
+	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
+	m.printf("read_event.6\n")
+	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop_read_value, error)
 
 	// loop_read_value:
 	//     index += 1;
@@ -284,7 +316,7 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//         goto loop_skip;
 	//     }
 	m.builder.SetInsertPointAtEnd(loop_read_value)
-	sw := m.builder.CreateSwitch(m.builder.CreateLoad(variable_id, ""), loop_skip, len(read_decls))
+	sw := m.builder.CreateSwitch(m.load(variable_id, ""), loop_skip, len(read_decls))
 	for i, decl := range read_decls {
 		sw.AddCase(llvm.ConstIntFromString(m.context.Int64Type(), fmt.Sprintf("%d", decl.Id), 10), read_labels[i])
 	}
@@ -296,6 +328,7 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	for i, decl := range read_decls {
 		m.builder.SetInsertPointAtEnd(read_labels[i])
 
+		m.printf("read_event.7\n")
 		if decl.DataType == core.StringDataType {
 			panic("NOT YET IMPLEMENTED: read_event [string]")
 		}
@@ -310,11 +343,11 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 			minipack_func_name = "minipack_unpack_bool"
 		}
 
-		field := m.builder.CreateStructGEP(m.builder.CreateLoad(event, ""), decl.Index(), "")
-		m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction(minipack_func_name), []llvm.Value{m.builder.CreateLoad(ptr, ""), sz}, ""), field)
-		m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
-		// m.createPrintfCall("sz=%d\n", m.builder.CreateLoad(sz, ""))
-		m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, loop_skip)
+		field := m.structgep(m.load(event, ""), decl.Index(), "")
+		m.store(m.builder.CreateCall(m.module.NamedFunction(minipack_func_name), []llvm.Value{m.load(ptr, ""), sz}, ""), field)
+		m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
+		m.printf("read_event.7.1\n")
+		m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, loop_skip)
 	}
 
 	// loop_skip:
@@ -322,19 +355,22 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     ptr += sz;
 	//     if(sz != 0) goto loop else goto error;
 	m.builder.SetInsertPointAtEnd(loop_skip)
-	m.builder.CreateStore(m.builder.CreateCall(m.module.NamedFunction("minipack_sizeof_elem_and_data"), []llvm.Value{m.builder.CreateLoad(ptr, "")}, ""), sz)
-	m.builder.CreateStore(m.builder.CreateGEP(m.builder.CreateLoad(ptr, ""), []llvm.Value{m.builder.CreateLoad(sz, "")}, ""), ptr)
-	m.builder.CreateCondBr(m.builder.CreateICmp(llvm.IntNE, m.builder.CreateLoad(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error)
+	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_sizeof_elem_and_data"), []llvm.Value{m.load(ptr, "")}, ""), sz)
+	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
+	m.printf("read_event.8\n")
+	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error)
 
 	// error:
 	//     return false;
 	m.builder.SetInsertPointAtEnd(error)
-	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 0, false))
+	m.printf("read_event.9\n")
+	m.ret(llvm.ConstInt(m.context.Int1Type(), 0, false))
 
 	// exit:
 	//     return true;
 	m.builder.SetInsertPointAtEnd(exit)
-	m.builder.CreateRet(llvm.ConstInt(m.context.Int1Type(), 1, false))
+	m.printf("read_event.10\n")
+	m.ret(llvm.ConstInt(m.context.Int1Type(), 1, false))
 
 	return fn
 }

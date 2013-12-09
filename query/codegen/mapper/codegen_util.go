@@ -4,7 +4,8 @@ import (
 	"github.com/axw/gollvm/llvm"
 )
 
-func (m *Mapper) createPrintfCall(format string, values ...interface{}) llvm.Value {
+// printf inserts a call to "printf" at the current builder position.
+func (m *Mapper) printf(format string, values ...interface{}) llvm.Value {
 	vals := []llvm.Value{}
 	vals = append(vals, m.builder.CreateGlobalString(format, ""))
 
