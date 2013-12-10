@@ -10,11 +10,12 @@ import (
 	"github.com/skydb/sky/db"
 	"github.com/skydb/sky/query/ast"
 	"github.com/skydb/sky/query/codegen/mapper"
+	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/skydb/sky/query/parser"
 )
 
 // Executes a query against a given set of data and return the results.
-func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Event) (interface{}, error) {
+func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Event) (*hashmap.Hashmap, error) {
 	path, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(path)
 
@@ -52,7 +53,12 @@ func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Ev
 	m.Dump()
 
 	// Execute the mapper.
-	return m.Execute(cursors[0], "", nil), nil
+	result := hashmap.New()
+	if err = m.Execute(cursors[0], "", result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func testevent(timestamp string, args ...interface{}) *core.Event {

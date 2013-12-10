@@ -19,5 +19,7 @@ func TestSelectCount(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-	assert.NotNil(t, result)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, result.Get(0), 2)
+	}
 }

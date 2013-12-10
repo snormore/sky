@@ -3,6 +3,7 @@ package mapper
 import (
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/skydb/sky/query/codegen/minipack"
 )
 
@@ -13,7 +14,10 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 
 	m.eventType = m.codegenEventType()
 	m.cursorType = m.codegenCursorType()
-	m.mapType = m.context.StructCreateNamed("sky_map")
+
+	m.hashmapType = hashmap.DeclareType(m.module, m.context)
+	hashmap.Declare(m.module, m.context, m.hashmapType)
+
 
 	llvm.AddFunction(m.module, "debug", llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.context.Int8Type(), 0)}, false))
 	m.codegenCursorExternalDecl()
@@ -54,7 +58,7 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 //     return;
 // }
 func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Value, error) {
-	sig := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.cursorType, 0), llvm.PointerType(m.mapType, 0)}, false)
+	sig := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.cursorType, 0), llvm.PointerType(m.hashmapType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "entry", sig)
 	fn.SetFunctionCallConv(llvm.CCallConv)
 
@@ -75,7 +79,7 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 
 	m.builder.SetInsertPointAtEnd(entry)
 	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
-	result := m.alloca(llvm.PointerType(m.mapType, 0), "result")
+	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
 	m.store(fn.Param(0), cursor)
 	m.store(fn.Param(1), result)
 	m.printf("loop.0 %p\n", m.builder.CreateMalloc(m.eventType, ""))

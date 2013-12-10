@@ -16,7 +16,7 @@ import (
 //     return;
 // }
 func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.Value, error) {
-	sig := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.cursorType, 0), llvm.PointerType(m.mapType, 0)}, false)
+	sig := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.cursorType, 0), llvm.PointerType(m.hashmapType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "event_loop", sig)
 
 	// Generate functions for child statements.
@@ -37,7 +37,7 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	m.printf("event_loop.1\n")
 	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
 	m.store(fn.Param(0), cursor)
-	result := m.alloca(llvm.PointerType(m.mapType, 0), "result")
+	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
 	m.store(fn.Param(1), result)
 	m.builder.CreateBr(loop)
 

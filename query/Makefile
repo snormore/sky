@@ -8,6 +8,9 @@ flags:
 test:
 	CGO_CFLAGS=$(CFLAGS) CGO_LDFLAGS=$(LDFLAGS) go test -v $(PKG)
 
+bench:
+	CGO_CFLAGS=$(CFLAGS) CGO_LDFLAGS=$(LDFLAGS) go test -v -test.bench=. $(PKG)
+
 parser:
 	make -C parser
 

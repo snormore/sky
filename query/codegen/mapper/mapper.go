@@ -10,6 +10,7 @@ import (
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
 	_ "github.com/skydb/sky/query/codegen"
+	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/szferi/gomdb"
 )
 
@@ -26,7 +27,7 @@ type Mapper struct {
 
 	cursorType    llvm.Type
 	eventType     llvm.Type
-	mapType       llvm.Type
+	hashmapType   llvm.Type
 	mdbCursorType llvm.Type
 	mdbValType    llvm.Type
 
@@ -66,7 +67,7 @@ func finalize(m *Mapper) {
 }
 
 // Execute runs the entry function on the execution engine.
-func (m *Mapper) Execute(lmdb_cursor *mdb.Cursor, prefix string, result *interface{}) error {
+func (m *Mapper) Execute(lmdb_cursor *mdb.Cursor, prefix string, result *hashmap.Hashmap) error {
 	cursor := sky_cursor_new(lmdb_cursor, prefix)
 	defer sky_cursor_free(cursor)
 

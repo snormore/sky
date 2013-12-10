@@ -48,7 +48,7 @@ void sky_hashmap_free(sky_hashmap *hashmap)
 }
 
 // Retrieves the bucket and element in the hashmap for a key.
-void sky_hashmap_find(sky_hashmap *hashmap, int64_t key, sky_hashmap_bucket **bucket, sky_hashmap_elem **element)
+inline void sky_hashmap_find(sky_hashmap *hashmap, int64_t key, sky_hashmap_bucket **bucket, sky_hashmap_elem **element)
 {
     int64_t i;
     int64_t hash = key % HASHMAP_BUCKET_COUNT;
@@ -64,7 +64,7 @@ void sky_hashmap_find(sky_hashmap *hashmap, int64_t key, sky_hashmap_bucket **bu
 
 // Retrieves the bucket and element in the hashmap for a key.
 // The element is created if it's not found.
-void sky_hashmap_find_or_create(sky_hashmap *hashmap, int64_t key, sky_hashmap_elem_type_e value_type, sky_hashmap_elem **elem)
+inline void sky_hashmap_find_or_create(sky_hashmap *hashmap, int64_t key, sky_hashmap_elem_type_e value_type, sky_hashmap_elem **elem)
 {
     sky_hashmap_bucket *bucket;
     sky_hashmap_find(hashmap, key, &bucket, elem);
