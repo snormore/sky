@@ -4,6 +4,8 @@ import (
 	"github.com/axw/gollvm/llvm"
 )
 
+var nilValue llvm.Value
+
 func (m *Mapper) alloca(typ llvm.Type, name... string) llvm.Value {
 	return m.builder.CreateAlloca(typ, fname(name))
 }

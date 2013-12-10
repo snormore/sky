@@ -22,7 +22,7 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	// Generate functions for child statements.
 	var statementFns []llvm.Value
 	for _, statement := range node.Statements {
-		statementFn, err := m.codegen(statement, tbl)
+		statementFn, err := m.codegenStatement(statement, tbl)
 		if err != nil {
 			return nilValue, err
 		}
@@ -39,22 +39,18 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	m.store(fn.Param(0), cursor)
 	result := m.alloca(llvm.PointerType(m.mapType, 0), "result")
 	m.store(fn.Param(1), result)
-	m.printf("event_loop.1.1\n")
 	m.builder.CreateBr(loop)
 
 	m.builder.SetInsertPointAtEnd(loop)
 	m.printf("event_loop.2\n")
 	for _, statementFn := range statementFns {
-		m.printf("event_loop.2.1\n")
 		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor, ""), m.load(result, "")}, "")
 	}
-	m.printf("event_loop.2.3\n")
-	m.printf("event_loop >>> %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
 	rc := m.builder.CreateCall(m.module.NamedFunction("cursor_next_event"), []llvm.Value{m.load(cursor, "")}, "rc")
 	m.builder.CreateCondBr(rc, loop, exit)
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.printf("event_loop.2.4\n")
+	m.printf("event_loop.3\n")
 	m.retvoid()
 
 	return fn, nil

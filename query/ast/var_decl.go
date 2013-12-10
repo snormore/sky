@@ -19,6 +19,7 @@ type VarDecl struct {
 }
 
 func (v *VarDecl) node() {}
+func (v *VarDecl) statement() {}
 
 // NewVarDecl returns a new VarDecl instance.
 func NewVarDecl(id int64, name string, dataType string) *VarDecl {

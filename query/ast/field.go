@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Field represents a single field within a Selection.
@@ -26,6 +27,25 @@ func NewField(name string, aggregation string, expression Expression) *Field {
 // Determines if the field performs aggregation.
 func (f *Field) IsAggregate() bool {
 	return f.Aggregation != ""
+}
+
+// Returns the identifier used by the field.
+// This is automatically generated if a name is not explicitly set.
+func (f *Field) Identifier() string {
+        if f.Name != "" {
+                return f.Name
+        }
+        names := []string{}
+        if f.Aggregation != "" {
+                names = append(names, f.Aggregation)
+        }
+        if f.Expression != nil {
+                expr := f.Expression.String()
+                expr = nonAlphaRegex.ReplaceAllString(expr, "_")
+                expr = strings.Trim(expr, "_")
+                names = append(names, expr)
+        }
+        return strings.Join(names, "_")
 }
 
 // Converts the field to a string-based representation.

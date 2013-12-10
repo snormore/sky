@@ -46,7 +46,7 @@ func New(q *ast.Query) (*Mapper, error) {
 	if m.decls, err = q.VarDecls(); err != nil {
 		return nil, err
 	}
-	if m.entryFunc, err = m.codegen(q, nil); err != nil {
+	if m.entryFunc, err = m.codegenQuery(q); err != nil {
 		return nil, err
 	}
 	if err = llvm.VerifyModule(m.module, llvm.ReturnStatusAction); err != nil {

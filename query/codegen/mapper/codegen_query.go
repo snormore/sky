@@ -6,7 +6,9 @@ import (
 	"github.com/skydb/sky/query/codegen/minipack"
 )
 
-func (m *Mapper) codegenQuery(q *ast.Query, tbl *ast.Symtable) (llvm.Value, error) {
+func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
+	tbl := ast.NewSymtable(nil)
+	
 	m.declare_lmdb()
 
 	m.eventType = m.codegenEventType()
@@ -59,7 +61,7 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 	// Generate functions for child statements.
 	var statementFns []llvm.Value
 	for _, statement := range q.Statements {
-		statementFn, err := m.codegen(statement, tbl)
+		statementFn, err := m.codegenStatement(statement, tbl)
 		if err != nil {
 			return nilValue, err
 		}
