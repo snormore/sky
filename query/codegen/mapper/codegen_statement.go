@@ -17,6 +17,8 @@ func (m *Mapper) codegenStatement(node ast.Statement, symtable *ast.Symtable) (l
 	symtable = ast.NodeSymtable(node, symtable)
 
 	switch node := node.(type) {
+	case *ast.Condition:
+		return m.codegenCondition(node, symtable)
 	case *ast.EventLoop:
 		return m.codegenEventLoop(node, symtable)
 	case *ast.Selection:

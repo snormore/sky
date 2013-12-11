@@ -36,8 +36,8 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	m.builder.SetInsertPointAtEnd(entry)
 	m.printf("event_loop.1\n")
 	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
-	m.store(fn.Param(0), cursor)
 	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
+	m.store(fn.Param(0), cursor)
 	m.store(fn.Param(1), result)
 	m.builder.CreateBr(loop)
 
@@ -46,8 +46,8 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	for _, statementFn := range statementFns {
 		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor, ""), m.load(result, "")}, "")
 	}
-	rc := m.builder.CreateCall(m.module.NamedFunction("cursor_next_event"), []llvm.Value{m.load(cursor, "")}, "rc")
-	m.builder.CreateCondBr(rc, loop, exit)
+	rc := m.call("cursor_next_event", m.load(cursor))
+	m.condbr(rc, loop, exit)
 
 	m.builder.SetInsertPointAtEnd(exit)
 	m.printf("event_loop.3\n")
