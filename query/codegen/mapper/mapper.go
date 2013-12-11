@@ -73,7 +73,7 @@ func (m *Mapper) Execute(lmdb_cursor *mdb.Cursor, prefix string, result *hashmap
 
 	m.engine.RunFunction(m.entryFunc, []llvm.GenericValue{
 		llvm.NewGenericValueFromPointer(unsafe.Pointer(cursor)),
-		llvm.NewGenericValueFromPointer(unsafe.Pointer(result)),
+		llvm.NewGenericValueFromPointer(unsafe.Pointer(result.C)),
 	})
 	return nil
 }
