@@ -34,7 +34,7 @@ func TestMapperSelectCount(t *testing.T) {
 func TestMapperCondition(t *testing.T) {
 	query := `
 		FOR EACH EVENT
-			WHEN true THEN
+			WHEN true || false THEN
 				SELECT count()
 			END
 		END

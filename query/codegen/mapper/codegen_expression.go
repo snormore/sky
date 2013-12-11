@@ -15,6 +15,8 @@ func (m *Mapper) codegenExpression(node ast.Expression, event llvm.Value, symtab
 	}
 
 	switch node := node.(type) {
+	case *ast.BinaryExpression:
+		return m.codegenBinaryExpression(node, event, symtable)
 	case *ast.BooleanLiteral:
 		return m.codegenBooleanLiteral(node, event, symtable)
 	case *ast.IntegerLiteral:
