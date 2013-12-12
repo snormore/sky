@@ -53,9 +53,22 @@ func TestHashmapOverrideWithInt(t *testing.T) {
 
 
 // Runs the benchmark 10,000 times per iteration within the C context.
-func BenchmarkHashmapInsert10k(b *testing.B) {
+func BenchmarkHashmapGet10k(b *testing.B) {
+	h := New()
+	for i := 0; i < BucketCount(); i++ {
+		h.Set(int64(i), 100)
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchmarkGet(h, 10000)
+	}
+}
+
+// Runs the benchmark 10,000 times per iteration within the C context.
+func BenchmarkHashmapSet10k(b *testing.B) {
 	h := New()
 	for i := 0; i < b.N; i++ {
-		benchmark(h, 10000)
+		benchmarkSet(h, 10000)
 	}
 }

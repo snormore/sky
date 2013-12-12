@@ -117,7 +117,16 @@ sky_hashmap *sky_hashmap_submap(sky_hashmap *hashmap, int64_t key)
 
 
 // FOR BENCHMARKING ONLY.
-sky_hashmap *sky_hashmap_benchmark(sky_hashmap *hashmap, int64_t n)
+sky_hashmap *sky_hashmap_benchmark_get(sky_hashmap *hashmap, int64_t n)
+{
+    int64_t i;
+    for (i=0; i<n; i++) {
+        sky_hashmap_get(hashmap, i % 256);
+    }
+}
+
+// FOR BENCHMARKING ONLY.
+sky_hashmap *sky_hashmap_benchmark_set(sky_hashmap *hashmap, int64_t n)
 {
     int64_t i;
     for (i=0; i<n; i++) {
@@ -136,6 +145,11 @@ type Hashmap struct {
 // New creates a new Hashmap instance.
 func New() *Hashmap {
     return &Hashmap{C.sky_hashmap_new()}
+}
+
+// Retrieves the number of buckets used by the hashmap.
+func BucketCount() int {
+    return C.HASHMAP_BUCKET_COUNT
 }
 
 // Free releases the underlying C memory.
@@ -161,8 +175,14 @@ func (h *Hashmap) Submap(key int64) *Hashmap {
     return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
 }
 
-// benchmark runs set N number of times within the C context.
-func benchmark(h *Hashmap, n int64) {
-    C.sky_hashmap_benchmark(h.C, C.int64_t(n))
+
+// benchmark runs get() N number of times within the C context.
+func benchmarkGet(h *Hashmap, n int64) {
+    C.sky_hashmap_benchmark_get(h.C, C.int64_t(n))
+}
+
+// benchmark runs set() N number of times within the C context.
+func benchmarkSet(h *Hashmap, n int64) {
+    C.sky_hashmap_benchmark_set(h.C, C.int64_t(n))
 }
 
