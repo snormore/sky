@@ -8,7 +8,7 @@ import (
 	"github.com/skydb/sky/query/ast"
 )
 
-// codegen generates LLVM code for a given AST node.
+// codegenStatement generates LLVM code for a given AST node.
 func (m *Mapper) codegenStatement(node ast.Statement, symtable *ast.Symtable) (llvm.Value, error) {
 	if node == nil {
 		return nilValue, errors.New("mapper codegen: unexpected null node")
@@ -32,4 +32,17 @@ func (m *Mapper) codegenStatement(node ast.Statement, symtable *ast.Symtable) (l
 	default:
 		panic(fmt.Sprintf("mapper codegen: unexpected node type: %v", node))
 	}
+}
+
+// codegenStatements generates LLVM code for multiple statements.
+func (m *Mapper) codegenStatements(nodes ast.Statements, symtable *ast.Symtable) ([]llvm.Value, error) {
+	values := []llvm.Value{}
+	for _, node := range nodes {
+		value, err := m.codegenStatement(node, symtable)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, nil
 }

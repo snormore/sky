@@ -53,7 +53,6 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
-	m.printf("condition.entry\n")
 	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
 	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
 	index := m.alloca(m.context.Int64Type(), "index")
@@ -63,12 +62,10 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.br(loop_range_condition)
 
 	m.builder.SetInsertPointAtEnd(loop_range_condition)
-	m.printf("condition.loop_range_condition\n")
 	rc := m.icmp(llvm.IntUGE, m.load(index), m.constint(node.WithinRangeStart), "rc")
 	m.condbr(rc, loop_expr_condition, loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_expr_condition)
-	m.printf("condition.loop_expr_condition\n")
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
 	exprValue, err := m.codegenExpression(node.Expression, event, tbl)
 	if err != nil {
@@ -77,25 +74,21 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.condbr(exprValue, loop_body, loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_body)
-	m.printf("condition.loop_body\n")
 	for _, statementFn := range statementFns {
 		m.call(statementFn, m.load(cursor), m.load(result))
 	}
 	m.br(loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_end)
-	m.printf("condition.loop_end\n")
 	rc = m.icmp(llvm.IntULT, m.load(index), m.constint(node.WithinRangeEnd))
 	m.condbr(rc, loop_iterate, exit)
 
 	m.builder.SetInsertPointAtEnd(loop_iterate)
-	m.printf("condition.loop_iterate\n")
 	m.store(m.add(m.load(index), m.constint(1)), index)
 	rc = m.call("cursor_next_event", m.load(cursor))
 	m.condbr(rc, loop_range_condition, exit)
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.printf("condition.exit\n")
 	m.retvoid()
 
 	return fn, nil

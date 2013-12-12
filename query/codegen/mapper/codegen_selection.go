@@ -36,7 +36,6 @@ func (m *Mapper) codegenSelection(node *ast.Selection, tbl *ast.Symtable) (llvm.
 	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
 	m.store(fn.Param(0), cursor)
 	m.store(fn.Param(1), result)
-	m.printf("selection.1\n")
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
 	m.builder.CreateBr(dimensions_lbl)
 
@@ -51,7 +50,6 @@ func (m *Mapper) codegenSelection(node *ast.Selection, tbl *ast.Symtable) (llvm.
 		value := m.load(m.structgep(event, decl.Index()))
 		result = m.builder.CreateCall(m.module.NamedFunction("sky_hashmap_submap"), []llvm.Value{result, value}, "")
 	}
-	m.printf("selection.2\n")
 	m.builder.CreateBr(fields_lbl)
 
 	m.builder.SetInsertPointAtEnd(fields_lbl)

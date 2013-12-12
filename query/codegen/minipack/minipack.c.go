@@ -406,7 +406,7 @@ size_t minipack_sizeof_map(uint32_t count);
 
 size_t minipack_sizeof_map_elem(void *ptr);
 
-uint32_t minipack_unpack_map(void *ptr, size_t *sz);
+int64_t minipack_unpack_map(void *ptr, size_t *sz);
 
 void minipack_pack_map(void *ptr, uint32_t count, size_t *sz);
 
@@ -2470,13 +2470,14 @@ size_t minipack_sizeof_map_elem(void *ptr)
 // sz  - A pointer to where the size of the header will be returned to.
 //
 // Returns the number of elements in the map.
-uint32_t minipack_unpack_map(void *ptr, size_t *sz)
+int64_t minipack_unpack_map(void *ptr, size_t *sz)
 {
     if(minipack_is_fixmap(ptr)) {
-        return (uint32_t)minipack_unpack_fixmap(ptr, sz);
+        printf("fixmap: %d\n", (uint32_t)minipack_unpack_fixmap(ptr, sz));
+        return (int64_t)minipack_unpack_fixmap(ptr, sz);
     }
     else if(minipack_is_map16(ptr)) {
-        return (uint32_t)minipack_unpack_map16(ptr, sz);
+        return (int64_t)minipack_unpack_map16(ptr, sz);
     }
     else if(minipack_is_map32(ptr)) {
         return minipack_unpack_map32(ptr, sz);

@@ -21,6 +21,8 @@ func (m *Mapper) codegenExpression(node ast.Expression, event llvm.Value, symtab
 		return m.codegenBooleanLiteral(node, event, symtable)
 	case *ast.IntegerLiteral:
 		return m.codegenIntegerLiteral(node, event, symtable)
+	case *ast.VarRef:
+		return m.codegenVarRef(node, event, symtable)
 	default:
 		panic(fmt.Sprintf("mapper codegen expression: unexpected node type: %v", node))
 	}

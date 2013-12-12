@@ -31,16 +31,14 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 	m.br(body)
 
 	m.builder.SetInsertPointAtEnd(body)
-	m.printf("field.1\n")
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
 	if node.IsAggregate() {
 		currentValue := m.builder.CreateCall(m.module.NamedFunction("sky_hashmap_get"), []llvm.Value{m.load(result), llvm.ConstInt(m.context.Int64Type(), uint64(index), false)}, "")
-		m.printf("field.2 %d\n", currentValue)
 		newValue, err := m.codegenAggregateField(node, tbl, event, currentValue)
 		if err != nil {
 			return nilValue, err
 		}
-		m.printf("field.4 %p | %d / %d\n", m.load(result), newValue, llvm.ConstInt(m.context.Int64Type(), uint64(index), false))
+		m.printf("field: %d -> %d\n", currentValue, newValue)
 		m.builder.CreateCall(m.module.NamedFunction("sky_hashmap_set"), []llvm.Value{m.load(result), llvm.ConstInt(m.context.Int64Type(), uint64(index), false), newValue}, "")
 	} else {
 		panic("UNIMPLEMENTED")
@@ -56,7 +54,6 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 func (m *Mapper) codegenAggregateField(node *ast.Field, tbl *ast.Symtable, event llvm.Value, currentValue llvm.Value) (llvm.Value, error) {
 	// The "count" aggregation is a special case since it doesn't require an expression.
 	if node.Aggregation == "count" {
-		m.printf("field.3 add\n")
 		return m.builder.CreateAdd(currentValue, llvm.ConstInt(m.context.Int64Type(), 1, false), ""), nil
 	}
 	

@@ -9,7 +9,14 @@ import (
 
 func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 	tbl := ast.NewSymtable(nil)
-	
+
+	if _, err := m.codegenVarDecls(q.SystemVarDecls, tbl); err != nil {
+		return nilValue, err
+	}
+	if _, err := m.codegenVarDecls(q.DeclaredVarDecls, tbl); err != nil {
+		return nilValue, err
+	}
+
 	m.declare_lmdb()
 
 	m.eventType = m.codegenEventType()
@@ -48,10 +55,14 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 //
 // loop:
 //     rc = cursor_next_object(cursor);
+//     if(rc) goto loop_initial_event else goto exit;
+//
+// loop_initial_event:
+//     rc = cursor_next_event(cursor);
 //     if(rc) goto loop_body else goto exit;
 //
 // loop_body:
-//     query(cursor, result);
+//     ...generate...
 //     goto loop;
 //
 // exit:
@@ -74,43 +85,40 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 
 	entry := m.context.AddBasicBlock(fn, "entry")
 	loop := m.context.AddBasicBlock(fn, "loop")
+	loop_initial_event := m.context.AddBasicBlock(fn, "loop_initial_event")
 	loop_body := m.context.AddBasicBlock(fn, "loop_body")
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
-	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
+	cursor_ref := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
 	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
-	m.store(fn.Param(0), cursor)
+	m.store(fn.Param(0), cursor_ref)
 	m.store(fn.Param(1), result)
-	m.printf("loop.0 %p\n", m.builder.CreateMalloc(m.eventType, ""))
-	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""))
-	m.printf("loop.0 %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
-	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor, ""), cursorNextEventElementIndex, ""))
-	rc := m.builder.CreateCall(m.module.NamedFunction("cursor_init"), []llvm.Value{m.load(cursor, "")}, "rc")
-	m.builder.CreateCondBr(rc, loop_body, exit)
+	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor_ref, ""), cursorEventElementIndex, ""))
+	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex, ""))
+	m.printf("query (cursor=%p, event=%p, next_event=%p)\n", m.load(cursor_ref), m.load(m.structgep(m.load(cursor_ref, ""), cursorEventElementIndex, "")), m.load(m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex, "")))
+	rc := m.call("cursor_init", m.load(cursor_ref, ""))
+	m.printf("\n")
+	m.condbr(rc, loop_initial_event, exit)
 
 	m.builder.SetInsertPointAtEnd(loop)
-	m.printf("loop.1\n")
-	rc = m.builder.CreateCall(m.module.NamedFunction("cursor_next_object"), []llvm.Value{m.load(cursor, "")}, "rc")
-	m.printf("loop.1.1\n")
-	m.builder.CreateCondBr(rc, loop_body, exit)
+	rc = m.call("cursor_next_object", m.load(cursor_ref, ""))
+	m.condbr(rc, loop_initial_event, exit)
+
+	m.builder.SetInsertPointAtEnd(loop_initial_event)
+	rc = m.call("cursor_next_event", m.load(cursor_ref))
+	m.condbr(rc, loop_body, exit)
 
 	m.builder.SetInsertPointAtEnd(loop_body)
-	m.printf("loop.2\n")
 	for _, statementFn := range statementFns {
-		m.printf("loop.2.1\n")
-		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor, ""), m.load(result, "")}, "")
-		m.printf("loop.! %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
+		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor_ref, ""), m.load(result, "")}, "")
 	}
-	m.printf("loop.2.2\n")
-	m.builder.CreateBr(loop)
+	m.printf("\n")
+	m.br(loop)
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.printf("loop.3 %p\n", m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
-	m.builder.CreateFree(m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), ""))
-	m.printf("loop.3.1\n")
-	m.builder.CreateFree(m.load(m.structgep(m.load(cursor, ""), cursorNextEventElementIndex, ""), ""))
-	m.printf("loop.3.2\n")
+	m.builder.CreateFree(m.load(m.structgep(m.load(cursor_ref, ""), cursorEventElementIndex, ""), ""))
+	m.builder.CreateFree(m.load(m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex, ""), ""))
 	m.retvoid()
 
 	return fn, nil

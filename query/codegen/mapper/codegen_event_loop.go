@@ -34,23 +34,20 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
-	m.printf("event_loop.1\n")
-	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
-	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
-	m.store(fn.Param(0), cursor)
-	m.store(fn.Param(1), result)
+	cursor_ref := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
+	result_ref := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
+	m.store(fn.Param(0), cursor_ref)
+	m.store(fn.Param(1), result_ref)
 	m.builder.CreateBr(loop)
 
 	m.builder.SetInsertPointAtEnd(loop)
-	m.printf("event_loop.2\n")
 	for _, statementFn := range statementFns {
-		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor, ""), m.load(result, "")}, "")
+		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor_ref, ""), m.load(result_ref, "")}, "")
 	}
-	rc := m.call("cursor_next_event", m.load(cursor))
+	rc := m.call("cursor_next_event", m.load(cursor_ref))
 	m.condbr(rc, loop, exit)
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.printf("event_loop.3\n")
 	m.retvoid()
 
 	return fn, nil
