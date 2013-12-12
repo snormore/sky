@@ -5,7 +5,7 @@ package hashmap
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define HASHMAP_BUCKET_COUNT 64
+#define HASHMAP_BUCKET_COUNT 256
 
 typedef enum {
     int_value_type,
@@ -29,7 +29,7 @@ typedef struct {
 } sky_hashmap_bucket;
 
 struct sky_hashmap {
-    sky_hashmap_bucket *buckets;
+    sky_hashmap_bucket buckets[HASHMAP_BUCKET_COUNT];
 };
 
 
@@ -37,7 +37,6 @@ struct sky_hashmap {
 sky_hashmap *sky_hashmap_new()
 {
     sky_hashmap *hashmap = calloc(1, sizeof(sky_hashmap));
-    hashmap->buckets = calloc(HASHMAP_BUCKET_COUNT, sizeof(sky_hashmap_bucket));
     return hashmap;
 }
 
@@ -116,6 +115,15 @@ sky_hashmap *sky_hashmap_submap(sky_hashmap *hashmap, int64_t key)
     return elem->value.hashmap_value;
 }
 
+
+// FOR BENCHMARKING ONLY.
+sky_hashmap *sky_hashmap_benchmark(sky_hashmap *hashmap, int64_t n)
+{
+    int64_t i;
+    for (i=0; i<n; i++) {
+        sky_hashmap_set(hashmap, i % 256, 100);
+    }
+}
 */
 import "C"
 import "unsafe"
@@ -151,5 +159,10 @@ func (h *Hashmap) Set(key int64, value int64) {
 // Submap retrieves the hashmap value for a given key.
 func (h *Hashmap) Submap(key int64) *Hashmap {
     return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
+}
+
+// benchmark runs set N number of times within the C context.
+func benchmark(h *Hashmap, n int64) {
+    C.sky_hashmap_benchmark(h.C, C.int64_t(n))
 }
 
