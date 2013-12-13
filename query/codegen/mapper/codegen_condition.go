@@ -86,7 +86,7 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.builder.SetInsertPointAtEnd(loop_iterate)
 	m.store(m.add(m.load(index), m.constint(1)), index)
 	rc = m.call("cursor_next_event", m.load(cursor))
-	m.condbr(rc, loop_range_condition, exit)
+	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop_range_condition, exit)
 
 	m.builder.SetInsertPointAtEnd(exit)
 	m.retvoid()

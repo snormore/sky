@@ -65,8 +65,6 @@ uint64_t minipack_unpack_uint(void *ptr, size_t *sz);
 
 void minipack_pack_uint(void *ptr, uint64_t value, size_t *sz);
 
-uint64_t minipack_fread_uint(FILE *file, size_t *sz);
-
 int minipack_fwrite_uint(FILE *file, uint64_t value, size_t *sz);
 
 
@@ -133,8 +131,6 @@ int64_t minipack_unpack_int(void *ptr, size_t *sz);
 
 void minipack_pack_int(void *ptr, int64_t value, size_t *sz);
 
-int64_t minipack_fread_int(FILE *file, size_t *sz);
-
 int minipack_fwrite_int(FILE *file, int64_t value, size_t *sz);
 
 
@@ -200,10 +196,6 @@ void minipack_pack_nil(void *ptr, size_t *sz);
 
 void minipack_unpack_nil(void *ptr, size_t *sz);
 
-void minipack_fread_nil(FILE *file, size_t *sz);
-
-int minipack_fwrite_nil(FILE *file, size_t *sz);
-
 
 //==============================================================================
 //
@@ -223,13 +215,9 @@ bool minipack_is_true(void *ptr);
 
 bool minipack_is_false(void *ptr);
 
-bool minipack_unpack_bool(void *ptr, size_t *sz);
+int64_t minipack_unpack_bool(void *ptr, size_t *sz);
 
 void minipack_pack_bool(void *ptr, bool value, size_t *sz);
-
-bool minipack_fread_bool(FILE *file, size_t *sz);
-
-int minipack_fwrite_bool(FILE *file, bool value, size_t *sz);
 
 
 //==============================================================================
@@ -250,10 +238,6 @@ float minipack_unpack_float(void *ptr, size_t *sz);
 
 void minipack_pack_float(void *ptr, float value, size_t *sz);
 
-float minipack_fread_float(FILE *file, size_t *sz);
-
-int minipack_fwrite_float(FILE *file, float value, size_t *sz);
-
 
 //======================================
 // Double
@@ -266,10 +250,6 @@ bool minipack_is_double(void *ptr);
 double minipack_unpack_double(void *ptr, size_t *sz);
 
 void minipack_pack_double(void *ptr, double value, size_t *sz);
-
-double minipack_fread_double(FILE *file, size_t *sz);
-
-int minipack_fwrite_double(FILE *file, double value, size_t *sz);
 
 
 //==============================================================================
@@ -291,10 +271,6 @@ size_t minipack_sizeof_raw_elem(void *ptr);
 int64_t minipack_unpack_raw(void *ptr, size_t *sz);
 
 void minipack_pack_raw(void *ptr, uint32_t length, size_t *sz);
-
-uint32_t minipack_fread_raw(FILE *file, size_t *sz);
-
-int minipack_fwrite_raw(FILE *file, uint32_t length, size_t *sz);
 
 
 //======================================
@@ -351,9 +327,6 @@ uint32_t minipack_unpack_array(void *ptr, size_t *sz);
 
 void minipack_pack_array(void *ptr, uint32_t count, size_t *sz);
 
-uint32_t minipack_fread_array(FILE *file, size_t *sz);
-
-int minipack_fwrite_array(FILE *file, uint32_t length, size_t *sz);
 
 
 //======================================
@@ -409,10 +382,6 @@ size_t minipack_sizeof_map_elem(void *ptr);
 int64_t minipack_unpack_map(void *ptr, size_t *sz);
 
 void minipack_pack_map(void *ptr, uint32_t count, size_t *sz);
-
-uint32_t minipack_fread_map(FILE *file, size_t *sz);
-
-int minipack_fwrite_map(FILE *file, uint32_t length, size_t *sz);
 
 
 //======================================
@@ -886,58 +855,6 @@ void minipack_pack_uint(void *ptr, uint64_t value, size_t *sz)
     }
 }
 
-// Reads and unpacks an unsigned int from a file stream. If the element at the
-// current location is not an unsigned int then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the value read from the file stream.
-uint64_t minipack_fread_uint(FILE *file, size_t *sz)
-{
-    uint8_t data[BUFFER_SIZE];
-
-    // If first byte cannot be read then exit.
-    if(fread(data, sizeof(uint8_t), 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-    ungetc(data[0], file);
-
-    // Determine size of element based on type.
-    size_t elemsz = minipack_sizeof_uint_elem(data);
-
-    // If element is not a uint or we can't read enough bytes then exit.
-    if(elemsz == 0 || fread(data, elemsz, 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-
-    // Parse and return value.
-    return minipack_unpack_uint(data, sz);
-}
-
-// Packs and writes an unsigned int to a file stream.
-//
-// file - The file stream.
-// sz   - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_uint(FILE *file, uint64_t value, size_t *sz)
-{
-    uint8_t data[BUFFER_SIZE];
-
-    // Pack the value.
-    minipack_pack_uint(data, value, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
-}
 
 
 //--------------------------------------
@@ -1253,59 +1170,6 @@ void minipack_pack_int(void *ptr, int64_t value, size_t *sz)
     }
 }
 
-// Reads and unpacks a signed int from a file stream. If the element at the
-// current location is not a signed int then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the value read from the file stream.
-int64_t minipack_fread_int(FILE *file, size_t *sz)
-{
-    uint8_t data[BUFFER_SIZE];
-
-    // If first byte cannot be read then exit.
-    if(fread(data, sizeof(uint8_t), 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-    ungetc(data[0], file);
-
-    // Determine size of element based on type.
-    size_t elemsz = minipack_sizeof_int_elem(data);
-
-    // If element is not a int or we can't read enough bytes then exit.
-    if(elemsz == 0 || fread(data, elemsz, 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-
-    // Parse and return value.
-    return minipack_unpack_int(data, sz);
-}
-
-// Packs and writes a signed int to a file stream.
-//
-// file - The file stream.
-// sz   - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_int(FILE *file, int64_t value, size_t *sz)
-{
-    uint8_t data[BUFFER_SIZE];
-
-    // Pack the value.
-    minipack_pack_int(data, value, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
-}
-
 
 //--------------------------------------
 // Signed Int (8-bit)
@@ -1509,46 +1373,6 @@ void minipack_pack_nil(void *ptr, size_t *sz)
     *((uint8_t*)ptr) = NIL_TYPE;
 }
 
-// Reads and unpacks a nil from a file stream. If the element at the
-// current location is not a nil then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-void minipack_fread_nil(FILE *file, size_t *sz)
-{
-    uint8_t data[NIL_SIZE];
-
-    // If element cannot be read then exit.
-    if(fread(data, NIL_SIZE, 1, file) != 1 || !minipack_is_nil(data)) {
-        *sz = 0;
-        return;
-    }
-
-    minipack_unpack_nil(data, sz);
-}
-
-// Packs and writes a nil to a file stream.
-//
-// file - The file stream.
-// sz   - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_nil(FILE *file, size_t *sz)
-{
-    uint8_t data[NIL_SIZE];
-
-    // Pack the value.
-    minipack_pack_nil(data, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
-}
-
 
 //==============================================================================
 //
@@ -1603,19 +1427,19 @@ bool minipack_is_false(void *ptr)
 // ptr - A pointer to where the boolean should be read from.
 //
 // Returns a boolean value.
-bool minipack_unpack_bool(void *ptr, size_t *sz)
+int64_t minipack_unpack_bool(void *ptr, size_t *sz)
 {
     if(minipack_is_true(ptr)) {
         *sz = BOOL_SIZE;
-        return true;
+        return 1;
     }
     else if(minipack_is_false(ptr)) {
         *sz = BOOL_SIZE;
-        return false;
+        return 0;
     }
     else {
         *sz = 0;
-        return false;
+        return 0;
     }
 }
 
@@ -1632,26 +1456,6 @@ void minipack_pack_bool(void *ptr, bool value, size_t *sz)
     else {
         *((uint8_t*)ptr) = FALSE_TYPE;
     }
-}
-
-// Reads and unpacks a boolean from a file stream. If the element at the
-// current location is not a boolean then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the value read from the stream.
-bool minipack_fread_bool(FILE *file, size_t *sz)
-{
-    uint8_t data[BOOL_SIZE];
-
-    // If element cannot be read then exit.
-    if(fread(data, BOOL_SIZE, 1, file) != 1 || !minipack_is_bool(data)) {
-        *sz = 0;
-        return false;
-    }
-
-    return minipack_unpack_bool(data, sz);
 }
 
 // Packs and writes a boolean to a file stream.
@@ -1738,49 +1542,6 @@ void minipack_pack_float(void *ptr, float value, size_t *sz)
 }
 
 
-// Reads and unpacks a float from a file stream. If the element at the
-// current location is not a float then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the value read from the stream.
-float minipack_fread_float(FILE *file, size_t *sz)
-{
-    uint8_t data[FLOAT_SIZE];
-
-    // If element cannot be read or element is not a float then exit.
-    if(fread(data, FLOAT_SIZE, 1, file) != 1 || !minipack_is_float(data)) {
-        *sz = 0;
-        return false;
-    }
-
-    return minipack_unpack_float(data, sz);
-}
-
-// Packs and writes a float to a file stream.
-//
-// file  - The file stream.
-// value - The value to write to the stream.
-// sz    - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_float(FILE *file, float value, size_t *sz)
-{
-    uint8_t data[FLOAT_SIZE];
-
-    // Pack the value.
-    minipack_pack_float(data, value, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
-}
-
 
 //--------------------------------------
 // Double
@@ -1832,49 +1593,6 @@ void minipack_pack_double(void *ptr, double value, size_t *sz)
     *((uint8_t*)ptr)    = DOUBLE_TYPE;
     double *double_ptr = (double*)&bytes;
     *((double*)(ptr+1)) = *double_ptr;
-}
-
-// Reads and unpacks a double from a file stream. If the element at the
-// current location is not a double then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the value read from the stream.
-double minipack_fread_double(FILE *file, size_t *sz)
-{
-    uint8_t data[DOUBLE_SIZE];
-
-    // If element cannot be read or element is not a double then exit.
-    if(fread(data, DOUBLE_SIZE, 1, file) != 1 || !minipack_is_double(data)) {
-        *sz = 0;
-        return false;
-    }
-
-    return minipack_unpack_double(data, sz);
-}
-
-// Packs and writes a double to a file stream.
-//
-// file  - The file stream.
-// value - The value to write to the stream.
-// sz    - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_double(FILE *file, double value, size_t *sz)
-{
-    uint8_t data[DOUBLE_SIZE];
-
-    // Pack the value.
-    minipack_pack_double(data, value, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
 }
 
 
@@ -1977,59 +1695,6 @@ void minipack_pack_raw(void *ptr, uint32_t length, size_t *sz)
         return;
     }
     minipack_pack_raw32(ptr, length, sz);
-}
-
-// Reads and unpacks a raw bytes element from a file stream. If the element at
-// the current location is a raw bytes element then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the length of the raw bytes from the file stream.
-uint32_t minipack_fread_raw(FILE *file, size_t *sz)
-{
-    uint8_t data[RAW32_SIZE];
-
-    // If first byte cannot be read then exit.
-    if(fread(data, sizeof(uint8_t), 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-    ungetc(data[0], file);
-
-    // Determine size of element based on type.
-    size_t elemsz = minipack_sizeof_raw_elem(data);
-
-    // If element is not a raw or we can't read enough bytes then exit.
-    if(elemsz == 0 || fread(data, elemsz, 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-
-    // Parse and return value.
-    return minipack_unpack_raw(data, sz);
-}
-
-// Packs and writes a raw bytes element to a file stream.
-//
-// file - The file stream.
-// sz   - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_raw(FILE *file, uint32_t length, size_t *sz)
-{
-    uint8_t data[RAW32_SIZE];
-
-    // Pack the element.
-    minipack_pack_raw(data, length, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
 }
 
 
@@ -2240,59 +1905,6 @@ void minipack_pack_array(void *ptr, uint32_t count, size_t *sz)
     minipack_pack_array32(ptr, count, sz);
 }
 
-// Reads and unpacks an array element from a file stream. If the element at
-// the current location is an array element then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the item count of the array from the file stream.
-uint32_t minipack_fread_array(FILE *file, size_t *sz)
-{
-    uint8_t data[ARRAY32_SIZE];
-
-    // If first byte cannot be read then exit.
-    if(fread(data, sizeof(uint8_t), 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-    ungetc(data[0], file);
-
-    // Determine size of element based on type.
-    size_t elemsz = minipack_sizeof_array_elem(data);
-
-    // If element is not a array or we can't read enough bytes then exit.
-    if(elemsz == 0 || fread(data, elemsz, 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-
-    // Parse and return value.
-    return minipack_unpack_array(data, sz);
-}
-
-// Packs and writes an array element to a file stream.
-//
-// file - The file stream.
-// sz   - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_array(FILE *file, uint32_t length, size_t *sz)
-{
-    uint8_t data[ARRAY32_SIZE];
-
-    // Pack the element.
-    minipack_pack_array(data, length, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
-}
-
 
 //--------------------------------------
 // Fix array
@@ -2473,7 +2085,6 @@ size_t minipack_sizeof_map_elem(void *ptr)
 int64_t minipack_unpack_map(void *ptr, size_t *sz)
 {
     if(minipack_is_fixmap(ptr)) {
-        printf("fixmap: %d\n", (uint32_t)minipack_unpack_fixmap(ptr, sz));
         return (int64_t)minipack_unpack_fixmap(ptr, sz);
     }
     else if(minipack_is_map16(ptr)) {
@@ -2504,59 +2115,6 @@ void minipack_pack_map(void *ptr, uint32_t count, size_t *sz)
         return;
     }
     minipack_pack_map32(ptr, count, sz);
-}
-
-// Reads and unpacks a map element from a file stream. If the element at
-// the current location is a map element then the sz is returned as 0.
-//
-// file - The file stream.
-// sz   - The number of bytes read from the stream.
-//
-// Returns the item count of the map from the file stream.
-uint32_t minipack_fread_map(FILE *file, size_t *sz)
-{
-    uint8_t data[MAP32_SIZE];
-
-    // If first byte cannot be read then exit.
-    if(fread(data, sizeof(uint8_t), 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-    ungetc(data[0], file);
-
-    // Determine size of element based on type.
-    size_t elemsz = minipack_sizeof_map_elem(data);
-
-    // If element is not a map or we can't read enough bytes then exit.
-    if(elemsz == 0 || fread(data, elemsz, 1, file) != 1) {
-        *sz = 0;
-        return 0;
-    }
-
-    // Parse and return value.
-    return minipack_unpack_map(data, sz);
-}
-
-// Packs and writes an map element to a file stream.
-//
-// file - The file stream.
-// sz   - The number of bytes written to the stream.
-//
-// Returns 0 if successful, otherwise returns -1.
-int minipack_fwrite_map(FILE *file, uint32_t length, size_t *sz)
-{
-    uint8_t data[MAP32_SIZE];
-
-    // Pack the element.
-    minipack_pack_map(data, length, sz);
-
-    // If the data cannot be written to file then return an error.
-    if(fwrite(data, *sz, 1, file) != 1) {
-        *sz = 0;
-        return -1;
-    }
-
-    return 0;
 }
 
 
@@ -2687,7 +2245,7 @@ func Declare_unpack_double(m llvm.Module, c llvm.Context) {
 }
 
 func Declare_unpack_bool(m llvm.Module, c llvm.Context) {
-	llvm.AddFunction(m, "minipack_unpack_bool", llvm.FunctionType(c.Int1Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
+	llvm.AddFunction(m, "minipack_unpack_bool", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
 }
 
 func Declare_unpack_raw(m llvm.Module, c llvm.Context) {

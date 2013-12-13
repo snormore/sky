@@ -31,15 +31,12 @@ func (m *Mapper) condbr(ifv llvm.Value, thenb, elseb llvm.BasicBlock) llvm.Value
 	return m.builder.CreateCondBr(ifv, thenb, elseb)
 }
 
-func (m *Mapper) constbool(value bool) llvm.Value {
-	if value {
-		return llvm.ConstInt(m.context.Int1Type(), 1, false)
-	}
-	return llvm.ConstInt(m.context.Int1Type(), 0, false)
-}
-
 func (m *Mapper) constint(value int) llvm.Value {
 	return llvm.ConstIntFromString(m.context.Int64Type(), fmt.Sprintf("%d", value), 10)
+}
+
+func (m *Mapper) constfloat(value float64) llvm.Value {
+	return llvm.ConstFloat(m.context.DoubleType(), value)
 }
 
 func (m *Mapper) icmp(pred llvm.IntPredicate, lhs, rhs llvm.Value, name... string) llvm.Value {
@@ -48,6 +45,36 @@ func (m *Mapper) icmp(pred llvm.IntPredicate, lhs, rhs llvm.Value, name... strin
 
 func (m *Mapper) load(value llvm.Value, name... string) llvm.Value {
 	return m.builder.CreateLoad(value, fname(name))
+}
+
+func (m *Mapper) load_event_ref(cursor_ref llvm.Value, name... string) llvm.Value {
+	return m.structgep(m.load(cursor_ref), cursorEventElementIndex)
+}
+
+func (m *Mapper) load_next_event_ref(cursor_ref llvm.Value, name... string) llvm.Value {
+	return m.structgep(m.load(cursor_ref), cursorNextEventElementIndex)
+}
+
+func (m *Mapper) load_eof(event_ref llvm.Value, name... string) llvm.Value {
+	return m.load(m.structgep(m.load(event_ref), eventEofElementIndex))
+}
+
+func (m *Mapper) load_eos(event_ref llvm.Value, name... string) llvm.Value {
+	return m.load(m.structgep(m.load(event_ref), eventEosElementIndex))
+}
+
+func (m *Mapper) phi(typ llvm.Type, values []llvm.Value, blocks []llvm.BasicBlock, name... string) llvm.Value {
+	phi := m.builder.CreatePHI(typ, fname(name))
+	phi.AddIncoming(values, blocks)
+	return phi
+}
+
+func (m *Mapper) ptrtype() llvm.Type {
+	return llvm.PointerType(m.context.Int8Type(), 0)
+}
+
+func (m *Mapper) ptrnull() llvm.Value {
+	return llvm.ConstPointerNull(m.ptrtype())
 }
 
 func (m *Mapper) ret(value llvm.Value) llvm.Value {

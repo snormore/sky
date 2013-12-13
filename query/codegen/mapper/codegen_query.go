@@ -38,8 +38,6 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 	minipack.Declare_unpack_map(m.module, m.context)
 	minipack.Declare_sizeof_elem_and_data(m.module, m.context)
 
-	m.codegenCursorInitFunc()
-	m.codegenCursorNextObjectFunc()
 	m.codegenCursorNextEventFunc()
 
 	// Generate the entry function.
@@ -48,18 +46,23 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 
 // [codegen]
 // int32_t entry(sky_cursor *cursor, sky_map *result) {
+//     void *ptr;
 //     cursor->event = malloc();
 //     cursor->next_event = malloc();
-//     int32_t rc = cursor_init(cursor);
-//     if(rc) goto loop_body else goto exit;
+//     ptr = cursor_next_object(cursor, true);
+//     if(rc) goto loop_buffer_event else goto exit;
 //
 // loop:
-//     rc = cursor_next_object(cursor);
-//     if(rc) goto loop_initial_event else goto exit;
+//     ptr = cursor_next_object(cursor, false);
+//     if(rc) goto loop_buffer_event else goto exit;
 //
-// loop_initial_event:
+// loop_buffer_event:
+//     rc = cursor_read_event(ptr);
+//     if(rc == 0) goto loop_next_event else goto exit;
+//
+// loop_next_event:
 //     rc = cursor_next_event(cursor);
-//     if(rc) goto loop_body else goto exit;
+//     if(rc == 0) goto loop_body else goto exit;
 //
 // loop_body:
 //     ...generate...
@@ -85,29 +88,42 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 
 	entry := m.context.AddBasicBlock(fn, "entry")
 	loop := m.context.AddBasicBlock(fn, "loop")
-	loop_initial_event := m.context.AddBasicBlock(fn, "loop_initial_event")
+	loop_buffer_event := m.context.AddBasicBlock(fn, "loop_buffer_event")
+	loop_next_event := m.context.AddBasicBlock(fn, "loop_next_event")
 	loop_body := m.context.AddBasicBlock(fn, "loop_body")
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
 	cursor_ref := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
 	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
+	ptr := m.alloca(m.ptrtype(), "ptr")
 	m.store(fn.Param(0), cursor_ref)
 	m.store(fn.Param(1), result)
-	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor_ref, ""), cursorEventElementIndex, ""))
-	m.store(m.builder.CreateMalloc(m.eventType, ""), m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex, ""))
+	event_ref := m.load_event_ref(cursor_ref)
+	next_event_ref := m.load_next_event_ref(cursor_ref)
+
+	m.store(m.builder.CreateMalloc(m.eventType, ""), event_ref)
+	m.store(m.builder.CreateMalloc(m.eventType, ""), next_event_ref)
+
 	m.printf("query (cursor=%p, event=%p, next_event=%p)\n", m.load(cursor_ref), m.load(m.structgep(m.load(cursor_ref, ""), cursorEventElementIndex, "")), m.load(m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex, "")))
-	rc := m.call("cursor_init", m.load(cursor_ref, ""))
 	m.printf("\n")
-	m.condbr(rc, loop_initial_event, exit)
+	m.store(m.call("sky_cursor_next_object", m.load(cursor_ref), m.constint(1)), ptr)
+	m.condbr(m.icmp(llvm.IntNE, m.load(ptr), m.ptrnull()), loop_buffer_event, exit)
 
 	m.builder.SetInsertPointAtEnd(loop)
-	rc = m.call("cursor_next_object", m.load(cursor_ref, ""))
-	m.condbr(rc, loop_initial_event, exit)
+	m.printf("\n")
+	m.store(m.call("sky_cursor_next_object", m.load(cursor_ref), m.constint(0)), ptr)
+	m.condbr(m.icmp(llvm.IntNE, m.load(ptr), m.ptrnull()), loop_buffer_event, exit)
 
-	m.builder.SetInsertPointAtEnd(loop_initial_event)
-	rc = m.call("cursor_next_event", m.load(cursor_ref))
-	m.condbr(rc, loop_body, exit)
+	m.builder.SetInsertPointAtEnd(loop_buffer_event)
+	m.call("sky_event_reset", m.load(event_ref))
+	m.call("sky_event_reset", m.load(next_event_ref))
+	rc := m.call("cursor_read_event", m.load(m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex)), m.load(ptr))
+	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop_next_event, exit)
+
+	m.builder.SetInsertPointAtEnd(loop_next_event)
+	rc = m.call("cursor_next_event", m.load(cursor_ref, ""))
+	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop_body, exit)
 
 	m.builder.SetInsertPointAtEnd(loop_body)
 	for _, statementFn := range statementFns {

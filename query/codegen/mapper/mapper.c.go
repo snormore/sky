@@ -4,7 +4,6 @@ package mapper
 #cgo LDFLAGS: -llmdb
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <inttypes.h>
 #include <string.h>
 #include <lmdb.h>
@@ -34,24 +33,19 @@ typedef struct {
 typedef struct sky_cursor sky_cursor;
 
 typedef struct {
-  bool eos;
-  bool eof;
+  int64_t eos;
+  int64_t eof;
   int64_t timestamp;
 } sky_event;
 
 struct sky_cursor {
     sky_event *event;
     sky_event *next_event;
-    void *ptr;
     MDB_cursor* lmdb_cursor;
 
-    bool blocking_eos;
     void *key_prefix;
     int64_t key_prefix_sz;
 };
-
-
-bool sky_cursor_iter_object(sky_cursor *cursor, MDB_val *key, MDB_val *data);
 
 
 // Creates a new cursor instance.
@@ -83,54 +77,43 @@ void sky_cursor_free(sky_cursor *cursor)
     }
 }
 
-// Moves the cursor to point to the first object. If a prefix is set then
-// move to the first object that with the given prefix.
-bool sky_cursor_init(sky_cursor *cursor)
+// Moves the cursor point to the next object. Returns false if no object matches.
+void *sky_cursor_next_object(sky_cursor *cursor, int64_t init)
 {
     int rc;
     MDB_val key, data;
-    if(cursor->key_prefix_sz == 0) {
-        if((rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_FIRST)) != 0) {
-            if(rc != MDB_NOTFOUND) fprintf(stderr, "MDB_FIRST error: %s\n", mdb_strerror(rc));
-            return false;
+    if(init) {
+        if(cursor->key_prefix_sz == 0) {
+            if((rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_FIRST)) != 0) {
+                if(rc != MDB_NOTFOUND) fprintf(stderr, "MDB_FIRST error: %s\n", mdb_strerror(rc));
+                return NULL;
+            }
+
+        } else {
+            key.mv_data = cursor->key_prefix;
+            key.mv_size = cursor->key_prefix_sz;
+            if((rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_SET_RANGE)) != 0) {
+                if(rc != MDB_NOTFOUND) fprintf(stderr, "MDB_SET_RANGE error: %s\n", mdb_strerror(rc));
+                return NULL;
+            }
         }
-
-    } else {
-        key.mv_data = cursor->key_prefix;
-        key.mv_size = cursor->key_prefix_sz;
-        if((rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_SET_RANGE)) != 0) {
-            if(rc != MDB_NOTFOUND) fprintf(stderr, "MDB_SET_RANGE error: %s\n", mdb_strerror(rc));
-            return false;
+    }
+    else {
+        rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_NEXT_NODUP);
+        if(rc != 0) {
+            if(rc != MDB_NOTFOUND) fprintf(stderr, "MDB_NEXT_NODUP error: %s\n", mdb_strerror(rc));
+            return NULL;
         }
     }
 
-    return sky_cursor_iter_object(cursor, &key, &data);
-}
-
-// Moves the cursor to point to the next object.
-bool sky_cursor_next_object(sky_cursor *cursor)
-{
-    MDB_val key, data;
-    int rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_NEXT_NODUP);
-    if(rc != 0) {
-        if(rc != MDB_NOTFOUND) fprintf(stderr, "MDB_NEXT_NODUP error: %s\n", mdb_strerror(rc));
-        return false;
+    // Check if the key matches any prefix we have.
+    if(cursor->key_prefix_sz > 0 && (key.mv_size < cursor->key_prefix_sz || memcmp(cursor->key_prefix, key.mv_data, cursor->key_prefix_sz) != 0)) {
+        return NULL;
     }
 
-    return sky_cursor_iter_object(cursor, &key, &data);
-}
+    printf("OBJ<%.*s>\n", (int)key.mv_size, (char*)key.mv_data);
 
-// Sets up object after cursor has already been positioned.
-bool sky_cursor_iter_object(sky_cursor *cursor, MDB_val *key, MDB_val *data)
-{
-    if(cursor->key_prefix_sz > 0 && (key->mv_size < cursor->key_prefix_sz || memcmp(cursor->key_prefix, key->mv_data, cursor->key_prefix_sz) != 0)) {
-        return false;
-    }
-
-    // Clear the data object if set.
-    cursor->blocking_eos = false;
-
-    return true;
+    return data.mv_data;
 }
 
 */

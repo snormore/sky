@@ -40,7 +40,7 @@ func TestMapperSelectCount(t *testing.T) {
 func TestMapperCondition(t *testing.T) {
 	query := `
 		FOR EACH EVENT
-			WHEN true THEN
+			WHEN foo == 10 THEN
 				SELECT count()
 			END
 		END

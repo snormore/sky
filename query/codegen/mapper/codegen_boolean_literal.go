@@ -6,5 +6,8 @@ import (
 )
 
 func (m *Mapper) codegenBooleanLiteral(node *ast.BooleanLiteral, event llvm.Value, tbl *ast.Symtable) (llvm.Value, error) {
-	return m.constbool(node.Value), nil
+	if node.Value {
+		return llvm.ConstInt(m.context.Int1Type(), 1, false), nil
+	}
+	return llvm.ConstInt(m.context.Int1Type(), 0, false), nil
 }

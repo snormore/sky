@@ -42,7 +42,7 @@ func TestReadEvent(t *testing.T) {
 	m, err := New(query)
 	if assert.NoError(t, err) {
 		e := new(event)
-		m.ExecuteFunction("read_event", []llvm.GenericValue{
+		m.ExecuteFunction("cursor_read_event", []llvm.GenericValue{
 			llvm.NewGenericValueFromPointer(unsafe.Pointer(e)),
 			llvm.NewGenericValueFromPointer(unsafe.Pointer(&DATA)),
 		})
