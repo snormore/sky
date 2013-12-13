@@ -62,6 +62,31 @@ func TestMapperCondition(t *testing.T) {
 	}
 }
 
+func TestMapperFactorEquality(t *testing.T) {
+	query := `
+		FOR EACH EVENT
+			WHEN factorVariable == "XXX" THEN
+				SELECT count()
+			END
+		END
+	`
+	result, err := runDBMapper(query, ast.VarDecls{
+		ast.NewVarDecl(2, "factorVariable", "factor"),
+	}, map[string][]*core.Event{
+		"foo": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 2, 1),  // "XXX"
+			testevent("2000-01-01T00:00:02Z", 2, 2),  // "YYY"
+		},
+		"bar": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 2, 1),  // "XXX"
+		},
+	})
+	assert.NoError(t, err)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, result.Get(0), 2)
+	}
+}
+
 
 // Executes a query against a given set of data and return the results.
 func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Event) (*hashmap.Hashmap, error) {
@@ -94,8 +119,13 @@ func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Ev
 	}
 	q.DeclaredVarDecls = append(q.DeclaredVarDecls, decls...)
 
+	// Setup factor test data.
+	f := db.TableFactorizer("TBL")
+	f.Factorize("factorVariable", "XXX", true)
+	f.Factorize("factorVariable", "YYY", true)
+
 	// Create a mapper generated from the query.
-	m, err := mapper.New(q)
+	m, err := mapper.New(q, f)
 	if err != nil {
 		return nil, err
 	}

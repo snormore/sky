@@ -18,6 +18,8 @@ import (
 // execution is single threaded and returns a nested map of data.
 // The results can be combined using a Reducer.
 type Mapper struct {
+	factorizer Factorizer
+	
 	context llvm.Context
 	module  llvm.Module
 	engine  llvm.ExecutionEngine
@@ -35,8 +37,9 @@ type Mapper struct {
 }
 
 // New creates a new Mapper instance.
-func New(q *ast.Query) (*Mapper, error) {
+func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 	m := new(Mapper)
+	m.factorizer = f
 	runtime.SetFinalizer(m, finalize)
 
 	m.context = llvm.NewContext()

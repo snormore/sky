@@ -18,6 +18,7 @@ type DB interface {
 	Open() error
 	Close()
 	Factorizer() Factorizer
+	TableFactorizer(tablespace string) TableFactorizer
 	Cursors(tablespace string) (Cursors, error)
 	GetEvent(tablespace string, id string, timestamp time.Time) (*core.Event, error)
 	GetEvents(tablespace string, id string) ([]*core.Event, error)
@@ -168,6 +169,11 @@ func (db *db) UnlockAll() {
 // Factorizer returns the database's factorizer.
 func (db *db) Factorizer() Factorizer {
 	return db.factorizer
+}
+
+// TableFactorizer returns a factorizer specific to one table.
+func (db *db) TableFactorizer(tablespace string) TableFactorizer {
+	return NewTableFactorizer(db.factorizer, tablespace)
 }
 
 // Cursors retrieves a set of cursors for iterating over the database.

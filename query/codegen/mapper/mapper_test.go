@@ -39,7 +39,7 @@ func TestReadEvent(t *testing.T) {
 
 	query, _ := parser.ParseString(`SELECT count()`)
 	query.DeclaredVarDecls = append(query.DeclaredVarDecls, mapperVarDecls...)
-	m, err := New(query)
+	m, err := New(query, nil)
 	if assert.NoError(t, err) {
 		e := new(event)
 		m.ExecuteFunction("cursor_read_event", []llvm.GenericValue{
