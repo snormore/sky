@@ -209,26 +209,21 @@ func (s *shard) GetEvent(tablespace string, id string, timestamp time.Time) (*co
 	if err != nil {
 		return nil, fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
 		return nil, fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	data, err := s.getEvent(c, id, core.ShiftTimeBytes(timestamp))
 	if err != nil {
-		c.Close()
-		txn.Abort()
 		return nil, err
 	}
-	c.Close()
 
 	if data == nil {
 		return nil, nil
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return &core.Event{Timestamp: timestamp, Data: data}, nil
@@ -284,11 +279,13 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
 		return nil, fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	// Initialize cursor.
 	if _, _, err := mdbGet2(c, []byte(id), []byte{0}, mdb.GET_RANGE); err == mdb.NotFound {
@@ -303,7 +300,6 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 	for {
 		_, val, err := c.Get([]byte(id), mdb.GET_CURRENT)
 		if err != nil {
-			c.Close()
 			return nil, fmt.Errorf("lmdb cursor current error: %s", err)
 		}
 
@@ -317,7 +313,6 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 		var handle codec.MsgpackHandle
 		handle.RawToString = true
 		if err := codec.NewDecoder(bytes.NewBuffer(val[8:]), &handle).Decode(&event.Data); err != nil {
-			c.Close()
 			return nil, err
 		}
 		for k, v := range event.Data {
@@ -333,11 +328,6 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 			c.Close()
 			return nil, fmt.Errorf("lmdb cursor next dup error: %s", err)
 		}
-	}
-	c.Close()
-
-	if err := txn.Commit(); err != nil {
-		return nil, fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return events, nil
