@@ -47,11 +47,11 @@ func (m *Mapper) load(value llvm.Value, name... string) llvm.Value {
 	return m.builder.CreateLoad(value, fname(name))
 }
 
-func (m *Mapper) load_event_ref(cursor_ref llvm.Value, name... string) llvm.Value {
+func (m *Mapper) event_ref(cursor_ref llvm.Value, name... string) llvm.Value {
 	return m.structgep(m.load(cursor_ref), cursorEventElementIndex)
 }
 
-func (m *Mapper) load_next_event_ref(cursor_ref llvm.Value, name... string) llvm.Value {
+func (m *Mapper) next_event_ref(cursor_ref llvm.Value, name... string) llvm.Value {
 	return m.structgep(m.load(cursor_ref), cursorNextEventElementIndex)
 }
 

@@ -99,8 +99,8 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 	ptr := m.alloca(m.ptrtype(), "ptr")
 	m.store(fn.Param(0), cursor_ref)
 	m.store(fn.Param(1), result)
-	event_ref := m.load_event_ref(cursor_ref)
-	next_event_ref := m.load_next_event_ref(cursor_ref)
+	event_ref := m.event_ref(cursor_ref)
+	next_event_ref := m.next_event_ref(cursor_ref)
 
 	m.store(m.builder.CreateMalloc(m.eventType, ""), event_ref)
 	m.store(m.builder.CreateMalloc(m.eventType, ""), next_event_ref)

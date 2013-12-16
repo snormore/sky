@@ -85,13 +85,21 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	fntype := llvm.FunctionType(m.context.Int64Type(), []llvm.Type{llvm.PointerType(m.cursorType, 0)}, false)
 	fn := llvm.AddFunction(m.module, "cursor_next_event", fntype)
 
-	m.codegenEventCopyFunc()
-	m.codegenEventCopyPermanentFunc()
-	m.codegenEventResetFunc()
-	m.codegenEventResetTransientFunc()
+	m.codegenEventCopyFunc("sky_event_copy", nil)
+	m.codegenEventCopyFunc("sky_event_copy_declared", func (decl *ast.VarDecl) bool {
+		return decl.IsDeclared()
+	})
+	m.codegenEventCopyFunc("sky_event_copy_permanent", func (decl *ast.VarDecl) bool {
+		return decl.IsPermanent()
+	})
+	m.codegenEventResetFunc("sky_event_reset", nil)
+	m.codegenEventResetFunc("sky_event_reset_transient", func (decl *ast.VarDecl) bool {
+		return decl.IsTransient()
+	})
 	m.codegenReadEventFunc()
 
 	entry := m.context.AddBasicBlock(fn, "entry")
+	swap := m.context.AddBasicBlock(fn, "swap")
 	init := m.context.AddBasicBlock(fn, "init")
 	mdb_cursor_get := m.context.AddBasicBlock(fn, "mdb_cursor_get")
 	read_event := m.context.AddBasicBlock(fn, "read_event")
@@ -105,14 +113,20 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	key := m.alloca(m.mdbValType, "key")
 	data := m.alloca(m.mdbValType, "data")
 	m.store(fn.Param(0), cursor)
-	event := m.load(m.structgep(m.load(cursor, ""), cursorEventElementIndex, ""), "event")
-	next_event := m.load(m.structgep(m.load(cursor, ""), cursorNextEventElementIndex, ""), "next_event")
 	m.printf("event.next ->\n")
-	m.br(init)
+	m.br(swap)
 
 	// Copy permanent event values and clear transient values.
+	m.builder.SetInsertPointAtEnd(swap)
+	m.call("sky_event_copy_declared", m.load(m.next_event_ref(cursor), "next_event"), m.load(m.event_ref(cursor), "event"))
+	tmp := m.load(m.event_ref(cursor), "event")
+	m.store(m.load(m.next_event_ref(cursor), "next_event"), m.event_ref(cursor))
+	m.store(tmp, m.next_event_ref(cursor))
+	m.br(init)
+
 	m.builder.SetInsertPointAtEnd(init)
-	m.call("sky_event_copy", event, next_event)
+	event := m.load(m.event_ref(cursor), "event")
+	next_event := m.load(m.next_event_ref(cursor), "next_event")
 	m.call("sky_event_copy_permanent", next_event, event)
 	m.call("sky_event_reset_transient", next_event)
 	m.br(mdb_cursor_get)
@@ -153,9 +167,9 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 //     dest->field = src->field;
 //     ...
 // }
-func (m *Mapper) codegenEventCopyFunc() llvm.Value {
+func (m *Mapper) codegenEventCopyFunc(functionName string, filter func(*ast.VarDecl) bool) llvm.Value {
 	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.eventType, 0)}, false)
-	fn := llvm.AddFunction(m.module, "sky_event_copy", fntype)
+	fn := llvm.AddFunction(m.module, functionName, fntype)
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
 	dest := m.alloca(llvm.PointerType(m.eventType, 0), "dest")
@@ -164,34 +178,7 @@ func (m *Mapper) codegenEventCopyFunc() llvm.Value {
 	m.store(fn.Param(1), src)
 
 	for _, decl := range m.decls {
-		switch decl.DataType {
-		case core.IntegerDataType, core.FactorDataType, core.FloatDataType, core.BooleanDataType:
-			m.store(m.load(m.structgep(m.load(src, ""), decl.Index())), m.structgep(m.load(dest, ""), decl.Index()))
-		}
-	}
-
-	m.retvoid()
-	return fn
-}
-
-// [codegen]
-// void sky_event_copy_permanent(sky_event *dest, sky_event *src) {
-//     ...
-//     dest->field = src->field;
-//     ...
-// }
-func (m *Mapper) codegenEventCopyPermanentFunc() llvm.Value {
-	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0), llvm.PointerType(m.eventType, 0)}, false)
-	fn := llvm.AddFunction(m.module, "sky_event_copy_permanent", fntype)
-
-	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
-	dest := m.alloca(llvm.PointerType(m.eventType, 0), "det")
-	src := m.alloca(llvm.PointerType(m.eventType, 0), "src")
-	m.store(fn.Param(0), dest)
-	m.store(fn.Param(1), src)
-
-	for _, decl := range m.decls {
-		if decl.Id >= 0 && !decl.IsSystemVarDecl() {
+		if filter == nil || filter(decl) {
 			switch decl.DataType {
 			case core.IntegerDataType, core.FactorDataType, core.FloatDataType, core.BooleanDataType:
 				m.store(m.load(m.structgep(m.load(src, ""), decl.Index())), m.structgep(m.load(dest, ""), decl.Index()))
@@ -209,46 +196,19 @@ func (m *Mapper) codegenEventCopyPermanentFunc() llvm.Value {
 //     event->field = 0;
 //     ...
 // }
-func (m *Mapper) codegenEventResetFunc() llvm.Value {
+func (m *Mapper) codegenEventResetFunc(functionName string, filter func(*ast.VarDecl) bool) llvm.Value {
 	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0)}, false)
-	fn := llvm.AddFunction(m.module, "sky_event_reset", fntype)
+	fn := llvm.AddFunction(m.module, functionName, fntype)
 
 	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
 	event := m.alloca(llvm.PointerType(m.eventType, 0), "event")
 	m.store(fn.Param(0), event)
 
 	for index, decl := range m.decls {
-		switch decl.DataType {
-		case core.StringDataType:
-			panic("NOT YET IMPLEMENTED: clear_event [string]")
-		case core.IntegerDataType, core.FactorDataType, core.BooleanDataType:
-			m.store(m.constint(0), m.structgep(m.load(event), index, decl.Name))
-		case core.FloatDataType:
-			m.store(m.constfloat(0), m.structgep(m.load(event), index, decl.Name))
-		}
-	}
-
-	m.retvoid()
-	return fn
-}
-
-// [codegen]
-// void sky_event_reset_transient(sky_event *event) {
-//     ...
-//     event->field = 0;
-//     ...
-// }
-func (m *Mapper) codegenEventResetTransientFunc() llvm.Value {
-	fntype := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.eventType, 0)}, false)
-	fn := llvm.AddFunction(m.module, "sky_event_reset_transient", fntype)
-
-	m.builder.SetInsertPointAtEnd(m.context.AddBasicBlock(fn, "entry"))
-	event := m.alloca(llvm.PointerType(m.eventType, 0), "event")
-	m.store(fn.Param(0), event)
-
-	for index, decl := range m.decls {
-		if decl.Id < 0 {
+		if filter == nil || filter(decl) {
 			switch decl.DataType {
+			case core.StringDataType:
+				panic("NOT YET IMPLEMENTED: clear_event [string]")
 			case core.IntegerDataType, core.FactorDataType, core.BooleanDataType:
 				m.store(m.constint(0), m.structgep(m.load(event), index, decl.Name))
 			case core.FloatDataType:

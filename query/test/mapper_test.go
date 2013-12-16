@@ -87,6 +87,31 @@ func TestMapperFactorEquality(t *testing.T) {
 	}
 }
 
+func TestMapperAssignment(t *testing.T) {
+	query := `
+		DECLARE myVar AS INTEGER
+		FOR EACH EVENT
+			SET myVar = myVar + 1
+			SELECT sum(myVar)
+		END
+	`
+	result, err := runDBMapper(query, ast.VarDecls{
+		ast.NewVarDecl(2, "integerVariable", "integer"),
+	}, map[string][]*core.Event{
+		"foo": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 2, 1),    // myVar=1, sum=1
+			testevent("2000-01-01T00:00:02Z", 2, 2),    // myVar=2, sum=3
+		},
+		"bar": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 2, 3),    // myVar=1, sum=4
+		},
+	})
+	assert.NoError(t, err)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, result.Get(0), 4)
+	}
+}
+
 
 // Executes a query against a given set of data and return the results.
 func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Event) (*hashmap.Hashmap, error) {

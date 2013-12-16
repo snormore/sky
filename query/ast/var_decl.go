@@ -32,9 +32,24 @@ func (v *VarDecl) Index() int {
 	return v.index
 }
 
+// Determines if the variable declaration is a permanent variable.
+func (v *VarDecl) IsPermanent() bool {
+	return (v.Id > 0)
+}
+
+// Determines if the variable declaration is a transient variable.
+func (v *VarDecl) IsTransient() bool {
+	return v.Id < 0
+}
+
 // Determines if the variable declaration is a system variable.
-func (v *VarDecl) IsSystemVarDecl() bool {
-	return (len(v.Name) != 0 && v.Name[0] == '@')
+func (v *VarDecl) IsSystem() bool {
+	return v.Id == 0 && (len(v.Name) != 0 && v.Name[0] == '@')
+}
+
+// Determines if the variable declaration is a declared variable.
+func (v *VarDecl) IsDeclared() bool {
+	return v.Id == 0 && !v.IsSystem()
 }
 
 func (v *VarDecl) String() string {

@@ -9,7 +9,7 @@ func (s VarDecls) Len() int {
 
 func (s VarDecls) Less(i, j int) bool {
 	// System variables go first.
-	isys, jsys := s[i].IsSystemVarDecl(), s[j].IsSystemVarDecl()
+	isys, jsys := s[i].IsSystem(), s[j].IsSystem()
 	if isys != jsys {
 		return isys
 	}

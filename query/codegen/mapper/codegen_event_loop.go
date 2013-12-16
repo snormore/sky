@@ -43,7 +43,7 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 
 	// if(next_event->eof == false) goto loop else goto exit;
 	m.builder.SetInsertPointAtEnd(loop_condition)
-	event_ref := m.load_event_ref(cursor_ref)
+	event_ref := m.event_ref(cursor_ref)
 	eof := m.load_eof(event_ref)
 	m.printf("eof? %d\n", eof)
 	m.condbr(m.icmp(llvm.IntEQ, eof, m.constint(0)), loop, exit)
