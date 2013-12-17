@@ -161,6 +161,7 @@ func (s *shard) insertEvent(txn *mdb.Txn, dbi mdb.DBI, c *mdb.Cursor, id string,
 	}
 
 	// Insert event.
+	fmt.Printf("INSERT: %s | %x\n", id, b.Bytes())
 	if err := txn.Put(dbi, []byte(id), b.Bytes(), 0); err != nil {
 		return fmt.Errorf("lmdb txn put error: %s", err)
 	}

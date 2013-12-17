@@ -112,6 +112,34 @@ func TestMapperAssignment(t *testing.T) {
 	}
 }
 
+func TestMapperSessionLoop(t *testing.T) {
+	query := `
+		FOR EACH SESSION DELIMITED BY 2 HOURS
+		  FOR EACH EVENT
+			SELECT count() AS count GROUP BY action, @@eos, @@eof
+		  END
+		END
+	`
+	result, err := runDBMapper(query, ast.VarDecls{
+		ast.NewVarDecl(1, "action", "factor"),
+	}, map[string][]*core.Event{
+		"foo": []*core.Event{
+			testevent("1970-01-01T00:00:01Z", 1, 1),  // ts=1,     action=A0
+			testevent("1970-01-01T01:59:59Z", 1, 2),  // ts=7199,  action=A1
+			testevent("1970-01-02T00:00:00Z", 1, 1),  // ts=86400, action=A0
+			testevent("1970-01-02T02:00:00Z", 1, 2),  // ts=93600, action=A1
+		},
+
+		"bar": []*core.Event{
+			testevent("1970-01-02T02:00:00Z", 1, 1),  // action=A0
+		},
+	})
+	assert.NoError(t, err)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, result.Get(0), 4)
+	}
+}
+
 
 // Executes a query against a given set of data and return the results.
 func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Event) (*hashmap.Hashmap, error) {
@@ -146,6 +174,8 @@ func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Ev
 
 	// Setup factor test data.
 	f := db.TableFactorizer("TBL")
+	f.Factorize("action", "A0", true)
+	f.Factorize("action", "A1", true)
 	f.Factorize("factorVariable", "XXX", true)
 	f.Factorize("factorVariable", "YYY", true)
 

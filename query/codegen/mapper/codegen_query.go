@@ -17,6 +17,8 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 		return nilValue, err
 	}
 
+	llvm.AddFunction(m.module, "llvm.bswap.i64", llvm.FunctionType(m.context.Int64Type(), []llvm.Type{m.context.Int64Type()}, false))
+
 	m.declare_lmdb()
 
 	m.eventType = m.codegenEventType()

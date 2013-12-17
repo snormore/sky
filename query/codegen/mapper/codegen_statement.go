@@ -25,6 +25,8 @@ func (m *Mapper) codegenStatement(node ast.Statement, symtable *ast.Symtable) (l
 		return m.codegenEventLoop(node, symtable)
 	case *ast.Selection:
 		return m.codegenSelection(node, symtable)
+	case *ast.SessionLoop:
+		return m.codegenSessionLoop(node, symtable)
 	case *ast.VarDecl:
 		if err := symtable.Add(node); err != nil {
 			return nilValue, err

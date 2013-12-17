@@ -33,8 +33,8 @@ typedef struct {
 typedef struct sky_cursor sky_cursor;
 
 typedef struct {
-  int64_t eos;
   int64_t eof;
+  int64_t eos;
   int64_t timestamp;
 } sky_event;
 
@@ -42,6 +42,8 @@ struct sky_cursor {
     sky_event *event;
     sky_event *next_event;
     MDB_cursor* lmdb_cursor;
+    int64_t session_idle_time;
+    int64_t session_wait;
 
     void *key_prefix;
     int64_t key_prefix_sz;

@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	eventEofElementIndex       = 1
-	eventEosElementIndex       = 0
+	eventEofElementIndex       = 0
+	eventEosElementIndex       = 1
 	eventTimestampElementIndex = 2
 )
 
@@ -103,6 +103,8 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	init := m.context.AddBasicBlock(fn, "init")
 	mdb_cursor_get := m.context.AddBasicBlock(fn, "mdb_cursor_get")
 	read_event := m.context.AddBasicBlock(fn, "read_event")
+	check_eos := m.context.AddBasicBlock(fn, "check_eos")
+	set_eos := m.context.AddBasicBlock(fn, "set_eos")
 	set_eof := m.context.AddBasicBlock(fn, "set_eof")
 	error_lbl := m.context.AddBasicBlock(fn, "error")
 	exit := m.context.AddBasicBlock(fn, "exit")
@@ -141,7 +143,21 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	m.builder.SetInsertPointAtEnd(read_event)
 	ptr := m.load(m.structgep(data, 1, ""), "ptr")
 	rc = m.call("cursor_read_event", next_event, ptr)
-	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), exit, error_lbl)
+	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), check_eos, error_lbl)
+
+	// Check for end of session.
+	m.builder.SetInsertPointAtEnd(check_eos)
+	timestamp := m.load(m.structgep(event, eventTimestampElementIndex))
+	nextTimestamp := m.load(m.structgep(next_event, eventTimestampElementIndex))
+	sessionIdleTime := m.load(m.structgep(m.load(cursor), cursorSessionIdleTimeElementIndex))
+	maxTimestamp := m.add(timestamp, sessionIdleTime, "max_timestamp")
+	m.printf("EOS? %d + %d (%d) < %d\n", timestamp, sessionIdleTime, maxTimestamp, nextTimestamp)
+	m.condbr(m.icmp(llvm.IntSLT, maxTimestamp, nextTimestamp), set_eos, exit)
+
+	// Set end-of-session, if necessary.
+	m.builder.SetInsertPointAtEnd(set_eos)
+	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
+	m.br(exit)
 
 	// Mark eof and exit.
 	m.builder.SetInsertPointAtEnd(set_eof)
@@ -271,8 +287,10 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     ptr += 8;
 	m.builder.SetInsertPointAtEnd(read_ts)
 	ts_value := m.load(m.builder.CreateBitCast(m.load(ptr, ""), llvm.PointerType(m.context.Int64Type(), 0), ""), "ts_value")
-	timestamp_value := m.builder.CreateLShr(ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
+	native_ts_value := m.call("llvm.bswap.i64", ts_value)
+	timestamp_value := m.builder.CreateLShr(native_ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
 	event_timestamp := m.structgep(m.load(event, ""), eventTimestampElementIndex, "event_timestamp")
+	m.printf("TS:%d\n", timestamp_value)
 	m.store(timestamp_value, event_timestamp)
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
 	m.br(read_map)

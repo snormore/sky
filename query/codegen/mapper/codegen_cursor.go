@@ -8,12 +8,16 @@ const (
 	cursorEventElementIndex      = 0
 	cursorNextEventElementIndex  = 1
 	cursorLMDBCursorElementIndex = 2
+	cursorSessionIdleTimeElementIndex = 3
+	cursorSessionWaitElementIndex = 4
 )
 
 // [codegen]
 // typedef struct {
 //     sky_event *event;
 //     sky_event *next_event;
+//     MDB_cursor *lmdb_cursor;
+//     int64_t session_wait;
 // } sky_cursor;
 func (m *Mapper) codegenCursorType() llvm.Type {
 	typ := m.context.StructCreateNamed("sky_cursor")
@@ -21,6 +25,8 @@ func (m *Mapper) codegenCursorType() llvm.Type {
 		llvm.PointerType(m.eventType, 0),
 		llvm.PointerType(m.eventType, 0),
 		llvm.PointerType(m.mdbCursorType, 0),
+		m.context.Int64Type(),
+		m.context.Int64Type(),
 	}, false)
 	return typ
 }

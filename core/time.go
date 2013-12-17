@@ -1,9 +1,8 @@
 package core
 
 import (
+	"encoding/binary"
 	"time"
-
-	"github.com/skydb/sky/endian"
 )
 
 const SECONDS_BIT_OFFSET = 20
@@ -21,7 +20,7 @@ func ShiftTimeBytes(value time.Time) []byte {
 	var b [8]byte
 	bs := b[:8]
 	timestamp := ShiftTime(value)
-	endian.Native.PutUint64(bs, uint64(timestamp))
+	binary.BigEndian.PutUint64(bs, uint64(timestamp))
 	return bs
 }
 
@@ -34,6 +33,6 @@ func UnshiftTime(value int64) time.Time {
 
 // UnshiftTimeBytes converts a byte slice in Sky timestamp format to Go time.
 func UnshiftTimeBytes(value []byte) time.Time {
-	timestamp := endian.Native.Uint64(value)
+	timestamp := binary.BigEndian.Uint64(value)
 	return UnshiftTime(int64(timestamp))
 }
