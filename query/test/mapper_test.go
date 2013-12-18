@@ -9,9 +9,16 @@ import (
 	"github.com/skydb/sky/db"
 	"github.com/skydb/sky/query/ast"
 	"github.com/skydb/sky/query/codegen/mapper"
+	"github.com/skydb/sky/query/codegen/hash"
 	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/skydb/sky/query/parser"
 	"github.com/stretchr/testify/assert"
+)
+
+var (
+	HASH_FOO = int64(hash.HashString("foo"))
+	HASH_COUNT = int64(hash.HashString("count"))
+	HASH_SUM_MYVAR = int64(hash.HashString("sum_myVar"))
 )
 
 func TestMapperSelectCount(t *testing.T) {
@@ -33,7 +40,30 @@ func TestMapperSelectCount(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Get(0), 3)
+		assert.Equal(t, result.Get(HASH_COUNT), 3)
+	}
+}
+
+func TestMapperSelectInto(t *testing.T) {
+	query := `
+		FOR EACH EVENT
+			SELECT count() INTO "foo"
+		END
+	`
+	result, err := runDBMapper(query, ast.VarDecls{
+		ast.NewVarDecl(1, "foo", "integer"),
+	}, map[string][]*core.Event{
+		"foo": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 1, 10),
+			testevent("2000-01-01T00:00:02Z", 1, 20),
+		},
+		"bar": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 1, 40),
+		},
+	})
+	assert.NoError(t, err)
+	if assert.NotNil(t, result) {
+		assert.Equal(t, result.Submap(HASH_FOO).Get(HASH_COUNT), 3)
 	}
 }
 
@@ -58,7 +88,7 @@ func TestMapperCondition(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Get(0), 1)
+		assert.Equal(t, result.Get(HASH_COUNT), 1)
 	}
 }
 
@@ -83,7 +113,7 @@ func TestMapperFactorEquality(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Get(0), 2)
+		assert.Equal(t, result.Get(HASH_COUNT), 2)
 	}
 }
 
@@ -108,7 +138,7 @@ func TestMapperAssignment(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Get(0), 4)
+		assert.Equal(t, result.Get(HASH_SUM_MYVAR), 4)
 	}
 }
 
@@ -139,17 +169,17 @@ func TestMapperSessionLoop(t *testing.T) {
 	if assert.NotNil(t, result) {
 		// action=A0
 		h = result.Submap(3).Submap(1)
-		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(0).Get(0), 1)  // A0 eof=0 eos=0 count()
-		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(1).Get(0), 1)  // A0 eof=0 eos=1 count()
-		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(0).Get(0), 0)  // A0 eof=1 eos=0 count()
-		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(1).Get(0), 1)  // A0 eof=1 eos=1 count()
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(0).Get(HASH_COUNT), 1)  // A0 eof=0 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(1).Get(HASH_COUNT), 1)  // A0 eof=0 eos=1 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(0).Get(HASH_COUNT), 0)  // A0 eof=1 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(1).Get(HASH_COUNT), 1)  // A0 eof=1 eos=1 count()
 
 		// action=A1
 		h = result.Submap(3).Submap(2)
-		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(0).Get(0), 0)  // A0 eof=0 eos=0 count()
-		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(1).Get(0), 1)  // A0 eof=0 eos=1 count()
-		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(0).Get(0), 0)  // A0 eof=1 eos=0 count()
-		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(1).Get(0), 1)  // A0 eof=1 eos=1 count()
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(0).Get(HASH_COUNT), 0)  // A0 eof=0 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(1).Get(HASH_COUNT), 1)  // A0 eof=0 eos=1 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(0).Get(HASH_COUNT), 0)  // A0 eof=1 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(1).Get(HASH_COUNT), 1)  // A0 eof=1 eos=1 count()
 	}
 }
 

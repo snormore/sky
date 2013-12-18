@@ -5,6 +5,7 @@ import (
 	
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/codegen/hash"
 )
 
 // [codegen]
@@ -33,13 +34,14 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 	m.builder.SetInsertPointAtEnd(body)
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
 	if node.IsAggregate() {
-		currentValue := m.builder.CreateCall(m.module.NamedFunction("sky_hashmap_get"), []llvm.Value{m.load(result), llvm.ConstInt(m.context.Int64Type(), uint64(index), false)}, "")
+		id := hash.HashString(node.Identifier())
+		currentValue := m.call("sky_hashmap_get", m.load(result), m.constint(int(id)))
 		newValue, err := m.codegenAggregateField(node, tbl, event, currentValue)
 		if err != nil {
 			return nilValue, err
 		}
-		m.printf("field: %d -> %d\n", currentValue, newValue)
-		m.builder.CreateCall(m.module.NamedFunction("sky_hashmap_set"), []llvm.Value{m.load(result), llvm.ConstInt(m.context.Int64Type(), uint64(index), false), newValue}, "")
+		m.printf("field.set %s %d -> %d\n", node.Identifier(), currentValue, newValue)
+		m.call("sky_hashmap_set", m.load(result), m.constint(int(id)), newValue)
 	} else {
 		panic("UNIMPLEMENTED")
 	}

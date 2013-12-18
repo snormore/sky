@@ -5,6 +5,7 @@ import (
 
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/codegen/hash"
 )
 
 // [codegen]
@@ -27,21 +28,28 @@ func (m *Mapper) codegenSelection(node *ast.Selection, tbl *ast.Symtable) (llvm.
 	}
 
 	entry := m.context.AddBasicBlock(fn, "entry")
+	name_lbl := m.context.AddBasicBlock(fn, "name")
 	dimensions_lbl := m.context.AddBasicBlock(fn, "dimensions")
 	fields_lbl := m.context.AddBasicBlock(fn, "fields")
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
 	cursor := m.alloca(llvm.PointerType(m.cursorType, 0), "cursor")
-	result := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
+	result_ref := m.alloca(llvm.PointerType(m.hashmapType, 0), "result")
 	m.store(fn.Param(0), cursor)
-	m.store(fn.Param(1), result)
+	m.store(fn.Param(1), result_ref)
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
+	result := m.load(result_ref)
+	m.br(name_lbl)
+
+	m.builder.SetInsertPointAtEnd(name_lbl)
+	if node.Name != "" {
+		result = m.call("sky_hashmap_submap", result, m.constint(int(hash.HashString(node.Name))))
+	}
 	m.br(dimensions_lbl)
 
 	// Traverse to the appropriate hashmap in the results.
 	m.builder.SetInsertPointAtEnd(dimensions_lbl)
-	result = m.load(result)
 	for _, dimension := range node.Dimensions {
 		decl := tbl.Find(dimension)
 		if decl == nil {
