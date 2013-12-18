@@ -113,6 +113,7 @@ func TestMapperAssignment(t *testing.T) {
 }
 
 func TestMapperSessionLoop(t *testing.T) {
+	var h *hashmap.Hashmap
 	query := `
 		FOR EACH SESSION DELIMITED BY 2 HOURS
 		  FOR EACH EVENT
@@ -136,15 +137,19 @@ func TestMapperSessionLoop(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Submap(1).Submap(0).Submap(0).Get(0), 1)  // A0 eof=0 eos=0 count()
-		assert.Equal(t, result.Submap(1).Submap(0).Submap(1).Get(0), 1)  // A0 eof=0 eos=1 count()
-		assert.Equal(t, result.Submap(1).Submap(1).Submap(0).Get(0), 0)  // A0 eof=1 eos=0 count()
-		assert.Equal(t, result.Submap(1).Submap(1).Submap(1).Get(0), 1)  // A0 eof=1 eos=1 count()
+		// action=A0
+		h = result.Submap(3).Submap(1)
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(0).Get(0), 1)  // A0 eof=0 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(1).Get(0), 1)  // A0 eof=0 eos=1 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(0).Get(0), 0)  // A0 eof=1 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(1).Get(0), 1)  // A0 eof=1 eos=1 count()
 
-		assert.Equal(t, result.Submap(2).Submap(0).Submap(0).Get(0), 0)  // A1 eof=0 eos=0 count()
-		assert.Equal(t, result.Submap(2).Submap(0).Submap(1).Get(0), 1)  // A1 eof=0 eos=1 count()
-		assert.Equal(t, result.Submap(2).Submap(1).Submap(0).Get(0), 0)  // A1 eof=1 eos=0 count()
-		assert.Equal(t, result.Submap(2).Submap(1).Submap(1).Get(0), 1)  // A1 eof=1 eos=1 count()
+		// action=A1
+		h = result.Submap(3).Submap(2)
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(0).Get(0), 0)  // A0 eof=0 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(0).Submap(1).Submap(1).Get(0), 1)  // A0 eof=0 eos=1 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(0).Get(0), 0)  // A0 eof=1 eos=0 count()
+		assert.Equal(t, h.Submap(0).Submap(1).Submap(1).Submap(1).Get(0), 1)  // A0 eof=1 eos=1 count()
 	}
 }
 

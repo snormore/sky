@@ -37,7 +37,7 @@ func (m *Mapper) codegenSelection(node *ast.Selection, tbl *ast.Symtable) (llvm.
 	m.store(fn.Param(0), cursor)
 	m.store(fn.Param(1), result)
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
-	m.builder.CreateBr(dimensions_lbl)
+	m.br(dimensions_lbl)
 
 	// Traverse to the appropriate hashmap in the results.
 	m.builder.SetInsertPointAtEnd(dimensions_lbl)
@@ -48,18 +48,20 @@ func (m *Mapper) codegenSelection(node *ast.Selection, tbl *ast.Symtable) (llvm.
 			return nilValue, fmt.Errorf("Dimension variable not found: %s", dimension)
 		}
 		value := m.load(m.structgep(event, decl.Index()))
-		result = m.builder.CreateCall(m.module.NamedFunction("sky_hashmap_submap"), []llvm.Value{result, value}, "")
+		result = m.call("sky_hashmap_submap", result, m.constint(decl.Index()))
+		result = m.call("sky_hashmap_submap", result, value)
 	}
-	m.builder.CreateBr(fields_lbl)
+	m.br(fields_lbl)
 
+	// ...generate fields...
 	m.builder.SetInsertPointAtEnd(fields_lbl)
 	for _, fieldFn := range fieldFns {
-		m.builder.CreateCall(fieldFn, []llvm.Value{m.load(cursor), result}, "")
+		m.call(fieldFn, m.load(cursor), result)
 	}
-	m.builder.CreateBr(exit)
+	m.br(exit)
 
 	m.builder.SetInsertPointAtEnd(exit)
-	m.builder.CreateRetVoid()
+	m.retvoid()
 
 	return fn, nil
 }
