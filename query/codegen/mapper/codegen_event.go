@@ -118,14 +118,23 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	m.printf("event.next ->\n")
 	m.br(swap)
 
-	// Copy permanent event values and clear transient values.
+	// sky_event_copy_declared(cursor->next_event, cursor->event);
+	// tmp = cursor->event;
+	// cursor->event = cursor->next_event;
+	// cursor->next_event = tmp;
+	// cursor->next_event->eos = 0;
+	// goto init;
 	m.builder.SetInsertPointAtEnd(swap)
 	m.call("sky_event_copy_declared", m.load(m.next_event_ref(cursor), "next_event"), m.load(m.event_ref(cursor), "event"))
 	tmp := m.load(m.event_ref(cursor), "event")
 	m.store(m.load(m.next_event_ref(cursor), "next_event"), m.event_ref(cursor))
 	m.store(tmp, m.next_event_ref(cursor))
+	m.store(m.constint(0), m.structgep(m.load(m.next_event_ref(cursor)), eventEosElementIndex))
 	m.br(init)
 
+	// sky_event_copy_permanent(next_event, event);
+	// sky_event_reset_transient(next_event);
+	// goto mdb_cursor_get;
 	m.builder.SetInsertPointAtEnd(init)
 	event := m.load(m.event_ref(cursor), "event")
 	next_event := m.load(m.next_event_ref(cursor), "next_event")
@@ -133,45 +142,66 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	m.call("sky_event_reset_transient", next_event)
 	m.br(mdb_cursor_get)
 
-	// Move MDB cursor forward and retrieve the new pointer.
+	// rc = mdb_cursor_get(cursor->lmdb_cursor, &key, &data, MDB_NEXT_DUP);
+	// if(rc == 0) goto read_event else goto set_eof;
 	m.builder.SetInsertPointAtEnd(mdb_cursor_get)
 	lmdb_cursor := m.load(m.structgep(m.load(cursor, ""), cursorLMDBCursorElementIndex, ""), "lmdb_cursor")
 	rc := m.builder.CreateCall(m.module.NamedFunction("mdb_cursor_get"), []llvm.Value{lmdb_cursor, key, data, llvm.ConstInt(m.context.Int64Type(), MDB_NEXT_DUP, false)}, "rc")
 	m.condbr(m.builder.CreateICmp(llvm.IntEQ, rc, llvm.ConstInt(m.context.Int64Type(), 0, false), ""), read_event, set_eof)
 
-	// Read event from pointer.
+	// rc = cursor_read_event(next_event, ptr);
+	// if(rc == 0) goto check_eos else goto error;
 	m.builder.SetInsertPointAtEnd(read_event)
 	ptr := m.load(m.structgep(data, 1, ""), "ptr")
 	rc = m.call("cursor_read_event", next_event, ptr)
 	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), check_eos, error_lbl)
 
-	// Check for end of session.
+	// timestamp = event->timestamp;
+	// next_timestamp = next_event->timestamp;
+	// session_idle_time = cursor->session_idle_time;
+	// max_timestamp = timestamp + session_idle_time;
+	// if(max_timestamp < next_timestamp) goto set_eos else goto exit;
 	m.builder.SetInsertPointAtEnd(check_eos)
 	timestamp := m.load(m.structgep(event, eventTimestampElementIndex))
 	nextTimestamp := m.load(m.structgep(next_event, eventTimestampElementIndex))
 	sessionIdleTime := m.load(m.structgep(m.load(cursor), cursorSessionIdleTimeElementIndex))
 	maxTimestamp := m.add(timestamp, sessionIdleTime, "max_timestamp")
-	m.printf("EOS? %d + %d (%d) < %d\n", timestamp, sessionIdleTime, maxTimestamp, nextTimestamp)
-	m.condbr(m.icmp(llvm.IntSLT, maxTimestamp, nextTimestamp), set_eos, exit)
+	m.printf("event.check_eos %d + %d (%d) <= %d\n", timestamp, sessionIdleTime, maxTimestamp, nextTimestamp)
+	m.condbr(m.and(m.icmp(llvm.IntSGT, sessionIdleTime, m.constint(0)), m.icmp(llvm.IntSLE, maxTimestamp, nextTimestamp)), set_eos, exit)
 
-	// Set end-of-session, if necessary.
+	// event->eos = 1;
 	m.builder.SetInsertPointAtEnd(set_eos)
 	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
+	m.printf("SET EOS: %d\n", m.load(m.structgep(event, eventEosElementIndex)))
 	m.br(exit)
 
-	// Mark eof and exit.
+	// event->eof = 1;
+	// event->eos = 1;
+	// next_event->eof = 1;
+	// next_event->eos = 1;
+	// goto exit;
 	m.builder.SetInsertPointAtEnd(set_eof)
+	m.store(m.constint(1), m.structgep(event, eventEofElementIndex))
+	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEofElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEosElementIndex))
 	m.printf("event.next <-set_eof\n")
 	m.br(exit)
 
+	// event->eof = 1;
+	// event->eos = 1;
+	// next_event->eof = 1;
+	// next_event->eos = 1;
+	// return -1;
 	m.builder.SetInsertPointAtEnd(error_lbl)
+	m.store(m.constint(1), m.structgep(event, eventEofElementIndex))
+	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEofElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEosElementIndex))
 	m.printf("event.next <-error\n")
 	m.ret(m.constint(-1))
 
+	// return 0;
 	m.builder.SetInsertPointAtEnd(exit)
 	m.printf("event.next <-exit\n")
 	m.ret(m.constint(0))
@@ -290,7 +320,7 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	native_ts_value := m.call("llvm.bswap.i64", ts_value)
 	timestamp_value := m.builder.CreateLShr(native_ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
 	event_timestamp := m.structgep(m.load(event, ""), eventTimestampElementIndex, "event_timestamp")
-	m.printf("TS:%d\n", timestamp_value)
+	m.printf("ts(%d) ", timestamp_value)
 	m.store(timestamp_value, event_timestamp)
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
 	m.br(read_map)

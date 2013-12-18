@@ -36,8 +36,8 @@ func (m *Mapper) codegenSessionLoop(node *ast.SessionLoop, tbl *ast.Symtable) (l
 
 	entry := m.context.AddBasicBlock(fn, "entry")
 	init := m.context.AddBasicBlock(fn, "init")
-	loop_condition := m.context.AddBasicBlock(fn, "loop_condition")
 	loop := m.context.AddBasicBlock(fn, "loop")
+	next_event := m.context.AddBasicBlock(fn, "next_event")
 	exit := m.context.AddBasicBlock(fn, "exit")
 
 	m.builder.SetInsertPointAtEnd(entry)
@@ -53,27 +53,23 @@ func (m *Mapper) codegenSessionLoop(node *ast.SessionLoop, tbl *ast.Symtable) (l
 	prevSessionIdleTime := m.load(m.structgep(m.load(cursor_ref), cursorSessionIdleTimeElementIndex))
 	m.store(m.constint(node.IdleDuration), m.structgep(m.load(cursor_ref), cursorSessionIdleTimeElementIndex))
 	m.printf("session_loop.init %d\n", m.load(m.structgep(m.load(cursor_ref), cursorSessionIdleTimeElementIndex)))
-	m.br(loop_condition)
-
-	// if(next_event->eof == false) goto loop else goto exit;
-	m.builder.SetInsertPointAtEnd(loop_condition)
-	event_ref := m.event_ref(cursor_ref)
-	eof := m.load_eof(event_ref)
-	m.condbr(m.icmp(llvm.IntEQ, eof, m.constint(0)), loop, exit)
+	m.br(loop)
 
 	// ...generate...
-	// cursor->session_wait = 0;
-	// rc = cursor_next_event(cursor);
-	// if (rc == 0) goto loop_condition else goto exit;
+	// if(cursor->event->eof == 0) goto next_event else goto exit
 	m.builder.SetInsertPointAtEnd(loop)
 	m.printf("session_loop.loop\n")
 	for _, statementFn := range statementFns {
 		m.call(statementFn, m.load(cursor_ref, ""), m.load(result_ref, ""))
 	}
-	m.store(m.constint(0), m.structgep(m.load(cursor_ref), cursorSessionWaitElementIndex))
+	m.condbr(m.icmp(llvm.IntEQ, m.load_eof(m.event_ref(cursor_ref)), m.constint(0)), next_event, exit)
+
+	// rc = cursor_next_event(cursor);
+	// if (rc == 0) goto loop_condition else goto exit;
+	m.builder.SetInsertPointAtEnd(next_event)
 	rc := m.call("cursor_next_event", m.load(cursor_ref))
 	m.printf("session_loop.next_event %d\n", rc)
-	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop_condition, exit)
+	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop, exit)
 
 	// cursor->session_idle_time = prev_session_idle_time;
 	// return;

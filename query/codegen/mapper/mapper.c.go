@@ -43,7 +43,6 @@ struct sky_cursor {
     sky_event *next_event;
     MDB_cursor* lmdb_cursor;
     int64_t session_idle_time;
-    int64_t session_wait;
 
     void *key_prefix;
     int64_t key_prefix_sz;

@@ -16,6 +16,10 @@ func (m *Mapper) add(lhs llvm.Value, rhs llvm.Value, name...string) llvm.Value {
 	return m.builder.CreateAdd(lhs, rhs, fname(name))
 }
 
+func (m *Mapper) and(lhs llvm.Value, rhs llvm.Value, name...string) llvm.Value {
+	return m.builder.CreateAnd(lhs, rhs, fname(name))
+}
+
 func (m *Mapper) br(bb llvm.BasicBlock) llvm.Value {
 	return m.builder.CreateBr(bb)
 }
@@ -61,6 +65,10 @@ func (m *Mapper) load_eof(event_ref llvm.Value, name... string) llvm.Value {
 
 func (m *Mapper) load_eos(event_ref llvm.Value, name... string) llvm.Value {
 	return m.load(m.structgep(m.load(event_ref), eventEosElementIndex))
+}
+
+func (m *Mapper) or(lhs llvm.Value, rhs llvm.Value, name...string) llvm.Value {
+	return m.builder.CreateAnd(lhs, rhs, fname(name))
 }
 
 func (m *Mapper) phi(typ llvm.Type, values []llvm.Value, blocks []llvm.BasicBlock, name... string) llvm.Value {

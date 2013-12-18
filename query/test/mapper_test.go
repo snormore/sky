@@ -116,7 +116,7 @@ func TestMapperSessionLoop(t *testing.T) {
 	query := `
 		FOR EACH SESSION DELIMITED BY 2 HOURS
 		  FOR EACH EVENT
-			SELECT count() AS count GROUP BY action, @@eos, @@eof
+		    SELECT count() GROUP BY action, @@eof, @@eos
 		  END
 		END
 	`
@@ -136,7 +136,15 @@ func TestMapperSessionLoop(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Get(0), 4)
+		assert.Equal(t, result.Submap(1).Submap(0).Submap(0).Get(0), 1)  // A0 eof=0 eos=0 count()
+		assert.Equal(t, result.Submap(1).Submap(0).Submap(1).Get(0), 1)  // A0 eof=0 eos=1 count()
+		assert.Equal(t, result.Submap(1).Submap(1).Submap(0).Get(0), 0)  // A0 eof=1 eos=0 count()
+		assert.Equal(t, result.Submap(1).Submap(1).Submap(1).Get(0), 1)  // A0 eof=1 eos=1 count()
+
+		assert.Equal(t, result.Submap(2).Submap(0).Submap(0).Get(0), 0)  // A1 eof=0 eos=0 count()
+		assert.Equal(t, result.Submap(2).Submap(0).Submap(1).Get(0), 1)  // A1 eof=0 eos=1 count()
+		assert.Equal(t, result.Submap(2).Submap(1).Submap(0).Get(0), 0)  // A1 eof=1 eos=0 count()
+		assert.Equal(t, result.Submap(2).Submap(1).Submap(1).Get(0), 1)  // A1 eof=1 eos=1 count()
 	}
 }
 
@@ -184,7 +192,7 @@ func runDBMapper(query string, decls ast.VarDecls, objects map[string][]*core.Ev
 	if err != nil {
 		return nil, err
 	}
-	m.Dump()
+	// m.Dump()
 
 	// Execute the mapper.
 	result := hashmap.New()
