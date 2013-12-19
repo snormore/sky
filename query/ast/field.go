@@ -32,20 +32,20 @@ func (f *Field) IsAggregate() bool {
 // Returns the identifier used by the field.
 // This is automatically generated if a name is not explicitly set.
 func (f *Field) Identifier() string {
-        if f.Name != "" {
-                return f.Name
-        }
-        names := []string{}
-        if f.Aggregation != "" {
-                names = append(names, f.Aggregation)
-        }
-        if f.Expression != nil {
-                expr := f.Expression.String()
-                expr = nonAlphaRegex.ReplaceAllString(expr, "_")
-                expr = strings.Trim(expr, "_")
-                names = append(names, expr)
-        }
-        return strings.Join(names, "_")
+	if f.Name != "" {
+		return f.Name
+	}
+	names := []string{}
+	if f.Aggregation != "" {
+		names = append(names, f.Aggregation)
+	}
+	if f.Expression != nil {
+		expr := f.Expression.String()
+		expr = nonAlphaRegex.ReplaceAllString(expr, "_")
+		expr = strings.Trim(expr, "_")
+		names = append(names, expr)
+	}
+	return strings.Join(names, "_")
 }
 
 // Converts the field to a string-based representation.

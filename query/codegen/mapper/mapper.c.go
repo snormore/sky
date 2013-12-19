@@ -112,7 +112,7 @@ void *sky_cursor_next_object(sky_cursor *cursor, int64_t init)
         return NULL;
     }
 
-    printf("OBJ<%.*s>\n", (int)key.mv_size, (char*)key.mv_data);
+    // printf("OBJ<%.*s>\n", (int)key.mv_size, (char*)key.mv_data);
 
     return data.mv_data;
 }

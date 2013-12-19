@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	cursorEventElementIndex      = 0
-	cursorNextEventElementIndex  = 1
-	cursorLMDBCursorElementIndex = 2
+	cursorEventElementIndex           = 0
+	cursorNextEventElementIndex       = 1
+	cursorLMDBCursorElementIndex      = 2
 	cursorSessionIdleTimeElementIndex = 3
 )
 
@@ -34,4 +34,3 @@ func (m *Mapper) codegenCursorType() llvm.Type {
 func (m *Mapper) codegenCursorExternalDecl() {
 	llvm.AddFunction(m.module, "sky_cursor_next_object", llvm.FunctionType(m.ptrtype(), []llvm.Type{llvm.PointerType(m.cursorType, 0), m.context.Int64Type()}, false))
 }
-

@@ -10,7 +10,7 @@ type Assignment struct {
 	Expression Expression
 }
 
-func (a *Assignment) node() {}
+func (a *Assignment) node()      {}
 func (a *Assignment) statement() {}
 
 // Creates a new assignment.

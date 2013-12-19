@@ -20,8 +20,8 @@ type Condition struct {
 	Statements       Statements
 }
 
-func (c *Condition) node() {}
-func (c *Condition) block() {}
+func (c *Condition) node()      {}
+func (c *Condition) block()     {}
 func (c *Condition) statement() {}
 
 // NewCondition returns a new Condition instance.

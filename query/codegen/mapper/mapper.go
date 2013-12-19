@@ -19,13 +19,13 @@ import (
 // The results can be combined using a Reducer.
 type Mapper struct {
 	factorizer Factorizer
-	
+
 	context llvm.Context
 	module  llvm.Module
 	engine  llvm.ExecutionEngine
 	builder llvm.Builder
 
-	decls    ast.VarDecls
+	decls ast.VarDecls
 
 	cursorType    llvm.Type
 	eventType     llvm.Type

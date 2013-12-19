@@ -2,10 +2,10 @@ package mapper
 
 import (
 	"fmt"
-	
+
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
-	"github.com/skydb/sky/query/codegen/hash"
+	"github.com/skydb/sky/query/codegen/hashmap"
 )
 
 // [codegen]
@@ -18,7 +18,7 @@ import (
 // }
 func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (llvm.Value, error) {
 	sig := llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.cursorType, 0), llvm.PointerType(m.hashmapType, 0)}, false)
-	fn := llvm.AddFunction(m.module, node.Identifier() + "_field", sig)
+	fn := llvm.AddFunction(m.module, node.Identifier()+"_field", sig)
 
 	entry := m.context.AddBasicBlock(fn, "entry")
 	body := m.context.AddBasicBlock(fn, "body")
@@ -34,7 +34,7 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 	m.builder.SetInsertPointAtEnd(body)
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
 	if node.IsAggregate() {
-		id := hash.HashString(node.Identifier())
+		id := hashmap.String(node.Identifier())
 		currentValue := m.call("sky_hashmap_get", m.load(result), m.constint(int(id)))
 		newValue, err := m.codegenAggregateField(node, tbl, event, currentValue)
 		if err != nil {
@@ -57,7 +57,7 @@ func (m *Mapper) codegenAggregateField(node *ast.Field, tbl *ast.Symtable, event
 	if node.Aggregation == "count" {
 		return m.builder.CreateAdd(currentValue, llvm.ConstInt(m.context.Int64Type(), 1, false), ""), nil
 	}
-	
+
 	// Generate the field expression.
 	expressionValue, err := m.codegenExpression(node.Expression, event, tbl)
 	if err != nil {
@@ -72,4 +72,3 @@ func (m *Mapper) codegenAggregateField(node *ast.Field, tbl *ast.Symtable, event
 		return nilValue, fmt.Errorf("Invalid aggregation type: %s", node.Aggregation)
 	}
 }
-

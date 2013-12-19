@@ -86,14 +86,14 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	fn := llvm.AddFunction(m.module, "cursor_next_event", fntype)
 
 	m.codegenEventCopyFunc("sky_event_copy", nil)
-	m.codegenEventCopyFunc("sky_event_copy_declared", func (decl *ast.VarDecl) bool {
+	m.codegenEventCopyFunc("sky_event_copy_declared", func(decl *ast.VarDecl) bool {
 		return decl.IsDeclared()
 	})
-	m.codegenEventCopyFunc("sky_event_copy_permanent", func (decl *ast.VarDecl) bool {
+	m.codegenEventCopyFunc("sky_event_copy_permanent", func(decl *ast.VarDecl) bool {
 		return decl.IsPermanent()
 	})
 	m.codegenEventResetFunc("sky_event_reset", nil)
-	m.codegenEventResetFunc("sky_event_reset_transient", func (decl *ast.VarDecl) bool {
+	m.codegenEventResetFunc("sky_event_reset_transient", func(decl *ast.VarDecl) bool {
 		return decl.IsTransient()
 	})
 	m.codegenReadEventFunc()

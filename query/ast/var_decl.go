@@ -18,7 +18,7 @@ type VarDecl struct {
 	index       int
 }
 
-func (v *VarDecl) node() {}
+func (v *VarDecl) node()      {}
 func (v *VarDecl) statement() {}
 
 // NewVarDecl returns a new VarDecl instance.

@@ -8,7 +8,7 @@ import (
 // declarations to be looked up while performing codegen.
 type Symtable struct {
 	parent *Symtable
-	locals  map[string]*VarDecl
+	locals map[string]*VarDecl
 }
 
 // New creates a new Symtable instance that is associated with the given parent.
@@ -16,7 +16,7 @@ type Symtable struct {
 func NewSymtable(parent *Symtable) *Symtable {
 	return &Symtable{
 		parent: parent,
-		locals:  make(map[string]*VarDecl),
+		locals: make(map[string]*VarDecl),
 	}
 }
 

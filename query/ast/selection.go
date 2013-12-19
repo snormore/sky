@@ -12,7 +12,7 @@ type Selection struct {
 	Fields     Fields
 }
 
-func (s *Selection) node() {}
+func (s *Selection) node()      {}
 func (s *Selection) statement() {}
 
 // NewSelection creates a new Selection instance.

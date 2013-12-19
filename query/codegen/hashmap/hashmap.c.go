@@ -206,78 +206,73 @@ import "unsafe"
 
 // Hashmap wraps the underlying C struct.
 type Hashmap struct {
-    C *C.sky_hashmap
+	C *C.sky_hashmap
 }
 
 // New creates a new Hashmap instance.
 func New() *Hashmap {
-    return &Hashmap{C.sky_hashmap_new()}
+	return &Hashmap{C.sky_hashmap_new()}
 }
 
 // Retrieves the number of buckets used by the hashmap.
 func BucketCount() int {
-    return C.HASHMAP_BUCKET_COUNT
+	return C.HASHMAP_BUCKET_COUNT
 }
 
 // Free releases the underlying C memory.
 func (h *Hashmap) Free() {
-    if h.C != nil {
-        C.free(unsafe.Pointer(h.C))
-        h.C = nil
-    }
+	if h.C != nil {
+		C.free(unsafe.Pointer(h.C))
+		h.C = nil
+	}
 }
 
 // Get retrieves the int value for a given key.
 func (h *Hashmap) Get(key int64) int64 {
-    return int64(C.sky_hashmap_get(h.C, C.int64_t(key)))
+	return int64(C.sky_hashmap_get(h.C, C.int64_t(key)))
 }
 
 // Set sets an int value for a given key.
 func (h *Hashmap) Set(key int64, value int64) {
-    C.sky_hashmap_set(h.C, C.int64_t(key), C.int64_t(value))
+	C.sky_hashmap_set(h.C, C.int64_t(key), C.int64_t(value))
 }
 
 // Submap retrieves the hashmap value for a given key.
 func (h *Hashmap) Submap(key int64) *Hashmap {
-    return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
+	return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
 }
-
-
 
 // Iterator wraps the underlying C struct.
 type Iterator struct {
-    C *C.sky_hashmap_iterator
+	C *C.sky_hashmap_iterator
 }
 
 // NewIterator creates a new HashmapIterator instance.
 func NewIterator(h *Hashmap) *Iterator {
-    return &Iterator{C.sky_hashmap_iterator_new(h.C)}
+	return &Iterator{C.sky_hashmap_iterator_new(h.C)}
 }
 
 // Free releases the underlying C memory.
 func (i *Iterator) Free() {
-    if i.C != nil {
-        C.free(unsafe.Pointer(i.C))
-        i.C = nil
-    }
+	if i.C != nil {
+		C.free(unsafe.Pointer(i.C))
+		i.C = nil
+	}
 }
 
 // Next retrieves the next key and a success flag.
 func (i *Iterator) Next() (int64, bool) {
-    var key C.int64_t
-    success := bool(C.sky_hashmap_iterator_next(i.C, &key))
-    return int64(key), success
+	var key C.int64_t
+	success := bool(C.sky_hashmap_iterator_next(i.C, &key))
+	return int64(key), success
 }
-
-
 
 // benchmark runs get() N number of times within the C context.
 func benchmarkGet(h *Hashmap, n int64) {
-    C.sky_hashmap_benchmark_get(h.C, C.int64_t(n))
+	C.sky_hashmap_benchmark_get(h.C, C.int64_t(n))
 }
 
 // benchmark runs set() N number of times within the C context.
 func benchmarkSet(h *Hashmap, n int64) {
-    C.sky_hashmap_benchmark_set(h.C, C.int64_t(n))
+	C.sky_hashmap_benchmark_set(h.C, C.int64_t(n))
 }
-

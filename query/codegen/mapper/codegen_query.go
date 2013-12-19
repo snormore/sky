@@ -27,7 +27,6 @@ func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 	m.hashmapType = hashmap.DeclareType(m.module, m.context)
 	hashmap.Declare(m.module, m.context, m.hashmapType)
 
-
 	llvm.AddFunction(m.module, "debug", llvm.FunctionType(m.context.VoidType(), []llvm.Type{llvm.PointerType(m.context.Int8Type(), 0)}, false))
 	m.codegenCursorExternalDecl()
 

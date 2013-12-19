@@ -16,7 +16,7 @@ type Query struct {
 	Statements       Statements
 }
 
-func (q *Query) node() {}
+func (q *Query) node()  {}
 func (q *Query) block() {}
 
 // NewQuery returns a new query.
@@ -32,7 +32,7 @@ func NewQuery() *Query {
 
 // VarDecls returns a list of indexed variable declarations.
 func (q *Query) VarDecls() (VarDecls, error) {
-	// Retrieve list of 
+	// Retrieve list of
 	decls, err := FindVarDecls(q)
 	if err != nil {
 		return nil, err

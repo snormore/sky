@@ -2249,14 +2249,13 @@ func Declare_unpack_bool(m llvm.Module, c llvm.Context) {
 }
 
 func Declare_unpack_raw(m llvm.Module, c llvm.Context) {
-    llvm.AddFunction(m, "minipack_unpack_raw", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
+	llvm.AddFunction(m, "minipack_unpack_raw", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
 }
 
 func Declare_unpack_map(m llvm.Module, c llvm.Context) {
-    llvm.AddFunction(m, "minipack_unpack_map", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
+	llvm.AddFunction(m, "minipack_unpack_map", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0), llvm.PointerType(c.Int64Type(), 0)}, false))
 }
 
 func Declare_sizeof_elem_and_data(m llvm.Module, c llvm.Context) {
 	llvm.AddFunction(m, "minipack_sizeof_elem_and_data", llvm.FunctionType(c.Int64Type(), []llvm.Type{llvm.PointerType(c.Int8Type(), 0)}, false))
 }
-
