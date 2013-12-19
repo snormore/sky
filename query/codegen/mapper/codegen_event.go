@@ -115,7 +115,6 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	key := m.alloca(m.mdbValType, "key")
 	data := m.alloca(m.mdbValType, "data")
 	m.store(fn.Param(0), cursor)
-	m.printf("event.next ->\n")
 	m.br(swap)
 
 	// sky_event_copy_declared(cursor->next_event, cursor->event);
@@ -166,13 +165,11 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	nextTimestamp := m.load(m.structgep(next_event, eventTimestampElementIndex))
 	sessionIdleTime := m.load(m.structgep(m.load(cursor), cursorSessionIdleTimeElementIndex))
 	maxTimestamp := m.add(timestamp, sessionIdleTime, "max_timestamp")
-	m.printf("event.check_eos %d + %d (%d) <= %d\n", timestamp, sessionIdleTime, maxTimestamp, nextTimestamp)
 	m.condbr(m.and(m.icmp(llvm.IntSGT, sessionIdleTime, m.constint(0)), m.icmp(llvm.IntSLE, maxTimestamp, nextTimestamp)), set_eos, exit)
 
 	// event->eos = 1;
 	m.builder.SetInsertPointAtEnd(set_eos)
 	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
-	m.printf("SET EOS: %d\n", m.load(m.structgep(event, eventEosElementIndex)))
 	m.br(exit)
 
 	// event->eof = 1;
@@ -185,7 +182,6 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEofElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEosElementIndex))
-	m.printf("event.next <-set_eof\n")
 	m.br(exit)
 
 	// event->eof = 1;
@@ -198,12 +194,10 @@ func (m *Mapper) codegenCursorNextEventFunc() {
 	m.store(m.constint(1), m.structgep(event, eventEosElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEofElementIndex))
 	m.store(m.constint(1), m.structgep(next_event, eventEosElementIndex))
-	m.printf("event.next <-error\n")
 	m.ret(m.constint(-1))
 
 	// return 0;
 	m.builder.SetInsertPointAtEnd(exit)
-	m.printf("event.next <-exit\n")
 	m.ret(m.constint(0))
 }
 
@@ -308,7 +302,6 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	m.store(fn.Param(0), event)
 	m.store(fn.Param(1), ptr)
 	m.store(llvm.ConstInt(m.context.Int64Type(), 0, false), key_index)
-	m.printf("  event.read ")
 	m.br(read_ts)
 
 	// read_ts:
@@ -320,7 +313,6 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	native_ts_value := m.call("llvm.bswap.i64", ts_value)
 	timestamp_value := m.builder.CreateLShr(native_ts_value, llvm.ConstInt(m.context.Int64Type(), core.SECONDS_BIT_OFFSET, false), "timestamp_value")
 	event_timestamp := m.structgep(m.load(event, ""), eventTimestampElementIndex, "event_timestamp")
-	m.printf("ts(%d) ", timestamp_value)
 	m.store(timestamp_value, event_timestamp)
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{llvm.ConstInt(m.context.Int64Type(), 8, false)}, ""), ptr)
 	m.br(read_map)
@@ -332,7 +324,6 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     if(sz != 0) goto loop else goto error
 	m.builder.SetInsertPointAtEnd(read_map)
 	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_map"), []llvm.Value{m.load(ptr, ""), sz}, ""), key_count)
-	m.printf("map(%d) ", m.load(key_count), m.load(sz))
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
 	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error_lbl)
 
@@ -347,7 +338,6 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     if(sz != 0) goto loop_read_value else goto error;
 	m.builder.SetInsertPointAtEnd(loop_read_key)
 	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_int"), []llvm.Value{m.load(ptr, ""), sz}, ""), variable_id)
-	m.printf("key(%d) ", m.load(variable_id), m.load(sz))
 	m.store(m.builder.CreateAdd(m.load(key_index), llvm.ConstInt(m.context.Int64Type(), 1, false), ""), key_index)
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
 	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop_read_value, error_lbl)
@@ -389,7 +379,6 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 		field := m.structgep(m.load(event, ""), decl.Index(), "")
 		m.store(m.builder.CreateCall(m.module.NamedFunction(minipack_func_name), []llvm.Value{m.load(ptr, ""), sz}, ""), field)
 		m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
-		m.printf("value(%d) ", m.load(field), m.load(sz))
 		m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, loop_skip)
 	}
 
@@ -400,19 +389,16 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	m.builder.SetInsertPointAtEnd(loop_skip)
 	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_sizeof_elem_and_data"), []llvm.Value{m.load(ptr, "")}, ""), sz)
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
-	m.printf("skip(sz=%d) ", m.load(sz))
 	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error_lbl)
 
 	// error:
 	//     return -1;
 	m.builder.SetInsertPointAtEnd(error_lbl)
-	m.printf("<error>\n")
 	m.ret(m.constint(-1))
 
 	// exit:
 	//     return 0;
 	m.builder.SetInsertPointAtEnd(exit)
-	m.printf("<exit>\n")
 	m.ret(m.constint(0))
 
 	return fn

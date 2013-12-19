@@ -9,13 +9,13 @@ type TableFactorizer interface {
 // NewTableFactorizer creates a new TableFactorizer instance.
 func NewTableFactorizer(f Factorizer, tablespace string) TableFactorizer {
 	return &tableFactorizer{
-		f: f,
+		f:          f,
 		tablespace: tablespace,
 	}
 }
 
 type tableFactorizer struct {
-	f Factorizer
+	f          Factorizer
 	tablespace string
 }
 
@@ -26,4 +26,3 @@ func (f *tableFactorizer) Factorize(id string, value string, createIfMissing boo
 func (f *tableFactorizer) Defactorize(id string, value uint64) (string, error) {
 	return f.f.Defactorize(f.tablespace, id, value)
 }
-

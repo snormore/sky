@@ -52,13 +52,11 @@ func (m *Mapper) codegenSessionLoop(node *ast.SessionLoop, tbl *ast.Symtable) (l
 	m.builder.SetInsertPointAtEnd(init)
 	prevSessionIdleTime := m.load(m.structgep(m.load(cursor_ref), cursorSessionIdleTimeElementIndex))
 	m.store(m.constint(node.IdleDuration), m.structgep(m.load(cursor_ref), cursorSessionIdleTimeElementIndex))
-	m.printf("session_loop.init %d\n", m.load(m.structgep(m.load(cursor_ref), cursorSessionIdleTimeElementIndex)))
 	m.br(loop)
 
 	// ...generate...
 	// if(cursor->event->eof == 0) goto next_event else goto exit
 	m.builder.SetInsertPointAtEnd(loop)
-	m.printf("session_loop.loop\n")
 	for _, statementFn := range statementFns {
 		m.call(statementFn, m.load(cursor_ref, ""), m.load(result_ref, ""))
 	}
@@ -68,7 +66,6 @@ func (m *Mapper) codegenSessionLoop(node *ast.SessionLoop, tbl *ast.Symtable) (l
 	// if (rc == 0) goto loop_condition else goto exit;
 	m.builder.SetInsertPointAtEnd(next_event)
 	rc := m.call("cursor_next_event", m.load(cursor_ref))
-	m.printf("session_loop.next_event %d\n", rc)
 	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop, exit)
 
 	// cursor->session_idle_time = prev_session_idle_time;

@@ -40,7 +40,6 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 		if err != nil {
 			return nilValue, err
 		}
-		m.printf("field.set %s %d -> %d\n", node.Identifier(), currentValue, newValue)
 		m.call("sky_hashmap_set", m.load(result), m.constint(int(id)), newValue)
 	} else {
 		panic("UNIMPLEMENTED")

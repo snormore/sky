@@ -12,6 +12,5 @@ func (m *Mapper) codegenVarRef(node *ast.VarRef, event llvm.Value, tbl *ast.Symt
 	if decl == nil {
 		return nilValue, fmt.Errorf("Unknown variable reference: %s", node.Name)
 	}
-	m.printf("var_ref %d=%d (event=%p)\n", m.constint(decl.Index()), m.load(m.structgep(event, decl.Index())), event)
 	return m.load(m.structgep(event, decl.Index()), node.Name), nil
 }

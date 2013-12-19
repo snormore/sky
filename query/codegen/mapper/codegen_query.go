@@ -107,13 +107,10 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 	m.store(m.builder.CreateMalloc(m.eventType, ""), event_ref)
 	m.store(m.builder.CreateMalloc(m.eventType, ""), next_event_ref)
 
-	m.printf("query (cursor=%p, event=%p, next_event=%p)\n", m.load(cursor_ref), m.load(m.structgep(m.load(cursor_ref, ""), cursorEventElementIndex, "")), m.load(m.structgep(m.load(cursor_ref, ""), cursorNextEventElementIndex, "")))
-	m.printf("\n")
 	m.store(m.call("sky_cursor_next_object", m.load(cursor_ref), m.constint(1)), ptr)
 	m.condbr(m.icmp(llvm.IntNE, m.load(ptr), m.ptrnull()), loop_buffer_event, exit)
 
 	m.builder.SetInsertPointAtEnd(loop)
-	m.printf("\n")
 	m.store(m.call("sky_cursor_next_object", m.load(cursor_ref), m.constint(0)), ptr)
 	m.condbr(m.icmp(llvm.IntNE, m.load(ptr), m.ptrnull()), loop_buffer_event, exit)
 
@@ -131,7 +128,6 @@ func (m *Mapper) codegenQueryEntryFunc(q *ast.Query, tbl *ast.Symtable) (llvm.Va
 	for _, statementFn := range statementFns {
 		m.builder.CreateCall(statementFn, []llvm.Value{m.load(cursor_ref, ""), m.load(result, "")}, "")
 	}
-	m.printf("\n")
 	m.br(loop)
 
 	m.builder.SetInsertPointAtEnd(exit)

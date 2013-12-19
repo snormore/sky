@@ -44,7 +44,6 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	// ...generate...
 	// if(cursor->event->eos == 0) goto next_event else goto exit;
 	m.builder.SetInsertPointAtEnd(loop)
-	m.printf("event_loop.loop\n")
 	for _, statementFn := range statementFns {
 		m.call(statementFn, m.load(cursor_ref, ""), m.load(result_ref, ""))
 	}
@@ -54,7 +53,6 @@ func (m *Mapper) codegenEventLoop(node *ast.EventLoop, tbl *ast.Symtable) (llvm.
 	// if(rc == 0) goto loop else goto exit;
 	m.builder.SetInsertPointAtEnd(next_event)
 	rc := m.call("cursor_next_event", m.load(cursor_ref))
-	m.printf("event_loop.next_event %d\n", rc)
 	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop, exit)
 
 	// return;

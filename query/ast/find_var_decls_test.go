@@ -16,8 +16,8 @@ func TestFindVarDecls(t *testing.T) {
 	decls, err := FindVarDecls(node)
 	assert.NoError(t, err)
 	if assert.Equal(t, len(decls), 5) {
-		assert.Equal(t, decls[0].Name, "@eos")
-		assert.Equal(t, decls[1].Name, "@eof")
+		assert.Equal(t, decls[0].Name, "@eof")
+		assert.Equal(t, decls[1].Name, "@eos")
 		assert.Equal(t, decls[2].Name, "@timestamp")
 		assert.Equal(t, decls[3].Name, "foo")
 		assert.Equal(t, decls[4].Name, "bar")
