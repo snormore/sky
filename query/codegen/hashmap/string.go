@@ -1,11 +1,11 @@
-package hash
+package hashmap
 
 import (
 	"hash/fnv"
 )
 
-// HashString generates a hash for query strings.
-func HashString(s string) int64 {
+// String generates a hash id for strings.
+func String(s string) int64 {
 	h := fnv.New64a()
 	h.Reset()
 	h.Write([]byte(s))

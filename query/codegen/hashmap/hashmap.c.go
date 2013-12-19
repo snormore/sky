@@ -3,6 +3,7 @@ package hashmap
 /*
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <inttypes.h>
 
 #define HASHMAP_BUCKET_COUNT 256
@@ -32,6 +33,16 @@ struct sky_hashmap {
     sky_hashmap_bucket buckets[HASHMAP_BUCKET_COUNT];
 };
 
+typedef struct {
+    sky_hashmap *hashmap;
+    int64_t bucket_index;
+    int64_t element_index;
+} sky_hashmap_iterator;
+
+
+//--------------------------------------
+// Hashmap
+//--------------------------------------
 
 // Creates a new hashmap instance.
 sky_hashmap *sky_hashmap_new()
@@ -116,6 +127,62 @@ sky_hashmap *sky_hashmap_submap(sky_hashmap *hashmap, int64_t key)
 }
 
 
+//--------------------------------------
+// Hashmap Iterator
+//--------------------------------------
+
+// Creates a new hashmap iterator instance.
+sky_hashmap_iterator *sky_hashmap_iterator_new(sky_hashmap *hashmap)
+{
+    sky_hashmap_iterator *iterator = calloc(1, sizeof(sky_hashmap_iterator));
+    iterator->hashmap = hashmap;
+    return iterator;
+}
+
+// Frees a hashmap iterator instance.
+void sky_hashmap_iterator_free(sky_hashmap_iterator *iterator)
+{
+    if(iterator != NULL) {
+        iterator->hashmap = NULL;
+        free(iterator);
+    }
+}
+
+// Returns the next element in the hashmap.
+// Returns an EOF flag if no more elements are available.
+bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key)
+{
+    sky_hashmap *hashmap = iterator->hashmap;
+    sky_hashmap_bucket *bucket = NULL;
+    while(true) {
+        // If there's no more buckets then return failure.
+        if(iterator->bucket_index >= HASHMAP_BUCKET_COUNT) {
+            *key = 0;
+            return false;
+        }
+
+        bucket = &hashmap->buckets[iterator->bucket_index];
+        if(iterator->element_index < bucket->count) {
+            break;
+        }
+        iterator->bucket_index++;
+        iterator->element_index = 0;
+    }
+
+    // Return next element key in bucket.
+    *key = bucket->elements[iterator->element_index].key;
+
+    // Increment the element index.
+    iterator->element_index++;
+
+    return true;
+}
+
+
+//--------------------------------------
+// Benchmark
+//--------------------------------------
+
 // FOR BENCHMARKING ONLY.
 sky_hashmap *sky_hashmap_benchmark_get(sky_hashmap *hashmap, int64_t n)
 {
@@ -174,6 +241,34 @@ func (h *Hashmap) Set(key int64, value int64) {
 func (h *Hashmap) Submap(key int64) *Hashmap {
     return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
 }
+
+
+
+// Iterator wraps the underlying C struct.
+type Iterator struct {
+    C *C.sky_hashmap_iterator
+}
+
+// NewIterator creates a new HashmapIterator instance.
+func NewIterator(h *Hashmap) *Iterator {
+    return &Iterator{C.sky_hashmap_iterator_new(h.C)}
+}
+
+// Free releases the underlying C memory.
+func (i *Iterator) Free() {
+    if i.C != nil {
+        C.free(unsafe.Pointer(i.C))
+        i.C = nil
+    }
+}
+
+// Next retrieves the next key and a success flag.
+func (i *Iterator) Next() (int64, bool) {
+    var key C.int64_t
+    success := bool(C.sky_hashmap_iterator_next(i.C, &key))
+    return int64(key), success
+}
+
 
 
 // benchmark runs get() N number of times within the C context.

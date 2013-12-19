@@ -52,6 +52,32 @@ func TestHashmapOverrideWithInt(t *testing.T) {
 }
 
 
+// Ensure that iterator goes over each value once.
+func TestHashmapIterator(t *testing.T) {
+	count := 10000
+	h := New()
+	defer h.Free()
+	for i := 0; i < count; i++ {
+		h.Set(int64(i), 10)
+	}
+
+	iterator := NewIterator(h)
+	results := make(map[int64]bool)
+	for {
+		key, ok := iterator.Next()
+		if !ok {
+			break;
+		}
+		results[key] = true
+	}
+
+	for i := 0; i < count; i++ {
+		assert.Equal(t, results[int64(i)], true)
+	}
+}
+
+
+
 // Runs the benchmark 10,000 times per iteration within the C context.
 func BenchmarkHashmapGet10k(b *testing.B) {
 	h := New()
