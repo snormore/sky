@@ -2,7 +2,9 @@ package reducer
 
 import (
 	"fmt"
+	"strconv"
 
+	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/query/ast"
 	"github.com/skydb/sky/query/codegen/hashmap"
 )
@@ -13,10 +15,7 @@ func (r *Reducer) reduceSelection(node *ast.Selection, h *hashmap.Hashmap, tbl *
 	// Drill into name.
 	if node.Name != "" {
 		h = h.Submap(hashmap.String(node.Name))
-		if _, ok := output[node.Name].(map[string]interface{}); !ok {
-			output[node.Name] = make(map[string]interface{})
-		}
-		output = output[node.Name]
+		output = submap(output, node.Name)
 	}
 
 	return r.reduceSelectionDimensions(node, h, output, node.Dimensions, tbl)
@@ -34,7 +33,7 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 	}
 
 	// Drill into first dimension
-	dimension := dimesions[0]
+	dimension := dimensions[0]
 	decl := tbl.Find(dimension)
 	if decl == nil {
 		return fmt.Errorf("reduce: dimension not found: %s", dimension)
@@ -42,10 +41,7 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 
 	// Drill into dimension name.
 	h = h.Submap(hashmap.String(dimension))
-	if _, ok := output[dimension].(map[string]interface{}); !ok {
-		output[dimension] = make(map[string]interface{})
-	}
-	output = output[node.Name]
+	output = submap(output, dimension)
 
 	// Iterate over dimension values.
 	iterator := hashmap.NewIterator(h)
@@ -63,10 +59,12 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 		case core.FloatDataType:
 			return fmt.Errorf("reduce: float dimensions are not supported: %s", dimension)
 		case core.IntegerDataType:
-			keyString = strconv.Itoa(key)
+			keyString = strconv.Itoa(int(key))
 		case core.FactorDataType:
-			// TODO: Defactorize!
-			keyString = strconv.Itoa(key)
+			var err error
+			if keyString, err = r.factorizer.Defactorize(dimension, uint64(key)); err != nil {
+				return fmt.Errorf("reduce: factor not found: %s/%d", dimension, uint64(key))
+			}
 		case core.BooleanDataType:
 			if key == 0 {
 				keyString = "false"
@@ -76,12 +74,10 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 		}
 
 		// Drill into output map.
-		if _, ok := output[keyString].(map[string]interface{}); !ok {
-			output[keyString] = make(map[string]interface{})
-		}
+		m := submap(output, keyString)
 
 		// Recursively drill into next dimension.
-		if err := m.reduceSelectionDimensions(node, h.Submap(key), output[keyString], dimensions[1:], tbl); err != nil {
+		if err := r.reduceSelectionDimensions(node, h.Submap(key), m, dimensions[1:], tbl); err != nil {
 			return err
 		}
 	}

@@ -22,7 +22,12 @@ func New(q *ast.Query, f Factorizer) *Reducer {
 	}
 }
 
-// Executes the reducer
+// Output returns the final reduced output.
+func (r *Reducer) Output() map[string]interface{} {
+	return r.output
+}
+
+// Reduce executes the reducer against a hashmap returned from a Mapper.
 func (r *Reducer) Reduce(h *hashmap.Hashmap) error {
-	return r.reduceQuery(r.q, h)
+	return r.reduceQuery(r.query, h)
 }

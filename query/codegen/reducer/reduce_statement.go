@@ -1,7 +1,6 @@
 package reducer
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/skydb/sky/query/ast"
@@ -10,7 +9,7 @@ import (
 
 // reduceStatement executes the reducer for a single statement.
 func (r *Reducer) reduceStatement(node ast.Statement, h *hashmap.Hashmap, symtable *ast.Symtable) error {
-	symtable = ast.NodeSymtable(node, h, symtable)
+	symtable = ast.NodeSymtable(node, symtable)
 
 	switch node := node.(type) {
 	case *ast.Condition:
@@ -34,7 +33,7 @@ func (r *Reducer) reduceStatement(node ast.Statement, h *hashmap.Hashmap, symtab
 }
 
 // reduceStatements executes the reducer for multiple statements.
-func (m *Mapper) codegenStatements(nodes ast.Statements, h *hashmap.Hashmap, symtable *ast.Symtable) error {
+func (r *Reducer) reduceStatements(nodes ast.Statements, h *hashmap.Hashmap, symtable *ast.Symtable) error {
 	for _, node := range nodes {
 		if err := r.reduceStatement(node, h, symtable); err != nil {
 			return err

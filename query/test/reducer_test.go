@@ -1,16 +1,10 @@
 package test
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/skydb/sky/core"
-	"github.com/skydb/sky/db"
 	"github.com/skydb/sky/query/ast"
-	"github.com/skydb/sky/query/codegen/hashmap"
-	"github.com/skydb/sky/query/codegen/mapper"
-	"github.com/skydb/sky/query/parser"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,8 +14,8 @@ func TestReducerSelectCount(t *testing.T) {
 			SELECT count()
 		END
 	`
-	result, err := runDBMapper(query, ast.VarDecls{
-		ast.NewVarDecl(1, "foo", "integer"),
+	result, err := runDBMapReducer(1, query, ast.VarDecls{
+		ast.NewVarDecl(8, "foo", "integer"),
 	}, map[string][]*core.Event{
 		"foo": []*core.Event{
 			testevent("2000-01-01T00:00:00Z", 1, 10),
@@ -32,58 +26,51 @@ func TestReducerSelectCount(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-	if assert.NotNil(t, result) {
-		assert.Equal(t, result.Get(HASH_COUNT), 3)
-	}
+	assert.Equal(t, `{"count":3}`, mustmarshal(result))
 }
 
-// Executes a query against a given set of data, reduces it and return the results.
-func runDBMapReducer(query string, decls ast.VarDecls, objects map[string][]*core.Event) (map[string]interface{}, error) {
-	path, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(path)
-
-	db := db.New(path, 1, false, 4096, 126)
-	if err := db.Open(); err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	// Insert into db.
-	if _, err := db.InsertObjects("TBL", objects); err != nil {
-		return nil, err
-	}
-
-	// Retrieve cursors.
-	cursors, err := db.Cursors("TBL")
-	if err != nil {
-		return nil, err
-	}
-	defer cursors.Close()
-
-	// Create a query.
-	q, err := parser.ParseString(query)
-	if err != nil {
-		return nil, err
-	}
-	q.DeclaredVarDecls = append(q.DeclaredVarDecls, decls...)
-
-	// Setup factor test data.
-	f := db.TableFactorizer("TBL")
-	f.Factorize("action", "A0", true)
-	f.Factorize("action", "A1", true)
-
-	// Create a mapper generated from the query.
-	m, err := mapper.New(q, f)
-	if err != nil {
-		return nil, err
-	}
-	// m.Dump()
-
-	// Execute the mapper.
-	result := hashmap.New()
-	if err = m.Execute(cursors[0], "", result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+func TestReducerSelectGroupBy(t *testing.T) {
+	query := `
+		FOR EACH EVENT
+			SELECT sum(integerValue) AS intsum GROUP BY action, booleanValue
+		END
+	`
+	result, err := runDBMapReducer(1, query, ast.VarDecls{
+		ast.NewVarDecl(1, "action", "factor"),
+		ast.NewVarDecl(2, "booleanValue", "boolean"),
+		ast.NewVarDecl(3, "integerValue", "integer"),
+	}, map[string][]*core.Event{
+		"foo": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 1, 1, 2, true, 3, 10),    // A0/true/10
+			testevent("2000-01-01T00:00:01Z", 1, 1, 2, false, 3, 20),    // A0/false/20
+			testevent("2000-01-01T00:00:02Z", 1, 2, 2, false, 3, 100),    // A1/false/100
+		},
+		"bar": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 1, 1, 2, true, 3, 40),    // A0/true/40
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, `{"action":{"A0":{"booleanValue":{"false":{"intsum":20},"true":{"intsum":50}}},"A1":{"booleanValue":{"false":{"intsum":100}}}}}`, mustmarshal(result))
 }
+
+func TestReducerSelectInto(t *testing.T) {
+	query := `
+		FOR EACH EVENT
+			SELECT count() INTO "mycount"
+		END
+	`
+	result, err := runDBMapReducer(1, query, ast.VarDecls{
+		ast.NewVarDecl(8, "foo", "integer"),
+	}, map[string][]*core.Event{
+		"foo": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 1, 10),
+			testevent("2000-01-01T00:00:02Z", 1, 20),
+		},
+		"bar": []*core.Event{
+			testevent("2000-01-01T00:00:00Z", 1, 40),
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, `{"mycount":{"count":3}}`, mustmarshal(result))
+}
+

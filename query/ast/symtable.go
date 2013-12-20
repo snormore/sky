@@ -52,10 +52,12 @@ func (tbl *Symtable) Find(name string) *VarDecl {
 
 // add creates a new entry for the declaration in the symbol table. If an
 // entry already exists then an error is returned.
-func (tbl *Symtable) Add(decl *VarDecl) error {
-	if tbl.locals[decl.Name] != nil {
-		return fmt.Errorf("duplicate symbol in scope: %s", decl.Name)
+func (tbl *Symtable) Add(decls ...*VarDecl) error {
+	for _, decl := range decls {
+		if tbl.locals[decl.Name] != nil {
+			return fmt.Errorf("duplicate symbol in scope: %s", decl.Name)
+		}
+		tbl.locals[decl.Name] = decl
 	}
-	tbl.locals[decl.Name] = decl
 	return nil
 }
