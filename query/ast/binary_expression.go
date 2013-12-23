@@ -51,6 +51,11 @@ func NewBinaryExpression(op int, lhs Expression, rhs Expression) *BinaryExpressi
 	}
 }
 
+// Returns a string representation of the expression operator.
+func (e *BinaryExpression) OpString() string {
+	return opstr[e.Op]
+}
+
 // Returns a string representation of the expression.
 func (e *BinaryExpression) String() string {
 	var str string
@@ -62,7 +67,7 @@ func (e *BinaryExpression) String() string {
 		str += e.LHS.String()
 	}
 
-	str += " " + opstr[e.Op] + " "
+	str += " " + e.OpString() + " "
 
 	switch e.RHS.(type) {
 	case *BinaryExpression:

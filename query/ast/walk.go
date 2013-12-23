@@ -5,9 +5,9 @@ func Walk(v Visitor, node Node) {
 	walk(v, node, nil)
 }
 
-func walk(v Visitor, node Node, symtable *Symtable) {
+func walk(v Visitor, node Node, symtable *Symtable) Visitor {
 	if node == nil {
-		return
+		return v
 	}
 
 	// Generate a new symtable for blocks.
@@ -15,51 +15,82 @@ func walk(v Visitor, node Node, symtable *Symtable) {
 
 	v = v.Visit(node, symtable)
 	if v == nil {
-		return
+		return nil
 	}
 
 	switch n := node.(type) {
 	case *Assignment:
-		walk(v, n.Target, symtable)
-		walk(v, n.Expression, symtable)
+		if v = walk(v, n.Target, symtable); v == nil {
+			return nil
+		}
+		if v = walk(v, n.Expression, symtable); v == nil {
+			return nil
+		}
 
 	case *BinaryExpression:
-		walk(v, n.LHS, symtable)
-		walk(v, n.RHS, symtable)
+		if v = walk(v, n.LHS, symtable); v == nil {
+			return nil
+		}
+		if v = walk(v, n.RHS, symtable); v == nil {
+			return nil
+		}
 
 	case *Condition:
-		walk(v, n.Expression, symtable)
-		walkStatements(v, n.Statements, symtable)
+		if v = walk(v, n.Expression, symtable); v == nil {
+			return nil
+		}
+		if v = walkStatements(v, n.Statements, symtable); v == nil {
+			return nil
+		}
 
 	case *Debug:
-		walk(v, n.Expression, symtable)
+		if v = walk(v, n.Expression, symtable); v == nil {
+			return nil
+		}
 
 	case *EventLoop:
-		walkStatements(v, n.Statements, symtable)
+		if v = walkStatements(v, n.Statements, symtable); v == nil {
+			return nil
+		}
 
 	case *Field:
-		walk(v, n.Expression, symtable)
+		if v = walk(v, n.Expression, symtable); v == nil {
+			return nil
+		}
 
 	case *Query:
-		walkVarDecls(v, n.SystemVarDecls, symtable)
-		walkVarDecls(v, n.DeclaredVarDecls, symtable)
-		walkStatements(v, n.Statements, symtable)
+		if v = walkVarDecls(v, n.SystemVarDecls, symtable); v == nil {
+			return nil
+		}
+		if v = walkVarDecls(v, n.DeclaredVarDecls, symtable); v == nil {
+			return nil
+		}
+		if v = walkStatements(v, n.Statements, symtable); v == nil {
+			return nil
+		}
 
 	case *Selection:
-		walkFields(v, n.Fields, symtable)
+		if v = walkFields(v, n.Fields, symtable); v == nil {
+			return nil
+		}
 
 	case *SessionLoop:
-		walkStatements(v, n.Statements, symtable)
+		if v = walkStatements(v, n.Statements, symtable); v == nil {
+			return nil
+		}
 
 	case *TemporalLoop:
-		walk(v, n.Iterator, symtable)
-		walkStatements(v, n.Statements, symtable)
+		if v = walk(v, n.Iterator, symtable); v == nil {
+			return nil
+		}
+		if v = walkStatements(v, n.Statements, symtable); v == nil {
+			return nil
+		}
 
 	case *VarDecl:
 		if err := symtable.Add(n); err != nil {
-			v = v.Error(err)
-			if v == nil {
-				return
+			if v = v.Error(err); v == nil {
+				return nil
 			}
 		}
 	}
@@ -68,22 +99,33 @@ func walk(v Visitor, node Node, symtable *Symtable) {
 	if v, ok := v.(ExitingVisitor); ok {
 		v.Exiting(node, symtable)
 	}
+
+	return v
 }
 
-func walkStatements(v Visitor, statements Statements, symtable *Symtable) {
+func walkStatements(v Visitor, statements Statements, symtable *Symtable) Visitor {
 	for _, statement := range statements {
-		walk(v, statement, symtable)
+		if v = walk(v, statement, symtable); v == nil {
+			return nil
+		}
 	}
+	return v
 }
 
-func walkFields(v Visitor, fields Fields, symtable *Symtable) {
+func walkFields(v Visitor, fields Fields, symtable *Symtable) Visitor {
 	for _, field := range fields {
-		walk(v, field, symtable)
+		if v = walk(v, field, symtable); v == nil {
+			return nil
+		}
 	}
+	return v
 }
 
-func walkVarDecls(v Visitor, decls VarDecls, symtable *Symtable) {
+func walkVarDecls(v Visitor, decls VarDecls, symtable *Symtable) Visitor {
 	for _, decl := range decls {
-		walk(v, decl, symtable)
+		if v = walk(v, decl, symtable); v == nil {
+			return v
+		}
 	}
+	return v
 }
