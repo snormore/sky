@@ -3,6 +3,7 @@ package hashmap
 /*
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <inttypes.h>
 
@@ -39,6 +40,8 @@ typedef struct {
     int64_t element_index;
 } sky_hashmap_iterator;
 
+void sky_hashmap_find(sky_hashmap *hashmap, int64_t key, sky_hashmap_bucket **bucket, sky_hashmap_elem **element);
+bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key);
 
 //--------------------------------------
 // Hashmap
@@ -54,7 +57,26 @@ sky_hashmap *sky_hashmap_new()
 // Frees a hashmap instance.
 void sky_hashmap_free(sky_hashmap *hashmap)
 {
-    // TODO
+    int64_t key = 0;
+    sky_hashmap_iterator iterator;
+    sky_hashmap_bucket *bucket;
+    sky_hashmap_elem *element;
+
+    if(hashmap != NULL) {
+        return;
+    }
+
+    // Free all child hashmaps first.
+    memset(&iterator, 0, sizeof(iterator));
+    while(sky_hashmap_iterator_next(&iterator, &key)) {
+        sky_hashmap_find(hashmap, key, &bucket, &element);
+        if(element->value_type == hashmap_value_type) {
+            sky_hashmap_free(element->value.hashmap_value);
+        }
+    }
+
+    // Free the root hashmap.
+    free(hashmap);
 }
 
 // Retrieves the bucket and element in the hashmap for a key.
