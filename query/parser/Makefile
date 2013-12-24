@@ -1,15 +1,9 @@
-all: lexer.go grammar.go fmt
-
-fmt:
-	go fmt
-
-test: all
-	go test -v
+all: lexer.go grammar.go
 
 lexer.go: lexer.l
 	golex -t $< > $@
-	go fmt
+	go fmt $@
 
 grammar.go: grammar.y
 	go tool yacc -o $@ $<
-	go fmt
+	go fmt $@
