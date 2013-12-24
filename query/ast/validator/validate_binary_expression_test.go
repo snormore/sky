@@ -9,13 +9,13 @@ import (
 
 // Ensure that a BinaryExpression has matching types on both sides.
 func TestValidateBinaryExpressionDataTypeMismatch(t *testing.T) {
-	err := Validate(&ast.BinaryExpression{LHS:&ast.IntegerLiteral{10}, RHS:&ast.BooleanLiteral{true}, Op:ast.OpEquals})
+	err := Validate(&ast.BinaryExpression{LHS: &ast.IntegerLiteral{10}, RHS: &ast.BooleanLiteral{true}, Op: ast.OpEquals})
 	assert.Equal(t, "expression: data type mismatch: integer != boolean", err.Error())
 }
 
 // Ensure that a boolean BinaryExpression has an appropriate operator.
 func TestValidateBinaryExpressionInvalidBooleanOperator(t *testing.T) {
-	err := Validate(&ast.BinaryExpression{LHS:&ast.BooleanLiteral{true}, RHS:&ast.BooleanLiteral{true}, Op:ast.OpPlus})
+	err := Validate(&ast.BinaryExpression{LHS: &ast.BooleanLiteral{true}, RHS: &ast.BooleanLiteral{true}, Op: ast.OpPlus})
 	assert.Equal(t, "expression: invalid boolean operator: +", err.Error())
 }
 
@@ -26,9 +26,9 @@ func TestValidateBinaryExpressionInvalidFactorOperator(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Condition{
 				Expression: &ast.BinaryExpression{
-					LHS: &ast.VarRef{Name:"foo"},
+					LHS: &ast.VarRef{Name: "foo"},
 					RHS: &ast.StringLiteral{"XXX"},
-					Op: ast.OpPlus,
+					Op:  ast.OpPlus,
 				},
 			},
 		},
@@ -46,9 +46,9 @@ func TestValidateBinaryExpressionFactorAssociationMismatch(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Condition{
 				Expression: &ast.BinaryExpression{
-					LHS: &ast.VarRef{Name:"foo"},
-					RHS: &ast.VarRef{Name:"bar"},
-					Op: ast.OpPlus,
+					LHS: &ast.VarRef{Name: "foo"},
+					RHS: &ast.VarRef{Name: "bar"},
+					Op:  ast.OpPlus,
 				},
 			},
 		},
@@ -62,7 +62,7 @@ func TestValidateBinaryExpressionDoubleStringLiterals(t *testing.T) {
 		Expression: &ast.BinaryExpression{
 			LHS: &ast.StringLiteral{"foo"},
 			RHS: &ast.StringLiteral{"bar"},
-			Op: ast.OpEquals,
+			Op:  ast.OpEquals,
 		},
 	})
 	assert.Equal(t, "expression: string literal comparison not allowed: \"foo\" == \"bar\"", err.Error())
@@ -73,14 +73,14 @@ func TestValidateBinaryExpressionFactorAssociation(t *testing.T) {
 	err := Validate(&ast.Query{
 		SystemVarDecls: ast.VarDecls{
 			ast.NewVarDecl(0, "foo", "factor"),
-			&ast.VarDecl{Name: "bar", DataType: "factor", Association:"foo"},
+			&ast.VarDecl{Name: "bar", DataType: "factor", Association: "foo"},
 		},
 		Statements: ast.Statements{
 			&ast.Condition{
 				Expression: &ast.BinaryExpression{
-					LHS: &ast.VarRef{Name:"foo"},
-					RHS: &ast.VarRef{Name:"bar"},
-					Op: ast.OpNotEquals,
+					LHS: &ast.VarRef{Name: "foo"},
+					RHS: &ast.VarRef{Name: "bar"},
+					Op:  ast.OpNotEquals,
 				},
 			},
 		},
@@ -90,13 +90,12 @@ func TestValidateBinaryExpressionFactorAssociation(t *testing.T) {
 
 // Ensure that a integer BinaryExpression has an appropriate operator.
 func TestValidateBinaryExpressionInvalidIntegerOperator(t *testing.T) {
-	err := Validate(&ast.BinaryExpression{LHS:&ast.IntegerLiteral{100}, RHS:&ast.IntegerLiteral{100}, Op:ast.OpAnd})
+	err := Validate(&ast.BinaryExpression{LHS: &ast.IntegerLiteral{100}, RHS: &ast.IntegerLiteral{100}, Op: ast.OpAnd})
 	assert.Equal(t, "expression: invalid integer operator: &&", err.Error())
 }
 
 // Ensure that a BinaryExpression is valid.
 func TestValidateBinaryExpression(t *testing.T) {
-	err := Validate(&ast.BinaryExpression{LHS:&ast.IntegerLiteral{10}, RHS:&ast.IntegerLiteral{10}, Op:ast.OpEquals})
+	err := Validate(&ast.BinaryExpression{LHS: &ast.IntegerLiteral{10}, RHS: &ast.IntegerLiteral{10}, Op: ast.OpEquals})
 	assert.NoError(t, err)
 }
-

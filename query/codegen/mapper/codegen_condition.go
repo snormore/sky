@@ -62,7 +62,7 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.br(loop_range_condition)
 
 	m.builder.SetInsertPointAtEnd(loop_range_condition)
-	rc := m.icmp(llvm.IntUGE, m.load(index), m.constint(node.WithinRangeStart), "rc")
+	rc := m.icmp(llvm.IntUGE, m.load(index), m.constint(node.Start), "rc")
 	m.condbr(rc, loop_expr_condition, loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_expr_condition)
@@ -80,7 +80,7 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.br(loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_end)
-	rc = m.icmp(llvm.IntULT, m.load(index), m.constint(node.WithinRangeEnd))
+	rc = m.icmp(llvm.IntULT, m.load(index), m.constint(node.End))
 	m.condbr(rc, loop_iterate, exit)
 
 	m.builder.SetInsertPointAtEnd(loop_iterate)

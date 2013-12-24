@@ -28,6 +28,7 @@ func (v *validator) exitingBinaryExpression(n *ast.BinaryExpression, tbl *ast.Sy
 func (v *validator) exitingBooleanBinaryExpression(n *ast.BinaryExpression, tbl *ast.Symtable) {
 	switch n.Op {
 	case ast.OpEquals, ast.OpNotEquals, ast.OpAnd, ast.OpOr:
+		v.dataTypes[n] = core.BooleanDataType
 	default:
 		v.err = errorf(n, "expression: invalid boolean operator: %s", n.OpString())
 	}
@@ -57,6 +58,7 @@ func (v *validator) exitingFactorBinaryExpression(n *ast.BinaryExpression, tbl *
 
 	switch n.Op {
 	case ast.OpEquals, ast.OpNotEquals:
+		v.dataTypes[n] = core.BooleanDataType
 	default:
 		v.err = errorf(n, "expression: invalid factor operator: %s", n.OpString())
 	}
@@ -65,12 +67,16 @@ func (v *validator) exitingFactorBinaryExpression(n *ast.BinaryExpression, tbl *
 func (v *validator) exitingIntegerBinaryExpression(n *ast.BinaryExpression, tbl *ast.Symtable) {
 	switch n.Op {
 	case ast.OpEquals, ast.OpNotEquals:
+		v.dataTypes[n] = core.BooleanDataType
 	case ast.OpGreaterThan, ast.OpGreaterThanOrEqualTo:
+		v.dataTypes[n] = core.BooleanDataType
 	case ast.OpLessThan, ast.OpLessThanOrEqualTo:
+		v.dataTypes[n] = core.BooleanDataType
 	case ast.OpPlus, ast.OpMinus:
+		v.dataTypes[n] = core.IntegerDataType
 	case ast.OpMultiply, ast.OpDivide:
+		v.dataTypes[n] = core.IntegerDataType
 	default:
 		v.err = errorf(n, "expression: invalid integer operator: %s", n.OpString())
 	}
 }
-

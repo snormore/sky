@@ -20,6 +20,26 @@ func NewSelection() *Selection {
 	return &Selection{}
 }
 
+// HasAggregateFields returns true if there are any fields that use aggregation.
+func (s *Selection) HasAggregateFields() bool {
+	for _, field := range s.Fields {
+		if field.IsAggregate() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasNonAggregateFields returns true if there are any fields that do not use aggregation.
+func (s *Selection) HasNonAggregateFields() bool {
+	for _, field := range s.Fields {
+		if !field.IsAggregate() {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Selection) String() string {
 	str := "SELECT "
 

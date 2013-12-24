@@ -10,10 +10,10 @@ import (
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/db"
 	"github.com/skydb/sky/query/ast"
-	"github.com/skydb/sky/query/parser"
 	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/skydb/sky/query/codegen/mapper"
 	"github.com/skydb/sky/query/codegen/reducer"
+	"github.com/skydb/sky/query/parser"
 )
 
 func testevent(timestamp string, args ...interface{}) *core.Event {
@@ -49,7 +49,6 @@ func mustmarshal(value interface{}) string {
 func debugln(a ...interface{}) (n int, err error) {
 	return fmt.Fprintln(os.Stderr, a...)
 }
-
 
 // Executes a query against a multiple shards and return the results.
 func withDB(objects map[string][]*core.Event, shardCount int, fn func(db.DB) error) error {

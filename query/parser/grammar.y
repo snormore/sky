@@ -302,9 +302,9 @@ condition :
     {
         $$ = ast.NewCondition()
         $$.Expression = $2
-        $$.WithinRangeStart = $3.start
-        $$.WithinRangeEnd = $3.end
-        $$.WithinUnits = $3.units
+        $$.Start = $3.start
+        $$.End = $3.end
+        $$.UOM = $3.units
         $$.Statements = $5
     }
 ;

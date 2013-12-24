@@ -41,12 +41,12 @@ func TestReducerSelectGroupBy(t *testing.T) {
 		ast.NewVarDecl(3, "integerValue", "integer"),
 	}, map[string][]*core.Event{
 		"foo": []*core.Event{
-			testevent("2000-01-01T00:00:00Z", 1, 1, 2, true, 3, 10),    // A0/true/10
-			testevent("2000-01-01T00:00:01Z", 1, 1, 2, false, 3, 20),    // A0/false/20
-			testevent("2000-01-01T00:00:02Z", 1, 2, 2, false, 3, 100),    // A1/false/100
+			testevent("2000-01-01T00:00:00Z", 1, 1, 2, true, 3, 10),   // A0/true/10
+			testevent("2000-01-01T00:00:01Z", 1, 1, 2, false, 3, 20),  // A0/false/20
+			testevent("2000-01-01T00:00:02Z", 1, 2, 2, false, 3, 100), // A1/false/100
 		},
 		"bar": []*core.Event{
-			testevent("2000-01-01T00:00:00Z", 1, 1, 2, true, 3, 40),    // A0/true/40
+			testevent("2000-01-01T00:00:00Z", 1, 1, 2, true, 3, 40), // A0/true/40
 		},
 	})
 	assert.NoError(t, err)
@@ -73,4 +73,3 @@ func TestReducerSelectInto(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, `{"mycount":{"count":3}}`, mustmarshal(result))
 }
-

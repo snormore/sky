@@ -45,8 +45,16 @@ func (v *validator) Visit(n ast.Node, tbl *ast.Symtable) ast.Visitor {
 		v.visitAssignment(n, tbl)
 	case *ast.BooleanLiteral:
 		v.visitBooleanLiteral(n, tbl)
+	case *ast.Condition:
+		v.visitCondition(n, tbl)
+	case *ast.Field:
+		v.visitField(n, tbl)
 	case *ast.IntegerLiteral:
 		v.visitIntegerLiteral(n, tbl)
+	case *ast.Query:
+		v.visitQuery(n, tbl)
+	case *ast.Selection:
+		v.visitSelection(n, tbl)
 	case *ast.StringLiteral:
 		v.visitStringLiteral(n, tbl)
 	case *ast.VarRef:
@@ -73,6 +81,14 @@ func (v *validator) Exiting(n ast.Node, tbl *ast.Symtable) {
 		v.exitingAssignment(n, tbl)
 	case *ast.BinaryExpression:
 		v.exitingBinaryExpression(n, tbl)
+	case *ast.Condition:
+		v.exitingCondition(n, tbl)
+	case *ast.Field:
+		v.exitingField(n, tbl)
+	case *ast.Query:
+		v.exitingQuery(n, tbl)
+	case *ast.Selection:
+		v.exitingSelection(n, tbl)
 	}
 }
 

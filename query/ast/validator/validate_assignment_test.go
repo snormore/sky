@@ -30,4 +30,3 @@ func TestValidateAssignment(t *testing.T) {
 	})
 	assert.NoError(t, err)
 }
-

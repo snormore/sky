@@ -788,9 +788,9 @@ yydefault:
 		{
 			yyVAL.condition = ast.NewCondition()
 			yyVAL.condition.Expression = yyS[yypt-4].expr
-			yyVAL.condition.WithinRangeStart = yyS[yypt-3].condition_within.start
-			yyVAL.condition.WithinRangeEnd = yyS[yypt-3].condition_within.end
-			yyVAL.condition.WithinUnits = yyS[yypt-3].condition_within.units
+			yyVAL.condition.Start = yyS[yypt-3].condition_within.start
+			yyVAL.condition.End = yyS[yypt-3].condition_within.end
+			yyVAL.condition.UOM = yyS[yypt-3].condition_within.units
 			yyVAL.condition.Statements = yyS[yypt-1].statements
 		}
 	case 47:

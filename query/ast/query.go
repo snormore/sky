@@ -47,6 +47,17 @@ func (q *Query) VarDecls() (VarDecls, error) {
 	return decls, nil
 }
 
+// Selections returns a list of all selections within the query.
+func (q *Query) Selections() []*Selection {
+	selections := make([]*Selection, 0)
+	ForEach(q, func(node Node) {
+		if selection, ok := node.(*Selection); ok {
+			selections = append(selections, selection)
+		}
+	})
+	return selections
+}
+
 func (q *Query) String() string {
 	arr := []string{}
 	for _, v := range q.DeclaredVarDecls {
