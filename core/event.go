@@ -10,23 +10,11 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
 // An Event is a state change that occurs at a particular point in time.
 type Event struct {
 	Timestamp time.Time
 	Data      map[int64]interface{}
 }
-
-//------------------------------------------------------------------------------
-//
-// Constructor
-//
-//------------------------------------------------------------------------------
 
 // NewEvent returns a new Event.
 func NewEvent(timestamp string, data map[int64]interface{}) *Event {
@@ -40,16 +28,6 @@ func NewEvent(timestamp string, data map[int64]interface{}) *Event {
 		Data:      data,
 	}
 }
-
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
-
-//--------------------------------------
-// Encoding
-//--------------------------------------
 
 // Encodes an event to MsgPack format.
 func (e *Event) EncodeRaw(w io.Writer) error {
@@ -97,10 +75,6 @@ func (e *Event) DecodeRaw(r io.Reader) error {
 func (e *Event) UnmarshalRaw(data []byte) error {
 	return e.DecodeRaw(bytes.NewBuffer(data))
 }
-
-//--------------------------------------
-// Comparator
-//--------------------------------------
 
 // Compares two events for equality.
 func (e *Event) Equal(x *Event) bool {

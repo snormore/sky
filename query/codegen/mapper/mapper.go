@@ -9,10 +9,14 @@ import (
 
 	"github.com/axw/gollvm/llvm"
 	"github.com/skydb/sky/query/ast"
-	_ "github.com/skydb/sky/query/codegen"
 	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/szferi/gomdb"
 )
+
+func init() {
+	llvm.LinkInJIT()
+	llvm.InitializeNativeTarget()
+}
 
 // Mapper can compile a query and execute it against a cursor. The
 // execution is single threaded and returns a nested map of data.

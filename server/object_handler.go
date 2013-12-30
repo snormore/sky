@@ -1,5 +1,6 @@
 package server
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -28,3 +29,4 @@ func (s *Server) mergeObjectHandler(w http.ResponseWriter, req *http.Request, pa
 
 	return nil, s.db.Merge(vars["name"], destObjectId, srcObjectId)
 }
+*/

@@ -1,5 +1,6 @@
 package server
 
+/*
 import (
 	"expvar"
 	"fmt"
@@ -9,14 +10,14 @@ import (
 )
 
 func (s *Server) addDebugHandlers() {
-	s.router.HandleFunc("/debug/pprof", pprof.Index)
-	s.router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	s.router.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	s.router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	s.router.HandleFunc("/debug/pprof/{name}", pprof.Index)
+	s.router.Router.HandleFunc("/debug/pprof", pprof.Index)
+	s.router.Router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	s.router.Router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	s.router.Router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	s.router.Router.HandleFunc("/debug/pprof/{name}", pprof.Index)
 
-	s.router.HandleFunc("/debug/vars", getVarsHandler)
-	s.router.HandleFunc("/debug/vars/{name}", getVarsHandler)
+	s.router.Router.HandleFunc("/debug/vars", getVarsHandler)
+	s.router.Router.HandleFunc("/debug/vars/{name}", getVarsHandler)
 }
 
 func getVarsHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,3 +36,4 @@ func getVarsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	fmt.Fprintf(w, "\n}\n")
 }
+*/

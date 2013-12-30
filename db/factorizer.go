@@ -16,8 +16,10 @@ type Factorizer interface {
 	Close()
 	Factorize(tablespace string, id string, value string, createIfMissing bool) (uint64, error)
 	Defactorize(tablespace string, id string, value uint64) (string, error)
-	FactorizeEvent(event *core.Event, tablespace string, propertyFile *core.PropertyFile, createIfMissing bool) error
-	DefactorizeEvent(event *core.Event, tablespace string, propertyFile *core.PropertyFile) error
+	FactorizeEvent(*core.Event, string, *core.PropertyFile, bool) error
+	FactorizeEvents([]*core.Event, string, *core.PropertyFile, bool) error
+	DefactorizeEvent(*core.Event, string, *core.PropertyFile) error
+	DefactorizeEvents([]*core.Event, string, *core.PropertyFile) error
 }
 
 type factorizer struct {
@@ -227,6 +229,16 @@ func (f *factorizer) FactorizeEvent(event *core.Event, tablespace string, proper
 	return nil
 }
 
+// FactorizeEvents factorizes the values in a slice of events.
+func (f *factorizer) FactorizeEvents(events []*core.Event, tablespace string, propertyFile *core.PropertyFile, createIfMissing bool) error {
+	for _, event := range events {
+		if err := f.FactorizeEvent(event, tablespace, propertyFile, createIfMissing); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Defactorizes the values in an event.
 func (f *factorizer) DefactorizeEvent(event *core.Event, tablespace string, propertyFile *core.PropertyFile) error {
 	if event == nil {
@@ -246,6 +258,16 @@ func (f *factorizer) DefactorizeEvent(event *core.Event, tablespace string, prop
 		}
 	}
 
+	return nil
+}
+
+// DefactorizeEvents defactorizes the values in a slice of events.
+func (f *factorizer) DefactorizeEvents(events []*core.Event, tablespace string, propertyFile *core.PropertyFile) error {
+	for _, event := range events {
+		if err := f.DefactorizeEvent(event, tablespace, propertyFile); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -8,24 +8,12 @@ import (
 	"time"
 )
 
-//------------------------------------------------------------------------------
-//
-// Typedefs
-//
-//------------------------------------------------------------------------------
-
-// A Table is a collection of objects.
+// Table is a collection of objects.
 type Table struct {
 	Name         string `json:"name"`
 	path         string
 	propertyFile *PropertyFile
 }
-
-//------------------------------------------------------------------------------
-//
-// Constructor
-//
-//------------------------------------------------------------------------------
 
 // NewTable returns a new Table that is stored at a given path.
 func NewTable(name string, path string) *Table {
@@ -40,26 +28,10 @@ func NewTable(name string, path string) *Table {
 	}
 }
 
-//------------------------------------------------------------------------------
-//
-// Accessors
-//
-//------------------------------------------------------------------------------
-
 // Retrieves the path on the table.
 func (t *Table) Path() string {
 	return t.path
 }
-
-//------------------------------------------------------------------------------
-//
-// Methods
-//
-//------------------------------------------------------------------------------
-
-//--------------------------------------
-// Lifecycle
-//--------------------------------------
 
 // Creates a table directory structure.
 func (t *Table) Create() error {
@@ -131,9 +103,6 @@ func (t *Table) Exists() bool {
 	return true
 }
 
-//--------------------------------------
-// Property Management
-//--------------------------------------
 
 // Retrieves a reference to the current property file.
 func (t *Table) PropertyFile() *PropertyFile {
@@ -212,9 +181,6 @@ func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[string]interface{},
 	return t.propertyFile.DenormalizeMap(m)
 }
 
-//--------------------------------------
-// Event Encoding
-//--------------------------------------
 
 // Deserializes a map into a normalized event.
 func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {
@@ -243,7 +209,20 @@ func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {
 	return event, nil
 }
 
-// Serializes a normalized event into a map.
+// DeserializeEvents converts denormalized key/value maps into a slice of normalized events.
+func (t *Table) DeserializeEvents(items []map[string]interface{}) ([]*Event, error) {
+	events := make([]*Event, 0)
+	for _, item := range items {
+		event, err := t.DeserializeEvent(item)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+	return events, nil
+}
+
+// SerializeEvent converts a normalized event into a key/value map.
 func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
 
@@ -262,4 +241,17 @@ func (t *Table) SerializeEvent(event *Event) (map[string]interface{}, error) {
 	}
 
 	return m, nil
+}
+
+// SerializeEvents converts normalized events into a slice of key/value maps.
+func (t *Table) SerializeEvents(events []*Event) ([]map[string]interface{}, error) {
+	output := make([]map[string]interface{}, 0)
+	for _, event := range events {
+		item, err := t.SerializeEvent(event)
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, item)
+	}
+	return output, nil
 }
