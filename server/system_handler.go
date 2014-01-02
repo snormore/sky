@@ -1,27 +1,27 @@
 package server
 
-/*
 import (
 	"github.com/skydb/sky"
-	"net/http"
 )
 
-func (s *Server) addHandlers() {
-	s.ApiHandleFunc("/ping", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-		return s.pingHandler(w, req, params)
-	}).Methods("GET")
-	s.ApiHandleFunc("/", func(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-		return s.indexHandler(w, req, params)
-	}).Methods("GET")
+// systemHandler handles the miscellaneous system-level handlers.
+type systemHandler struct {}
+
+// installSystemHandler adds table routes to the server.
+func installSystemHandler(s *Server) *systemHandler {
+	h := &systemHandler{}
+	s.HandleFunc("/", HandleFunc(h.root)).Methods("GET")
+	s.HandleFunc("/ping", HandleFunc(h.ping)).Methods("GET")
+	return h
 }
 
-// GET /ping
-func (s *Server) pingHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
+// root returns a welcome message and the server version.
+func (h *systemHandler) root(s *Server, req Request) (interface{}, error) {
+	return map[string]interface{}{"sky": "welcome", "version": sky.Version}, nil
+}
+
+// ping returns a simple ok message.
+func (h *systemHandler) ping(s *Server, req Request) (interface{}, error) {
 	return map[string]interface{}{"message": "ok"}, nil
 }
 
-// GET /
-func (s *Server) indexHandler(w http.ResponseWriter, req *http.Request, params map[string]interface{}) (interface{}, error) {
-	return map[string]interface{}{"sky": "welcome", "version": sky.Version}, nil
-}
-*/

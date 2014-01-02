@@ -121,3 +121,8 @@ func _dumpObject(t *testing.T, tableName string, objectId string) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
 }
+
+func jsonenc(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}

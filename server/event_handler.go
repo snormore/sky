@@ -1,9 +1,22 @@
 package server
 
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/skydb/sky/core"
+)
+
 // eventHandler handles the management of events in the database.
 type eventHandler struct {
 	s *Server
 }
+
+type objectEvents map[string][]*core.Event
 
 // installEventHandler adds table routes to the server.
 func installEventHandler(s *Server) *eventHandler {
@@ -16,8 +29,8 @@ func installEventHandler(s *Server) *eventHandler {
 	s.HandleFunc("/tables/{table}/objects/{id}/events/{timestamp}", EnsureMapHandler(EnsureTableHandler(HandleFunc(h.insertEvent)))).Methods("PUT", "PATCH")
 	s.HandleFunc("/tables/{table}/objects/{id}/events/{timestamp}", EnsureTableHandler(HandleFunc(h.deleteEvent))).Methods("DELETE")
 
-	s.HandleFunc("/events", HandleFunc(h.insertEventStream)).Methods("PUT", "PATCH")
-	s.HandleFunc("/tables/{table}/events", EnsureTableHandler(HandleFunc(h.insertTableEventStream))).Methods("PUT", "PATCH")
+	s.Router.HandleFunc("/events", h.insertEventStream).Methods("PATCH")
+	s.Router.HandleFunc("/tables/{table}/events", h.insertEventStream).Methods("PATCH")
 
 	return h
 }
@@ -44,8 +57,25 @@ func (h *eventHandler) deleteEvents(s *Server, req Request) (interface{}, error)
 
 // getEvent retrieves a single event for an object at a given point in time.
 func (h *eventHandler) getEvent(s *Server, req Request) (interface{}, error) {
-	warn("getEvent•1")
-	return nil, nil
+	timestamp, err := time.Parse(time.RFC3339, req.Var("timestamp"))
+	if err != nil {
+		return nil, fmt.Errorf("server: invalid timestamp: %s", req.Var("timestamp"))
+	}
+
+	// Find event.
+	t := req.Table()
+	event, err := s.db.GetEvent(t.Name, req.Var("id"), timestamp)
+	if err != nil {
+		return nil, err
+	} else if event == nil {
+		event = core.NewEvent(req.Var("timestamp"), map[int64]interface{}{})
+	}
+
+	// Convert an event to a serializable object.
+	if err = s.db.Factorizer().DefactorizeEvent(event, t.Name, t.PropertyFile()); err != nil {
+		return nil, err
+	}
+	return t.SerializeEvent(event)
 }
 
 // insertEvent adds a single event to an object.
@@ -67,16 +97,110 @@ func (h *eventHandler) insertEvent(s *Server, req Request) (interface{}, error) 
 
 // deleteEvent deletes a single event for an object at a given point in time.
 func (h *eventHandler) deleteEvent(s *Server, req Request) (interface{}, error) {
-	warn("deleteEvent•1")
-	return nil, nil
+	timestamp, err := time.Parse(time.RFC3339, req.Var("timestamp"))
+	if err != nil {
+		return nil, fmt.Errorf("server: invalid timestamp: %s", req.Var("timestamp"))
+	}
+
+	t := req.Table()
+	return nil, s.db.DeleteEvent(t.Name, req.Var("id"), timestamp)
 }
 
-// insertEventStream is a multi-table bulk insertion end point.
-func (h *eventHandler) insertEventStream(s *Server, req Request) (interface{}, error) {
-	return nil, nil
-}
+// insertEventStream is a bulk insertion end point.
+func (h *eventHandler) insertEventStream(w http.ResponseWriter, req *http.Request) {
+	s := h.s
+	vars := mux.Vars(req)
+	t0 := time.Now()
 
-// insertTableEventStream is a single-table bulk insertion end point.
-func (h *eventHandler) insertTableEventStream(s *Server, req Request) (interface{}, error) {
-	return nil, nil
+	var table *core.Table
+	tableName := vars["table"]
+	if tableName != "" {
+		var err error
+		table, err = s.OpenTable(tableName)
+		if err != nil {
+			s.logger.Printf("ERR %v", err)
+			fmt.Fprintf(w, `{"message":"%v"}`, err)
+			return
+		}
+	}
+
+	tableObjects := make(map[*core.Table]objectEvents)
+
+	events_written := 0
+	err := func() error {
+		// Stream in JSON event objects.
+		decoder := json.NewDecoder(req.Body)
+		for {
+			// Read in a JSON object.
+			rawEvent := map[string]interface{}{}
+			if err := decoder.Decode(&rawEvent); err == io.EOF {
+				break
+			} else if err != nil {
+				return fmt.Errorf("Malformed json event: %v", err)
+			}
+
+			// Extract table name, if necessary.
+			var eventTable *core.Table
+			if table == nil {
+				tableName, ok := rawEvent["table"].(string)
+				if !ok {
+					return fmt.Errorf("Table name required within event when using generic event stream.")
+				}
+				var err error
+				eventTable, err = s.OpenTable(tableName)
+				if err != nil {
+					s.logger.Printf("ERR %v", err)
+					fmt.Fprintf(w, `{"message":"%v"}`, err)
+					return fmt.Errorf("Cannot open table %s: %+v", tableName, err)
+				}
+				delete(rawEvent, "table")
+			} else {
+				eventTable = table
+			}
+
+			// Extract the object identifier.
+			objectId, ok := rawEvent["id"].(string)
+			if !ok {
+				return fmt.Errorf("Object identifier required")
+			}
+
+			// Convert to a Sky event and insert.
+			event, err := eventTable.DeserializeEvent(rawEvent)
+			if err != nil {
+				return fmt.Errorf("Cannot deserialize: %v", err)
+			}
+			if err = s.db.Factorizer().FactorizeEvent(event, eventTable.Name, eventTable.PropertyFile(), true); err != nil {
+				return fmt.Errorf("Cannot factorize: %v", err)
+			}
+
+			if _, ok := tableObjects[eventTable]; !ok {
+				tableObjects[eventTable] = make(objectEvents)
+			}
+			tableObjects[eventTable][objectId] = append(tableObjects[eventTable][objectId], event)
+		}
+
+		return nil
+	}()
+
+	if err == nil {
+		err = func() error {
+			for table, objects := range tableObjects {
+				count, err := s.db.InsertObjects(table.Name, objects)
+				if err != nil {
+					return fmt.Errorf("Cannot put event: %v", err)
+				}
+				events_written += count
+			}
+			return nil
+		}()
+	}
+
+	if err != nil {
+		s.logger.Printf("ERR %v", err)
+		fmt.Fprintf(w, `{"message":"%v"}`, err)
+	}
+
+	fmt.Fprintf(w, `{"events_written":%v}`, events_written)
+
+	s.logger.Printf("%s \"%s %s %s %d events OK\" %0.3f", req.RemoteAddr, req.Method, req.URL.Path, req.Proto, events_written, time.Since(t0).Seconds())
 }

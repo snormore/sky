@@ -55,12 +55,9 @@ func NewServer(port uint, path string) *Server {
 	installPropertyHandler(s)
 	installEventHandler(s)
 	installQueryHandler(s)
-
-	/*
-	installSystemHandler(s)
 	installObjectHandler(s)
+	installSystemHandler(s)
 	installDebugHandler(s)
-	*/
 
 	return s
 }

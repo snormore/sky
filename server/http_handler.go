@@ -101,11 +101,14 @@ func (h *httpHandler) writeResponse(w http.ResponseWriter, req *http.Request, re
 func (h *httpHandler) writeJSONResponse(w http.ResponseWriter, resp Response) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if resp.Data() == nil {
-		return
-	}
-
-	if err := json.NewEncoder(w).Encode(resp.Data()); err != nil {
-		h.server.logger.Printf("server: encoding error: %v", err)
+	if resp.Error() != nil {
+		ret := map[string]interface{}{"message":resp.Error().Error()}
+		if err := json.NewEncoder(w).Encode(ret); err != nil {
+			h.server.logger.Printf("server: encoding error[err]: %v", err)
+		}
+	} else if resp.Data() != nil {
+		if err := json.NewEncoder(w).Encode(resp.Data()); err != nil {
+			h.server.logger.Printf("server: encoding error: %v", err)
+		}
 	}
 }

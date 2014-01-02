@@ -7,7 +7,7 @@ import (
 )
 
 // Ensure that we can put an event on the server.
-func TestServerUpdateEvents(t *testing.T) {
+func TestServerEventUpdate(t *testing.T) {
 	runTestServer(func(s *Server) {
 		var resp interface{}
 		setupTestTable("foo")
@@ -29,22 +29,21 @@ func TestServerUpdateEvents(t *testing.T) {
 		// Check the resulting events.
 		code, resp = getJSON("/tables/foo/objects/xyz/events")
 		assert.Equal(t, code, 200)
-		if assert.NotNil(t, resp) {
-			resp := resp.([]map[string]interface{})
+		if resp, ok := resp.([]interface{}); assert.True(t, ok) {
 			assert.Equal(t, len(resp), 2)
+			assert.Equal(t, jsonenc(resp[0]), `{"data":{"bar":"myValue3","baz":1000},"timestamp":"2012-01-01T02:00:00Z"}`)
+			assert.Equal(t, jsonenc(resp[1]), `{"data":{"bar":"myValue2","baz":20},"timestamp":"2012-01-01T03:00:00Z"}`)
 		}
-		//`[{"data":{"bar":"myValue3","baz":1000},"timestamp":"2012-01-01T02:00:00Z"},{"data":{"bar":"myValue2","baz":20},"timestamp":"2012-01-01T03:00:00Z"}]`+"\n"
 
-		/*
 		// Grab a single event.
-		resp, _ = sendTestHttpRequest("GET", "http://localhost:8586/tables/foo/objects/xyz/events/2012-01-01T03:00:00Z", "application/json", "")
-		assertResponse(t, resp, 200, `{"data":{"bar":"myValue2","baz":20},"timestamp":"2012-01-01T03:00:00Z"}`+"\n", "GET /tables/:name/objects/:objectId/events/:timestamp failed.")
-		*/
+		code, resp = getJSON("/tables/foo/objects/xyz/events/2012-01-01T03:00:00Z")
+		assert.Equal(t, code, 200)
+		assert.Equal(t, jsonenc(resp), `{"data":{"bar":"myValue2","baz":20},"timestamp":"2012-01-01T03:00:00Z"}`)
 	})
 }
 
 // Ensure that we can delete all events for an object.
-func TestServerDeleteEvent(t *testing.T) {
+func TestServerEventDelete(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
 		setupTestProperty("foo", "bar", false, "string")
