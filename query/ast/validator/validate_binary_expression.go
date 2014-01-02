@@ -9,19 +9,22 @@ func (v *validator) exitingBinaryExpression(n *ast.BinaryExpression, tbl *ast.Sy
 	lhsType := v.dataTypes[n.LHS]
 	rhsType := v.dataTypes[n.RHS]
 
+	// Raise error for type mismatch (except for "float-integer").
 	if lhsType != rhsType {
-		v.err = errorf(n, "expression: data type mismatch: %s != %s", lhsType, rhsType)
-	} else {
-		switch lhsType {
-		case core.BooleanDataType:
-			v.exitingBooleanBinaryExpression(n, tbl)
-		case core.FactorDataType:
-			v.exitingFactorBinaryExpression(n, tbl)
-		case core.IntegerDataType:
-			v.exitingIntegerBinaryExpression(n, tbl)
-		default:
-			v.err = errorf(n, "expression: invalid binary expression type: %s", lhsType)
+		if !((lhsType == "float" && rhsType == "integer") || (lhsType == "integer" && rhsType == "float")){
+			v.err = errorf(n, "expression: data type mismatch: %s != %s", lhsType, rhsType)
 		}
+	}
+
+	switch lhsType {
+	case core.BooleanDataType:
+		v.exitingBooleanBinaryExpression(n, tbl)
+	case core.FactorDataType:
+		v.exitingFactorBinaryExpression(n, tbl)
+	case core.IntegerDataType, core.FloatDataType:
+		v.exitingNumericBinaryExpression(n, tbl)
+	default:
+		v.err = errorf(n, "expression: invalid binary expression type: %s", lhsType)
 	}
 }
 
@@ -64,7 +67,7 @@ func (v *validator) exitingFactorBinaryExpression(n *ast.BinaryExpression, tbl *
 	}
 }
 
-func (v *validator) exitingIntegerBinaryExpression(n *ast.BinaryExpression, tbl *ast.Symtable) {
+func (v *validator) exitingNumericBinaryExpression(n *ast.BinaryExpression, tbl *ast.Symtable) {
 	switch n.Op {
 	case ast.OpEquals, ast.OpNotEquals:
 		v.dataTypes[n] = core.BooleanDataType
@@ -77,6 +80,6 @@ func (v *validator) exitingIntegerBinaryExpression(n *ast.BinaryExpression, tbl 
 	case ast.OpMultiply, ast.OpDivide:
 		v.dataTypes[n] = core.IntegerDataType
 	default:
-		v.err = errorf(n, "expression: invalid integer operator: %s", n.OpString())
+		v.err = errorf(n, "expression: invalid numeric operator: %s", n.OpString())
 	}
 }

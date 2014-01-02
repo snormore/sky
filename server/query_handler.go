@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/skydb/sky/query/ast"
+	"github.com/skydb/sky/query/ast/validator"
 	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/skydb/sky/query/codegen/mapper"
 	"github.com/skydb/sky/query/codegen/reducer"
@@ -38,6 +39,15 @@ func (h *queryHandler) execute(s *Server, req Request) (interface{}, error) {
 		}
 		return ast.NewVarDecl(p.Id, p.Name, p.DataType)
 	}
+	if err := q.Finalize(); err != nil {
+		return nil, err
+	}
+
+	// Validate query.
+	if err := validator.Validate(q); err != nil {
+		return nil, err
+	}
+
 
 	// Retrieve factorizer and database cursors.
 	f := s.db.TableFactorizer(t.Name)
@@ -64,6 +74,7 @@ func (h *queryHandler) execute(s *Server, req Request) (interface{}, error) {
 		}
 		results[i] = result
 	}
+	mappers[0].Dump()
 
 	// TODO: Run mappers in parallel.
 
@@ -76,4 +87,3 @@ func (h *queryHandler) execute(s *Server, req Request) (interface{}, error) {
 	}
 	return r.Output(), nil
 }
-

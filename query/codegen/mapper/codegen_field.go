@@ -34,13 +34,9 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 	m.builder.SetInsertPointAtEnd(body)
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
 	if node.IsAggregate() {
-		id := hashmap.String(node.Identifier())
-		currentValue := m.call("sky_hashmap_get", m.load(result), m.constint(int(id)))
-		newValue, err := m.codegenAggregateField(node, tbl, event, currentValue)
-		if err != nil {
+		if err := m.codegenAggregateField(node, tbl, event, result); err != nil {
 			return nilValue, err
 		}
-		m.call("sky_hashmap_set", m.load(result), m.constint(int(id)), newValue)
 	} else {
 		panic("UNIMPLEMENTED")
 	}
@@ -52,23 +48,52 @@ func (m *Mapper) codegenField(node *ast.Field, tbl *ast.Symtable, index int) (ll
 	return fn, nil
 }
 
-func (m *Mapper) codegenAggregateField(node *ast.Field, tbl *ast.Symtable, event llvm.Value, currentValue llvm.Value) (llvm.Value, error) {
+func (m *Mapper) codegenAggregateField(node *ast.Field, tbl *ast.Symtable, event llvm.Value, result llvm.Value) error {
+	id := hashmap.String(node.Identifier())
+
 	// The "count" aggregation is a special case since it doesn't require an expression.
 	if node.Aggregation == "count" {
-		return m.builder.CreateAdd(currentValue, llvm.ConstInt(m.context.Int64Type(), 1, false), ""), nil
+		currentValue := m.call("sky_hashmap_get", m.load(result), m.constint(int(id)))
+		newValue := m.builder.CreateAdd(currentValue, llvm.ConstInt(m.context.Int64Type(), 1, false), "")
+		m.call("sky_hashmap_set", m.load(result), m.constint(int(id)), newValue)
+		return nil
 	}
 
 	// Generate the field expression.
 	expressionValue, err := m.codegenExpression(node.Expression, event, tbl)
 	if err != nil {
-		return nilValue, err
+		return err
+	}
+
+	// Retrieve hashmap value that matches expession type.
+	fp := (expressionValue.Type().TypeKind() == llvm.DoubleTypeKind)
+	var currentValue llvm.Value
+	if fp {
+		currentValue = m.call("sky_hashmap_get_double", m.load(result), m.constint(int(id)))
+	} else {
+		currentValue = m.call("sky_hashmap_get", m.load(result), m.constint(int(id)))
 	}
 
 	// Aggregate the value of the expression with the current value.
+	var newValue llvm.Value
 	switch node.Aggregation {
 	case "sum":
-		return m.builder.CreateAdd(currentValue, expressionValue, ""), nil
+		if fp {
+			newValue = m.builder.CreateFAdd(currentValue, expressionValue, "")
+		} else {
+			newValue = m.builder.CreateAdd(currentValue, expressionValue, "")
+		}
 	default:
-		return nilValue, fmt.Errorf("Invalid aggregation type: %s", node.Aggregation)
+		return fmt.Errorf("Invalid aggregation type: %s", node.Aggregation)
 	}
+
+	// Update the hashmap value.
+	if fp {
+		m.printf("set: %f -> %f\n", currentValue, newValue)
+		m.call("sky_hashmap_set_double", m.load(result), m.constint(int(id)), newValue)
+	} else {
+		m.call("sky_hashmap_set", m.load(result), m.constint(int(id)), newValue)
+	}
+
+	return nil
 }

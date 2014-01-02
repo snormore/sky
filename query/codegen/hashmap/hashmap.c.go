@@ -10,7 +10,9 @@ package hashmap
 #define HASHMAP_BUCKET_COUNT 256
 
 typedef enum {
+    null_value_type,
     int_value_type,
+    double_value_type,
     hashmap_value_type,
 } sky_hashmap_elem_type_e;
 
@@ -21,6 +23,7 @@ typedef struct {
   sky_hashmap_elem_type_e value_type;
   union {
     int64_t int_value;
+    double double_value;
     sky_hashmap *hashmap_value;
   } value;
 } sky_hashmap_elem;
@@ -41,7 +44,7 @@ typedef struct {
 } sky_hashmap_iterator;
 
 void sky_hashmap_find(sky_hashmap *hashmap, int64_t key, sky_hashmap_bucket **bucket, sky_hashmap_elem **element);
-bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key);
+bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key, sky_hashmap_elem_type_e *value_type);
 
 //--------------------------------------
 // Hashmap
@@ -68,7 +71,8 @@ void sky_hashmap_free(sky_hashmap *hashmap)
 
     // Free all child hashmaps first.
     memset(&iterator, 0, sizeof(iterator));
-    while(sky_hashmap_iterator_next(&iterator, &key)) {
+    sky_hashmap_elem_type_e value_type;
+    while(sky_hashmap_iterator_next(&iterator, &key, &value_type)) {
         sky_hashmap_find(hashmap, key, &bucket, &element);
         if(element->value_type == hashmap_value_type) {
             sky_hashmap_free(element->value.hashmap_value);
@@ -119,6 +123,18 @@ inline void sky_hashmap_find_or_create(sky_hashmap *hashmap, int64_t key, sky_ha
     }
 }
 
+// Retrieves the value type for a given key.
+sky_hashmap_elem_type_e sky_hashmap_value_type(sky_hashmap *hashmap, int64_t key)
+{
+    sky_hashmap_elem *elem;
+    sky_hashmap_bucket *bucket;
+    sky_hashmap_find(hashmap, key, &bucket, &elem);
+    if(elem == NULL) {
+        return null_value_type;
+    }
+    return elem->value_type;
+}
+
 // Retrieves an int value for a given key.
 // Creates the key if it doesn't already exist.
 int64_t sky_hashmap_get(sky_hashmap *hashmap, int64_t key)
@@ -134,6 +150,23 @@ void sky_hashmap_set(sky_hashmap *hashmap, int64_t key, int64_t value)
     sky_hashmap_elem *elem;
     sky_hashmap_find_or_create(hashmap, key, int_value_type, &elem);
     elem->value.int_value = value;
+}
+
+// Retrieves a double value for a given key.
+// Creates the key if it doesn't already exist.
+double sky_hashmap_get_double(sky_hashmap *hashmap, int64_t key)
+{
+    sky_hashmap_elem *elem;
+    sky_hashmap_find_or_create(hashmap, key, double_value_type, &elem);
+    return elem->value.double_value;
+}
+
+// Sets a double value for a given key.
+void sky_hashmap_set_double(sky_hashmap *hashmap, int64_t key, double value)
+{
+    sky_hashmap_elem *elem;
+    sky_hashmap_find_or_create(hashmap, key, double_value_type, &elem);
+    elem->value.double_value = value;
 }
 
 // Retrieves a hashmap value for a given key.
@@ -172,7 +205,7 @@ void sky_hashmap_iterator_free(sky_hashmap_iterator *iterator)
 
 // Returns the next element in the hashmap.
 // Returns an EOF flag if no more elements are available.
-bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key)
+bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key, sky_hashmap_elem_type_e *value_type)
 {
     sky_hashmap *hashmap = iterator->hashmap;
     sky_hashmap_bucket *bucket = NULL;
@@ -180,6 +213,7 @@ bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key)
         // If there's no more buckets then return failure.
         if(iterator->bucket_index >= HASHMAP_BUCKET_COUNT) {
             *key = 0;
+            *value_type = 0;
             return false;
         }
 
@@ -193,6 +227,7 @@ bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key)
 
     // Return next element key in bucket.
     *key = bucket->elements[iterator->element_index].key;
+    *value_type = bucket->elements[iterator->element_index].value_type;
 
     // Increment the element index.
     iterator->element_index++;
@@ -226,6 +261,13 @@ sky_hashmap *sky_hashmap_benchmark_set(sky_hashmap *hashmap, int64_t n)
 import "C"
 import "unsafe"
 
+const (
+    NullValueType = C.null_value_type
+    IntValueType = C.int_value_type
+    DoubleValueType = C.double_value_type
+    HashmapValueType = C.hashmap_value_type
+)
+
 // Hashmap wraps the underlying C struct.
 type Hashmap struct {
 	C *C.sky_hashmap
@@ -249,20 +291,36 @@ func (h *Hashmap) Free() {
 	}
 }
 
+// ValueType retrieves type of value stored in the key.
+func (h *Hashmap) ValueType(key int64) int {
+    return int(C.sky_hashmap_value_type(h.C, C.int64_t(key)))
+}
+
 // Get retrieves the int value for a given key.
 func (h *Hashmap) Get(key int64) int64 {
-	return int64(C.sky_hashmap_get(h.C, C.int64_t(key)))
+    return int64(C.sky_hashmap_get(h.C, C.int64_t(key)))
 }
 
 // Set sets an int value for a given key.
 func (h *Hashmap) Set(key int64, value int64) {
-	C.sky_hashmap_set(h.C, C.int64_t(key), C.int64_t(value))
+    C.sky_hashmap_set(h.C, C.int64_t(key), C.int64_t(value))
+}
+
+// GetDouble retrieves the double value for a given key.
+func (h *Hashmap) GetDouble(key int64) float64 {
+    return float64(C.sky_hashmap_get_double(h.C, C.int64_t(key)))
+}
+
+// SetDouble sets a double value for a given key.
+func (h *Hashmap) SetDouble(key int64, value float64) {
+    C.sky_hashmap_set_double(h.C, C.int64_t(key), C.double(value))
 }
 
 // Submap retrieves the hashmap value for a given key.
 func (h *Hashmap) Submap(key int64) *Hashmap {
 	return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
 }
+
 
 // Iterator wraps the underlying C struct.
 type Iterator struct {
@@ -283,10 +341,11 @@ func (i *Iterator) Free() {
 }
 
 // Next retrieves the next key and a success flag.
-func (i *Iterator) Next() (int64, bool) {
+func (i *Iterator) Next() (int64, int, bool) {
 	var key C.int64_t
-	success := bool(C.sky_hashmap_iterator_next(i.C, &key))
-	return int64(key), success
+    var typ C.sky_hashmap_elem_type_e
+	success := bool(C.sky_hashmap_iterator_next(i.C, &key, &typ))
+	return int64(key), int(typ), success
 }
 
 // benchmark runs get() N number of times within the C context.

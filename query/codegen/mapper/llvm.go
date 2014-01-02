@@ -43,6 +43,14 @@ func (m *Mapper) constfloat(value float64) llvm.Value {
 	return llvm.ConstFloat(m.context.DoubleType(), value)
 }
 
+func (m *Mapper) sitofp(v llvm.Value, name ...string) llvm.Value {
+	return m.builder.CreateSIToFP(v, m.context.DoubleType(), fname(name))
+}
+
+func (m *Mapper) fcmp(pred llvm.FloatPredicate, lhs, rhs llvm.Value, name ...string) llvm.Value {
+	return m.builder.CreateFCmp(pred, lhs, rhs, fname(name))
+}
+
 func (m *Mapper) icmp(pred llvm.IntPredicate, lhs, rhs llvm.Value, name ...string) llvm.Value {
 	return m.builder.CreateICmp(pred, lhs, rhs, fname(name))
 }

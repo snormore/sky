@@ -20,6 +20,20 @@ func TestHashmapInt(t *testing.T) {
 	}
 }
 
+// Ensure that float values can be set and retrieved.
+func TestHashmapFloat64(t *testing.T) {
+	h := New()
+	defer h.Free()
+
+	max := 10000
+	for i := 0; i < max; i++ {
+		h.SetDouble(int64(i), float64(max-i) / 100)
+	}
+	for i := 0; i < max; i++ {
+		assert.Equal(t, h.GetDouble(int64(i)), float64(max-i) / 100)
+	}
+}
+
 // Ensure that hashmap values can be retrieved.
 func TestHashmapSubmap(t *testing.T) {
 	h := New()
@@ -63,7 +77,7 @@ func TestHashmapIterator(t *testing.T) {
 	iterator := NewIterator(h)
 	results := make(map[int64]bool)
 	for {
-		key, ok := iterator.Next()
+		key, _, ok := iterator.Next()
 		if !ok {
 			break
 		}

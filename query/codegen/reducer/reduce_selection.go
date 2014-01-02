@@ -46,7 +46,7 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 	// Iterate over dimension values.
 	iterator := hashmap.NewIterator(h)
 	for {
-		key, ok := iterator.Next()
+		key, _, ok := iterator.Next()
 		if !ok {
 			break
 		}

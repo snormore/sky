@@ -27,13 +27,16 @@ func TestServerSimpleCountQuery(t *testing.T) {
 			[]string{"xx", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
 		})
 
-		// Run query.
-		query := `{"query":{"statements":"SELECT count()"}}`
-		// _codegen(t, "foo", query)
-		//resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		//assertResponse(t, resp, 200, `{"count":5}`+"\n", "POST /tables/:name/query failed.")
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/bar/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"count":1}`+"\n", "POST /tables/:name/query failed.")
+		// Run queries against 'foo' and 'bar'.
+		q := `SELECT count()`
+
+		status, resp := postJSON("/tables/foo/query", jsonenc(map[string]interface{}{"query":q}))
+		assert.Equal(t, 200, status)
+		assert.Equal(t, jsonenc(resp), `{"count":5}`)
+
+		status, resp = postJSON("/tables/bar/query", jsonenc(map[string]interface{}{"query":q}))
+		assert.Equal(t, 200, status)
+		assert.Equal(t, jsonenc(resp), `{"count":1}`)
 	})
 }
 
@@ -62,7 +65,7 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 func TestServerMultiDimensionalQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "gender", false, "string")
+		setupTestProperty("foo", "gender", false, "factor")
 		setupTestProperty("foo", "state", false, "factor")
 		setupTestProperty("foo", "price", true, "float")
 		setupTestProperty("foo", "num", true, "integer")
@@ -78,16 +81,12 @@ func TestServerMultiDimensionalQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{"query":"` +
-			`SELECT count() AS count, sum(price) AS sum GROUP BY gender, state INTO \"s1\" ` +
-			`SELECT min(price) AS minimum, max(price) AS maximum GROUP BY gender, state ` +
-			`SELECT sum((price + num) * 2) AS sum INTO \"X\" ` +
-			`SELECT avg(price) AS average INTO \"X\" ` +
-			`SELECT count(DISTINCT price) AS distinct INTO \"X\" ` +
-			`"}`
-		// _codegen(t, "foo", query)
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"X":{"average":60,"distinct":6,"sum":2720},"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`+"\n", "POST /tables/:name/query failed.")
+//			SELECT count() AS count, sum(price) AS sum GROUP BY gender, state INTO "s1"
+		q := `
+			SELECT sum((price + num) * 2) AS sum INTO "X"
+		`
+		_, resp := postJSON("/tables/foo/query", jsonenc(map[string]interface{}{"query":q}))
+		assert.Equal(t, jsonenc(resp), `{"X":{"average":60,"distinct":6,"sum":2720},"gender":{"f":{"state":{"NY":{"maximum":30,"minimum":30}}},"m":{"state":{"CA":{"maximum":20,"minimum":0},"NY":{"maximum":200,"minimum":100}}}},"s1":{"gender":{"f":{"state":{"NY":{"count":1,"sum":30}}},"m":{"state":{"CA":{"count":3,"sum":30},"NY":{"count":2,"sum":300}}}}}}`)
 	})
 }
 

@@ -50,6 +50,7 @@ func New(path string, defaultShardCount int, noSync bool, maxDBs uint, maxReader
 	// Default the shard count to the number of logical cores.
 	if defaultShardCount == 0 {
 		defaultShardCount = runtime.NumCPU()
+		defaultShardCount = 1
 	}
 
 	return &db{

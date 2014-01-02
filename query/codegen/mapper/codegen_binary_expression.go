@@ -25,27 +25,71 @@ func (m *Mapper) codegenBinaryExpression(node *ast.BinaryExpression, event llvm.
 		return nilValue, err
 	}
 
+	// Make operands equal types.
+	var fp bool
+	lhs, rhs, fp = m.promoteOperands(lhs, rhs)
+
 	switch node.Op {
 	case ast.OpEquals:
-		return m.icmp(llvm.IntEQ, lhs, rhs, ""), nil
+		if fp {
+			return m.fcmp(llvm.FloatUEQ, lhs, rhs, ""), nil
+		} else {
+			return m.icmp(llvm.IntEQ, lhs, rhs, ""), nil
+		}
 	case ast.OpNotEquals:
-		return m.icmp(llvm.IntNE, lhs, rhs, ""), nil
+		if fp {
+			return m.fcmp(llvm.FloatUNE, lhs, rhs, ""), nil
+		} else {
+			return m.icmp(llvm.IntNE, lhs, rhs, ""), nil
+		}
 	case ast.OpGreaterThan:
-		return m.icmp(llvm.IntSGT, lhs, rhs, ""), nil
+		if fp {
+			return m.fcmp(llvm.FloatUGT, lhs, rhs, ""), nil
+		} else {
+			return m.icmp(llvm.IntSGT, lhs, rhs, ""), nil
+		}
 	case ast.OpGreaterThanOrEqualTo:
-		return m.icmp(llvm.IntSGE, lhs, rhs, ""), nil
+		if fp {
+			return m.fcmp(llvm.FloatUGE, lhs, rhs, ""), nil
+		} else {
+			return m.icmp(llvm.IntSGE, lhs, rhs, ""), nil
+		}
 	case ast.OpLessThan:
-		return m.icmp(llvm.IntSLT, lhs, rhs, ""), nil
+		if fp {
+			return m.fcmp(llvm.FloatULT, lhs, rhs, ""), nil
+		} else {
+			return m.icmp(llvm.IntSLT, lhs, rhs, ""), nil
+		}
 	case ast.OpLessThanOrEqualTo:
-		return m.icmp(llvm.IntSLE, lhs, rhs, ""), nil
+		if fp {
+			return m.fcmp(llvm.FloatULE, lhs, rhs, ""), nil
+		} else {
+			return m.icmp(llvm.IntSLE, lhs, rhs, ""), nil
+		}
 	case ast.OpPlus:
-		return m.builder.CreateAdd(lhs, rhs, ""), nil
+		if fp {
+			return m.builder.CreateFAdd(lhs, rhs, ""), nil
+		} else {
+			return m.builder.CreateAdd(lhs, rhs, ""), nil
+		}
 	case ast.OpMinus:
-		return m.builder.CreateSub(lhs, rhs, ""), nil
+		if fp {
+			return m.builder.CreateFSub(lhs, rhs, ""), nil
+		} else {
+			return m.builder.CreateSub(lhs, rhs, ""), nil
+		}
 	case ast.OpMultiply:
-		return m.builder.CreateMul(lhs, rhs, ""), nil
+		if fp {
+			return m.builder.CreateFMul(lhs, rhs, ""), nil
+		} else {
+			return m.builder.CreateMul(lhs, rhs, ""), nil
+		}
 	case ast.OpDivide:
-		return m.builder.CreateSDiv(lhs, rhs, ""), nil
+		if fp {
+			return m.builder.CreateFDiv(lhs, rhs, ""), nil
+		} else {
+			return m.builder.CreateSDiv(lhs, rhs, ""), nil
+		}
 	case ast.OpAnd:
 		return m.builder.CreateAnd(lhs, rhs, ""), nil
 	case ast.OpOr:
@@ -63,6 +107,20 @@ func (m *Mapper) isFactorVarRef(node ast.Expression, tbl *ast.Symtable) bool {
 	}
 	decl := tbl.Find(ref.Name)
 	return (decl != nil && decl.DataType == core.FactorDataType)
+}
+
+func (m *Mapper) promoteOperands(lhs, rhs llvm.Value) (llvm.Value, llvm.Value, bool) {
+	lhsTypeKind := lhs.Type().TypeKind()
+	rhsTypeKind := rhs.Type().TypeKind()
+
+	if lhsTypeKind == llvm.DoubleTypeKind && rhsTypeKind == llvm.IntegerTypeKind {
+		rhs = m.sitofp(rhs)
+	} else if lhsTypeKind == llvm.DoubleTypeKind && rhsTypeKind == llvm.IntegerTypeKind {
+		lhs = m.sitofp(lhs)
+	}
+
+	fp := (lhsTypeKind == llvm.DoubleTypeKind || rhsTypeKind == llvm.DoubleTypeKind)
+	return lhs, rhs, fp
 }
 
 func (m *Mapper) codegenFactorEquality(node *ast.BinaryExpression, lhs *ast.VarRef, rhs ast.Expression, event llvm.Value, tbl *ast.Symtable) (llvm.Value, error) {
