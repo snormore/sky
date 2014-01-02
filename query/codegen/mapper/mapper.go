@@ -51,9 +51,11 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 	m.builder = llvm.NewBuilder()
 
 	var err error
-	if m.decls, err = q.VarDecls(); err != nil {
+	if err = q.Finalize(); err != nil {
 		return nil, err
 	}
+	m.decls = q.VarDecls()
+	
 	if m.entryFunc, err = m.codegenQuery(q); err != nil {
 		return nil, err
 	}

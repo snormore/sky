@@ -37,7 +37,6 @@ func installEventHandler(s *Server) *eventHandler {
 
 // getEvents retrieves a list of all events associated with an object.
 func (h *eventHandler) getEvents(s *Server, req Request) (interface{}, error) {
-	warn("getEvents•1")
 	t := req.Table()
 	events, err := s.db.GetEvents(t.Name, req.Var("id"))
 	if err != nil {
@@ -51,7 +50,6 @@ func (h *eventHandler) getEvents(s *Server, req Request) (interface{}, error) {
 
 // deleteEvents deletes all events associated with an object.
 func (h *eventHandler) deleteEvents(s *Server, req Request) (interface{}, error) {
-	warn("deleteEvents•1")
 	return nil, s.db.DeleteObject(req.Table().Name, req.Var("id"))
 }
 

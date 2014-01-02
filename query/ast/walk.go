@@ -62,6 +62,9 @@ func walk(v Visitor, node Node, symtable *Symtable) Visitor {
 		if v = walkVarDecls(v, n.SystemVarDecls, symtable); v == nil {
 			return nil
 		}
+		if v = walkVarDecls(v, n.dynamicVarDecls, symtable); v == nil {
+			return nil
+		}
 		if v = walkVarDecls(v, n.DeclaredVarDecls, symtable); v == nil {
 			return nil
 		}

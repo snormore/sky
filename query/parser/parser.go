@@ -33,6 +33,12 @@ func (p *Parser) Parse(r io.Reader) (*ast.Query, error) {
 	return l.query, l.err
 }
 
+// ParseString parses a SkyQL query string and returns the AST structure.
+func (p *Parser) ParseString(s string) (*ast.Query, error) {
+	return p.Parse(bytes.NewBufferString(s))
+}
+
+
 // Parse parses a SkyQL query string but panics if an error is encountered.
 func (p *Parser) MustParse(r io.Reader) *ast.Query {
 	q, err := p.Parse(r)
@@ -40,11 +46,6 @@ func (p *Parser) MustParse(r io.Reader) *ast.Query {
 		panic(err)
 	}
 	return q
-}
-
-// ParseString parses a SkyQL query string and returns the AST structure.
-func (p *Parser) ParseString(s string) (*ast.Query, error) {
-	return p.Parse(bytes.NewBufferString(s))
 }
 
 // ParseString parses a SkyQL query string but panics if an error is encountered.

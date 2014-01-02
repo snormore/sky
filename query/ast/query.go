@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -11,9 +12,12 @@ import (
 // the Sky database.
 type Query struct {
 	Prefix           string
+	DynamicDecl      func(*VarRef) *VarDecl
 	SystemVarDecls   VarDecls
 	DeclaredVarDecls VarDecls
 	Statements       Statements
+	dynamicVarDecls  VarDecls
+	decls            VarDecls
 }
 
 func (q *Query) node()  {}
@@ -30,21 +34,49 @@ func NewQuery() *Query {
 	return q
 }
 
-// VarDecls returns a list of indexed variable declarations.
-func (q *Query) VarDecls() (VarDecls, error) {
-	// Retrieve list of
-	decls, err := FindVarDecls(q)
-	if err != nil {
-		return nil, err
+// Finalize performs final processing on a query to resolve dynamically declared
+// variables and index the variable declarations.
+func (q *Query) Finalize() error {
+	fmt.Println("query.finalize•1")
+	if q.Finalized() {
+		return nil
 	}
 
-	// Sort and index declarations.
-	sort.Sort(decls)
-	for i, decl := range decls {
+	fmt.Println("query.finalize•2")
+	// Resolve undeclared variable references.
+	for _, ref := range FindUndeclaredRefs(q) {
+	fmt.Println("query.finalize•3")
+		var decl *VarDecl
+		if q.DynamicDecl != nil {
+			decl = q.DynamicDecl(ref)
+		}
+		if decl == nil {
+			return fmt.Errorf("query: undeclared variable: %s", ref.Name)
+		}
+		q.dynamicVarDecls = append(q.dynamicVarDecls, decl)
+	}
+	fmt.Println("query.finalize•4")
+
+	// Generate variable declaration indices.
+	var err error
+	if q.decls, err = FindVarDecls(q); err != nil {
+		return err
+	}
+	sort.Sort(q.decls)
+	for i, decl := range q.decls {
 		decl.index = i
 	}
+	return nil
+}
 
-	return decls, nil
+// Finalized returns whether the query has been finalized already.
+func (q *Query) Finalized() bool {
+	return q.decls != nil
+}
+
+// VarDecls returns a list of indexed variable declarations.
+func (q *Query) VarDecls() VarDecls {
+	return q.decls
 }
 
 // Selections returns a list of all selections within the query.
@@ -58,6 +90,7 @@ func (q *Query) Selections() []*Selection {
 	return selections
 }
 
+// String returns the query as a string representation.
 func (q *Query) String() string {
 	arr := []string{}
 	for _, v := range q.DeclaredVarDecls {
