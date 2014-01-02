@@ -3,13 +3,15 @@ package server
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // Ensure that we can query the server for a count of events.
 func TestServerSimpleCountQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "fruit", true, "string")
+		setupTestProperty("foo", "fruit", true, "factor")
 		setupTestProperty("foo", "num", true, "integer")
 		setupTestData(t, "foo", [][]string{
 			[]string{"a0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
@@ -20,7 +22,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 		})
 
 		setupTestTable("bar")
-		setupTestProperty("bar", "fruit", true, "string")
+		setupTestProperty("bar", "fruit", true, "factor")
 		setupTestData(t, "bar", [][]string{
 			[]string{"xx", "2012-01-01T00:00:00Z", `{"data":{"fruit":"grape"}}`},
 		})
@@ -39,7 +41,7 @@ func TestServerSimpleCountQuery(t *testing.T) {
 func TestServerOneDimensionCountQuery(t *testing.T) {
 	runTestServer(func(s *Server) {
 		setupTestTable("foo")
-		setupTestProperty("foo", "fruit", true, "string")
+		setupTestProperty("foo", "fruit", true, "factor")
 		setupTestProperty("foo", "num", true, "integer")
 		setupTestData(t, "foo", [][]string{
 			[]string{"b0", "2012-01-01T00:00:00Z", `{"data":{"fruit":"apple"}}`},
@@ -50,10 +52,9 @@ func TestServerOneDimensionCountQuery(t *testing.T) {
 		})
 
 		// Run query.
-		query := `{"query":"SELECT count() AS count GROUP BY fruit"}`
-		// _codegen(t, "foo", query)
-		resp, _ := sendTestHttpRequest("POST", "http://localhost:8586/tables/foo/query", "application/json", query)
-		assertResponse(t, resp, 200, `{"fruit":{"":{"count":1},"apple":{"count":2},"grape":{"count":1},"orange":{"count":1}}}`+"\n", "POST /tables/:name/query failed.")
+		q := `SELECT count() AS count GROUP BY fruit`
+		_, resp := postJSON("/tables/foo/query", jsonenc(map[string]interface{}{"query":q}))
+		assert.Equal(t, jsonenc(resp), `{"fruit":{"apple":{"count":2},"grape":{"count":1},"orange":{"count":1}}}`)
 	})
 }
 

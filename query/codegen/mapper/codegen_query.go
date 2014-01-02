@@ -10,10 +10,7 @@ import (
 func (m *Mapper) codegenQuery(q *ast.Query) (llvm.Value, error) {
 	tbl := ast.NewSymtable(nil)
 
-	if _, err := m.codegenVarDecls(q.SystemVarDecls, tbl); err != nil {
-		return nilValue, err
-	}
-	if _, err := m.codegenVarDecls(q.DeclaredVarDecls, tbl); err != nil {
+	if _, err := m.codegenVarDecls(q.VarDecls(), tbl); err != nil {
 		return nilValue, err
 	}
 

@@ -26,23 +26,18 @@ func (h *queryHandler) execute(s *Server, req Request) (interface{}, error) {
 	data := req.Data().(map[string]interface{})
 	querystring, _ := data["query"].(string)
 
-	warn("query.execute•1", querystring)
-
 	// Parse query.
 	q, err := parser.ParseString(querystring)
 	if err != nil {
-		warn("query.execute•2", err)
 		return nil, err
 	}
 	q.DynamicDecl = func (ref *ast.VarRef) *ast.VarDecl {
-		warn("query.execute•3", ref.Name)
 		p, _ := t.GetPropertyByName(ref.Name)
 		if p == nil {
 			return nil
 		}
 		return ast.NewVarDecl(p.Id, p.Name, p.DataType)
 	}
-	warn("query.execute•4")
 
 	// Retrieve factorizer and database cursors.
 	f := s.db.TableFactorizer(t.Name)
@@ -52,24 +47,19 @@ func (h *queryHandler) execute(s *Server, req Request) (interface{}, error) {
 	}
 	defer cursors.Close()
 
-	warn("query.execute•5")
-
 	// Execute one mapper for each cursor.
 	mappers := make([]*mapper.Mapper, len(cursors))
 	results := make([]*hashmap.Hashmap, len(cursors))
 	for i := 0; i < len(mappers); i++ {
 		cursor := cursors[i]
-		warn("query.execute•6")
 
 		var err error
 		if mappers[i], err = mapper.New(q, f); err != nil {
-		warn("query.execute•7", err)
 			return nil, err
 		}
 
 		result := hashmap.New()
 		if err = mappers[i].Execute(cursor, "", result); err != nil {
-		warn("query.execute•8", err)
 			return nil, err
 		}
 		results[i] = result
@@ -80,13 +70,10 @@ func (h *queryHandler) execute(s *Server, req Request) (interface{}, error) {
 	// Combine all the results into one final result.
 	r := reducer.New(q, f)
 	for _, result := range results {
-		warn("query.execute•9")
 		if err := r.Reduce(result); err != nil {
-		warn("query.execute•X", err)
 			return nil, err
 		}
 	}
-	warn("query.execute•DONE")
 	return r.Output(), nil
 }
 

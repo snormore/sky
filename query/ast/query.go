@@ -37,15 +37,12 @@ func NewQuery() *Query {
 // Finalize performs final processing on a query to resolve dynamically declared
 // variables and index the variable declarations.
 func (q *Query) Finalize() error {
-	fmt.Println("query.finalize•1")
 	if q.Finalized() {
 		return nil
 	}
 
-	fmt.Println("query.finalize•2")
 	// Resolve undeclared variable references.
 	for _, ref := range FindUndeclaredRefs(q) {
-	fmt.Println("query.finalize•3")
 		var decl *VarDecl
 		if q.DynamicDecl != nil {
 			decl = q.DynamicDecl(ref)
@@ -55,7 +52,6 @@ func (q *Query) Finalize() error {
 		}
 		q.dynamicVarDecls = append(q.dynamicVarDecls, decl)
 	}
-	fmt.Println("query.finalize•4")
 
 	// Generate variable declaration indices.
 	var err error

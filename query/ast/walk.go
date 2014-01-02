@@ -73,6 +73,9 @@ func walk(v Visitor, node Node, symtable *Symtable) Visitor {
 		}
 
 	case *Selection:
+		if v = walkVarRefs(v, n.Dimensions, symtable); v == nil {
+			return nil
+		}
 		if v = walkFields(v, n.Fields, symtable); v == nil {
 			return nil
 		}
@@ -127,6 +130,15 @@ func walkFields(v Visitor, fields Fields, symtable *Symtable) Visitor {
 func walkVarDecls(v Visitor, decls VarDecls, symtable *Symtable) Visitor {
 	for _, decl := range decls {
 		if v = walk(v, decl, symtable); v == nil {
+			return v
+		}
+	}
+	return v
+}
+
+func walkVarRefs(v Visitor, refs []*VarRef, symtable *Symtable) Visitor {
+	for _, ref := range refs {
+		if v = walk(v, ref, symtable); v == nil {
 			return v
 		}
 	}

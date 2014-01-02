@@ -33,6 +33,7 @@ import (
     temporal_loop *ast.TemporalLoop
     expr ast.Expression
     var_ref *ast.VarRef
+    var_refs []*ast.VarRef
     integer_literal *ast.IntegerLiteral
     boolean_literal *ast.BooleanLiteral
     string_literal *ast.StringLiteral
@@ -63,7 +64,7 @@ import (
 %type <statements> statements
 %type <field> field
 %type <fields> fields
-%type <strs> selection_group_by, selection_dimensions
+%type <var_refs> selection_group_by, selection_dimensions
 %type <str> var_name, selection_name, field_alias
 %type <str> data_type, var_decl_association
 %type <boolean> field_distinct
@@ -266,7 +267,7 @@ field_alias :
 selection_group_by :
     /* empty */
     {
-        $$ = make([]string, 0)
+        $$ = make([]*ast.VarRef, 0)
     }
 |   TGROUP TBY selection_dimensions
     {
@@ -275,12 +276,12 @@ selection_group_by :
 ;
 
 selection_dimensions :
-    var_name
+    var_ref
     {
-        $$ = make([]string, 0)
+        $$ = make([]*ast.VarRef, 0)
         $$ = append($$, $1)
     }
-|   selection_dimensions TCOMMA var_name
+|   selection_dimensions TCOMMA var_ref
     {
         $$ = append($1, $3)
     }

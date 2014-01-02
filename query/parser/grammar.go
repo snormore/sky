@@ -35,6 +35,7 @@ type yySymType struct {
 	temporal_loop    *ast.TemporalLoop
 	expr             ast.Expression
 	var_ref          *ast.VarRef
+	var_refs         []*ast.VarRef
 	integer_literal  *ast.IntegerLiteral
 	boolean_literal  *ast.BooleanLiteral
 	string_literal   *ast.StringLiteral
@@ -163,7 +164,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line grammar.y:451
+//line grammar.y:452
 
 type within struct {
 	start int
@@ -184,64 +185,64 @@ const yyPrivate = 57344
 var yyTokenNames []string
 var yyStates []string
 
-const yyLast = 288
+const yyLast = 285
 
 var yyAct = []int{
 
-	8, 30, 69, 45, 44, 133, 132, 125, 37, 24,
-	108, 29, 103, 140, 135, 126, 139, 35, 36, 98,
-	115, 48, 64, 29, 121, 128, 47, 32, 33, 141,
-	35, 36, 34, 62, 71, 31, 42, 60, 61, 32,
-	33, 63, 46, 36, 34, 129, 65, 31, 35, 36,
-	58, 59, 60, 61, 78, 79, 80, 81, 82, 83,
-	84, 85, 86, 87, 88, 89, 105, 107, 92, 74,
-	75, 77, 96, 102, 130, 104, 50, 51, 52, 53,
+	8, 25, 69, 30, 45, 44, 133, 132, 37, 125,
+	24, 108, 29, 103, 140, 135, 126, 139, 35, 36,
+	41, 29, 48, 115, 98, 49, 64, 47, 32, 33,
+	121, 35, 36, 34, 62, 141, 31, 32, 33, 128,
+	46, 36, 34, 63, 71, 31, 42, 65, 129, 35,
+	36, 58, 59, 60, 61, 78, 79, 80, 81, 82,
+	83, 84, 85, 86, 87, 88, 89, 60, 61, 92,
+	77, 105, 107, 96, 130, 104, 50, 51, 52, 53,
 	54, 55, 56, 57, 58, 59, 60, 61, 52, 53,
-	54, 55, 95, 123, 58, 59, 60, 61, 97, 117,
-	70, 91, 118, 120, 119, 39, 93, 124, 50, 51,
+	54, 55, 74, 75, 58, 59, 60, 61, 102, 117,
+	95, 123, 118, 120, 97, 119, 93, 124, 50, 51,
 	52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
-	54, 55, 101, 40, 58, 59, 60, 61, 9, 1,
-	136, 137, 28, 138, 27, 26, 106, 99, 76, 73,
+	54, 55, 101, 70, 58, 59, 60, 61, 91, 39,
+	40, 137, 136, 138, 1, 9, 28, 99, 27, 73,
 	90, 142, 50, 51, 52, 53, 54, 55, 56, 57,
 	58, 59, 60, 61, 50, 51, 52, 53, 54, 55,
 	56, 57, 58, 59, 60, 61, 70, 50, 51, 52,
 	53, 54, 55, 56, 57, 58, 59, 60, 61, 50,
-	51, 52, 53, 54, 55, 56, 17, 58, 59, 60,
+	51, 52, 53, 54, 55, 56, 26, 58, 59, 60,
 	61, 50, 51, 52, 53, 54, 55, 56, 57, 58,
 	59, 60, 61, 50, 51, 52, 53, 54, 55, 68,
-	16, 58, 59, 60, 61, 18, 19, 20, 21, 2,
-	4, 3, 5, 22, 15, 67, 143, 23, 18, 19,
-	20, 21, 72, 14, 100, 127, 22, 109, 94, 134,
-	23, 18, 19, 20, 21, 116, 66, 43, 13, 22,
-	12, 11, 131, 23, 18, 19, 20, 21, 25, 10,
-	38, 7, 22, 6, 0, 122, 23, 18, 19, 20,
-	21, 0, 0, 0, 0, 22, 0, 41, 0, 23,
-	0, 0, 49, 110, 111, 112, 113, 114,
+	106, 58, 59, 60, 61, 18, 19, 20, 21, 2,
+	4, 3, 5, 22, 76, 67, 143, 23, 18, 19,
+	20, 21, 17, 16, 15, 72, 22, 14, 100, 134,
+	23, 18, 19, 20, 21, 127, 109, 94, 116, 22,
+	66, 43, 131, 23, 18, 19, 20, 21, 13, 12,
+	11, 10, 22, 38, 7, 122, 23, 18, 19, 20,
+	21, 6, 0, 0, 0, 22, 0, 0, 0, 23,
+	110, 111, 112, 113, 114,
 }
 var yyPact = []int{
 
-	215, -1000, -1000, -1000, 252, -25, -1000, 92, 252, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -38, -1000,
-	0, -13, -25, -7, 128, -1000, -1000, -1000, -1000, -25,
-	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 252, -1000, -38,
-	-1000, -29, -25, 190, -1000, 152, -2, 115, 38, 42,
-	-25, -25, -25, -25, -25, -25, -25, -25, -25, -25,
-	-25, -25, 103, 87, -25, 69, 71, -13, 78, -1000,
-	-36, 100, 48, -48, -1000, 33, 43, -50, 47, 47,
-	77, 77, 3, 3, 164, 140, -12, -12, -1000, -1000,
-	-1000, 275, 128, -1000, -1000, -37, -1000, -38, -1000, 86,
-	-25, -1000, -1000, -14, 239, 73, -1000, -53, -44, -11,
-	-1000, -1000, -1000, -1000, -1000, -1000, 10, -1000, -1000, 37,
-	226, -54, -1000, -55, 213, -45, -1000, -1000, -38, -38,
-	86, -1000, -42, -46, -1000, -1000, -8, -1000, -1000, -1000,
+	215, -1000, -1000, -1000, 252, -24, -1000, 116, 252, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -37, -1000,
+	10, -15, -24, -6, 128, -1000, -1000, -1000, -1000, -24,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 252, -1000, -37,
+	-1000, -25, -24, 190, -1000, 152, 8, 115, 61, 41,
+	-24, -24, -24, -24, -24, -24, -24, -24, -24, -24,
+	-24, -24, 103, 114, -24, 69, 79, -15, 84, -1000,
+	-31, 100, 73, -47, -1000, 38, 48, -49, 47, 47,
+	77, 77, 4, 4, 164, 140, 18, 18, -1000, -1000,
+	-1000, 272, 128, -1000, -1000, -34, -1000, -37, -1000, 109,
+	-24, -1000, -1000, -8, 239, 81, -1000, -51, -43, 3,
+	-1000, -1000, -1000, -1000, -1000, -1000, 13, -1000, -1000, 37,
+	226, -53, -1000, -54, 213, -44, -1000, -1000, -37, -37,
+	109, -1000, -41, -45, -1000, -1000, -2, -1000, -1000, -1000,
 	-1000, -1000, 200, -1000,
 }
 var yyPgo = []int{
 
-	0, 263, 261, 260, 259, 251, 250, 248, 123, 0,
-	4, 247, 246, 245, 1, 238, 2, 237, 235, 234,
-	233, 232, 224, 210, 186, 138, 136, 3, 135, 134,
-	132, 258, 129,
+	0, 271, 264, 263, 261, 260, 259, 258, 130, 0,
+	5, 251, 250, 248, 3, 247, 2, 246, 245, 238,
+	237, 235, 234, 233, 232, 224, 210, 4, 186, 138,
+	136, 1, 134,
 }
 var yyR1 = []int{
 
@@ -278,9 +279,9 @@ var yyChk = []int{
 	-27, -27, -27, -27, -27, -27, -27, -27, -27, -27,
 	37, 14, -27, 37, -15, 21, -10, 20, 55, 37,
 	-19, 22, 25, 60, -9, 33, -26, 24, 60, -17,
-	8, 9, 10, 11, 12, 57, -13, -14, -16, -27,
+	8, 9, 10, 11, 12, 57, -13, -31, -16, -27,
 	-9, 38, 26, 20, -9, 60, 59, -18, 36, 35,
-	37, 26, 60, 60, 26, 59, -14, -14, -16, 58,
+	37, 26, 60, 60, 26, 59, -14, -31, -16, 58,
 	59, 37, -9, 26,
 }
 var yyDef = []int{
@@ -544,248 +545,248 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		//line grammar.y:100
+		//line grammar.y:101
 		{
 			l := yylex.(*yylexer)
 			l.query = yyS[yypt-0].query
 		}
 	case 2:
-		//line grammar.y:105
+		//line grammar.y:106
 		{
 			l := yylex.(*yylexer)
 			l.statements = yyS[yypt-0].statements
 		}
 	case 3:
-		//line grammar.y:110
+		//line grammar.y:111
 		{
 			l := yylex.(*yylexer)
 			l.statement = yyS[yypt-0].statement
 		}
 	case 4:
-		//line grammar.y:115
+		//line grammar.y:116
 		{
 			l := yylex.(*yylexer)
 			l.expression = yyS[yypt-0].expr
 		}
 	case 5:
-		//line grammar.y:123
+		//line grammar.y:124
 		{
 			yyVAL.query = ast.NewQuery()
 			yyVAL.query.DeclaredVarDecls = yyS[yypt-1].var_decls
 			yyVAL.query.Statements = yyS[yypt-0].statements
 		}
 	case 6:
-		//line grammar.y:132
+		//line grammar.y:133
 		{
 			yyVAL.statements = make(ast.Statements, 0)
 		}
 	case 7:
-		//line grammar.y:136
+		//line grammar.y:137
 		{
 			yyVAL.statements = append(yyS[yypt-1].statements, yyS[yypt-0].statement)
 		}
 	case 8:
-		//line grammar.y:142
+		//line grammar.y:143
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].assignment)
 		}
 	case 9:
-		//line grammar.y:143
+		//line grammar.y:144
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].exit)
 		}
 	case 10:
-		//line grammar.y:144
+		//line grammar.y:145
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].debug)
 		}
 	case 11:
-		//line grammar.y:145
+		//line grammar.y:146
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].selection)
 		}
 	case 12:
-		//line grammar.y:146
+		//line grammar.y:147
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].condition)
 		}
 	case 13:
-		//line grammar.y:147
+		//line grammar.y:148
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].event_loop)
 		}
 	case 14:
-		//line grammar.y:148
+		//line grammar.y:149
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].session_loop)
 		}
 	case 15:
-		//line grammar.y:149
+		//line grammar.y:150
 		{
 			yyVAL.statement = ast.Statement(yyS[yypt-0].temporal_loop)
 		}
 	case 16:
-		//line grammar.y:154
+		//line grammar.y:155
 		{
 			yyVAL.var_decls = make(ast.VarDecls, 0)
 		}
 	case 17:
-		//line grammar.y:158
+		//line grammar.y:159
 		{
 			yyVAL.var_decls = append(yyS[yypt-1].var_decls, yyS[yypt-0].var_decl)
 		}
 	case 18:
-		//line grammar.y:165
+		//line grammar.y:166
 		{
 			yyVAL.var_decl = ast.NewVarDecl(0, yyS[yypt-3].str, yyS[yypt-1].str)
 			yyVAL.var_decl.Association = yyS[yypt-0].str
 		}
 	case 19:
-		//line grammar.y:173
+		//line grammar.y:174
 		{
 			yyVAL.str = ""
 		}
 	case 20:
-		//line grammar.y:177
+		//line grammar.y:178
 		{
 			yyVAL.str = yyS[yypt-1].str
 		}
 	case 21:
-		//line grammar.y:183
+		//line grammar.y:184
 		{
 			yyVAL.str = core.FactorDataType
 		}
 	case 22:
-		//line grammar.y:184
+		//line grammar.y:185
 		{
 			yyVAL.str = core.StringDataType
 		}
 	case 23:
-		//line grammar.y:185
+		//line grammar.y:186
 		{
 			yyVAL.str = core.IntegerDataType
 		}
 	case 24:
-		//line grammar.y:186
+		//line grammar.y:187
 		{
 			yyVAL.str = core.FloatDataType
 		}
 	case 25:
-		//line grammar.y:187
+		//line grammar.y:188
 		{
 			yyVAL.str = core.BooleanDataType
 		}
 	case 26:
-		//line grammar.y:192
+		//line grammar.y:193
 		{
 			yyVAL.assignment = ast.NewAssignment()
 			yyVAL.assignment.Target = yyS[yypt-2].var_ref
 			yyVAL.assignment.Expression = yyS[yypt-0].expr
 		}
 	case 27:
-		//line grammar.y:201
+		//line grammar.y:202
 		{
 			yyVAL.exit = ast.NewExit()
 		}
 	case 28:
-		//line grammar.y:208
+		//line grammar.y:209
 		{
 			yyVAL.debug = ast.NewDebug()
 			yyVAL.debug.Expression = yyS[yypt-1].expr
 		}
 	case 29:
-		//line grammar.y:216
+		//line grammar.y:217
 		{
 			yyVAL.selection = ast.NewSelection()
 			yyVAL.selection.Fields = yyS[yypt-2].fields
-			yyVAL.selection.Dimensions = yyS[yypt-1].strs
+			yyVAL.selection.Dimensions = yyS[yypt-1].var_refs
 			yyVAL.selection.Name = yyS[yypt-0].str
 		}
 	case 30:
-		//line grammar.y:226
+		//line grammar.y:227
 		{
 			yyVAL.fields = make(ast.Fields, 0)
 		}
 	case 31:
-		//line grammar.y:230
+		//line grammar.y:231
 		{
 			yyVAL.fields = make(ast.Fields, 0)
 			yyVAL.fields = append(yyVAL.fields, yyS[yypt-0].field)
 		}
 	case 32:
-		//line grammar.y:235
+		//line grammar.y:236
 		{
 			yyVAL.fields = append(yyS[yypt-2].fields, yyS[yypt-0].field)
 		}
 	case 33:
-		//line grammar.y:242
+		//line grammar.y:243
 		{
 			yyVAL.field = ast.NewField(yyS[yypt-0].str, "", yyS[yypt-1].expr)
 		}
 	case 34:
-		//line grammar.y:246
+		//line grammar.y:247
 		{
 			yyVAL.field = ast.NewField(yyS[yypt-0].str, yyS[yypt-3].str, nil)
 		}
 	case 35:
-		//line grammar.y:250
+		//line grammar.y:251
 		{
 			yyVAL.field = ast.NewField(yyS[yypt-0].str, yyS[yypt-5].str, yyS[yypt-2].expr)
 			yyVAL.field.Distinct = yyS[yypt-3].boolean
 		}
 	case 36:
-		//line grammar.y:257
+		//line grammar.y:258
 		{
 			yyVAL.boolean = false
 		}
 	case 37:
-		//line grammar.y:258
+		//line grammar.y:259
 		{
 			yyVAL.boolean = true
 		}
 	case 38:
-		//line grammar.y:262
+		//line grammar.y:263
 		{
 			yyVAL.str = ""
 		}
 	case 39:
-		//line grammar.y:263
+		//line grammar.y:264
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 40:
-		//line grammar.y:268
+		//line grammar.y:269
 		{
-			yyVAL.strs = make([]string, 0)
+			yyVAL.var_refs = make([]*ast.VarRef, 0)
 		}
 	case 41:
-		//line grammar.y:272
+		//line grammar.y:273
 		{
-			yyVAL.strs = yyS[yypt-0].strs
+			yyVAL.var_refs = yyS[yypt-0].var_refs
 		}
 	case 42:
-		//line grammar.y:279
+		//line grammar.y:280
 		{
-			yyVAL.strs = make([]string, 0)
-			yyVAL.strs = append(yyVAL.strs, yyS[yypt-0].str)
+			yyVAL.var_refs = make([]*ast.VarRef, 0)
+			yyVAL.var_refs = append(yyVAL.var_refs, yyS[yypt-0].var_ref)
 		}
 	case 43:
-		//line grammar.y:284
+		//line grammar.y:285
 		{
-			yyVAL.strs = append(yyS[yypt-2].strs, yyS[yypt-0].str)
+			yyVAL.var_refs = append(yyS[yypt-2].var_refs, yyS[yypt-0].var_ref)
 		}
 	case 44:
-		//line grammar.y:291
+		//line grammar.y:292
 		{
 			yyVAL.str = ""
 		}
 	case 45:
-		//line grammar.y:295
+		//line grammar.y:296
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 46:
-		//line grammar.y:302
+		//line grammar.y:303
 		{
 			yyVAL.condition = ast.NewCondition()
 			yyVAL.condition.Expression = yyS[yypt-4].expr
@@ -795,12 +796,12 @@ yydefault:
 			yyVAL.condition.Statements = yyS[yypt-1].statements
 		}
 	case 47:
-		//line grammar.y:314
+		//line grammar.y:315
 		{
 			yyVAL.condition_within = &within{start: 0, end: 0, units: ast.UnitSteps}
 		}
 	case 48:
-		//line grammar.y:318
+		//line grammar.y:319
 		{
 			yyVAL.condition_within = &within{start: yyS[yypt-3].integer, end: yyS[yypt-1].integer}
 			switch yyS[yypt-0].str {
@@ -813,20 +814,20 @@ yydefault:
 			}
 		}
 	case 49:
-		//line grammar.y:333
+		//line grammar.y:334
 		{
 			yyVAL.event_loop = ast.NewEventLoop()
 			yyVAL.event_loop.Statements = yyS[yypt-1].statements
 		}
 	case 50:
-		//line grammar.y:341
+		//line grammar.y:342
 		{
 			yyVAL.session_loop = ast.NewSessionLoop()
 			yyVAL.session_loop.IdleDuration = ast.TimeSpanToSeconds(yyS[yypt-3].integer, yyS[yypt-2].str)
 			yyVAL.session_loop.Statements = yyS[yypt-1].statements
 		}
 	case 51:
-		//line grammar.y:350
+		//line grammar.y:351
 		{
 			yyVAL.temporal_loop = ast.NewTemporalLoop()
 			yyVAL.temporal_loop.Iterator = yyS[yypt-4].var_ref
@@ -841,143 +842,143 @@ yydefault:
 			}
 		}
 	case 52:
-		//line grammar.y:367
+		//line grammar.y:368
 		{
 			yyVAL.integer = 0
 		}
 	case 53:
-		//line grammar.y:371
+		//line grammar.y:372
 		{
 			yyVAL.integer = ast.TimeSpanToSeconds(yyS[yypt-1].integer, yyS[yypt-0].str)
 		}
 	case 54:
-		//line grammar.y:378
+		//line grammar.y:379
 		{
 			yyVAL.integer = 0
 		}
 	case 55:
-		//line grammar.y:382
+		//line grammar.y:383
 		{
 			yyVAL.integer = ast.TimeSpanToSeconds(yyS[yypt-1].integer, yyS[yypt-0].str)
 		}
 	case 56:
-		//line grammar.y:388
+		//line grammar.y:389
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 57:
-		//line grammar.y:389
+		//line grammar.y:390
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpNotEquals, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 58:
-		//line grammar.y:390
+		//line grammar.y:391
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpLessThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 59:
-		//line grammar.y:391
+		//line grammar.y:392
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpLessThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 60:
-		//line grammar.y:392
+		//line grammar.y:393
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpGreaterThan, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 61:
-		//line grammar.y:393
+		//line grammar.y:394
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpGreaterThanOrEqualTo, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 62:
-		//line grammar.y:394
+		//line grammar.y:395
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpAnd, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 63:
-		//line grammar.y:395
+		//line grammar.y:396
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpOr, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 64:
-		//line grammar.y:396
+		//line grammar.y:397
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpPlus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 65:
-		//line grammar.y:397
+		//line grammar.y:398
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpMinus, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 66:
-		//line grammar.y:398
+		//line grammar.y:399
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpMultiply, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 67:
-		//line grammar.y:399
+		//line grammar.y:400
 		{
 			yyVAL.expr = ast.NewBinaryExpression(ast.OpDivide, yyS[yypt-2].expr, yyS[yypt-0].expr)
 		}
 	case 68:
-		//line grammar.y:400
+		//line grammar.y:401
 		{
 			yyVAL.expr = ast.Expression(yyS[yypt-0].var_ref)
 		}
 	case 69:
-		//line grammar.y:401
+		//line grammar.y:402
 		{
 			yyVAL.expr = ast.Expression(yyS[yypt-0].integer_literal)
 		}
 	case 70:
-		//line grammar.y:402
+		//line grammar.y:403
 		{
 			yyVAL.expr = ast.Expression(yyS[yypt-0].boolean_literal)
 		}
 	case 71:
-		//line grammar.y:403
+		//line grammar.y:404
 		{
 			yyVAL.expr = ast.Expression(yyS[yypt-0].string_literal)
 		}
 	case 72:
-		//line grammar.y:404
+		//line grammar.y:405
 		{
 			yyVAL.expr = yyS[yypt-1].expr
 		}
 	case 73:
-		//line grammar.y:409
+		//line grammar.y:410
 		{
 			yyVAL.var_ref = ast.NewVarRef()
 			yyVAL.var_ref.Name = yyS[yypt-0].str
 		}
 	case 74:
-		//line grammar.y:417
+		//line grammar.y:418
 		{
 			yyVAL.str = yyS[yypt-0].str
 		}
 	case 75:
-		//line grammar.y:421
+		//line grammar.y:422
 		{
 			yyVAL.str = yyS[yypt-0].str[1:]
 		}
 	case 76:
-		//line grammar.y:428
+		//line grammar.y:429
 		{
 			yyVAL.integer_literal = ast.NewIntegerLiteral(yyS[yypt-0].integer)
 		}
 	case 77:
-		//line grammar.y:435
+		//line grammar.y:436
 		{
 			yyVAL.boolean_literal = ast.NewBooleanLiteral(true)
 		}
 	case 78:
-		//line grammar.y:439
+		//line grammar.y:440
 		{
 			yyVAL.boolean_literal = ast.NewBooleanLiteral(false)
 		}
 	case 79:
-		//line grammar.y:446
+		//line grammar.y:447
 		{
 			yyVAL.string_literal = ast.NewStringLiteral(yyS[yypt-0].str)
 		}

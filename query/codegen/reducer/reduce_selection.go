@@ -21,7 +21,7 @@ func (r *Reducer) reduceSelection(node *ast.Selection, h *hashmap.Hashmap, tbl *
 	return r.reduceSelectionDimensions(node, h, output, node.Dimensions, tbl)
 }
 
-func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hashmap, output map[string]interface{}, dimensions []string, tbl *ast.Symtable) error {
+func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hashmap, output map[string]interface{}, dimensions []*ast.VarRef, tbl *ast.Symtable) error {
 	// Reduce fields if we've reached the end of the dimensions.
 	if len(dimensions) == 0 {
 		for _, field := range node.Fields {
@@ -34,14 +34,14 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 
 	// Drill into first dimension
 	dimension := dimensions[0]
-	decl := tbl.Find(dimension)
+	decl := tbl.Find(dimension.Name)
 	if decl == nil {
-		return fmt.Errorf("reduce: dimension not found: %s", dimension)
+		return fmt.Errorf("reduce: dimension not found: %s", dimension.Name)
 	}
 
 	// Drill into dimension name.
-	h = h.Submap(hashmap.String(dimension))
-	output = submap(output, dimension)
+	h = h.Submap(hashmap.String(dimension.Name))
+	output = submap(output, dimension.Name)
 
 	// Iterate over dimension values.
 	iterator := hashmap.NewIterator(h)
@@ -55,15 +55,15 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 		var keyString string
 		switch decl.DataType {
 		case core.StringDataType:
-			return fmt.Errorf("reduce: string dimensions are not supported: %s", dimension)
+			return fmt.Errorf("reduce: string dimensions are not supported: %s", dimension.Name)
 		case core.FloatDataType:
-			return fmt.Errorf("reduce: float dimensions are not supported: %s", dimension)
+			return fmt.Errorf("reduce: float dimensions are not supported: %s", dimension.Name)
 		case core.IntegerDataType:
 			keyString = strconv.Itoa(int(key))
 		case core.FactorDataType:
 			var err error
-			if keyString, err = r.factorizer.Defactorize(dimension, uint64(key)); err != nil {
-				return fmt.Errorf("reduce: factor not found: %s/%d", dimension, uint64(key))
+			if keyString, err = r.factorizer.Defactorize(dimension.Name, uint64(key)); err != nil {
+				return fmt.Errorf("reduce: factor not found: %s/%d", dimension.Name, uint64(key))
 			}
 		case core.BooleanDataType:
 			if key == 0 {

@@ -8,7 +8,7 @@ import (
 // Selection represents a statement that aggregates data in a query.
 type Selection struct {
 	Name       string
-	Dimensions []string
+	Dimensions []*VarRef
 	Fields     Fields
 }
 
@@ -50,7 +50,11 @@ func (s *Selection) String() string {
 	str += strings.Join(arr, ", ")
 
 	if len(s.Dimensions) > 0 {
-		str += " GROUP BY @" + strings.Join(s.Dimensions, ", @")
+		var names []string
+		for _, dimension := range s.Dimensions {
+			names = append(names, dimension.Name)
+		}
+		str += " GROUP BY @" + strings.Join(names, ", @")
 	}
 	if s.Name != "" {
 		str += " INTO " + strconv.Quote(s.Name)

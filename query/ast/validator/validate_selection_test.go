@@ -9,7 +9,7 @@ import (
 
 // Ensure that the Selection dimension is found.
 func TestValidateSelectionDimensionExists(t *testing.T) {
-	err := Validate(&ast.Selection{Dimensions: []string{"foo"}})
+	err := Validate(&ast.Selection{Dimensions: []*ast.VarRef{&ast.VarRef{"foo"}}})
 	assert.Equal(t, "selection: dimension variable not found: foo", err.Error())
 }
 
@@ -18,7 +18,7 @@ func TestValidateSelectionStringDimension(t *testing.T) {
 	err := Validate(&ast.Query{
 		SystemVarDecls: ast.VarDecls{ast.NewVarDecl(0, "foo", "string")},
 		Statements: ast.Statements{
-			&ast.Selection{Dimensions: []string{"foo"}},
+			&ast.Selection{Dimensions: []*ast.VarRef{&ast.VarRef{"foo"}}},
 		},
 	})
 	assert.Equal(t, "selection: string variables cannot be used as dimensions: foo", err.Error())
@@ -29,7 +29,7 @@ func TestValidateSelectionFloatDimension(t *testing.T) {
 	err := Validate(&ast.Query{
 		SystemVarDecls: ast.VarDecls{ast.NewVarDecl(0, "foo", "float")},
 		Statements: ast.Statements{
-			&ast.Selection{Dimensions: []string{"foo"}},
+			&ast.Selection{Dimensions: []*ast.VarRef{&ast.VarRef{"foo"}}},
 		},
 	})
 	assert.Equal(t, "selection: float variables cannot be used as dimensions: foo", err.Error())

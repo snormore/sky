@@ -8,8 +8,8 @@ import (
 func (v *validator) visitSelection(n *ast.Selection, tbl *ast.Symtable) {
 	// Validate dimensions exist.
 	for _, dimension := range n.Dimensions {
-		if decl := tbl.Find(dimension); decl == nil {
-			v.err = errorf(n, "selection: dimension variable not found: %s", dimension)
+		if decl := tbl.Find(dimension.Name); decl == nil {
+			v.err = errorf(n, "selection: dimension variable not found: %s", dimension.Name)
 			return
 		}
 	}
@@ -28,10 +28,10 @@ func (v *validator) visitSelection(n *ast.Selection, tbl *ast.Symtable) {
 func (v *validator) exitingSelection(n *ast.Selection, tbl *ast.Symtable) {
 	// Validate dimensions data types.
 	for _, dimension := range n.Dimensions {
-		decl := tbl.Find(dimension)
+		decl := tbl.Find(dimension.Name)
 		switch decl.DataType {
 		case core.StringDataType, core.FloatDataType:
-			v.err = errorf(n, "selection: %s variables cannot be used as dimensions: %s", decl.DataType, dimension)
+			v.err = errorf(n, "selection: %s variables cannot be used as dimensions: %s", decl.DataType, dimension.Name)
 			return
 		}
 	}

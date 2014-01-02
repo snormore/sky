@@ -51,12 +51,12 @@ func (m *Mapper) codegenSelection(node *ast.Selection, tbl *ast.Symtable) (llvm.
 	// Traverse to the appropriate hashmap in the results.
 	m.builder.SetInsertPointAtEnd(dimensions_lbl)
 	for _, dimension := range node.Dimensions {
-		decl := tbl.Find(dimension)
+		decl := tbl.Find(dimension.Name)
 		if decl == nil {
-			return nilValue, fmt.Errorf("Dimension variable not found: %s", dimension)
+			return nilValue, fmt.Errorf("Dimension variable not found: %s", dimension.Name)
 		}
 		value := m.load(m.structgep(event, decl.Index()))
-		result = m.call("sky_hashmap_submap", result, m.constint(int(hashmap.String(dimension))))
+		result = m.call("sky_hashmap_submap", result, m.constint(int(hashmap.String(dimension.Name))))
 		result = m.call("sky_hashmap_submap", result, value)
 	}
 	m.br(fields_lbl)

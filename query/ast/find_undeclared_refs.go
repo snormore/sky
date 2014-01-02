@@ -2,7 +2,7 @@ package ast
 
 // FindUndeclaredRefs retrieves a list of referenced variables without declarations.
 func FindUndeclaredRefs(node Node) []*VarRef {
-	v := new(undeclaredRefsVisitor)
+	v := &undeclaredRefsVisitor{make(map[string]*VarRef)}
 	Walk(v, node)
 
 	refs := make([]*VarRef, 0)
