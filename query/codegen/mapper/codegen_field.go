@@ -89,7 +89,6 @@ func (m *Mapper) codegenAggregateField(node *ast.Field, tbl *ast.Symtable, event
 
 	// Update the hashmap value.
 	if fp {
-		m.printf("set: %f -> %f\n", currentValue, newValue)
 		m.call("sky_hashmap_set_double", m.load(result), m.constint(int(id)), newValue)
 	} else {
 		m.call("sky_hashmap_set", m.load(result), m.constint(int(id)), newValue)

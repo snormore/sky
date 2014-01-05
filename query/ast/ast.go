@@ -8,4 +8,3 @@ import (
 func warn(v ...interface{}) {
 	fmt.Fprintln(os.Stderr, v...)
 }
-

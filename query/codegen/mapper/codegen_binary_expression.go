@@ -124,8 +124,14 @@ func (m *Mapper) promoteOperands(lhs, rhs llvm.Value) (llvm.Value, llvm.Value, b
 }
 
 func (m *Mapper) codegenFactorEquality(node *ast.BinaryExpression, lhs *ast.VarRef, rhs ast.Expression, event llvm.Value, tbl *ast.Symtable) (llvm.Value, error) {
-	// Only allow == for factors.
-	if node.Op != ast.OpEquals {
+	// Only allow == or != for factors.
+	var op llvm.IntPredicate
+	switch node.Op {
+	case ast.OpEquals:
+		op = llvm.IntEQ
+	case ast.OpNotEquals:
+		op = llvm.IntNE
+	default:
 		return nilValue, fmt.Errorf("Non-equality operators not allowed for factor data types: %s", node.String())
 	}
 
@@ -137,18 +143,24 @@ func (m *Mapper) codegenFactorEquality(node *ast.BinaryExpression, lhs *ast.VarR
 	// Only allow comparisons to strings or other associated factors.
 	switch rhs := rhs.(type) {
 	case *ast.StringLiteral:
-		id, err := m.factorizer.Factorize(lhs.Name, rhs.Value, false)
+		decl := tbl.Find(lhs.Name)
+		name := decl.Association
+		if name == "" {
+			name = decl.Name
+		}
+
+		id, err := m.factorizer.Factorize(name, rhs.Value, false)
 		if err != nil {
 			return nilValue, err
 		}
-		return m.icmp(llvm.IntEQ, lhsValue, m.constint(int(id)), ""), nil
+		return m.icmp(op, lhsValue, m.constint(int(id)), ""), nil
 
 	case *ast.VarRef:
 		rhsValue, err := m.codegenExpression(rhs, event, tbl)
 		if err != nil {
 			return nilValue, err
 		}
-		return m.icmp(llvm.IntEQ, lhsValue, rhsValue, ""), nil
+		return m.icmp(op, lhsValue, rhsValue, ""), nil
 
 	default:
 		return nilValue, fmt.Errorf("Invalid factor expression: %s", node.String())

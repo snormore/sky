@@ -5,7 +5,7 @@ import (
 )
 
 // objectHandler handles the management of objects in the database.
-type objectHandler struct {}
+type objectHandler struct{}
 
 // installEventHandler adds table routes to the server.
 func installObjectHandler(s *Server) *objectHandler {

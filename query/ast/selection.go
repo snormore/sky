@@ -40,6 +40,18 @@ func (s *Selection) HasNonAggregateFields() bool {
 	return false
 }
 
+// Path returns a period-delimited join of the name and dimension names.
+func (s *Selection) Path() string {
+	var names []string
+	if s.Name != "" {
+		names = append(names, s.Name)
+	}
+	for _, d := range s.Dimensions {
+		names = append(names, d.Name)
+	}
+	return strings.Join(names, ".")
+}
+
 func (s *Selection) String() string {
 	str := "SELECT "
 

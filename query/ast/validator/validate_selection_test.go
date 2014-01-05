@@ -42,8 +42,8 @@ func TestValidateSelectionDuplicateFieldIdentifiers(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Name:"count", Aggregation:"sum", Expression:&ast.VarRef{Name:"foo"}},
-					&ast.Field{Aggregation:"count"},
+					&ast.Field{Name: "count", Aggregation: "sum", Expression: &ast.VarRef{Name: "foo"}},
+					&ast.Field{Aggregation: "count"},
 				},
 			},
 		},

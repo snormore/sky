@@ -10,7 +10,7 @@ type Response interface {
 // Response is the concrete implementation of the Response interface.
 type response struct {
 	data interface{}
-	err error
+	err  error
 }
 
 // Error returns the response error code.
@@ -22,4 +22,3 @@ func (r *response) Error() error {
 func (r *response) Data() interface{} {
 	return r.data
 }
-

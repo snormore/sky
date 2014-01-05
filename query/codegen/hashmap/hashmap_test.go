@@ -27,10 +27,10 @@ func TestHashmapFloat64(t *testing.T) {
 
 	max := 10000
 	for i := 0; i < max; i++ {
-		h.SetDouble(int64(i), float64(max-i) / 100)
+		h.SetDouble(int64(i), float64(max-i)/100)
 	}
 	for i := 0; i < max; i++ {
-		assert.Equal(t, h.GetDouble(int64(i)), float64(max-i) / 100)
+		assert.Equal(t, h.GetDouble(int64(i)), float64(max-i)/100)
 	}
 }
 

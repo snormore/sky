@@ -8,6 +8,11 @@ import (
 )
 
 func (r *Reducer) reduceField(node *ast.Field, h *hashmap.Hashmap, output map[string]interface{}, tbl *ast.Symtable) error {
+	// Ignore fields that have the same path as a previous field.
+	if node.Reducible() {
+		return nil
+	}
+
 	identifier := node.Identifier()
 	valueType := h.ValueType(hashmap.String(node.Identifier()))
 

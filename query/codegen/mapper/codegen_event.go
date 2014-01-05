@@ -323,7 +323,7 @@ func (m *Mapper) codegenReadEventFunc() llvm.Value {
 	//     ptr += sz;
 	//     if(sz != 0) goto loop else goto error
 	m.builder.SetInsertPointAtEnd(read_map)
-	m.store(m.builder.CreateCall(m.module.NamedFunction("minipack_unpack_map"), []llvm.Value{m.load(ptr, ""), sz}, ""), key_count)
+	m.store(m.call("minipack_unpack_map", m.load(ptr, ""), sz), key_count)
 	m.store(m.builder.CreateGEP(m.load(ptr, ""), []llvm.Value{m.load(sz, "")}, ""), ptr)
 	m.condbr(m.builder.CreateICmp(llvm.IntNE, m.load(sz, ""), llvm.ConstInt(m.context.Int64Type(), 0, false), ""), loop, error_lbl)
 

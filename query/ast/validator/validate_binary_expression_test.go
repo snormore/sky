@@ -91,7 +91,7 @@ func TestValidateBinaryExpressionFactorAssociation(t *testing.T) {
 // Ensure that a integer BinaryExpression has an appropriate operator.
 func TestValidateBinaryExpressionInvalidIntegerOperator(t *testing.T) {
 	err := Validate(&ast.BinaryExpression{LHS: &ast.IntegerLiteral{100}, RHS: &ast.IntegerLiteral{100}, Op: ast.OpAnd})
-	assert.Equal(t, "expression: invalid integer operator: &&", err.Error())
+	assert.Equal(t, "expression: invalid numeric operator: &&", err.Error())
 }
 
 // Ensure that a BinaryExpression is valid.

@@ -62,8 +62,13 @@ func (r *Reducer) reduceSelectionDimensions(node *ast.Selection, h *hashmap.Hash
 			keyString = strconv.Itoa(int(key))
 		case core.FactorDataType:
 			var err error
-			if keyString, err = r.factorizer.Defactorize(dimension.Name, uint64(key)); err != nil {
-				return fmt.Errorf("reduce: factor not found: %s/%d", dimension.Name, uint64(key))
+			decl := tbl.Find(dimension.Name)
+			name := decl.Association
+			if name == "" {
+				name = decl.Name
+			}
+			if keyString, err = r.factorizer.Defactorize(name, uint64(key)); err != nil {
+				return fmt.Errorf("reduce: factor not found: %s/%d", name, uint64(key))
 			}
 		case core.BooleanDataType:
 			if key == 0 {

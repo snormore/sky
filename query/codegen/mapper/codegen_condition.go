@@ -62,8 +62,7 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.br(loop_range_condition)
 
 	m.builder.SetInsertPointAtEnd(loop_range_condition)
-	rc := m.icmp(llvm.IntUGE, m.load(index), m.constint(node.Start), "rc")
-	m.condbr(rc, loop_expr_condition, loop_end)
+	m.condbr(m.icmp(llvm.IntUGE, m.load(index), m.constint(node.Start)), loop_expr_condition, loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_expr_condition)
 	event := m.load(m.structgep(m.load(cursor), cursorEventElementIndex), "event")
@@ -80,12 +79,17 @@ func (m *Mapper) codegenCondition(node *ast.Condition, tbl *ast.Symtable) (llvm.
 	m.br(loop_end)
 
 	m.builder.SetInsertPointAtEnd(loop_end)
-	rc = m.icmp(llvm.IntULT, m.load(index), m.constint(node.End))
-	m.condbr(rc, loop_iterate, exit)
+	m.condbr(m.and(
+		m.icmp(llvm.IntULT, m.load(index), m.constint(node.End)),
+		m.icmp(llvm.IntEQ, m.load_eos(m.event_ref(cursor)), m.constint(0))),
+		loop_iterate, exit)
 
+	// index++;
+	// rc = cursor_next_event(cursor);
+	// if(rc == 0) goto loop_range_condition else goto exit;
 	m.builder.SetInsertPointAtEnd(loop_iterate)
 	m.store(m.add(m.load(index), m.constint(1)), index)
-	rc = m.call("cursor_next_event", m.load(cursor))
+	rc := m.call("cursor_next_event", m.load(cursor))
 	m.condbr(m.icmp(llvm.IntEQ, rc, m.constint(0)), loop_range_condition, exit)
 
 	m.builder.SetInsertPointAtEnd(exit)

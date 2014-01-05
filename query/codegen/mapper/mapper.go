@@ -4,6 +4,8 @@ package mapper
 import "C"
 
 import (
+	"fmt"
+	"os"
 	"runtime"
 	"unsafe"
 
@@ -55,7 +57,7 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 		return nil, err
 	}
 	m.decls = q.VarDecls()
-	
+
 	if m.entryFunc, err = m.codegenQuery(q); err != nil {
 		return nil, err
 	}
@@ -101,4 +103,13 @@ func (m *Mapper) Dump() {
 // Clone creates a duplicate mapper to be run independently.
 func (m *Mapper) Clone() *Mapper {
 	panic("NOT YET IMPLEMENTED")
+}
+
+
+func warn(v ...interface{}) {
+	fmt.Fprintln(os.Stderr, v...)
+}
+
+func warnf(msg string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, msg, v...)
 }

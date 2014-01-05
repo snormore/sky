@@ -11,7 +11,7 @@ func (v *validator) exitingBinaryExpression(n *ast.BinaryExpression, tbl *ast.Sy
 
 	// Raise error for type mismatch (except for "float-integer").
 	if lhsType != rhsType {
-		if !((lhsType == "float" && rhsType == "integer") || (lhsType == "integer" && rhsType == "float")){
+		if !((lhsType == "float" && rhsType == "integer") || (lhsType == "integer" && rhsType == "float")) {
 			v.err = errorf(n, "expression: data type mismatch: %s != %s", lhsType, rhsType)
 		}
 	}

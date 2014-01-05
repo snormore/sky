@@ -18,7 +18,6 @@ func (f HandleFunc) Serve(s *Server, req Request) (interface{}, error) {
 	return f(s, req)
 }
 
-
 // Loads the requested table before passing off the handler.
 func EnsureTableHandler(handler Handler) Handler {
 	return &ensureTableHandler{handler}
@@ -36,7 +35,6 @@ func (h *ensureTableHandler) Serve(s *Server, req Request) (interface{}, error) 
 	req.SetTable(t)
 	return h.handler.Serve(s, req)
 }
-
 
 // Loads the requested table and property before passing off the handler.
 func EnsurePropertyHandler(handler Handler) Handler {
@@ -74,5 +72,3 @@ func (h *ensureMapHandler) Serve(s *Server, req Request) (interface{}, error) {
 	}
 	return h.handler.Serve(s, req)
 }
-
-

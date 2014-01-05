@@ -18,6 +18,7 @@ type Query struct {
 	Statements       Statements
 	dynamicVarDecls  VarDecls
 	decls            VarDecls
+	finalized        bool
 }
 
 func (q *Query) node()  {}
@@ -54,6 +55,18 @@ func (q *Query) Finalize() error {
 	}
 
 	// Generate variable declaration indices.
+	if err := q.finalizeVarDecls(); err != nil {
+		return err
+	}
+
+	q.finalizeFields()
+	q.finalized = true
+
+	return nil
+}
+
+// finalizeVarDecls assigns indices to variable declarations.
+func (q *Query) finalizeVarDecls() error {
 	var err error
 	if q.decls, err = FindVarDecls(q); err != nil {
 		return err
@@ -65,9 +78,25 @@ func (q *Query) Finalize() error {
 	return nil
 }
 
+// finalizeVarDecls assigns indices to variable declarations.
+func (q *Query) finalizeFields() {
+	var s *Selection
+	lookup := make(map[string]bool)
+	ForEach(q, func(n Node) {
+		switch n := n.(type) {
+		case *Selection:
+			s = n
+		case *Field:
+			path := fmt.Sprintf("%s.%s", s.Path(), n.Identifier())
+			n.reducible = lookup[path]
+			lookup[path] = true
+		}
+	})
+}
+
 // Finalized returns whether the query has been finalized already.
 func (q *Query) Finalized() bool {
-	return q.decls != nil
+	return q.finalized
 }
 
 // VarDecls returns a list of indexed variable declarations.

@@ -11,7 +11,7 @@ import (
 func TestValidateQueryHeterogeneousNaming(t *testing.T) {
 	err := Validate(&ast.Query{
 		Statements: ast.Statements{
-			&ast.Selection{Name:"xxx"},
+			&ast.Selection{Name: "xxx"},
 			&ast.Selection{},
 		},
 	})
@@ -24,12 +24,12 @@ func TestValidateQueryHeterogeneousAggregation(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Aggregation:"count"},
+					&ast.Field{Aggregation: "count"},
 				},
 			},
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Expression:&ast.IntegerLiteral{100}},
+					&ast.Field{Expression: &ast.IntegerLiteral{100}},
 				},
 			},
 		},

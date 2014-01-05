@@ -103,7 +103,6 @@ func (t *Table) Exists() bool {
 	return true
 }
 
-
 // Retrieves a reference to the current property file.
 func (t *Table) PropertyFile() *PropertyFile {
 	return t.propertyFile
@@ -180,7 +179,6 @@ func (t *Table) NormalizeMap(m map[string]interface{}) (map[int64]interface{}, e
 func (t *Table) DenormalizeMap(m map[int64]interface{}) (map[string]interface{}, error) {
 	return t.propertyFile.DenormalizeMap(m)
 }
-
 
 // Deserializes a map into a normalized event.
 func (t *Table) DeserializeEvent(m map[string]interface{}) (*Event, error) {

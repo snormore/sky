@@ -22,4 +22,3 @@ func Warnf(format string, v ...interface{}) {
 func Warnln(v ...interface{}) {
 	fmt.Fprintln(os.Stderr, v...)
 }
-

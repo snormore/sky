@@ -38,7 +38,6 @@ func (p *Parser) ParseString(s string) (*ast.Query, error) {
 	return p.Parse(bytes.NewBufferString(s))
 }
 
-
 // Parse parses a SkyQL query string but panics if an error is encountered.
 func (p *Parser) MustParse(r io.Reader) *ast.Query {
 	q, err := p.Parse(r)

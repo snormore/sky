@@ -1,7 +1,7 @@
 package server
 
 // propertyHandler handles the management of tables in the database.
-type propertyHandler struct {}
+type propertyHandler struct{}
 
 // installPropertyHandler adds table routes to the server.
 func installPropertyHandler(s *Server) *propertyHandler {
@@ -49,4 +49,3 @@ func (h *propertyHandler) deleteProperty(s *Server, req Request) (interface{}, e
 	req.Table().DeleteProperty(req.Property())
 	return nil, req.Table().SavePropertyFile()
 }
-

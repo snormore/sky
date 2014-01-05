@@ -62,7 +62,6 @@ func NewServer(port uint, path string) *Server {
 	return s
 }
 
-
 // The root server path.
 func (s *Server) Path() string {
 	return s.path
@@ -77,7 +76,6 @@ func (s *Server) TablesPath() string {
 func (s *Server) TablePath(name string) string {
 	return fmt.Sprintf("%v/%v", s.TablesPath(), name)
 }
-
 
 // Runs the server.
 func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
@@ -186,7 +184,6 @@ func (s *Server) Silence() {
 	s.logger = log.New(ioutil.Discard, "", log.LstdFlags)
 }
 
-
 // Retrieves a table that has already been opened.
 func (s *Server) GetTable(name string) *core.Table {
 	s.Lock()
@@ -217,9 +214,7 @@ func (s *Server) OpenTable(name string) (*core.Table, error) {
 	return table, nil
 }
 
-// HandleFunc serializes and deserializes incoming requests before passing off to Gorilla. 
+// HandleFunc serializes and deserializes incoming requests before passing off to Gorilla.
 func (s *Server) HandleFunc(path string, h Handler) *mux.Route {
 	return s.Router.Handle(path, &httpHandler{s, h})
 }
-
-

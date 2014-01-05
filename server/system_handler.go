@@ -5,7 +5,7 @@ import (
 )
 
 // systemHandler handles the miscellaneous system-level handlers.
-type systemHandler struct {}
+type systemHandler struct{}
 
 // installSystemHandler adds table routes to the server.
 func installSystemHandler(s *Server) *systemHandler {
@@ -24,4 +24,3 @@ func (h *systemHandler) root(s *Server, req Request) (interface{}, error) {
 func (h *systemHandler) ping(s *Server, req Request) (interface{}, error) {
 	return map[string]interface{}{"message": "ok"}, nil
 }
-

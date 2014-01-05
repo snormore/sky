@@ -11,6 +11,7 @@ type Field struct {
 	Aggregation string
 	Distinct    bool
 	Expression  Expression
+	reducible   bool
 }
 
 func (f *Field) node() {}
@@ -27,6 +28,12 @@ func NewField(name string, aggregation string, expression Expression) *Field {
 // Determines if the field performs aggregation.
 func (f *Field) IsAggregate() bool {
 	return f.Aggregation != ""
+}
+
+// Reducible returns whether the field should be reduced. This can be false if
+// a field with the same path has already been declared previously.
+func (f *Field) Reducible() bool {
+	return f.reducible
 }
 
 // Returns the identifier used by the field.

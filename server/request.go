@@ -17,9 +17,9 @@ type Request interface {
 
 // request is the concrete implementation of the Request interface.
 type request struct {
-	vars map[string]string
-	data interface{}
-	table *core.Table
+	vars     map[string]string
+	data     interface{}
+	table    *core.Table
 	property *core.Property
 }
 

@@ -11,7 +11,7 @@ func Find(node Node, fn func(Node) bool) []Node {
 // findVisitor is an AST visitor that collects a list of nodes matching a filter function.
 type findVisitor struct {
 	nodes []Node
-	fn func(Node) bool
+	fn    func(Node) bool
 }
 
 func (v *findVisitor) Visit(node Node, symtable *Symtable) Visitor {

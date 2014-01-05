@@ -262,10 +262,10 @@ import "C"
 import "unsafe"
 
 const (
-    NullValueType = C.null_value_type
-    IntValueType = C.int_value_type
-    DoubleValueType = C.double_value_type
-    HashmapValueType = C.hashmap_value_type
+	NullValueType    = C.null_value_type
+	IntValueType     = C.int_value_type
+	DoubleValueType  = C.double_value_type
+	HashmapValueType = C.hashmap_value_type
 )
 
 // Hashmap wraps the underlying C struct.
@@ -293,34 +293,33 @@ func (h *Hashmap) Free() {
 
 // ValueType retrieves type of value stored in the key.
 func (h *Hashmap) ValueType(key int64) int {
-    return int(C.sky_hashmap_value_type(h.C, C.int64_t(key)))
+	return int(C.sky_hashmap_value_type(h.C, C.int64_t(key)))
 }
 
 // Get retrieves the int value for a given key.
 func (h *Hashmap) Get(key int64) int64 {
-    return int64(C.sky_hashmap_get(h.C, C.int64_t(key)))
+	return int64(C.sky_hashmap_get(h.C, C.int64_t(key)))
 }
 
 // Set sets an int value for a given key.
 func (h *Hashmap) Set(key int64, value int64) {
-    C.sky_hashmap_set(h.C, C.int64_t(key), C.int64_t(value))
+	C.sky_hashmap_set(h.C, C.int64_t(key), C.int64_t(value))
 }
 
 // GetDouble retrieves the double value for a given key.
 func (h *Hashmap) GetDouble(key int64) float64 {
-    return float64(C.sky_hashmap_get_double(h.C, C.int64_t(key)))
+	return float64(C.sky_hashmap_get_double(h.C, C.int64_t(key)))
 }
 
 // SetDouble sets a double value for a given key.
 func (h *Hashmap) SetDouble(key int64, value float64) {
-    C.sky_hashmap_set_double(h.C, C.int64_t(key), C.double(value))
+	C.sky_hashmap_set_double(h.C, C.int64_t(key), C.double(value))
 }
 
 // Submap retrieves the hashmap value for a given key.
 func (h *Hashmap) Submap(key int64) *Hashmap {
 	return &Hashmap{C.sky_hashmap_submap(h.C, C.int64_t(key))}
 }
-
 
 // Iterator wraps the underlying C struct.
 type Iterator struct {
@@ -343,7 +342,7 @@ func (i *Iterator) Free() {
 // Next retrieves the next key and a success flag.
 func (i *Iterator) Next() (int64, int, bool) {
 	var key C.int64_t
-    var typ C.sky_hashmap_elem_type_e
+	var typ C.sky_hashmap_elem_type_e
 	success := bool(C.sky_hashmap_iterator_next(i.C, &key, &typ))
 	return int64(key), int(typ), success
 }

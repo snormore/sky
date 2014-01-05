@@ -14,7 +14,7 @@ func TestValidateFieldAggregation(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Aggregation:"bad_aggr"},
+					&ast.Field{Aggregation: "bad_aggr"},
 				},
 			},
 		},
@@ -29,7 +29,7 @@ func TestValidateFieldDistinct(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Aggregation:"count", Distinct: true},
+					&ast.Field{Aggregation: "count", Distinct: true},
 				},
 			},
 		},
@@ -44,7 +44,7 @@ func TestValidateFieldCountWithExpression(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Aggregation:"count", Expression:&ast.VarRef{Name:"foo"}},
+					&ast.Field{Aggregation: "count", Expression: &ast.VarRef{Name: "foo"}},
 				},
 			},
 		},
@@ -59,7 +59,7 @@ func TestValidateFieldExpressionType(t *testing.T) {
 		Statements: ast.Statements{
 			&ast.Selection{
 				Fields: ast.Fields{
-					&ast.Field{Aggregation:"sum", Expression:&ast.VarRef{Name:"foo"}},
+					&ast.Field{Aggregation: "sum", Expression: &ast.VarRef{Name: "foo"}},
 				},
 			},
 		},

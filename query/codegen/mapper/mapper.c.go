@@ -55,7 +55,7 @@ sky_cursor *sky_cursor_new(MDB_cursor *lmdb_cursor, void *key_prefix, int64_t ke
     sky_cursor *cursor = calloc(1, sizeof(sky_cursor));
     if(cursor == NULL) debug("[malloc] Unable to allocate cursor.");
 
-    if(cursor->key_prefix_sz > 0) {
+    if(key_prefix_sz > 0) {
         cursor->key_prefix = malloc(key_prefix_sz);
         if(cursor->key_prefix == NULL) debug("[malloc] Unable to allocate key prefix.");
         memcpy(cursor->key_prefix, key_prefix, key_prefix_sz);

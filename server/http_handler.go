@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -13,7 +14,7 @@ import (
 
 // httpHandler abstracts the HTTP interface from the server handler.
 type httpHandler struct {
-	server *Server
+	server  *Server
 	handler Handler
 }
 
@@ -41,14 +42,11 @@ func (h *httpHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // parseRequest converts the HTTP request to a Sky server request.
 func (h *httpHandler) parseRequest(req *http.Request) (*request, error) {
 	contentType := req.Header.Get("Content-Type")
-
 	switch contentType {
 	case "application/json":
 		return h.parseJSONRequest(req)
-	case "text/plain":
-		return h.parseTextRequest(req)
 	default:
-		return nil, fmt.Errorf("server: invalid request content type: %s", contentType)
+		return h.parseTextRequest(req)
 	}
 }
 
@@ -58,7 +56,7 @@ func (h *httpHandler) parseJSONRequest(req *http.Request) (*request, error) {
 	if err := json.NewDecoder(req.Body).Decode(&data); err != nil && err != io.EOF {
 		return nil, fmt.Errorf("server: json request error: %v", err)
 	}
-	return &request{vars: mux.Vars(req), data: data}, nil
+	return &request{vars: h.readVars(req), data: data}, nil
 }
 
 // parseTextRequest converts a Text HTTP request to a Sky server request.
@@ -67,9 +65,8 @@ func (h *httpHandler) parseTextRequest(req *http.Request) (*request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("server: text request error: %v", err)
 	}
-	return &request{vars: mux.Vars(req), data: data}, nil
+	return &request{vars: h.readVars(req), data: data}, nil
 }
-
 
 // writeResponse writes the Sky server response to the HTTP response writer.
 func (h *httpHandler) writeResponse(w http.ResponseWriter, req *http.Request, resp Response, elapsedTime float64) {
@@ -102,7 +99,7 @@ func (h *httpHandler) writeJSONResponse(w http.ResponseWriter, resp Response) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if resp.Error() != nil {
-		ret := map[string]interface{}{"message":resp.Error().Error()}
+		ret := map[string]interface{}{"message": resp.Error().Error()}
 		if err := json.NewEncoder(w).Encode(ret); err != nil {
 			h.server.logger.Printf("server: encoding error[err]: %v", err)
 		}
@@ -111,4 +108,17 @@ func (h *httpHandler) writeJSONResponse(w http.ResponseWriter, resp Response) {
 			h.server.logger.Printf("server: encoding error: %v", err)
 		}
 	}
+}
+
+// readVars reads a map of key/value pairs from the URL.
+func (h *httpHandler) readVars(req *http.Request) map[string]string {
+	vars := make(map[string]string)
+	values, _ := url.ParseQuery(req.URL.RawQuery)
+	for k, _ := range values {
+		vars[k] = values.Get(k)
+	}
+	for k, v := range mux.Vars(req) {
+		vars[k] = v
+	}
+	return vars
 }

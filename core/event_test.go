@@ -40,4 +40,3 @@ func TestMerge(t *testing.T) {
 		t.Fatalf("Invalid merge: %v", a.Data)
 	}
 }
-

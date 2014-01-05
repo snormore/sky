@@ -37,7 +37,7 @@ func (s EventList) Swap(i, j int) {
 // Cleaning
 //--------------------------------------
 
-// Returns a list of 
+// Returns a list of
 func (s EventList) NonEmptyEvents() EventList {
 	events := make([]*Event, 0)
 	for _, event := range s {

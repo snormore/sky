@@ -11,7 +11,7 @@ import (
 )
 
 // tableHandler handles the management of tables in the database.
-type tableHandler struct {}
+type tableHandler struct{}
 
 // installTableHandler adds table routes to the server.
 func installTableHandler(s *Server) *tableHandler {
@@ -104,4 +104,3 @@ func (h *tableHandler) getKeys(s *Server, req Request) (interface{}, error) {
 
 	return keys, nil
 }
-

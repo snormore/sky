@@ -125,7 +125,7 @@ func (f *factorizer) Factorize(tablespace string, id string, value string, creat
 		return f.add(tablespace, id, value)
 	}
 
-	err = NewFactorNotFound(fmt.Sprintf("skyd: Factor not found: %v", f.key(id, value)))
+	err = NewFactorNotFound(fmt.Sprintf("factor not found: %v", f.key(id, value)))
 	return 0, err
 }
 
@@ -173,7 +173,7 @@ func (f *factorizer) Defactorize(tablespace string, id string, value uint64) (st
 		return "", err
 	}
 	if !exists {
-		return "", fmt.Errorf("skyd: Factor value does not exist: %v", f.revkey(id, value))
+		return "", fmt.Errorf("factor value does not exist: %v", f.revkey(id, value))
 	}
 	return string(data), nil
 }
@@ -196,7 +196,7 @@ func (f *factorizer) inc(tablespace string, id string) (uint64, error) {
 	// Parse existing sequence.
 	sequence, err := strconv.ParseUint(string(data), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("skyd: Unable to parse factor sequence: %v", data)
+		return 0, fmt.Errorf("unable to parse factor sequence: %v", data)
 	}
 
 	// Increment and save the new value.
@@ -275,17 +275,17 @@ func (f *factorizer) DefactorizeEvents(events []*core.Event, tablespace string, 
 func (f *factorizer) get(tablespace string, key string) (string, bool, error) {
 	txn, err := f.env.BeginTxn(nil, 0)
 	if err != nil {
-		return "", false, fmt.Errorf("skyd: Unable to start factors get txn: %s", err)
+		return "", false, fmt.Errorf("unable to start factors get txn: %s", err)
 	}
 	dbi, err := txn.DBIOpen(&tablespace, mdb.CREATE)
 	if err != nil {
-		return "", false, fmt.Errorf("skyd: Unable to open factors DBI [get]: %s", err)
+		return "", false, fmt.Errorf("unable to open factors DBI [get]: %s", err)
 	}
 
 	// Retrieve byte array.
 	data, err := txn.Get(dbi, []byte(key))
 	if err != nil && err != mdb.NotFound {
-		err = fmt.Errorf("skyd: Unable to get factor: %s", err)
+		err = fmt.Errorf("unable to get factor: %s", err)
 		fmt.Fprintln(os.Stderr, err.Error())
 		txn.Abort()
 		return "", false, err
@@ -299,22 +299,22 @@ func (f *factorizer) get(tablespace string, key string) (string, bool, error) {
 func (f *factorizer) put(tablespace string, key string, value string) error {
 	txn, err := f.env.BeginTxn(nil, 0)
 	if err != nil {
-		return fmt.Errorf("skyd: Unable to start factors put txn: %s", err)
+		return fmt.Errorf("unable to start factors put txn: %s", err)
 	}
 	dbi, err := txn.DBIOpen(&tablespace, mdb.CREATE)
 	if err != nil {
-		return fmt.Errorf("skyd: Unable to open factors DBI [put]: %s", err)
+		return fmt.Errorf("unable to open factors DBI [put]: %s", err)
 	}
 
 	// Set value for key.
 	if err = txn.Put(dbi, []byte(key), []byte(value), mdb.NODUPDATA); err != nil {
-		err = fmt.Errorf("skyd: Unable to put factor: %s", err)
+		err = fmt.Errorf("unable to put factor: %s", err)
 		fmt.Fprintln(os.Stderr, err.Error())
 		txn.Abort()
 		return err
 	}
 	if err = txn.Commit(); err != nil {
-		err = fmt.Errorf("skyd: Unable to commit factor: %s", err)
+		err = fmt.Errorf("unable to commit factor: %s", err)
 		fmt.Fprintln(os.Stderr, err.Error())
 		txn.Abort()
 		return err

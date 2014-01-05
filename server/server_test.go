@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const testPort = 8586
@@ -17,6 +19,20 @@ func init() {
 	// Standardize servlet count for tests so we don't get different
 	// results on different machines.
 	defaultServletCount = 16
+}
+
+func sendText(method string, path string, body string) (int, string) {
+	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+	req, _ := http.NewRequest(method, fmt.Sprintf("http://localhost:%d%s", testPort, path), bytes.NewBufferString(body))
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	if err != nil {
+		panic("Response failed: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	b, _ := ioutil.ReadAll(resp.Body)
+	return resp.StatusCode, string(b)
 }
 
 func sendJSON(method string, path string, body string) (int, interface{}) {
@@ -28,7 +44,7 @@ func sendJSON(method string, path string, body string) (int, interface{}) {
 		panic("Response failed: " + err.Error())
 	}
 	defer resp.Body.Close()
-	
+
 	var ret interface{}
 	json.NewDecoder(resp.Body).Decode(&ret)
 
@@ -99,12 +115,9 @@ func setupTestProperty(tableName string, name string, transient bool, dataType s
 }
 
 func setupTestData(t *testing.T, tableName string, items [][]string) {
-	for i, item := range items {
-		resp, _ := sendTestHttpRequest("PUT", fmt.Sprintf("http://localhost:8586/tables/%s/objects/%s/events/%s", tableName, item[0], item[1]), "application/json", item[2])
-		resp.Body.Close()
-		if resp.StatusCode != 200 {
-			t.Fatalf("setupTestData[%d]: Expected 200, got %v.", i, resp.StatusCode)
-		}
+	for _, item := range items {
+		status, _ := patchJSON(fmt.Sprintf("/tables/%s/objects/%s/events/%s", tableName, item[0], item[1]), item[2])
+		assert.Equal(t, status, 200)
 	}
 }
 
