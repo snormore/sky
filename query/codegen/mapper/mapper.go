@@ -56,7 +56,7 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 	m.context = llvm.NewContext()
 	m.module = m.context.NewModule("mapper")
 	m.builder = llvm.NewBuilder()
-	// runtime.SetFinalizer(m, finalize)
+	runtime.SetFinalizer(m, finalize)
 
 	var err error
 	if err = q.Finalize(); err != nil {
@@ -70,7 +70,7 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 	if err = llvm.VerifyModule(m.module, llvm.ReturnStatusAction); err != nil {
 		return nil, err
 	}
-	if m.engine, err = llvm.NewJITCompiler(m.module, 0); err != nil {
+	if m.engine, err = llvm.NewJITCompiler(m.module, 2); err != nil {
 		return nil, err
 	}
 

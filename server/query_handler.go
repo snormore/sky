@@ -2,12 +2,15 @@ package server
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/skydb/sky/query/ast"
 	"github.com/skydb/sky/query/ast/validator"
 	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/skydb/sky/query/codegen/mapper"
 	"github.com/skydb/sky/query/codegen/reducer"
 	"github.com/skydb/sky/query/parser"
+	"github.com/szferi/gomdb"
 )
 
 // queryHandler handles the execute of queries against database tables.
@@ -45,6 +48,7 @@ func (h *queryHandler) stats(s *Server, req Request) (interface{}, error) {
 
 // execute runs a query against the table.
 func (h *queryHandler) execute(s *Server, req Request, querystring string) (interface{}, error) {
+	var wg sync.WaitGroup
 	t := req.Table()
 
 	var data, ok = req.Data().(map[string]interface{})
@@ -88,33 +92,51 @@ func (h *queryHandler) execute(s *Server, req Request, querystring string) (inte
 	}
 	defer cursors.Close()
 
-	// Execute one mapper for each cursor.
-	mappers := make([]*mapper.Mapper, len(cursors))
-	results := make([]*hashmap.Hashmap, len(cursors))
-	for i := 0; i < len(mappers); i++ {
-		cursor := cursors[i]
-
-		var err error
-		if mappers[i], err = mapper.New(q, f); err != nil {
-			return nil, err
-		}
-
-		result := hashmap.New()
-		if err = mappers[i].Execute(cursor, prefix, result); err != nil {
-			return nil, err
-		}
-		results[i] = result
+	// Generate mapper code.
+	m, err := mapper.New(q, f)
+	if err != nil {
+		return nil, err
 	}
-	// mappers[0].Dump()
+	// m.Dump()
 
-	// TODO: Run mappers in parallel.
+	// Execute one mapper for each cursor.
+	count := len(cursors)
+	results := make(chan interface{}, count)
+	for _, cursor := range cursors {
+		wg.Add(1)
+		go func(cursor *mdb.Cursor) {
+			result := hashmap.New()
+			if err := m.Execute(cursor, prefix, result); err == nil {
+				results <- result
+			} else {
+				results <- err
+			}
+			wg.Done()
+		}(cursor)
+	}
+
+	// Close results channel after all mappers are done.
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Don't exit function until all mappers finish.
+	defer wg.Wait()
 
 	// Combine all the results into one final result.
+	err = nil
 	r := reducer.New(q, f)
-	for _, result := range results {
-		if err := r.Reduce(result); err != nil {
-			return nil, err
+	for result := range results {
+		switch result := result.(type) {
+		case *hashmap.Hashmap:
+			if err := r.Reduce(result); err != nil {
+				return nil, err
+			}
+		case error:
+			return nil, result
 		}
 	}
+
 	return r.Output(), nil
 }
