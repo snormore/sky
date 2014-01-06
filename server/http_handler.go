@@ -70,7 +70,7 @@ func (h *httpHandler) parseTextRequest(req *http.Request) (*request, error) {
 
 // writeResponse writes the Sky server response to the HTTP response writer.
 func (h *httpHandler) writeResponse(w http.ResponseWriter, req *http.Request, resp Response, elapsedTime float64) {
-	contentType := req.Header.Get("Accept")
+	// contentType := req.Header.Get("Accept")
 
 	// Write header.
 	var status int
@@ -86,12 +86,7 @@ func (h *httpHandler) writeResponse(w http.ResponseWriter, req *http.Request, re
 
 	// Write header and body.
 	w.WriteHeader(status)
-	switch contentType {
-	case "application/json", "":
-		h.writeJSONResponse(w, resp)
-	default:
-		h.server.logger.Printf("[error] server: invalid response content type: %s", contentType)
-	}
+	h.writeJSONResponse(w, resp)
 }
 
 // writeJSONResponse writes the Sky server response as JSON to the HTTP response writer.

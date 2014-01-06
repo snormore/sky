@@ -111,23 +111,16 @@ func (s *shard) InsertEvent(tablespace string, id string, event *core.Event) err
 	if err != nil {
 		return fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
-		txn.Abort()
 		return fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	if err := s.insertEvent(txn, dbi, c, id, core.ShiftTimeBytes(event.Timestamp), event.Data); err != nil {
-		c.Close()
-		txn.Abort()
 		return err
-	}
-	c.Close()
-
-	// Commit the transaction.
-	if err := txn.Commit(); err != nil {
-		return fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return nil
@@ -177,24 +170,18 @@ func (s *shard) InsertEvents(tablespace string, id string, events []*core.Event)
 	if err != nil {
 		return fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
 		return fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	for _, event := range events {
 		if err := s.insertEvent(txn, dbi, c, id, core.ShiftTimeBytes(event.Timestamp), event.Data); err != nil {
-			c.Close()
-			txn.Abort()
 			return err
 		}
-	}
-	c.Close()
-
-	// Commit the transaction.
-	if err := txn.Commit(); err != nil {
-		return fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return nil
@@ -209,26 +196,21 @@ func (s *shard) GetEvent(tablespace string, id string, timestamp time.Time) (*co
 	if err != nil {
 		return nil, fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
 		return nil, fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	data, err := s.getEvent(c, id, core.ShiftTimeBytes(timestamp))
 	if err != nil {
-		c.Close()
-		txn.Abort()
 		return nil, err
 	}
-	c.Close()
 
 	if data == nil {
 		return nil, nil
-	}
-
-	if err := txn.Commit(); err != nil {
-		return nil, fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return &core.Event{Timestamp: timestamp, Data: data}, nil
@@ -237,10 +219,7 @@ func (s *shard) GetEvent(tablespace string, id string, timestamp time.Time) (*co
 func (s *shard) getEvent(c *mdb.Cursor, id string, timestamp []byte) (map[int64]interface{}, error) {
 	// Position cursor at possible event.
 	_, _, err := mdbGet2(c, []byte(id), timestamp, mdb.GET_RANGE)
-	if err == mdb.NotFound {
-		return nil, nil
-	} else if err == mdb.Incompatibile {
-		// This only occurs when a db is read before it is created.
+	if err == mdb.NotFound || err == mdb.Incompatibile {
 		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("lmdb cursor get error: %s", err)
@@ -284,17 +263,16 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
 		return nil, fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	// Initialize cursor.
-	if _, _, err := mdbGet2(c, []byte(id), []byte{0}, mdb.GET_RANGE); err == mdb.NotFound {
-		return events, nil
-	} else if err == mdb.Incompatibile {
-		// This only occurs when a db is read before it is created.
+	if _, _, err := mdbGet2(c, []byte(id), []byte{0}, mdb.GET_RANGE); err == mdb.NotFound || err == mdb.Incompatibile {
 		return events, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("lmdb cursor init error: %s", err)
@@ -303,7 +281,6 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 	for {
 		_, val, err := c.Get([]byte(id), mdb.GET_CURRENT)
 		if err != nil {
-			c.Close()
 			return nil, fmt.Errorf("lmdb cursor current error: %s", err)
 		}
 
@@ -317,7 +294,6 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 		var handle codec.MsgpackHandle
 		handle.RawToString = true
 		if err := codec.NewDecoder(bytes.NewBuffer(val[8:]), &handle).Decode(&event.Data); err != nil {
-			c.Close()
 			return nil, err
 		}
 		for k, v := range event.Data {
@@ -330,14 +306,8 @@ func (s *shard) GetEvents(tablespace string, id string) ([]*core.Event, error) {
 		if _, _, err := c.Get([]byte(id), mdb.NEXT_DUP); err == mdb.NotFound {
 			break
 		} else if err != nil {
-			c.Close()
 			return nil, fmt.Errorf("lmdb cursor next dup error: %s", err)
 		}
-	}
-	c.Close()
-
-	if err := txn.Commit(); err != nil {
-		return nil, fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return events, nil
@@ -352,30 +322,21 @@ func (s *shard) DeleteEvent(tablespace string, id string, timestamp time.Time) e
 	if err != nil {
 		return fmt.Errorf("lmdb txn begin error: %s", err)
 	}
+	defer txn.Commit()
 
 	c, err := s.cursor(txn, dbi)
 	if err != nil {
-		txn.Abort()
 		return fmt.Errorf("lmdb cursor error: %s", err)
 	}
+	defer c.Close()
 
 	// Check if event exists and move the cursor.
 	if old, err := s.getEvent(c, id, core.ShiftTimeBytes(timestamp)); err != nil {
-		c.Close()
-		txn.Abort()
 		return err
 	} else if old != nil {
 		if err := c.Del(0); err != nil {
-			c.Close()
-			txn.Abort()
 			return fmt.Errorf("lmdb cursor del error: %s", err)
 		}
-	}
-	c.Close()
-
-	// Commit the transaction.
-	if err := txn.Commit(); err != nil {
-		return fmt.Errorf("lmdb txn commit error: %s", err)
 	}
 
 	return nil
@@ -391,17 +352,11 @@ func (s *shard) DeleteObject(tablespace, id string) error {
 	if err != nil {
 		return fmt.Errorf("shard delete txn error: %s", err)
 	}
+	defer txn.Commit()
 
 	// Delete the key.
 	if err = txn.Del(dbi, []byte(id), nil); err != nil && err != mdb.NotFound {
-		txn.Abort()
 		return fmt.Errorf("shard delete error: %s", err)
-	}
-
-	// Commit the transaction.
-	if err = txn.Commit(); err != nil {
-		txn.Abort()
-		return fmt.Errorf("shard delete commit error: %s", err)
 	}
 
 	return nil
@@ -419,17 +374,11 @@ func (s *shard) drop(tablespace string) error {
 	if err != nil {
 		return fmt.Errorf("drop txn error: %s", err)
 	}
+	defer txn.Commit()
 
 	// Drop the table.
 	if err = txn.Drop(dbi, 1); err != nil {
-		txn.Abort()
 		return fmt.Errorf("drop error: %s", err)
-	}
-
-	// Commit the transaction.
-	if err = txn.Commit(); err != nil {
-		txn.Abort()
-		return fmt.Errorf("drop commit error: %s", err)
 	}
 
 	return nil
