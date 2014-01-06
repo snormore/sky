@@ -14,7 +14,7 @@ import (
 
 // shard represents a subset of the database stored in a single LMDB environment.
 type shard struct {
-	sync.RWMutex
+	sync.Mutex
 	path string
 	env  *mdb.Env
 }
@@ -77,8 +77,8 @@ func (s *shard) close() {
 
 // Cursor retrieves a cursor for iterating over the shard.
 func (s *shard) Cursor(tablespace string) (*mdb.Cursor, error) {
-	s.RLock()
-	defer s.RUnlock()
+	s.Lock()
+	defer s.Unlock()
 
 	txn, dbi, err := s.txn(tablespace, true)
 	if err != nil {

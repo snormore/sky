@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 	"unsafe"
 
 	"github.com/axw/gollvm/llvm"
@@ -14,6 +15,8 @@ import (
 	"github.com/skydb/sky/query/codegen/hashmap"
 	"github.com/szferi/gomdb"
 )
+
+var mutex sync.Mutex
 
 func init() {
 	llvm.LinkInJIT()
@@ -44,13 +47,16 @@ type Mapper struct {
 
 // New creates a new Mapper instance.
 func New(q *ast.Query, f Factorizer) (*Mapper, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	m := new(Mapper)
 	m.factorizer = f
-	runtime.SetFinalizer(m, finalize)
 
 	m.context = llvm.NewContext()
 	m.module = m.context.NewModule("mapper")
 	m.builder = llvm.NewBuilder()
+	// runtime.SetFinalizer(m, finalize)
 
 	var err error
 	if err = q.Finalize(); err != nil {
@@ -64,7 +70,7 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 	if err = llvm.VerifyModule(m.module, llvm.ReturnStatusAction); err != nil {
 		return nil, err
 	}
-	if m.engine, err = llvm.NewJITCompiler(m.module, 2); err != nil {
+	if m.engine, err = llvm.NewJITCompiler(m.module, 0); err != nil {
 		return nil, err
 	}
 
@@ -73,6 +79,9 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 
 // finalize cleans up resources after the mapper goes out of scope.
 func finalize(m *Mapper) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	m.builder.Dispose()
 	m.engine.Dispose()
 }

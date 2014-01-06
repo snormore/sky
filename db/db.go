@@ -149,23 +149,6 @@ func (db *db) shardCount() (int, error) {
 	return count, nil
 }
 
-// LockAll obtains locks on the database and all shards.
-func (db *db) LockAll() {
-	db.Lock()
-	for _, s := range db.shards {
-		s.Lock()
-	}
-}
-
-// UnlockAll releases locks on the database and all shards.
-// Only use this with LockAll().
-func (db *db) UnlockAll() {
-	db.Unlock()
-	for _, s := range db.shards {
-		s.Unlock()
-	}
-}
-
 // Factorizer returns the database's factorizer.
 func (db *db) Factorizer() Factorizer {
 	return db.factorizer
