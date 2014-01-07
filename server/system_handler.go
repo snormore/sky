@@ -1,9 +1,5 @@
 package server
 
-import (
-	"github.com/skydb/sky"
-)
-
 // systemHandler handles the miscellaneous system-level handlers.
 type systemHandler struct{}
 
@@ -17,7 +13,7 @@ func installSystemHandler(s *Server) *systemHandler {
 
 // root returns a welcome message and the server version.
 func (h *systemHandler) root(s *Server, req Request) (interface{}, error) {
-	return map[string]interface{}{"sky": "welcome", "version": sky.Version}, nil
+	return map[string]interface{}{"sky": "welcome", "version": s.Version}, nil
 }
 
 // ping returns a simple ok message.

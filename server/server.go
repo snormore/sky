@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/skydb/sky"
 	"github.com/skydb/sky/core"
 	"github.com/skydb/sky/db"
 )
@@ -35,6 +34,7 @@ type Server struct {
 	NoSync           bool
 	MaxDBs           uint
 	MaxReaders       uint
+	Version          string
 }
 
 // NewServer creates a new Server instance.
@@ -99,7 +99,7 @@ func (s *Server) ListenAndServe(shutdownChannel chan bool) error {
 		s.shutdownFinished <- true
 	}()
 
-	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", sky.Version, s.Addr)
+	s.logger.Printf("Sky v%s is now listening on http://localhost%s\n", s.Version, s.Addr)
 
 	return nil
 }

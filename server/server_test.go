@@ -88,6 +88,7 @@ func sendTestHttpRequest(method string, url string, contentType string, body str
 
 func runTestServerAt(path string, f func(s *Server)) {
 	server := NewServer(testPort, path)
+	server.Version = "0.0.0"
 	server.Silence()
 	server.ListenAndServe(nil)
 	defer server.Shutdown()

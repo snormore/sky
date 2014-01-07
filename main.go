@@ -1,34 +1,20 @@
-package main
+package sky
 
 import (
 	"flag"
 	"fmt"
 	"github.com/skydb/sky/server"
-	. "github.com/skydb/sky/skyd/config"
+	. "github.com/skydb/sky/config"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"runtime"
 )
 
-//------------------------------------------------------------------------------
-//
-// Variables
-//
-//------------------------------------------------------------------------------
+const version = "0.4.0 (unstable)"
 
 var config *Config
 var configPath string
-
-//------------------------------------------------------------------------------
-//
-// Functions
-//
-//------------------------------------------------------------------------------
-
-//--------------------------------------
-// Initialization
-//--------------------------------------
 
 func init() {
 	config = NewConfig()
@@ -41,10 +27,6 @@ func init() {
 	flag.UintVar(&config.MaxReaders, "max-readers", config.MaxReaders, "max number of concurrenly executing queries (mdb.MaxReaders)")
 	flag.StringVar(&configPath, "config", "", "the path to the config file")
 }
-
-//--------------------------------------
-// Main
-//--------------------------------------
 
 func main() {
 	// Parse the command line arguments and load the config file (if specified).
@@ -67,6 +49,7 @@ func main() {
 
 	// Initialize
 	s := server.NewServer(config.Port, config.DataPath)
+	s.Version = version
 	s.NoSync = config.NoSync
 	s.MaxDBs = config.MaxDBs
 	s.MaxReaders = config.MaxReaders
@@ -85,10 +68,6 @@ func main() {
 	cleanup(s)
 }
 
-//--------------------------------------
-// Signals
-//--------------------------------------
-
 // Handles signals received from the OS.
 func setupSignalHandlers(s *server.Server) {
 	c := make(chan os.Signal, 1)
@@ -102,10 +81,6 @@ func setupSignalHandlers(s *server.Server) {
 		}
 	}()
 }
-
-//--------------------------------------
-// Utility
-//--------------------------------------
 
 // Shuts down the server socket and closes the database.
 func cleanup(s *server.Server) {
