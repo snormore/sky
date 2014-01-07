@@ -72,6 +72,18 @@ func New(q *ast.Query, f Factorizer) (*Mapper, error) {
 		return nil, err
 	}
 
+	// Optimization passes.
+	pass := llvm.NewPassManager()
+	defer pass.Dispose()
+
+	pass.Add(m.engine.TargetData())
+	pass.AddConstantPropagationPass()
+	pass.AddInstructionCombiningPass()
+	pass.AddPromoteMemoryToRegisterPass()
+	pass.AddGVNPass()
+	pass.AddCFGSimplificationPass()
+	pass.Run(m.module)
+
 	return m, nil
 }
 
@@ -94,6 +106,11 @@ func (m *Mapper) Map(lmdb_cursor *mdb.Cursor, prefix string, result *hashmap.Has
 		llvm.NewGenericValueFromPointer(unsafe.Pointer(result.C)),
 	})
 	return nil
+}
+
+// Iterate simply loops over every element of the raw cursor for benchmarking purposes.
+func (m *Mapper) Iterate(c *mdb.Cursor) {
+	sky_mdb_iterate(c)
 }
 
 // Dump writes the LLVM IR to STDERR.

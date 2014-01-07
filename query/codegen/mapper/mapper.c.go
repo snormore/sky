@@ -117,6 +117,25 @@ void *sky_cursor_next_object(sky_cursor *cursor, int64_t init)
     return data.mv_data;
 }
 
+// Testing function that simply iterates over all keys and subkeys of the LMDB cursor.
+void sky_mdb_iterate(MDB_cursor *lmdb_cursor) {
+    int rc;
+    MDB_val key, data;
+    if((rc = mdb_cursor_get(lmdb_cursor, &key, &data, MDB_FIRST)) != 0) {
+        if(rc != MDB_NOTFOUND) fprintf(stderr, "sky_mdb_iterate MDB_FIRST error: %s\n", mdb_strerror(rc));
+        return;
+    }
+
+    while(1) {
+
+        rc = mdb_cursor_get(lmdb_cursor, &key, &data, MDB_NEXT_NODUP);
+        if(rc != 0) {
+            if(rc != MDB_NOTFOUND) fprintf(stderr, "sky_mdb_iterate MDB_NEXT_NODUP error: %s\n", mdb_strerror(rc));
+            return;
+        }
+    }
+}
+
 */
 import "C"
 
@@ -132,5 +151,9 @@ func sky_cursor_new(lmdb_cursor *mdb.Cursor, prefix string) *C.sky_cursor {
 }
 
 func sky_cursor_free(cursor *C.sky_cursor) {
-	C.sky_cursor_free(cursor)
+    C.sky_cursor_free(cursor)
+}
+
+func sky_mdb_iterate(lmdb_cursor *mdb.Cursor) {
+    C.sky_mdb_iterate(lmdb_cursor.MdbCursor())
 }

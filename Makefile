@@ -4,7 +4,7 @@ COVERPROFILE=/tmp/c.out
 TEST=.
 PKG=./...
 
-all: test
+default: build
 
 flags:
 	@echo "CGO_CFLAGS=$(CFLAGS) CGO_LDFLAGS=$(LDFLAGS)"
@@ -22,6 +22,9 @@ cover: fmt
 
 bench: grammar
 	CGO_CFLAGS=$(CFLAGS) CGO_LDFLAGS=$(LDFLAGS) go test -v -test.bench=. $(PKG)
+
+run: grammar
+	CGO_CFLAGS=$(CFLAGS) CGO_LDFLAGS=$(LDFLAGS) go run main.go
 
 build: grammar
 	CGO_CFLAGS=$(CFLAGS) CGO_LDFLAGS=$(LDFLAGS) go build -v .

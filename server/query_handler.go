@@ -50,6 +50,7 @@ func (h *queryHandler) stats(s *Server, req Request) (interface{}, error) {
 func (h *queryHandler) execute(s *Server, req Request, querystring string) (interface{}, error) {
 	var wg sync.WaitGroup
 	t := req.Table()
+	t0 := bench("query")
 
 	var data, ok = req.Data().(map[string]interface{})
 	if !ok {
@@ -79,10 +80,14 @@ func (h *queryHandler) execute(s *Server, req Request, querystring string) (inte
 		return nil, err
 	}
 
+	t0 = bench("query.parse", t0)
+
 	// Validate query.
 	if err := validator.Validate(q); err != nil {
 		return nil, err
 	}
+
+	t0 = bench("query.validate", t0)
 
 	// Retrieve factorizer and database cursors.
 	f := s.db.TableFactorizer(t.Name)
@@ -97,9 +102,15 @@ func (h *queryHandler) execute(s *Server, req Request, querystring string) (inte
 	if err != nil {
 		return nil, err
 	}
-	// m.Dump()
+	m.Dump()
+
+	t0 = bench("query.codegen", t0)
+
+	m.Iterate(cursors[0])
+	t0 = bench("query.iterate", t0)
 
 	// Execute one mapper for each cursor.
+	t1 := bench("map")
 	count := len(cursors)
 	results := make(chan interface{}, count)
 	for _, cursor := range cursors {
@@ -111,9 +122,13 @@ func (h *queryHandler) execute(s *Server, req Request, querystring string) (inte
 			} else {
 				results <- err
 			}
+			bench("map", t1)
 			wg.Done()
 		}(cursor)
 	}
+
+	// Don't exit function until all mappers finish.
+	defer wg.Wait()
 
 	// Close results channel after all mappers are done.
 	go func() {
@@ -121,18 +136,17 @@ func (h *queryHandler) execute(s *Server, req Request, querystring string) (inte
 		close(results)
 	}()
 
-	// Don't exit function until all mappers finish.
-	defer wg.Wait()
-
 	// Combine all the results into one final result.
 	err = nil
 	r := reducer.New(q, f)
 	for result := range results {
 		switch result := result.(type) {
 		case *hashmap.Hashmap:
+			t2 := bench("reduce")
 			if err := r.Reduce(result); err != nil {
 				return nil, err
 			}
+			bench("reduce", t2)
 		case error:
 			return nil, result
 		}
