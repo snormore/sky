@@ -241,7 +241,7 @@ bool sky_hashmap_iterator_next(sky_hashmap_iterator *iterator, int64_t *key, sky
 //--------------------------------------
 
 // FOR BENCHMARKING ONLY.
-sky_hashmap *sky_hashmap_benchmark_get(sky_hashmap *hashmap, int64_t n)
+void sky_hashmap_benchmark_get(sky_hashmap *hashmap, int64_t n)
 {
     int64_t i;
     for (i=0; i<n; i++) {
@@ -250,7 +250,7 @@ sky_hashmap *sky_hashmap_benchmark_get(sky_hashmap *hashmap, int64_t n)
 }
 
 // FOR BENCHMARKING ONLY.
-sky_hashmap *sky_hashmap_benchmark_set(sky_hashmap *hashmap, int64_t n)
+void sky_hashmap_benchmark_set(sky_hashmap *hashmap, int64_t n)
 {
     int64_t i;
     for (i=0; i<n; i++) {
