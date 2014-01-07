@@ -1,4 +1,4 @@
-package sky
+package main
 
 import (
 	"flag"
