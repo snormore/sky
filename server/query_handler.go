@@ -106,7 +106,7 @@ func (h *queryHandler) execute(s *Server, req Request, querystring string) (inte
 		wg.Add(1)
 		go func(cursor *mdb.Cursor) {
 			result := hashmap.New()
-			if err := m.Execute(cursor, prefix, result); err == nil {
+			if err := m.Map(cursor, prefix, result); err == nil {
 				results <- result
 			} else {
 				results <- err

@@ -118,7 +118,7 @@ func runDBMappers(shardCount int, query string, decls ast.VarDecls, objects map[
 		results := make([]*hashmap.Hashmap, 0)
 		for _, cursor := range cursors {
 			result := hashmap.New()
-			if err = m.Execute(cursor, "", result); err != nil {
+			if err = m.Map(cursor, "", result); err != nil {
 				return err
 			}
 			results = append(results, result)

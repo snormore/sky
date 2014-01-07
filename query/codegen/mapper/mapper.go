@@ -4,8 +4,6 @@ package mapper
 import "C"
 
 import (
-	"fmt"
-	"os"
 	"runtime"
 	"sync"
 	"unsafe"
@@ -87,7 +85,7 @@ func finalize(m *Mapper) {
 }
 
 // Execute runs the entry function on the execution engine.
-func (m *Mapper) Execute(lmdb_cursor *mdb.Cursor, prefix string, result *hashmap.Hashmap) error {
+func (m *Mapper) Map(lmdb_cursor *mdb.Cursor, prefix string, result *hashmap.Hashmap) error {
 	cursor := sky_cursor_new(lmdb_cursor, prefix)
 	defer sky_cursor_free(cursor)
 
@@ -98,27 +96,8 @@ func (m *Mapper) Execute(lmdb_cursor *mdb.Cursor, prefix string, result *hashmap
 	return nil
 }
 
-// Execute a given function and returns the result.
-func (m *Mapper) ExecuteFunction(name string, values []llvm.GenericValue) llvm.GenericValue {
-	fn := m.module.NamedFunction(name)
-	return m.engine.RunFunction(fn, values)
-}
-
 // Dump writes the LLVM IR to STDERR.
 func (m *Mapper) Dump() {
 	m.module.Dump()
 }
 
-// Clone creates a duplicate mapper to be run independently.
-func (m *Mapper) Clone() *Mapper {
-	panic("NOT YET IMPLEMENTED")
-}
-
-
-func warn(v ...interface{}) {
-	fmt.Fprintln(os.Stderr, v...)
-}
-
-func warnf(msg string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg, v...)
-}
