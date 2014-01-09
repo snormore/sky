@@ -1,6 +1,6 @@
-FROM snormore/dependencies-unstable
+FROM skydb/dependencies-unstable
 
-MAINTAINER SkyDB skydb.io 
+MAINTAINER Sky Contributors skydb.io 
 
 ENV GOPATH /go
 ENV GOBIN /go/bin
@@ -15,7 +15,9 @@ RUN cd $SKY_OWNER_PATH && \
     tar zxvf sky.tar.gz && \
     mv sky-llvm sky && \
     cd sky && \
-    go get && go build -a -o /usr/local/bin/skyd
+    make get && \
+    cd $GOPATH/src/github.com/axw/gollvm && source install.sh && \
+    cd $SKY_OWNER_PATH/sky && go build -a -o /usr/local/bin/skyd
 
 CMD ["-port 8589"]
 
