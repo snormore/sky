@@ -1,4 +1,4 @@
-FROM snormore/dependencies
+FROM snormore/dependencies-unstable
 
 MAINTAINER SkyDB skydb.io 
 
