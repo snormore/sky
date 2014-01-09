@@ -4,14 +4,18 @@ MAINTAINER SkyDB skydb.io
 
 ENV GOPATH /go
 ENV GOBIN /go/bin
-ENV SKY_OWNER_PATH /go/src/github.com/snormore
+ENV SKY_OWNER_PATH /go/src/github.com/skydb
 
 RUN mkdir -p $GOBIN
 
 RUN mkdir -p $SKY_OWNER_PATH
-ADD . $SKY_OWNER_PATH/sky
 
-RUN cd $SKY_OWNER_PATH/sky && go get && go build -a -o /usr/local/bin/skyd
+RUN cd $SKY_OWNER_PATH && \
+    wget -O sky.tar.gz https://github.com/skydb/sky/archive/llvm.tar.gz && \
+    tar zxvf sky.tar.gz && \
+    mv sky-llvm sky && \
+    cd sky && \
+    go get && go build -a -o /usr/local/bin/skyd
 
 CMD ["-port 8589"]
 
